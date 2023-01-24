@@ -1,4 +1,3 @@
-
 /*
 Copyright 2023.
 
@@ -21,7 +20,7 @@ import (
 	"context"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
- 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder/resource"
@@ -45,7 +44,7 @@ type AppCat struct {
 // AppCatList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type AppCatList struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []AppCat `json:"items"`
@@ -53,6 +52,8 @@ type AppCatList struct {
 
 // AppCatSpec defines the desired state of AppCat
 type AppCatSpec struct {
+	// ServiceName is the service name of this AppCat
+	ServiceName string `json:"displayName,omitempty"`
 }
 
 var _ resource.Object = &AppCat{}
@@ -96,6 +97,7 @@ var _ resource.ObjectList = &AppCatList{}
 func (in *AppCatList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
+
 // AppCatStatus defines the observed state of AppCat
 type AppCatStatus struct {
 }

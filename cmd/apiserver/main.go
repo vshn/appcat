@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"apiserver/cmd/apiserver/appcat"
 	"k8s.io/klog"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
 
@@ -27,7 +28,9 @@ import (
 func main() {
 	err := builder.APIServer.
 		// +kubebuilder:scaffold:resource-register
-		WithResource(&appcatv1.AppCat{}).
+		WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New()).
+		WithoutEtcd().
+		ExposeLoopbackMasterClientConfig().
 		Execute()
 	if err != nil {
 		klog.Fatal(err)

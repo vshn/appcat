@@ -14,22 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package v1
 
 import (
-	"k8s.io/klog"
-	"sigs.k8s.io/apiserver-runtime/pkg/builder"
-
-	// +kubebuilder:scaffold:resource-imports
-	appcatv1 "apiserver/pkg/apis/appcat/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func main() {
-	err := builder.APIServer.
-		// +kubebuilder:scaffold:resource-register
-		WithResource(&appcatv1.AppCat{}).
-		Execute()
-	if err != nil {
-		klog.Fatal(err)
-	}
+var AddToScheme = func(scheme *runtime.Scheme) error {
+	metav1.AddToGroupVersion(scheme, schema.GroupVersion{
+		Group:   "appcat.vshn.io",
+		Version: "v1",
+	})
+	// +kubebuilder:scaffold:install
+
+	scheme.AddKnownTypes(schema.GroupVersion{
+		Group:   "appcat.vshn.io",
+		Version: "v1",
+	}, &AppCat{}, &AppCatList{})
+	return nil
 }

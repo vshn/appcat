@@ -1,7 +1,7 @@
 package appcat
 
 import (
-	"apiserver/pkg/apis/appcat/v1"
+	"appcat-apiserver/pkg/apis/appcat/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"

@@ -1,4 +1,4 @@
-module apiserver
+module appcat-apiserver
 
 go 1.17
 

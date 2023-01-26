@@ -11,8 +11,8 @@ RUN \
 RUN \
   mkdir /.cache && chmod -R g=u /.cache
 
-COPY pkg/apiserver /usr/local/bin/
+COPY appcat-apiserver /usr/local/bin/
 
-RUN chmod a+x /usr/local/bin/apiserver
+RUN chmod a+x /usr/local/bin/appcat-apiserver
 
 USER 65532:0

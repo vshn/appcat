@@ -1,0 +1,9 @@
+= Dev Environment
+
+The repository allows to install the api server in a kind cluster for local development
+
+. Run `make local-install`
+. Access the cluster `kind get kubeconfig --name appcat-apiserver-v1.24.0  > ~/.kube/config`
+. Check the appcat services `kubectl get appcat`
+
+

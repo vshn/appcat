@@ -1,6 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 IMG ?= docker.io/appcat/appcat-apiserver:v0.0.1
+DOCKER_CMD ?= docker
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -33,6 +34,7 @@ $(go_bin):
 
 include kind/kind.mk
 include dev/local.mk
+-include docs/antora-preview.mk docs/antora-build.mk
 
 .PHONY: help
 help: ## Display this help.
@@ -77,4 +79,4 @@ docker-push: ## Push docker image with the manager.
 .PHONY: clean
 clean: kind-clean
 clean:
-	rm -rf bin/ apiserver .work/
+	rm -rf bin/ appcat-apiserver .work/ docs/node_modules $docs_out_dir .public .cache

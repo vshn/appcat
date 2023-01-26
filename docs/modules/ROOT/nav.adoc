@@ -1,0 +1,15 @@
+// TODO: Edit navigation
+* xref:index.adoc[Introduction]
+* https://github.com/vshn/go-bootstrap/releases[Changelog,window=_blank] 🔗
+
+.Tutorials
+* xref:tutorials/dev-environment.adoc[Dev]
+
+.How To
+//* xref:how-tos/example.adoc[Example How-To]
+
+.Technical reference
+//* xref:references/example.adoc[Example Reference]
+
+.Explanation
+* xref:explanations/boostrap.adoc[Boostrap]

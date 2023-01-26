@@ -53,6 +53,11 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+.PHONY: lint
+lint: fmt vet ## All-in-one linting
+	@echo 'Check for uncommitted changes ...'
+	git diff --exit-code
+
 ##@ Build
 
 .PHONY: build

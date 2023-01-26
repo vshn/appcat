@@ -1,4 +1,3 @@
-
 /*
 Copyright 2023.
 
@@ -25,4 +24,3 @@ limitations under the License.
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=appcat.vshn.io
 package v1 // import "apiserver/pkg/apis/appcat/v1"
-

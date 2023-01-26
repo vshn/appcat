@@ -1,4 +1,3 @@
-
 /*
 Copyright 2023.
 
@@ -15,10 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 // +k8s:deepcopy-gen=package,register
 // +groupName=appcat.vshn.io
 
 // Package api is the internal version of the API.
 package appcat
-

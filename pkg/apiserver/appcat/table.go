@@ -1,7 +1,7 @@
 package appcat
 
 import (
-	v1 "apiserver/pkg/apis/appcat/v1"
+	"apiserver/pkg/apis/appcat/v1"
 	"context"
 	"fmt"
 	"k8s.io/apimachinery/pkg/api/meta"

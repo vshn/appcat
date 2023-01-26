@@ -32,6 +32,7 @@ $(go_bin):
 	@mkdir -p $@
 
 include kind/kind.mk
+include dev/local.mk
 
 .PHONY: help
 help: ## Display this help.

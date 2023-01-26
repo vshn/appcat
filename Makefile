@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= docker.io/appcat/apiserver:v0.0.1
+IMG ?= docker.io/appcat/appcat-apiserver:v0.0.1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -67,7 +67,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 .PHONY: docker-build
 docker-build:
 	env GOOS=$(DOCKER_IMAGE_GOOS) GOARCH=$(DOCKER_IMAGE_GOARCH) \
-		go build -o apiserver
+		go build -o ${BIN_FILENAME}
 	docker build -t ${IMG} .
 
 .PHONY: docker-push

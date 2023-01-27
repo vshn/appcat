@@ -1,6 +1,4 @@
 # Binaries for programs and plugins
-bin/*
-testbin/*
 appcat-apiserver
 
 # temp file, editor and IDE paraphernalia
@@ -10,7 +8,4 @@ appcat-apiserver
 .cache
 .public
 
-# config
-dev/config/*
-hack/*
 

@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	appcatv1 "appcat-apiserver/pkg/apis/appcat/v1"
-	"appcat-apiserver/pkg/apiserver/appcat"
+	appcatv1 "appcat-apiserver/apis/appcat/v1"
+	"appcat-apiserver/apiserver/appcat"
 	"k8s.io/klog"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
 )

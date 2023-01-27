@@ -1,7 +1,7 @@
 package appcat
 
 import (
-	"appcat-apiserver/pkg/apis/appcat/v1"
+	v12 "appcat-apiserver/apis/appcat/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -17,7 +17,7 @@ func New() restbuilder.ResourceHandlerProvider {
 		if err != nil {
 			return nil, err
 		}
-		err = v1.AddToScheme(c.Scheme())
+		err = v12.AddToScheme(c.Scheme())
 		if err != nil {
 			return nil, err
 		}
@@ -28,7 +28,7 @@ func New() restbuilder.ResourceHandlerProvider {
 type appcatStorage struct{}
 
 func (s appcatStorage) New() runtime.Object {
-	return &v1.AppCat{}
+	return &v12.AppCat{}
 }
 
 var _ rest.Scoper = &appcatStorage{}

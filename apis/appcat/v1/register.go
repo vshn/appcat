@@ -14,10 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+package v1
 
-//go:generate apiregister-gen --input-dirs ./... -h ../../boilerplate.go.txt
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
 
-//
-// +domain=vshn.io
+var AddToScheme = func(scheme *runtime.Scheme) error {
+	metav1.AddToGroupVersion(scheme, schema.GroupVersion{
+		Group:   "api.appcat.vshn.io",
+		Version: "v1",
+	})
+	// +kubebuilder:scaffold:install
 
-package apis
+	scheme.AddKnownTypes(schema.GroupVersion{
+		Group:   "api.appcat.vshn.io",
+		Version: "v1",
+	}, &AppCat{}, &AppCatList{})
+	return nil
+}

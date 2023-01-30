@@ -14,20 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+//
+// +domain=vshn.io
 
-import (
-	"k8s.io/klog"
-	"sigs.k8s.io/apiserver-runtime/pkg/builder"
-
-	// +kubebuilder:scaffold:resource-imports
-)
-
-func main() {
-	err := builder.APIServer.
-		// +kubebuilder:scaffold:resource-register
-		Execute()
-	if err != nil {
-		klog.Fatal(err)
-	}
-}
+package apis

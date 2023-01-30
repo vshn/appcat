@@ -14,24 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+// Api versions allow the api contract for a resource to be changed while keeping
+// backward compatibility by support multiple concurrent versions
+// of the same resource
 
-import (
-	appcatv1 "appcat-apiserver/apis/appcat/v1"
-	"appcat-apiserver/apiserver/appcat"
-	"k8s.io/klog"
-	"sigs.k8s.io/apiserver-runtime/pkg/builder"
-)
-
-func main() {
-	err := builder.APIServer.
-		// +kubebuilder:scaffold:resource-register
-		WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New()).
-		WithoutEtcd().
-		ExposeLoopbackAuthorizer().
-		ExposeLoopbackMasterClientConfig().
-		Execute()
-	if err != nil {
-		klog.Fatal(err)
-	}
-}
+// +k8s:openapi-gen=true
+// +k8s:deepcopy-gen=package,register
+// +k8s:conversion-gen=appcat-apiserver/pkg/apis/appcat
+// +k8s:defaulter-gen=TypeMeta
+// +groupName=api.appcat.vshn.io
+package v1 // import "appcat-apiserver/pkg/apis/appcat/v1"

@@ -77,7 +77,7 @@ func (in *AppCat) NewList() runtime.Object {
 
 func (in *AppCat) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
-		Group:    "appcat.vshn.io",
+		Group:    "api.appcat.vshn.io",
 		Version:  "v1",
 		Resource: "appcats",
 	}

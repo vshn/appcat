@@ -22,5 +22,5 @@ limitations under the License.
 // +k8s:deepcopy-gen=package,register
 // +k8s:conversion-gen=appcat-apiserver/pkg/apis/appcat
 // +k8s:defaulter-gen=TypeMeta
-// +groupName=appcat.vshn.io
+// +groupName=api.appcat.vshn.io
 package v1 // import "appcat-apiserver/pkg/apis/appcat/v1"

@@ -6,6 +6,10 @@
 package tools
 
 import (
-	// controller-gen
+	// This is basically KubeBuilder
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
+	// To generate mocks
+	_ "github.com/golang/mock/mockgen"
+	// To have Kind updated via Renovate
+	_ "sigs.k8s.io/kind"
 )

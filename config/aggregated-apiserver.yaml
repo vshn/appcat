@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: appcat-apiserver
-  namespace: default
+  namespace: appcat
   labels:
     api: appcat
     apiserver: "true"
@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: apiserver
-          image: "docker.io/appcat/appcat-apiserver:v0.0.1" #patched
+          image: "ghcr.io/vshn/appcat-apiserver:v0.0.1" #patched
           volumeMounts:
             - name: apiserver-certs
               mountPath: /apiserver.local.config/certificates
@@ -40,6 +40,7 @@ spec:
             limits:
               cpu: 100m
               memory: 30Mi
+      serviceAccountName: appcat-apiserver
       volumes:
         - name: apiserver-certs
           secret:

@@ -1,0 +1,114 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: '10'
+    metadata.appcat.vshn.io/description: PostgreSQL DBaaS instances by Exoscale
+    metadata.appcat.vshn.io/displayname: Exoscale PostgreSQL
+    metadata.appcat.vshn.io/end-user-docs-url: https://docs.appuio.cloud/appcat/exoscale-dbaas/postgresql/create.html
+    metadata.appcat.vshn.io/product-description: https://products.docs.vshn.ch/products/appcat/exoscale_dbaas.html
+    metadata.appcat.vshn.io/zone: 'Exoscale zones: de-fra-1, de-muc-1, at-vie-1, ch-gva-2,
+      ch-dk-2, bg-sof-1'
+  labels:
+    metadata.appcat.vshn.io/offered: 'true'
+    metadata.appcat.vshn.io/serviceID: exoscale-postgresql
+    name: exoscalepostgres.exoscale.appcat.vshn.io
+  name: exoscalepostgres.exoscale.appcat.vshn.io
+spec:
+  compositeTypeRef:
+    apiVersion: exoscale.appcat.vshn.io/v1
+    kind: XExoscalePostgreSQL
+  patchSets:
+    - name: annotations
+      patches:
+        - fromFieldPath: metadata.annotations
+          toFieldPath: metadata.annotations
+          type: FromCompositeFieldPath
+    - name: labels
+      patches:
+        - fromFieldPath: metadata.labels
+          toFieldPath: metadata.labels
+          type: FromCompositeFieldPath
+  resources:
+    - base:
+        apiVersion: exoscale.crossplane.io/v1
+        kind: PostgreSQL
+        metadata: {}
+        spec:
+          forProvider:
+            backup:
+              timeOfDay: ''
+            ipFilter: ''
+            maintenance:
+              dayOfWeek: ''
+              timeOfDay: ''
+            pgSettings: {}
+            size:
+              plan: ''
+            terminationProtection: false
+            version: ''
+            zone: ''
+          providerConfigRef:
+            name: exoscale
+          writeConnectionSecretToRef:
+            name: ''
+            namespace: syn-provider-exoscale-secrets
+      connectionDetails:
+        - fromConnectionSecretKey: POSTGRESQL_URL
+          name: POSTGRESQL_URL
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_DB
+          name: POSTGRESQL_DB
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_HOST
+          name: POSTGRESQL_HOST
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_PORT
+          name: POSTGRESQL_PORT
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_USER
+          name: POSTGRESQL_USER
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_PASSWORD
+          name: POSTGRESQL_PASSWORD
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: ca.crt
+          name: ca.crt
+          type: FromConnectionSecretKey
+      patches:
+        - patchSetName: annotations
+          type: PatchSet
+        - patchSetName: labels
+          type: PatchSet
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.service.majorVersion
+          toFieldPath: spec.forProvider.version
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.service.pgSettings
+          toFieldPath: spec.forProvider.pgSettings
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.service.zone
+          toFieldPath: spec.forProvider.zone
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.network.ipFilter
+          toFieldPath: spec.forProvider.ipFilter
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.size.plan
+          toFieldPath: spec.forProvider.size.plan
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.maintenance.dayOfWeek
+          toFieldPath: spec.forProvider.maintenance.dayOfWeek
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.maintenance.timeOfDay
+          toFieldPath: spec.forProvider.maintenance.timeOfDay
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.backup.timeOfDay
+          toFieldPath: spec.forProvider.backup.timeOfDay
+          type: FromCompositeFieldPath
+  writeConnectionSecretsToNamespace: syn-crossplane

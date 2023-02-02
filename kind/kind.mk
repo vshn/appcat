@@ -33,7 +33,7 @@ kind-setup-ingress: kind-setup ## Install NGINX as ingress controller onto kind 
 kind-load-image: export GOOS = linux
 kind-load-image: export GOARCH = amd64
 kind-load-image: kind-setup docker-build ## Load the container image onto kind cluster
-	$(kind_bin) load docker-image --name $(KIND_CLUSTER) $(IMG)
+	$(kind_bin) load docker-image --name $(KIND_CLUSTER) $(GHCR_IMG)
 
 .PHONY: kind-clean
 kind-clean: export KUBECONFIG = $(KIND_KUBECONFIG)

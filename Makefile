@@ -1,6 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= docker.io/appcat/appcat-apiserver:v0.0.1
+IMG_TAG ?= latest
+GHCR_IMG ?= ghcr.io/vshn/appcat-apiserver:$(IMG_TAG)
 DOCKER_CMD ?= docker
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -17,12 +18,6 @@ DOCKER_IMAGE_GOARCH = amd64
 PROJECT_ROOT_DIR = .
 PROJECT_NAME ?= appcat-apiserver
 PROJECT_OWNER ?= vshn
-
-# Setting SHELL to bash allows bash commands to be executed by recipes.
-# This is a requirement for 'setup-envtest.sh' in the test target.
-# Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
-.SHELLFLAGS = -ec
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 BIN_FILENAME ?= $(PROJECT_DIR)/appcat-apiserver
@@ -44,6 +39,8 @@ help: ## Display this help.
 generate: ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	go generate ./...
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths="./..."
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen webhook paths="./..." output:crd:artifacts:config=dev/config/crd crd:crdVersions=v1
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="./..." output:artifacts:config=dev/config/rbac
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -67,6 +64,10 @@ build:
 	@echo "GOOS=$$(go env GOOS) GOARCH=$$(go env GOARCH)"
 	go build -o $(BIN_FILENAME)
 
+.PHONY: test
+test: ## Run tests
+	go test ./...
+
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
@@ -75,11 +76,11 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build:
 	env CGO_ENABLED=0 GOOS=$(DOCKER_IMAGE_GOOS) GOARCH=$(DOCKER_IMAGE_GOARCH) \
 		go build -o ${BIN_FILENAME}
-	docker build -t ${IMG} .
+	docker build -t ${GHCR_IMG} .
 
 .PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
+docker-push: docker-build ## Push docker image with the manager.
+	docker push ${GHCR_IMG}
 
 .PHONY: clean
 clean: kind-clean

@@ -1,38 +1,34 @@
-/*
-Copyright 2023.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package v1
 
 import (
-	"context"
+	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+	"regexp"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder/resource"
-	"sigs.k8s.io/apiserver-runtime/pkg/builder/resource/resourcestrategy"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +genclient:nonNamespaced
+// +kubebuilder:rbac:groups="apiextensions.crossplane.io",resources=compositions,verbs=get;list;watch
 
-// AppCat
-// +k8s:openapi-gen=true
+var (
+	// OfferedValue is the label value to identify AppCat services
+	OfferedValue = "true"
+
+	// PrefixAppCatKey is the label and annotation prefix for AppCat services in compositions.
+	PrefixAppCatKey = "metadata.appcat.vshn.io"
+
+	// OfferedKey is the label key to identify AppCat services
+	OfferedKey = PrefixAppCatKey + "/offered"
+)
+
+// +kubebuilder:object:root=true
+
+// AppCat defines the main object for this API Server
 type AppCat struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -41,8 +37,9 @@ type AppCat struct {
 	Status AppCatStatus `json:"status,omitempty"`
 }
 
-// AppCatList
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
+
+// AppCatList defines a list of AppCat
 type AppCatList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -51,13 +48,11 @@ type AppCatList struct {
 }
 
 // AppCatSpec defines the desired state of AppCat
-type AppCatSpec struct {
-	// ServiceName is the service name of this AppCat
-	ServiceName string `json:"displayName,omitempty"`
-}
+// The desired state of AppCat is dynamically populated from composition's labels
+type AppCatSpec map[string]string
 
+// AppCat needs to implement the builder resource interface
 var _ resource.Object = &AppCat{}
-var _ resourcestrategy.Validater = &AppCat{}
 
 func (in *AppCat) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
@@ -75,21 +70,20 @@ func (in *AppCat) NewList() runtime.Object {
 	return &AppCatList{}
 }
 
+// GetGroupVersionResource returns the GroupVersionResource for this resource.
+// The resource should be the all lowercase and pluralized kind
 func (in *AppCat) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
-		Group:    "api.appcat.vshn.io",
-		Version:  "v1",
+		Group:    GroupVersion.Group,
+		Version:  GroupVersion.Version,
 		Resource: "appcats",
 	}
 }
 
+// IsStorageVersion returns true if the object is also the internal version -- i.e. is the type defined for the API group or an alias to this object.
+// If false, the resource is expected to implement MultiVersionObject interface.
 func (in *AppCat) IsStorageVersion() bool {
 	return true
-}
-
-func (in *AppCat) Validate(ctx context.Context) field.ErrorList {
-	// TODO(user): Modify it, adding your API validation here.
-	return nil
 }
 
 var _ resource.ObjectList = &AppCatList{}
@@ -100,22 +94,51 @@ func (in *AppCatList) GetListMeta() *metav1.ListMeta {
 
 // AppCatStatus defines the observed state of AppCat
 type AppCatStatus struct {
+	// CompositionName is the name of the composition
+	CompositionName string `json:"compositionName,omitempty"`
 }
 
-func (in AppCatStatus) SubResourceName() string {
-	return "status"
+// NewAppCatFromComposition returns an AppCat based on the given composition
+// If the composition does not satisfy one of its rules, the func will return nil
+func NewAppCatFromComposition(comp *v1.Composition) *AppCat {
+	if comp == nil || comp.Labels == nil || comp.Labels[OfferedKey] != OfferedValue {
+		return nil
+	}
+	spec := AppCatSpec{}
+	if comp.Annotations != nil {
+		for k, v := range comp.Annotations {
+			if strings.HasPrefix(k, PrefixAppCatKey) {
+				index := strings.LastIndex(k, "/")
+				spec[makeCamelCase(k[index+1:])] = v
+			}
+		}
+	}
+
+	appcat := &AppCat{
+		ObjectMeta: *comp.ObjectMeta.DeepCopy(),
+		Spec:       spec,
+		Status: AppCatStatus{
+			CompositionName: comp.Name,
+		},
+	}
+	appcat.Annotations = nil
+	appcat.Labels = nil
+	return appcat
 }
 
-// AppCat implements ObjectWithStatusSubResource interface.
-var _ resource.ObjectWithStatusSubResource = &AppCat{}
-
-func (in *AppCat) GetStatus() resource.StatusSubResource {
-	return in.Status
+// makeCamelCase transforms any string in camel case string
+func makeCamelCase(s string) string {
+	reg, _ := regexp.Compile("[^a-zA-Z0-9-]+")
+	s = reg.ReplaceAllString(s, "")
+	s = strings.ToLower(s)
+	slices := strings.FieldsFunc(s, func(c rune) bool { return c == '-' })
+	strCamel := slices[0]
+	for _, v := range slices[1:] {
+		strCamel += cases.Title(language.English).String(v)
+	}
+	return strCamel
 }
 
-// AppCatStatus{} implements StatusSubResource interface.
-var _ resource.StatusSubResource = &AppCatStatus{}
-
-func (in AppCatStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
-	parent.(*AppCat).Status = in
+func init() {
+	SchemeBuilder.Register(&AppCat{}, &AppCatList{})
 }

@@ -1,19 +1,19 @@
-name: Build
+name: Test
 
 on:
-  pull_request: {}
   push:
     branches:
       - master
+  pull_request: {}
 
 jobs:
-  go-build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
       - name: Determine Go version from go.mod
-        run: echo "GO_VERSION=$(go mod edit -json | jq -r .Go)" >> $GITHUB_ENV
+        run: echo "GO_VERSION=$(grep "go 1." go.mod | cut -d " " -f 2)" >> $GITHUB_ENV
 
       - uses: actions/setup-go@v3
         with:
@@ -26,5 +26,5 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Run build
-        run: make build
+      - name: Run tests
+        run: make test

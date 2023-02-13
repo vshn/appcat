@@ -1,10 +1,9 @@
----
 apiVersion: v1
 kind: Secret
 type: kubernetes.io/tls
 metadata:
   name: appcat
-  namespace: default
+  namespace: appcat
   labels:
     api: appcat
     apiserver: "true"

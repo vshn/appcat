@@ -14,6 +14,12 @@ import (
 
 var _ rest.TableConvertor = &appcatStorage{}
 
+var (
+	appCatDisplayname = "displayname"
+	appCatZone        = "zone"
+	appCatDocs        = "endUserDocsUrl"
+)
+
 // ConvertToTable translates the given object to a table for kubectl printing
 func (s *appcatStorage) ConvertToTable(_ context.Context, obj runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
 	var table metav1.Table
@@ -41,7 +47,9 @@ func (s *appcatStorage) ConvertToTable(_ context.Context, obj runtime.Object, ta
 		desc := metav1.ObjectMeta{}.SwaggerDoc()
 		table.ColumnDefinitions = []metav1.TableColumnDefinition{
 			{Name: "AppCat Name", Type: "string", Format: "name", Description: desc["name"]},
-			{Name: "Service Name", Type: "string", Description: "Name of the service"},
+			{Name: "AppCat Display Name", Type: "string", Format: "name", Description: "The display name of the service"},
+			{Name: "Service Zone", Type: "string", Description: "Available zones of the service"},
+			{Name: "User Docs", Type: "string", Description: "The user documentation of the service"},
 			{Name: "Age", Type: "date", Description: desc["creationTimestamp"]},
 		}
 	}
@@ -50,7 +58,12 @@ func (s *appcatStorage) ConvertToTable(_ context.Context, obj runtime.Object, ta
 
 func appcatToTableRow(appcat *v1.AppCat) metav1.TableRow {
 	return metav1.TableRow{
-		Cells:  []interface{}{appcat.GetName(), appcat.Spec.ServiceName, duration.HumanDuration(time.Since(appcat.GetCreationTimestamp().Time))},
+		Cells: []interface{}{
+			appcat.GetName(),
+			appcat.Spec[appCatDisplayname],
+			appcat.Spec[appCatZone],
+			appcat.Spec[appCatDocs],
+			duration.HumanDuration(time.Since(appcat.GetCreationTimestamp().Time))},
 		Object: runtime.RawExtension{Object: appcat},
 	}
 }

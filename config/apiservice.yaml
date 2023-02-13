@@ -1,0 +1,17 @@
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1.api.appcat.vshn.io
+  labels:
+    api: appcat
+    apiserver: "true"
+spec:
+  insecureSkipTLSVerify: true
+  version: v1
+  group: api.appcat.vshn.io
+  groupPriorityMinimum: 2000
+  service:
+    name: appcat
+    namespace: appcat
+    port: 443
+  versionPriority: 10

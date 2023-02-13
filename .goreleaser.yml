@@ -1,0 +1,52 @@
+builds:
+  - binary: appcat-apiserver
+    env:
+      - CGO_ENABLED=0 # this is needed otherwise the Docker image build is faulty
+    goarch:
+      - amd64
+      - arm64
+    goos:
+      - linux
+    goarm:
+      - "8"
+
+archives:
+  - format: binary
+    name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-snapshot"
+
+dockers:
+  - goarch: amd64
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    image_templates:
+      - "ghcr.io/vshn/appcat-apiserver:v{{ .Version }}-amd64"
+
+  - goarch: arm64
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+    image_templates:
+      - "ghcr.io/vshn/appcat-apiserver:v{{ .Version }}-arm64"
+
+docker_manifests:
+  # For prereleases, updating `latest` does not make sense.
+  # Only the image for the exact version should be pushed.
+  - name_template: "{{ if not .Prerelease }}ghcr.io/vshn/appcat-apiserver:latest{{ end }}"
+    image_templates:
+      - "ghcr.io/vshn/appcat-apiserver:v{{ .Version }}-amd64"
+      - "ghcr.io/vshn/appcat-apiserver:v{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/vshn/appcat-apiserver:v{{ .Version }}"
+    image_templates:
+      - "ghcr.io/vshn/appcat-apiserver:v{{ .Version }}-amd64"
+      - "ghcr.io/vshn/appcat-apiserver:v{{ .Version }}-arm64"
+
+release:
+  prerelease: auto

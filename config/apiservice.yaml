@@ -6,7 +6,6 @@ metadata:
     api: appcat
     apiserver: "true"
 spec:
-  insecureSkipTLSVerify: true
   version: v1
   group: api.appcat.vshn.io
   groupPriorityMinimum: 2000

@@ -2,11 +2,8 @@ package appcat
 
 import (
 	v1 "appcat-apiserver/apis/appcat/v1"
-	"errors"
 	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	restbuilder "sigs.k8s.io/apiserver-runtime/pkg/builder/rest"
@@ -57,22 +54,4 @@ var _ rest.Storage = &appcatStorage{}
 
 func (s *appcatStorage) NamespaceScoped() bool {
 	return false
-}
-
-func convertCompositionError(err error) error {
-	groupResource := schema.GroupResource{
-		Group:    v1.GroupVersion.Group,
-		Resource: "appcats",
-	}
-	statusErr := &apierrors.StatusError{}
-
-	if errors.As(err, &statusErr) {
-		switch {
-		case apierrors.IsNotFound(err):
-			return apierrors.NewNotFound(groupResource, statusErr.ErrStatus.Details.Name)
-		case apierrors.IsAlreadyExists(err):
-			return apierrors.NewAlreadyExists(groupResource, statusErr.ErrStatus.Details.Name)
-		}
-	}
-	return err
 }

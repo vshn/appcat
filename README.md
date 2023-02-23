@@ -45,11 +45,9 @@ HOSTIP=$(docker inspect appcat-apiserver-v1.24.0-control-plane | jq '.[0].Networ
 # HOSTIP=host.docker.internal # On some docker distributions
 # HOSTIP=host.lima.internal # On lima distributions
 
-make kind-setup
+make local-debug
 
 kind get kubeconfig --name appcat-apiserver-v1.24.0  > ~/.kube/config 
-
-kubectl apply -f https://raw.githubusercontent.com/crossplane/crossplane/master/cluster/crds/apiextensions.crossplane.io_compositions.yaml
 
 cat <<EOF | sed -e "s/172.21.0.1/$HOSTIP/g" | kubectl apply -f -
 apiVersion: apiregistration.k8s.io/v1
@@ -83,4 +81,11 @@ spec:
   type: ExternalName
   externalName: 172.21.0.1 # Change to host IP
 EOF
+
+make apply-test-cases
+```
+
+After the above steps just run the API server via IDE with the following arguments.
+```
+api --secure-port=9443 --kubeconfig ~/.kube/config --authentication-kubeconfig ~/.kube/config --authorization-kubeconfig ~/.kube/config --tls-cert-file=dev/certificates/apiserver.crt --tls-private-key-file=dev/certificates/apiserver.key
 ```

@@ -1,0 +1,19 @@
+apiVersion: vshn.appcat.vshn.io/v1
+kind: VSHNPostgreSQL
+metadata:
+  name: pgsql-app1-prod 
+  namespace: default
+spec:
+  parameters:
+    backup:
+      schedule: "* * * * *"
+    service:
+      majorVersion: "15" 
+      pgSettings:
+        timezone: Europe/Zurich 
+    size: 
+      cpu: "200m"
+      memory: "350Mi"
+      disk: "5Gi"
+  writeConnectionSecretToRef:
+    name: postgres-creds 

@@ -43,7 +43,7 @@ func TestAppcatStorage_List(t *testing.T) {
 			}, "not-found"),
 			err: apierrors.NewNotFound(schema.GroupResource{
 				Group:    v1.GroupVersion.Group,
-				Resource: "appcats",
+				Resource: v1.Resource,
 			}, "not-found"),
 		},
 		"GivenList_ThenFilter": {
@@ -75,7 +75,7 @@ func TestAppcatStorage_List(t *testing.T) {
 				&request.RequestInfo{
 					Verb:     "list",
 					APIGroup: v1.GroupVersion.Group,
-					Resource: "appcats",
+					Resource: v1.Resource,
 				}), nil)
 			if tc.err != nil {
 				assert.EqualError(t, err, tc.err.Error())
@@ -133,7 +133,7 @@ func TestAppCatsStorage_Watch(t *testing.T) {
 			}, "not-found"),
 			err: apierrors.NewNotFound(schema.GroupResource{
 				Group:    v1.GroupVersion.Group,
-				Resource: "appcats",
+				Resource: v1.Resource,
 			}, "not-found"),
 		},
 		"GivenVariousCompositionEvents_ThenFilter": {
@@ -187,7 +187,7 @@ func TestAppCatsStorage_Watch(t *testing.T) {
 				&request.RequestInfo{
 					Verb:     "watch",
 					APIGroup: v1.GroupVersion.Group,
-					Resource: "appcats",
+					Resource: v1.Resource,
 				}), nil)
 			if tc.err != nil {
 				assert.EqualError(t, err, tc.err.Error())
@@ -201,5 +201,4 @@ func TestAppCatsStorage_Watch(t *testing.T) {
 			assert.Equal(t, tc.appcatEvents, appcatEvents)
 		})
 	}
-
 }

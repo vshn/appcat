@@ -19,3 +19,7 @@ var (
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+func GetGroupResource(resource string) schema.GroupResource {
+	return schema.GroupResource{Group: GroupVersion.Group, Resource: resource}
+}

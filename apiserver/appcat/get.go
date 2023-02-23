@@ -2,6 +2,7 @@ package appcat
 
 import (
 	v1 "appcat-apiserver/apis/appcat/v1"
+	"appcat-apiserver/apiserver"
 	"context"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +16,7 @@ var _ rest.Getter = &appcatStorage{}
 func (s *appcatStorage) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
 	composition, err := s.compositions.GetComposition(ctx, name, options)
 	if err != nil {
-		return nil, convertCompositionError(err)
+		return nil, apiserver.ResolveError(v1.GetGroupResource(v1.Resource), err)
 	}
 
 	appcat := v1.NewAppCatFromComposition(composition)

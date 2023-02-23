@@ -39,8 +39,7 @@ help: ## Display this help.
 generate: ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	go generate ./...
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths="./..."
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen webhook paths="./..." output:crd:artifacts:config=dev/config/crd crd:crdVersions=v1
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="./..." output:artifacts:config=dev/config/rbac
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="./..." output:artifacts:config=config/
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

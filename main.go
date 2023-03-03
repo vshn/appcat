@@ -19,6 +19,7 @@ package main
 import (
 	appcatv1 "appcat-apiserver/apis/appcat/v1"
 	"appcat-apiserver/apiserver/appcat"
+	"appcat-apiserver/apiserver/vshn/postgres"
 	"k8s.io/klog"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
 )
@@ -27,6 +28,7 @@ func main() {
 	err := builder.APIServer.
 		// +kubebuilder:scaffold:resource-register
 		WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New()).
+		WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, postgres.New()).
 		WithoutEtcd().
 		ExposeLoopbackAuthorizer().
 		ExposeLoopbackMasterClientConfig().

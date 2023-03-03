@@ -1,0 +1,94 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: '10'
+  labels:
+    name: dev.objectbuckets.appcat.vshn.io
+  name: dev.objectbuckets.appcat.vshn.io
+spec:
+  compositeTypeRef:
+    apiVersion: appcat.vshn.io/v1
+    kind: XObjectBucket
+  resources:
+    - base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata: {}
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+          providerConfigRef:
+            name: kubernetes
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.name
+          type: FromCompositeFieldPath
+    - base:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        spec:
+          connectionDetails:
+            - apiVersion: v1
+              fieldPath: spec.clusterIP
+              kind: Service
+              name: minio-server
+              namespace: minio
+              toConnectionSecretKey: ENDPOINT_URL
+            - apiVersion: v1
+              fieldPath: data.rootUser
+              kind: Secret
+              name: minio-server
+              namespace: minio
+              toConnectionSecretKey: AWS_ACCESS_KEY_ID
+            - apiVersion: v1
+              fieldPath: data.rootPassword
+              kind: Secret
+              name: minio-server
+              namespace: minio
+              toConnectionSecretKey: AWS_SECRET_ACCESS_KEY
+          deletionPolicy: Delete
+          forProvider:
+            chart:
+              name: minio
+              repository: https://charts.min.io/
+              version: 5.0.7
+            namespace: minio
+            set:
+              - name: rootUser
+                value: minioadmin
+              - name: rootPassword
+                value: minioadmin
+            values:
+              buckets:
+                - name: ''
+                  policy: none
+              fullnameOverride: minio-server
+              mode: standalone
+              persistence:
+                size: 1Gi
+              replicas: 1
+              resources:
+                requests:
+                  memory: 128Mi
+          providerConfigRef:
+            name: helm
+          rollbackLimit: 3
+          writeConnectionSecretToRef:
+            name: ''
+            namespace: syn-crossplane
+      connectionDetails:
+        - fromConnectionSecretKey: AWS_SECRET_ACCESS_KEY
+        - fromConnectionSecretKey: ENDPOINT_URL
+        - fromConnectionSecretKey: AWS_ACCESS_KEY_ID
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.values.buckets[0].name
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          type: FromCompositeFieldPath
+  writeConnectionSecretsToNamespace: syn-crossplane

@@ -26,6 +26,9 @@ var (
 	OfferedKey = PrefixAppCatKey + "/offered"
 )
 
+// Resource is the name of this resource in plural form
+var Resource = "appcats"
+
 // +kubebuilder:object:root=true
 
 // AppCat defines the main object for this API Server
@@ -76,7 +79,7 @@ func (in *AppCat) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    GroupVersion.Group,
 		Version:  GroupVersion.Version,
-		Resource: "appcats",
+		Resource: Resource,
 	}
 }
 

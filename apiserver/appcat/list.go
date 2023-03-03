@@ -2,6 +2,7 @@ package appcat
 
 import (
 	"appcat-apiserver/apis/appcat/v1"
+	"appcat-apiserver/apiserver"
 	"context"
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
@@ -22,7 +23,7 @@ func (s *appcatStorage) NewList() runtime.Object {
 func (s *appcatStorage) List(ctx context.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
 	cl, err := s.compositions.ListCompositions(ctx, addOfferedLabelSelector(options))
 	if err != nil {
-		return nil, convertCompositionError(err)
+		return nil, apiserver.ResolveError(v1.GetGroupResource(v1.Resource), err)
 	}
 
 	res := v1.AppCatList{
@@ -45,7 +46,7 @@ var _ rest.Watcher = &appcatStorage{}
 func (s *appcatStorage) Watch(ctx context.Context, options *metainternalversion.ListOptions) (watch.Interface, error) {
 	compWatcher, err := s.compositions.WatchCompositions(ctx, addOfferedLabelSelector(options))
 	if err != nil {
-		return nil, convertCompositionError(err)
+		return nil, apiserver.ResolveError(v1.GetGroupResource(v1.Resource), err)
 	}
 
 	return watch.Filter(compWatcher, func(in watch.Event) (out watch.Event, keep bool) {

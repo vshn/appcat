@@ -6,15 +6,17 @@ require (
 	github.com/crossplane/crossplane v1.11.0
 	github.com/golang/mock v1.6.0
 	github.com/stretchr/testify v1.8.0
+	github.com/vshn/component-appcat/apis v0.0.0-20230303131609-7bfda3fe4307
 	golang.org/x/text v0.6.0
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/apiserver v0.26.1
+	k8s.io/client-go v0.26.1
 	k8s.io/klog v1.0.0
 	sigs.k8s.io/apiserver-runtime v1.1.2-0.20221226021050-33c901856927
 	sigs.k8s.io/controller-runtime v0.14.1
-	sigs.k8s.io/controller-tools v0.11.1
+	sigs.k8s.io/controller-tools v0.11.3
 	sigs.k8s.io/kind v0.17.0
 )
 
@@ -111,7 +113,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.26.1 // indirect
-	k8s.io/client-go v0.26.1 // indirect
 	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 	k8s.io/kms v0.26.1 // indirect

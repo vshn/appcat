@@ -1,8 +1,8 @@
 package postgres
 
 import (
-	"appcat-apiserver/apis/appcat/v1"
 	"context"
+	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +21,7 @@ func (v vshnPostgresBackupStorage) Delete(_ context.Context, name string, _ rest
 	}, false, nil
 }
 
-func (v *vshnPostgresBackupStorage) DeleteCollection(_ context.Context, _ rest.ValidateObjectFunc, _ *metav1.DeleteOptions, _ *metainternalversion.ListOptions) (runtime.Object, error) {
+func (v *vshnPostgresBackupStorage) DeleteCollection(ctx context.Context, _ rest.ValidateObjectFunc, _ *metav1.DeleteOptions, _ *metainternalversion.ListOptions) (runtime.Object, error) {
 	return &v1.VSHNPostgresBackupList{
 		Items: []v1.VSHNPostgresBackup{},
 	}, nil

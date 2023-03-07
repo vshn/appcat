@@ -1,9 +1,9 @@
 package postgres
 
 import (
-	"appcat-apiserver/apis/appcat/v1"
 	"context"
 	"fmt"
+	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

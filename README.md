@@ -89,3 +89,8 @@ After the above steps just run the API server via IDE with the following argumen
 ```
 api --secure-port=9443 --kubeconfig ~/.kube/config --authentication-kubeconfig ~/.kube/config --authorization-kubeconfig ~/.kube/config --tls-cert-file=dev/certificates/apiserver.crt --tls-private-key-file=dev/certificates/apiserver.key
 ```
+
+## Protobuf installation
+Protocol Buffers (Protobuf) is a free and open-source cross-platform data format used to serialize structured data.
+Kubernetes internally uses gRPC clients with protobuf serialization. APIServer objects when handled internally in K8S
+need to implement protobuf interface. The implementation of the interface is done by [code-generator](https://github.com/kubernetes/code-generator). Two dependencies are required to use this tool [protoc](https://github.com/protocolbuffers/protobuf) and [protoc-gen-go](https://google.golang.org/protobuf/cmd/protoc-gen-go).

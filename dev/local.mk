@@ -74,7 +74,7 @@ appcat-apiserver: install-dependencies
 
 .PHONY: .wait-provider
 .wait-provider:
-	until kubectl get pod -n syn-crossplane --selector=pkg.crossplane.io/provider=provider-$(provider) -o=jsonpath='{.items[0].metadata.name}' >/dev/null 2>&1; do \
+	@until kubectl get pod -n syn-crossplane --selector=pkg.crossplane.io/provider=provider-$(provider) -o=jsonpath='{.items[0].metadata.name}' >/dev/null 2>&1; do \
 	  echo 'Waiting for providers'; \
 	  sleep 1; \
 	done

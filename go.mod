@@ -1,18 +1,21 @@
-module appcat-apiserver
+module github.com/vshn/appcat-apiserver
 
 go 1.19
 
 require (
 	github.com/crossplane/crossplane v1.11.0
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
+	github.com/golang/protobuf v1.5.2
 	github.com/stretchr/testify v1.8.0
 	github.com/vshn/component-appcat/apis v0.0.0-20230303131609-7bfda3fe4307
-	golang.org/x/text v0.6.0
+	golang.org/x/text v0.7.0
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.26.1
-	k8s.io/apimachinery v0.26.1
+	k8s.io/apimachinery v0.26.2
 	k8s.io/apiserver v0.26.1
 	k8s.io/client-go v0.26.1
+	k8s.io/code-generator v0.26.1
 	k8s.io/klog v1.0.0
 	sigs.k8s.io/apiserver-runtime v1.1.2-0.20221226021050-33c901856927
 	sigs.k8s.io/controller-runtime v0.14.1
@@ -46,9 +49,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/gobuffalo/flect v0.3.0 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/cel-go v0.12.6 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
@@ -96,11 +97,11 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.5.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
-	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.4.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
@@ -114,6 +115,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.26.1 // indirect
 	k8s.io/component-base v0.26.1 // indirect
+	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 	k8s.io/kms v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect

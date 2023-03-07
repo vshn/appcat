@@ -141,7 +141,3 @@ func makeCamelCase(s string) string {
 	}
 	return strCamel
 }
-
-func init() {
-	SchemeBuilder.Register(&AppCat{}, &AppCatList{})
-}

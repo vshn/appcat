@@ -106,10 +106,6 @@ func (in *VSHNPostgresBackupList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
-func init() {
-	SchemeBuilder.Register(&VSHNPostgresBackup{}, &VSHNPostgresBackupList{})
-}
-
 func New() *VSHNPostgresBackup {
 	return &VSHNPostgresBackup{}
 }

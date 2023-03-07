@@ -22,10 +22,10 @@ var (
 	Process = "process"
 	// BackupInformation holds field path name backupInformation
 	BackupInformation = "backupInformation"
-	// DatabaseInstance holds field path name databaseInstance
-	DatabaseInstance = "databaseInstance"
-	// InstanceNamespace holds field path name instanceNamespace
-	InstanceNamespace = "instanceNamespace"
+	// Timing holds field path name timing
+	Timing = "timing"
+	// Stored holds field path name stored
+	Stored = "stored"
 )
 
 // VSHNPostgreSQLName represents the name of a VSHNPostgreSQL

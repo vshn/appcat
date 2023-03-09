@@ -1,9 +1,9 @@
 package postgres
 
 import (
-	"appcat-apiserver/apis/appcat/v1"
-	mock_postgres "appcat-apiserver/apiserver/vshn/postgres/mock"
 	"fmt"
+	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
+	mock_postgres "github.com/vshn/appcat-apiserver/apiserver/vshn/postgres/mock"
 	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -27,6 +27,24 @@ go_bin ?= $(PWD)/.work/bin
 $(go_bin):
 	@mkdir -p $@
 
+uname_s := $(shell uname -s)
+ifeq ($(uname_s),Linux)
+	distr_protoc := linux-x86_64
+else
+	distr_protoc := osx-universal_binary
+endif
+
+protoc_bin = $(go_bin)/protoc
+$(protoc_bin): export GOBIN = $(go_bin)
+$(protoc_bin): | $(go_bin)
+	@echo "installing protocol buffers with dependencies"
+	@git clone -q --depth 1 https://github.com/kubernetes/kubernetes.git .work/kubernetes
+	@go install github.com/gogo/protobuf/protoc-gen-gogo@latest
+	@go install golang.org/x/tools/cmd/goimports@latest
+	@wget -q -O $(go_bin)/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v22.1/protoc-22.1-$(distr_protoc).zip
+	@unzip $(go_bin)/protoc.zip -d .work
+	@rm $(go_bin)/protoc.zip
+
 include kind/kind.mk
 include dev/local.mk
 -include docs/antora-preview.mk docs/antora-build.mk
@@ -36,10 +54,19 @@ help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: generate
-generate: ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+generate: export PATH := $(go_bin):$(PATH)
+generate: $(protoc_bin) ## Generate code with controller-gen and protobuf.
 	go generate ./...
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths="./..."
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="./..." output:artifacts:config=config/
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths="./apis/..."
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="{./apis/...,./apiserver/...}" output:artifacts:config=config/
+	go run k8s.io/code-generator/cmd/go-to-protobuf \
+		--packages=github.com/vshn/appcat-apiserver/apis/appcat/v1 \
+		--output-base=./.work/tmp \
+		--go-header-file=./hack/boilerplate.txt  \
+        --apimachinery-packages='-k8s.io/apimachinery/pkg/util/intstr,-k8s.io/apimachinery/pkg/api/resource,-k8s.io/apimachinery/pkg/runtime/schema,-k8s.io/apimachinery/pkg/runtime,-k8s.io/apimachinery/pkg/apis/meta/v1,-k8s.io/apimachinery/pkg/apis/meta/v1beta1,-k8s.io/api/core/v1,-k8s.io/api/rbac/v1' \
+        --proto-import=./.work/kubernetes/vendor/ && \
+    	mv ./.work/tmp/github.com/vshn/appcat-apiserver/apis/appcat/v1/generated.pb.go ./apis/appcat/v1/ && \
+    	rm -rf ./.work/tmp
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

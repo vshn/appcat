@@ -17,9 +17,9 @@ limitations under the License.
 package main
 
 import (
-	appcatv1 "appcat-apiserver/apis/appcat/v1"
-	"appcat-apiserver/apiserver/appcat"
-	"appcat-apiserver/apiserver/vshn/postgres"
+	appcatv1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
+	"github.com/vshn/appcat-apiserver/apiserver/appcat"
+	"github.com/vshn/appcat-apiserver/apiserver/vshn/postgres"
 	"k8s.io/klog"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
 )

@@ -1,8 +1,8 @@
 package appcat
 
 import (
-	v1 "appcat-apiserver/apis/appcat/v1"
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
+	v1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"

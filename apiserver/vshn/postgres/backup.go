@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"appcat-apiserver/apis/appcat/v1"
+	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"

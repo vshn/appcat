@@ -1,8 +1,8 @@
 package postgres
 
 import (
-	"appcat-apiserver/apis/appcat/v1"
 	"context"
+	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

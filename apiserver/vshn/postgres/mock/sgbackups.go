@@ -5,11 +5,11 @@
 package mock_postgres
 
 import (
-	v1 "appcat-apiserver/apis/appcat/v1"
 	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	v1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	internalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	watch "k8s.io/apimachinery/pkg/watch"
 )

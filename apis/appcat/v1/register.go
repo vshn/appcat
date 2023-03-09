@@ -5,20 +5,34 @@
 package v1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 var (
 	// GroupVersion is group version used to register these objects
 	GroupVersion = schema.GroupVersion{Group: "api.appcat.vshn.io", Version: "v1"}
 
-	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
-	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
-
-	// AddToScheme adds the types in this group-version to the given scheme.
-	AddToScheme = SchemeBuilder.AddToScheme
+	SchemeBuilder      runtime.SchemeBuilder
+	localSchemeBuilder = &SchemeBuilder
+	AddToScheme        = localSchemeBuilder.AddToScheme
 )
+
+func init() {
+	SchemeBuilder.Register(addKnownTypes)
+}
+
+func addKnownTypes(scheme *runtime.Scheme) error {
+	scheme.AddKnownTypes(GroupVersion,
+		&AppCat{},
+		&AppCatList{},
+		&VSHNPostgresBackup{},
+		&VSHNPostgresBackupList{},
+	)
+	metav1.AddToGroupVersion(scheme, GroupVersion)
+	return nil
+}
 
 func GetGroupResource(resource string) schema.GroupResource {
 	return schema.GroupResource{Group: GroupVersion.Group, Resource: resource}

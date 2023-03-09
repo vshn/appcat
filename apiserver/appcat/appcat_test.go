@@ -1,9 +1,9 @@
 package appcat
 
 import (
-	v1 "appcat-apiserver/apis/appcat/v1"
-	"appcat-apiserver/apiserver/appcat/mock"
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
+	v1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
+	"github.com/vshn/appcat-apiserver/apiserver/appcat/mock"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"testing"
 

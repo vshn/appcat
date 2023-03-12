@@ -17,6 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"log"
+	"os"
+
 	appcatv1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	"github.com/vshn/appcat-apiserver/apiserver/appcat"
 	"github.com/vshn/appcat-apiserver/apiserver/vshn/postgres"
@@ -25,15 +28,41 @@ import (
 )
 
 func main() {
-	err := builder.APIServer.
-		// +kubebuilder:scaffold:resource-register
-		WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New()).
-		WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, postgres.New()).
-		WithoutEtcd().
+
+	var appcatEnabled bool = false
+	var vshnEnabled bool = false
+
+	if os.Getenv("APPCAT_HANDLER_ENABLED") == "1" {
+		appcatEnabled = true
+	}
+	if os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED") == "1" {
+		vshnEnabled = true
+	}
+
+	if !appcatEnabled || !vshnEnabled {
+		log.Fatal("Handlers are not enabled, please set at least one APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to 1")
+	}
+
+	builder := builder.APIServer
+
+	if appcatEnabled {
+		builder.WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New())
+	}
+
+	if vshnEnabled {
+		builder.WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, postgres.New())
+	}
+
+	builder.WithoutEtcd().
 		ExposeLoopbackAuthorizer().
-		ExposeLoopbackMasterClientConfig().
-		Execute()
+		ExposeLoopbackMasterClientConfig()
+
+	cmd, err := builder.Build()
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := cmd.Execute(); err != nil {
 		klog.Fatal(err)
 	}
 }

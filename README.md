@@ -1,3 +1,9 @@
+[![Build](https://img.shields.io/github/actions/workflow/status/vshn/appcat-apiserver/test.yml?branch=master)](https://github.com/vshn/appcat-apiserver/actions?query=workflow%3ATest)
+![Go version](https://img.shields.io/github/go-mod/go-version/appuio/control-api)
+![Kubernetes version](https://img.shields.io/badge/k8s-v1.24-blue)
+[![Version](https://img.shields.io/github/v/release/appuio/control-api)](https://github.com/appuio/control-api/releases)
+[![GitHub downloads](https://img.shields.io/github/downloads/vshn/appcat-apiserver/total)](https://github.com/appuio/control-api/releases)
+
 # appcat-apiserve
 
 ## Generate Kubernetes code

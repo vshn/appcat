@@ -7,5 +7,5 @@ metadata:
     api: appcat
     apiserver: "true"
 data:
-  APPCAT_HANDLER_ENABLED: "1"
-  VSHN_POSTGRES_BACKUP_HANDLER_ENABLED: "1"
+  APPCAT_HANDLER_ENABLED: "true"
+  VSHN_POSTGRES_BACKUP_HANDLER_ENABLED: "true"

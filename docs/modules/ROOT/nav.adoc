@@ -9,7 +9,7 @@
 //* xref:how-tos/example.adoc[Example How-To]
 
 .Technical reference
-//* xref:references/example.adoc[Example Reference]
+* xref:references/env-variables.adoc[Env variables]
 
 .Explanation
 * xref:explanations/boostrap.adoc[Boostrap]

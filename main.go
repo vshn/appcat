@@ -19,6 +19,7 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 
 	appcatv1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	"github.com/vshn/appcat-apiserver/apiserver/appcat"
@@ -29,18 +30,25 @@ import (
 
 func main() {
 
-	var appcatEnabled bool = false
+	var appcatEnabled bool = true
 	var vshnEnabled bool = false
+	var err error
 
-	if os.Getenv("APPCAT_HANDLER_ENABLED") == "1" {
-		appcatEnabled = true
+	if os.Getenv("APPCAT_HANDLER_ENABLED") != "" {
+		appcatEnabled, err = strconv.ParseBool(os.Getenv("APPCAT_HANDLER_ENABLED"))
+		if err != nil {
+			appcatEnabled = false
+		}
 	}
-	if os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED") == "1" {
-		vshnEnabled = true
+	if os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED") != "" {
+		vshnEnabled, err = strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
+		if err != nil {
+			vshnEnabled = false
+		}
 	}
 
 	if !appcatEnabled || !vshnEnabled {
-		log.Fatal("Handlers are not enabled, please set at least one APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to 1")
+		klog.Fatal("Handlers are not enabled, please set at least one APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to True")
 	}
 
 	builder := builder.APIServer

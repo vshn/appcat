@@ -1,0 +1,8 @@
+=== Environmental Variables
+
+---
+
+*APPCAT_HANDLER_ENABLED* - default _"true"_ ; This env enables appcat handler responsible for listing appcats
+
+*VSHN_POSTGRES_BACKUP_HANDLER_ENABLED* - default _"false"_ ; This env enables listing of VSHNPostgreSQL backups, enable it only on clusters that supports VSHNPostgreSQL
+

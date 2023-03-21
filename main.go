@@ -30,19 +30,19 @@ import (
 func main() {
 
 	var appcatEnabled bool = true
-	var vshnEnabled bool = false
+	var vashnBackupsEnabled bool = false
 	var err error
 
 	appcatEnabled, err = strconv.ParseBool(os.Getenv("APPCAT_HANDLER_ENABLED"))
 	if err != nil {
 		klog.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
 	}
-	vshnEnabled, err = strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
+	vashnBackupsEnabled, err = strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
 	if err != nil {
 		klog.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
 	}
 
-	if !appcatEnabled && !vshnEnabled {
+	if !appcatEnabled && !vashnBackupsEnabled {
 		klog.Fatal("Handlers are not enabled, please set at least one of APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to True")
 	}
 
@@ -52,7 +52,7 @@ func main() {
 		builder.WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New())
 	}
 
-	if vshnEnabled {
+	if vashnBackupsEnabled {
 		builder.WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, postgres.New())
 	}
 

@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"log"
 	"os"
 	"strconv"
 
@@ -34,21 +33,17 @@ func main() {
 	var vshnEnabled bool = false
 	var err error
 
-	if os.Getenv("APPCAT_HANDLER_ENABLED") != "" {
-		appcatEnabled, err = strconv.ParseBool(os.Getenv("APPCAT_HANDLER_ENABLED"))
-		if err != nil {
-			appcatEnabled = false
-		}
+	appcatEnabled, err = strconv.ParseBool(os.Getenv("APPCAT_HANDLER_ENABLED"))
+	if err != nil {
+		klog.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
 	}
-	if os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED") != "" {
-		vshnEnabled, err = strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
-		if err != nil {
-			vshnEnabled = false
-		}
+	vshnEnabled, err = strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
+	if err != nil {
+		klog.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
 	}
 
-	if !appcatEnabled || !vshnEnabled {
-		klog.Fatal("Handlers are not enabled, please set at least one APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to True")
+	if !appcatEnabled && !vshnEnabled {
+		klog.Fatal("Handlers are not enabled, please set at least one of APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to True")
 	}
 
 	builder := builder.APIServer
@@ -67,7 +62,7 @@ func main() {
 
 	cmd, err := builder.Build()
 	if err != nil {
-		log.Fatal(err)
+		klog.Fatal(err)
 	}
 
 	if err := cmd.Execute(); err != nil {

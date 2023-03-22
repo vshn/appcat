@@ -48,9 +48,9 @@ type VSHNPostgresBackup struct {
 // VSHNPostgresBackupStatus defines the desired state of VSHNPostgresBackup
 type VSHNPostgresBackupStatus struct {
 	// Process holds status information of the backup process
-	Process runtime.RawExtension `json:"process,omitempty"`
+	Process *runtime.RawExtension `json:"process,omitempty"`
 	// BackupInformation holds specific backup information
-	BackupInformation runtime.RawExtension `json:"backupInformation,omitempty"`
+	BackupInformation *runtime.RawExtension `json:"backupInformation,omitempty"`
 	// DatabaseInstance is the database from which the backup has been done
 	DatabaseInstance string `json:"databaseInstance"`
 }
@@ -125,18 +125,18 @@ func NewVSHNPostgresBackup(backup *SGBackupInfo, db, originalNamespace string) *
 
 	vshnPostgresBackup := &VSHNPostgresBackup{
 		ObjectMeta: backup.ObjectMeta,
-		Status:     VSHNPostgresBackupStatus{},
 	}
 
 	vshnPostgresBackup.Status.DatabaseInstance = db
 	vshnPostgresBackup.Namespace = originalNamespace
 
 	if backup.Process.Object != nil {
-		vshnPostgresBackup.Status.Process = backup.Process
+		vshnPostgresBackup.Status.Process = &backup.Process
 	}
 
 	if backup.BackupInformation.Object != nil {
-		vshnPostgresBackup.Status.BackupInformation = backup.BackupInformation
+		vshnPostgresBackup.Status.BackupInformation = &backup.BackupInformation
 	}
+
 	return vshnPostgresBackup
 }

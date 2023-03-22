@@ -63,8 +63,8 @@ func backupToTableRow(backup *v1.VSHNPostgresBackup) metav1.TableRow {
 	}
 }
 
-func getStoredTime(process runtime.RawExtension) string {
-	if process.Object != nil {
+func getStoredTime(process *runtime.RawExtension) string {
+	if process != nil && process.Object != nil {
 		if v, err := runtime.DefaultUnstructuredConverter.ToUnstructured(process.Object); err == nil {
 			if storedTime, exists, _ := unstructured.NestedString(v, v1.Timing, v1.Stored); exists {
 				return storedTime
@@ -74,8 +74,8 @@ func getStoredTime(process runtime.RawExtension) string {
 	return ""
 }
 
-func getProcessStatus(process runtime.RawExtension) string {
-	if process.Object != nil {
+func getProcessStatus(process *runtime.RawExtension) string {
+	if process != nil && process.Object != nil {
 		unstructuredProcess, err := runtime.DefaultUnstructuredConverter.ToUnstructured(process.Object)
 		if err != nil {
 			return ""

@@ -34,8 +34,8 @@ var (
 		},
 		Status: v1.VSHNPostgresBackupStatus{
 			DatabaseInstance:  "postgres-one",
-			Process:           runtime.RawExtension{Object: &unstructured.Unstructured{Object: map[string]interface{}{"status": "Failed"}}},
-			BackupInformation: runtime.RawExtension{Object: &unstructured.Unstructured{Object: map[string]interface{}{"disk": "1GB", "cpu": "1"}}},
+			Process:           &runtime.RawExtension{Object: &unstructured.Unstructured{Object: map[string]interface{}{"status": "Failed"}}},
+			BackupInformation: &runtime.RawExtension{Object: &unstructured.Unstructured{Object: map[string]interface{}{"disk": "1GB", "cpu": "1"}}},
 		},
 	}
 
@@ -73,8 +73,8 @@ var (
 		},
 		Status: v1.VSHNPostgresBackupStatus{
 			DatabaseInstance:  "postgres-two",
-			Process:           runtime.RawExtension{Object: &unstructured.Unstructured{Object: map[string]interface{}{"status": "Completed"}}},
-			BackupInformation: runtime.RawExtension{Object: &unstructured.Unstructured{Object: map[string]interface{}{"disk": "2GB", "cpu": "2"}}},
+			Process:           &runtime.RawExtension{Object: &unstructured.Unstructured{Object: map[string]interface{}{"status": "Completed"}}},
+			BackupInformation: &runtime.RawExtension{Object: &unstructured.Unstructured{Object: map[string]interface{}{"disk": "2GB", "cpu": "2"}}},
 		},
 	}
 

@@ -5,7 +5,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/json"
 	"testing"
 )
 
@@ -23,16 +22,16 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 		"GivenNoDB_ThenNil": {
 			backupInfo: &SGBackupInfo{
 				ObjectMeta:        metav1.ObjectMeta{Name: "backup"},
-				Process:           rawFromObject(getTestProcess()),
-				BackupInformation: rawFromObject(getTestBI()),
+				Process:           *rawFromObject(getTestProcess()),
+				BackupInformation: *rawFromObject(getTestBI()),
 			},
 			namespace: "namespace",
 		},
 		"GivenNoNamespace_ThenNil": {
 			backupInfo: &SGBackupInfo{
 				ObjectMeta:        metav1.ObjectMeta{Name: "backup"},
-				Process:           rawFromObject(getTestProcess()),
-				BackupInformation: rawFromObject(getTestBI()),
+				Process:           *rawFromObject(getTestProcess()),
+				BackupInformation: *rawFromObject(getTestBI()),
 			},
 			db: "db1",
 		},
@@ -41,8 +40,8 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 			namespace: "namespace",
 			backupInfo: &SGBackupInfo{
 				ObjectMeta:        metav1.ObjectMeta{Name: "backup"},
-				Process:           rawFromObject(getTestProcess()),
-				BackupInformation: rawFromObject(getTestBI()),
+				Process:           *rawFromObject(getTestProcess()),
+				BackupInformation: *rawFromObject(getTestBI()),
 			},
 			vshnPostgresBackup: &VSHNPostgresBackup{
 				ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "namespace"},
@@ -58,7 +57,7 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 			namespace: "namespace",
 			backupInfo: &SGBackupInfo{
 				ObjectMeta:        metav1.ObjectMeta{Name: "backup"},
-				BackupInformation: rawFromObject(getTestBI()),
+				BackupInformation: *rawFromObject(getTestBI()),
 			},
 			vshnPostgresBackup: &VSHNPostgresBackup{
 				ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "namespace"},
@@ -73,7 +72,7 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 			namespace: "namespace",
 			backupInfo: &SGBackupInfo{
 				ObjectMeta: metav1.ObjectMeta{Name: "backup"},
-				Process:    rawFromObject(getTestProcess()),
+				Process:    *rawFromObject(getTestProcess()),
 			},
 			vshnPostgresBackup: &VSHNPostgresBackup{
 				ObjectMeta: metav1.ObjectMeta{Name: "backup", Namespace: "namespace"},
@@ -109,11 +108,6 @@ func getTestBI() unstructured.Unstructured {
 	}
 }
 
-func rawFromObject(object unstructured.Unstructured) runtime.RawExtension {
-	return runtime.RawExtension{Object: &object}
-}
-
-func rawFromString(str string) runtime.RawExtension {
-	marshal, _ := json.Marshal(str)
-	return runtime.RawExtension{Raw: marshal}
+func rawFromObject(object unstructured.Unstructured) *runtime.RawExtension {
+	return &runtime.RawExtension{Object: &object}
 }

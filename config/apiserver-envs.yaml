@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apiserver-envs
+  namespace: appcat
+  labels:
+    api: appcat
+    apiserver: "true"
+data:
+  APPCAT_HANDLER_ENABLED: "true"
+  VSHN_POSTGRES_BACKUP_HANDLER_ENABLED: "true"

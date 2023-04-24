@@ -37,6 +37,11 @@ $(crossplane_sentinel): $(KIND_KUBECONFIG)
 		--namespace syn-crossplane \
 		--set "args[0]='--debug'" \
 		--set "args[1]='--enable-composition-revisions'" \
+		--set "args[2]='--enable-composition-functions'" \
+		--set "args[3]='--enable-environment-configs'" \
+		--set "xfn.enabled=true" \
+		--set "xfn.image.repository=ghcr.io/zugao/appcat-comp-functions" \
+		--set "xfn.image.tag=latest" \
 		--set webhooks.enabled=true \
 		--wait
 	@touch $@

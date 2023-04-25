@@ -1,6 +1,7 @@
 FROM docker.io/library/alpine:3.15 as runtime
 
 ENTRYPOINT ["appcat-apiserver"]
+CMD ["api-server"]
 
 RUN \
   apk add --update --no-cache \

@@ -33,10 +33,13 @@ spec:
                 labels:
                   appcat.vshn.io/claim-namespace: ''
                   appcat.vshn.io/servicename: postgresql-standalone
+                  appuio.io/no-rbac-creation: 'true'
+                  appuio.io/organization: vshn
                 name: ''
           managementPolicy: Observe
           providerConfigRef:
             name: kubernetes
+      name: ns-observer
       patches:
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -65,12 +68,15 @@ spec:
                 labels:
                   appcat.vshn.io/claim-namespace: ''
                   appcat.vshn.io/servicename: postgresql-standalone
+                  appuio.io/no-rbac-creation: 'true'
+                  appuio.io/organization: vshn
                 name: ''
           providerConfigRef:
             name: kubernetes
+      name: namespace-conditions
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.namespaceDebug
+          toFieldPath: status.namespaceConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.name
           toFieldPath: status.instanceNamespace
@@ -92,6 +98,47 @@ spec:
     - base:
         apiVersion: kubernetes.crossplane.io/v1alpha1
         kind: Object
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: rbac.authorization.k8s.io/v1
+              kind: RoleBinding
+              metadata:
+                name: appcat:services:read
+              roleRef:
+                apiGroup: rbac.authorization.k8s.io
+                kind: ClusterRole
+                name: appcat:services:read
+              subjects:
+                - apiGroup: rbac.authorization.k8s.io
+                  kind: Group
+                  name: organization
+          providerConfigRef:
+            name: kubernetes
+      name: namespace-permissions
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-service-rolebinding'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[appuio.io/organization]
+          toFieldPath: spec.forProvider.manifest.subjects[0].name
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+    - base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
         metadata: {}
         spec:
           forProvider:
@@ -106,9 +153,10 @@ spec:
                   crlDistributionPoints: []
           providerConfigRef:
             name: kubernetes
+      name: local-ca
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.localCADebug
+          toFieldPath: status.localCAConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -164,9 +212,10 @@ spec:
                   - client auth
           providerConfigRef:
             name: kubernetes
+      name: certificate
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.certificateDebug
+          toFieldPath: status.certificateConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -206,20 +255,20 @@ spec:
                     cpu: 250m
                     memory: 256Mi
                   cluster-controller:
-                    cpu: 100m
-                    memory: 256Mi
+                    cpu: 32m
+                    memory: 188Mi
                   envoy:
-                    cpu: 100m
+                    cpu: 32m
                     memory: 64Mi
                   pgbouncer:
-                    cpu: 100m
-                    memory: 64Mi
+                    cpu: 16m
+                    memory: 32Mi
                   postgres-util:
-                    cpu: 100m
-                    memory: 256Mi
+                    cpu: 10m
+                    memory: 4Mi
                   prometheus-postgres-exporter:
-                    cpu: 100m
-                    memory: 256Mi
+                    cpu: 10m
+                    memory: 32Mi
                 cpu: ''
                 initContainers:
                   cluster-reconciliation-cycle:
@@ -238,11 +287,15 @@ spec:
                     cpu: 100m
                     memory: 100Mi
                 memory: ''
+                requests:
+                  cpu: null
+                  memory: null
           providerConfigRef:
             name: kubernetes
+      name: profile
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.profileDebug
+          toFieldPath: status.profileConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -263,11 +316,37 @@ spec:
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: spec.forProvider.manifest.metadata.name
           type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.size.plan
+          toFieldPath: spec.forProvider.manifest.spec.cpu
+          transforms:
+            - map:
+                plus-2: 400m
+                plus-4: 900m
+                standard-2: 400m
+                standard-4: 900m
+              type: map
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.size.plan
+          toFieldPath: spec.forProvider.manifest.spec.memory
+          transforms:
+            - map:
+                plus-2: 1728Mi
+                plus-4: 3776Mi
+                standard-2: 1728Mi
+                standard-4: 3776Mi
+              type: map
+          type: FromCompositeFieldPath
         - fromFieldPath: spec.parameters.size.memory
           toFieldPath: spec.forProvider.manifest.spec.memory
           type: FromCompositeFieldPath
         - fromFieldPath: spec.parameters.size.cpu
           toFieldPath: spec.forProvider.manifest.spec.cpu
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.size.requests.memory
+          toFieldPath: spec.forProvider.manifest.spec.requests.memory
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.size.requests.cpu
+          toFieldPath: spec.forProvider.manifest.spec.requests.cpu
           type: FromCompositeFieldPath
     - base:
         apiVersion: kubernetes.crossplane.io/v1alpha1
@@ -284,9 +363,10 @@ spec:
                 postgresql.conf: {}
           providerConfigRef:
             name: kubernetes
+      name: pg-conf
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.pgconfigDebug
+          toFieldPath: status.pgconfigConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -331,6 +411,9 @@ spec:
                       sgObjectStorage: ''
                   sgPostgresConfig: ''
                 instances: 1
+                nonProductionOptions:
+                  enableSetPatroniCpuRequests: true
+                  enableSetPatroniMemoryRequests: true
                 pods:
                   persistentVolume:
                     size: ''
@@ -347,9 +430,10 @@ spec:
                 sgInstanceProfile: ''
           providerConfigRef:
             name: kubernetes
+      name: cluster
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.pgclusterDebug
+          toFieldPath: status.pgclusterConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -370,8 +454,30 @@ spec:
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: spec.forProvider.manifest.metadata.name
           type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.size.plan
+          toFieldPath: spec.forProvider.manifest.spec.pods.persistentVolume.size
+          transforms:
+            - map:
+                plus-2: 20Gi
+                plus-4: 40Gi
+                standard-2: 20Gi
+                standard-4: 40Gi
+              type: map
+          type: FromCompositeFieldPath
         - fromFieldPath: spec.parameters.size.disk
           toFieldPath: spec.forProvider.manifest.spec.pods.persistentVolume.size
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.size.plan
+          toFieldPath: spec.forProvider.manifest.spec.pods.scheduling.nodeSelector
+          transforms:
+            - map:
+                plus-2:
+                  appuio.io/node-class: plus
+                plus-4:
+                  appuio.io/node-class: plus
+                standard-2: {}
+                standard-4: {}
+              type: map
           type: FromCompositeFieldPath
         - fromFieldPath: spec.parameters.scheduling.nodeSelector
           toFieldPath: spec.forProvider.manifest.spec.pods.scheduling.nodeSelector
@@ -476,9 +582,10 @@ spec:
         - fromConnectionSecretKey: POSTGRESQL_PASSWORD
           name: POSTGRESQL_PASSWORD
           type: FromConnectionSecretKey
+      name: connection
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.secretDebug
+          toFieldPath: status.secretConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -575,9 +682,10 @@ spec:
           writeConnectionSecretToRef:
             name: ''
             namespace: ''
+      name: pg-bucket
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.s3BucketDebug
+          toFieldPath: status.objectBackupConfigConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -630,9 +738,10 @@ spec:
                 type: s3Compatible
           providerConfigRef:
             name: kubernetes
+      name: sg-backup
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.s3BackupConfigDebug
+          toFieldPath: status.objectBucketConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name
@@ -687,6 +796,424 @@ spec:
         spec:
           forProvider:
             manifest:
+              apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                annotations: {}
+                labels:
+                  name: maintenanceserviceaccount
+                name: maintenanceserviceaccount
+          providerConfigRef:
+            name: kubernetes
+      name: maintenance-serviceaccount
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-maintenanceserviceaccount'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+    - base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata: {}
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: rbac.authorization.k8s.io/v1
+              kind: Role
+              metadata:
+                annotations: {}
+                labels:
+                  name: crossplane-appcat-job-postgres-maintenance
+                name: crossplane:appcat:job:postgres:maintenance
+              rules:
+                - apiGroups:
+                    - stackgres.io
+                  resources:
+                    - sgdbops
+                  verbs:
+                    - delete
+                    - create
+          providerConfigRef:
+            name: kubernetes
+      name: maintenance-role
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-maintenancerole'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+    - base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata: {}
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: rbac.authorization.k8s.io/v1
+              kind: RoleBinding
+              roleRef:
+                apiGroup: rbac.authorization.k8s.io
+                kind: Role
+                name: crossplane:appcat:job:postgres:maintenance
+              subjects:
+                - apiGroup: ''
+                  kind: ServiceAccount
+                  name: maintenanceserviceaccount
+          providerConfigRef:
+            name: kubernetes
+      name: maintenance-rolebinding
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-maintenancerolebinding'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.name
+          transforms:
+            - string:
+                fmt: '%s-maintenancerolebinding'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+    - base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata: {}
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: batch/v1
+              kind: CronJob
+              spec:
+                jobTemplate:
+                  spec:
+                    template:
+                      spec:
+                        containers:
+                          - args:
+                              - |
+                                #!/bin/sh
+                                set -e
+                                kubectl -n ${TARGET_NAMESPACE} delete sgdbops securitymaintenance || true
+                                cat <<EOF | kubectl create -f -
+                                apiVersion: stackgres.io/v1
+                                kind: SGDbOps
+                                metadata:
+                                  name: securitymaintenance
+                                  namespace: ${TARGET_NAMESPACE}
+                                spec:
+                                  sgCluster: ${TARGET_INSTANCE}
+                                  op: securityUpgrade
+                                  maxRetries: 1
+                                  securityUpgrade:
+                                    method: InPlace
+                                EOF
+                            command:
+                              - sh
+                              - -c
+                            env:
+                              - name: TARGET_NAMESPACE
+                              - name: TARGET_INSTANCE
+                            image: bitnami/kubectl:latest
+                            name: maintenancejob
+                        restartPolicy: Never
+                        serviceAccountName: maintenanceserviceaccount
+                successfulJobsHistoryLimit: 0
+          providerConfigRef:
+            name: kubernetes
+      name: maintenancejob
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-maintenancejob'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.name
+          transforms:
+            - string:
+                fmt: '%s-maintenancejob'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.spec.jobTemplate.spec.template.spec.containers[0].env[0].value
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.spec.jobTemplate.spec.template.spec.containers[0].env[1].value
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.maintenance.dayOfWeek
+          toFieldPath: metadata.annotations[dayOfWeek]
+          transforms:
+            - map:
+                friday: '5'
+                monday: '1'
+                saturday: '6'
+                sunday: '0'
+                thursday: '4'
+                tuesday: '2'
+                wednesday: '3'
+              type: map
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.maintenance.timeOfDay
+          toFieldPath: metadata.annotations[hour]
+          transforms:
+            - string:
+                regexp:
+                  group: 1
+                  match: (\d+):(\d+):.*
+                type: Regexp
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: spec.parameters.maintenance.timeOfDay
+          toFieldPath: metadata.annotations[minute]
+          transforms:
+            - string:
+                regexp:
+                  group: 2
+                  match: (\d+):(\d+):.*
+                type: Regexp
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.annotations[minute]
+          toFieldPath: maintenance.minute
+          type: ToEnvironmentFieldPath
+        - fromFieldPath: metadata.annotations[hour]
+          toFieldPath: maintenance.hour
+          type: ToEnvironmentFieldPath
+        - fromFieldPath: metadata.annotations[dayOfWeek]
+          toFieldPath: maintenance.dayOfWeek
+          type: ToEnvironmentFieldPath
+        - combine:
+            strategy: string
+            string:
+              fmt: '%s %s * * %s'
+            variables:
+              - fromFieldPath: maintenance.minute
+              - fromFieldPath: maintenance.hour
+              - fromFieldPath: maintenance.dayOfWeek
+          toFieldPath: spec.forProvider.manifest.spec.schedule
+          type: CombineFromEnvironment
+    - base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata: {}
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: monitoring.coreos.com/v1
+              kind: PodMonitor
+              metadata:
+                name: postgresql-podmonitor
+              spec:
+                podMetricsEndpoints:
+                  - port: pgexporter
+                selector:
+                  matchLabels:
+                    app: StackGresCluster
+          providerConfigRef:
+            name: kubernetes
+      name: podmonitor
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-podmonitor'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.spec.selector.matchLabels[stackgres.io/cluster-name]
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.spec.namespaceSelector.matchNames[0]
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+    - base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata: {}
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: monitoring.coreos.com/v1
+              kind: PrometheusRule
+              metadata:
+                name: postgresql-rules
+              spec:
+                groups:
+                  - name: postgresql-storage
+                    rules:
+                      - alert: PostgreSQLPersistentVolumeFillingUp
+                        annotations:
+                          description: |-
+                            The PersistentVolume claimed by {{ $labels.persistentvolumeclaim
+                                          }} in Namespace {{ $labels.namespace }} is only {{ $value |
+                                          humanizePercentage }} free.
+                          runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepersistentvolumefillingup
+                          summary: PersistentVolume is filling up.
+                        expr: |-
+                          (
+                                      kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics"}
+                                        /
+                                      kubelet_volume_stats_capacity_bytes{job="kubelet", metrics_path="/metrics"}
+                                    ) < 0.03
+                                    and
+                                    kubelet_volume_stats_used_bytes{job="kubelet", metrics_path="/metrics"} > 0
+                                    unless on(namespace, persistentvolumeclaim)
+                                    kube_persistentvolumeclaim_access_mode{ access_mode="ReadOnlyMany"} == 1
+                                    unless on(namespace, persistentvolumeclaim)
+                                    kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"} == 1
+                        for: 1m
+                        labels:
+                          severity: critical
+                      - alert: PostgreSQLPersistentVolumeFillingUp
+                        annotations:
+                          description: |-
+                            Based on recent sampling, the PersistentVolume claimed by {{
+                                          $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace
+                                          }} is expected to fill up within four days. Currently {{ $value |
+                                          humanizePercentage }} is available.
+                          runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepersistentvolumefillingup
+                          summary: PersistentVolume is filling up.
+                        expr: |-
+                          (
+                                      kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics"}
+                                        /
+                                      kubelet_volume_stats_capacity_bytes{job="kubelet", metrics_path="/metrics"}
+                                    ) < 0.15
+                                    and
+                                    kubelet_volume_stats_used_bytes{job="kubelet", metrics_path="/metrics"} > 0
+                                    and
+                                    predict_linear(kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics"}[6h], 4 * 24 * 3600) < 0
+                                    unless on(namespace, persistentvolumeclaim)
+                                    kube_persistentvolumeclaim_access_mode{ access_mode="ReadOnlyMany"} == 1
+                                    unless on(namespace, persistentvolumeclaim)
+                                    kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"} == 1
+                        for: 1h
+                        labels:
+                          severity: warning
+                  - name: postgresql-memory
+                    rules:
+                      - alert: PostgreSQLMemoryCritical
+                        annotations:
+                          description: |-
+                            The memory claimed by {{ $labels.pod }} has been over 85% for 2 hours.
+                              Please reducde the load of this instance, or increase the memory.
+                          summary: Memory usage critical
+                        expr: |-
+                          (container_memory_working_set_bytes{container="patroni"}
+                            / on(container,pod)
+                            kube_pod_container_resource_limits{resource="memory"} * 100)
+                            > 85
+                        for: 120m
+                        labels:
+                          severity: critical
+                  - name: postgresql-connections
+                    rules:
+                      - alert: PostgreSQLConnectionsCritical
+                        annotations:
+                          description: |-
+                            The connections to {{ $labels.pod }} have been over 90% of the configured connections for 2 hours.
+                              Please reduce the load of this instance.
+                          summary: Connection usage critical
+                        expr: |-
+                          sum(pg_stat_activity_count) by (pod)
+                            > 90/100 * sum(pg_settings_max_connections) by (pod)
+                        for: 120m
+                        labels:
+                          severity: critical
+          providerConfigRef:
+            name: kubernetes
+      name: prometheusrule
+      patches:
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-prometheusrule'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+    - base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata: {}
+        spec:
+          forProvider:
+            manifest:
               apiVersion: networking.k8s.io/v1
               kind: NetworkPolicy
               metadata: {}
@@ -696,14 +1223,18 @@ spec:
                       - namespaceSelector:
                           matchLabels:
                             kubernetes.io/metadata.name: ''
+                      - namespaceSelector:
+                          matchLabels:
+                            kubernetes.io/metadata.name: appcat-slos
                 podSelector: {}
                 policyTypes:
                   - Ingress
           providerConfigRef:
             name: kubernetes
+      name: network-policy
       patches:
         - fromFieldPath: status.conditions
-          toFieldPath: status.networkPolicyDebug
+          toFieldPath: status.networkPolicyConditions
           type: ToCompositeFieldPath
         - fromFieldPath: metadata.labels[crossplane.io/composite]
           toFieldPath: metadata.name

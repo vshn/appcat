@@ -17,55 +17,94 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"github.com/urfave/cli/v2"
 	"os"
-	"strconv"
-
-	appcatv1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
-	"github.com/vshn/appcat-apiserver/apiserver/appcat"
-	"github.com/vshn/appcat-apiserver/apiserver/vshn/postgres"
-	"k8s.io/klog"
-	"sigs.k8s.io/apiserver-runtime/pkg/builder"
 )
 
 func main() {
-
-	var appcatEnabled bool = true
-	var vashnBackupsEnabled bool = false
-	var err error
-
-	appcatEnabled, err = strconv.ParseBool(os.Getenv("APPCAT_HANDLER_ENABLED"))
+	app := newApp()
+	err := app.Run(os.Args)
+	// If required flags aren't set, it will return with error before we could set up logging
 	if err != nil {
-		klog.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
+		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
-	vashnBackupsEnabled, err = strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
+
+}
+
+func newApp() *cli.App {
+	app := &cli.App{
+		Name:   "AppCat API Server",
+		Usage:  "This AppCat API Server help improve AppCat services",
+		Before: setupLogging,
+		Commands: []*cli.Command{
+			apiserverCommand(),
+			controllerCommand(),
+		},
+		Flags: []cli.Flag{
+			NewLogLevelFlag(),
+			NewLogFormatFlag(),
+		},
+	}
+	return app
+}
+
+func controllerCommand() *cli.Command {
+	return &cli.Command{
+		Name:   "controller",
+		Usage:  "A controller to manage PostgreSQL instance deletion",
+		Action: runController,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "metrics-addr",
+				Value: ":8080",
+				Usage: "The address the metric endpoint binds to.",
+			},
+			&cli.StringFlag{
+				Name:  "health-addr",
+				Value: ":8081",
+				Usage: "The address the probe endpoint binds to.",
+			},
+			&cli.BoolFlag{
+				Name:  "leader-elect",
+				Value: false,
+				Usage: "Enable leader election for controller manager. " +
+					"Enabling this will ensure there is only one active controller manager.",
+			},
+		},
+	}
+}
+
+func apiserverCommand() *cli.Command {
+	return &cli.Command{
+		Name:   "api-server",
+		Usage:  "Start api-server",
+		Action: runApiServer,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "appcat-handler",
+				Usage:   "Enables AppCat handler for this Api Server",
+				Value:   true,
+				Aliases: []string{"a"},
+				EnvVars: []string{"APPCAT_HANDLER_ENABLED"},
+			},
+			&cli.BoolFlag{
+				Name:    "postgres-backup-handler",
+				Usage:   "Enables PostgreSQL backup handler for this Api Server",
+				Value:   false,
+				Aliases: []string{"pb"},
+				EnvVars: []string{"VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"},
+			},
+		},
+	}
+}
+
+func setupLogging(ctx *cli.Context) error {
+	err := SetupLogging(ctx)
 	if err != nil {
-		klog.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
+		return err
 	}
 
-	if !appcatEnabled && !vashnBackupsEnabled {
-		klog.Fatal("Handlers are not enabled, please set at least one of APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to True")
-	}
-
-	builder := builder.APIServer
-
-	if appcatEnabled {
-		builder.WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New())
-	}
-
-	if vashnBackupsEnabled {
-		builder.WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, postgres.New())
-	}
-
-	builder.WithoutEtcd().
-		ExposeLoopbackAuthorizer().
-		ExposeLoopbackMasterClientConfig()
-
-	cmd, err := builder.Build()
-	if err != nil {
-		klog.Fatal(err)
-	}
-
-	if err := cmd.Execute(); err != nil {
-		klog.Fatal(err)
-	}
+	return LogMetadata(ctx)
 }

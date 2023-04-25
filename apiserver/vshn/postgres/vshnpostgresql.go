@@ -10,16 +10,16 @@ import (
 //
 //go:generate go run github.com/golang/mock/mockgen -source=$GOFILE -destination=./mock/$GOFILE
 type vshnPostgresqlProvider interface {
-	ListVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.VSHNPostgreSQLList, error)
+	ListXVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.XVSHNPostgreSQLList, error)
 }
 
-type kubeVSHNPostgresqlProvider struct {
+type kubeXVSHNPostgresqlProvider struct {
 	client.Client
 }
 
-// ListVSHNPostgreSQL fetches a list of VSHNPostgreSQL.
-func (k *kubeVSHNPostgresqlProvider) ListVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.VSHNPostgreSQLList, error) {
-	list := &vshnv1.VSHNPostgreSQLList{}
+// ListXVSHNPostgreSQL fetches a list of XVSHNPostgreSQL.
+func (k *kubeXVSHNPostgresqlProvider) ListXVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.XVSHNPostgreSQLList, error) {
+	list := &vshnv1.XVSHNPostgreSQLList{}
 	err := k.Client.List(ctx, list, &client.ListOptions{
 		Namespace: namespace,
 	})

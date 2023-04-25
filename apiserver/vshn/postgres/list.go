@@ -25,7 +25,7 @@ func (v *vshnPostgresBackupStorage) List(ctx context.Context, options *metainter
 		return nil, fmt.Errorf("cannot get namespace from resource")
 	}
 
-	instances, err := v.vshnpostgresql.ListVSHNPostgreSQL(ctx, namespace)
+	instances, err := v.vshnpostgresql.ListXVSHNPostgreSQL(ctx, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("cannot list VSHNPostgreSQL instances %v", err)
 	}
@@ -57,7 +57,7 @@ func (v *vshnPostgresBackupStorage) Watch(ctx context.Context, options *metainte
 		return nil, fmt.Errorf("cannot get namespace from resource")
 	}
 
-	instances, err := v.vshnpostgresql.ListVSHNPostgreSQL(ctx, namespace)
+	instances, err := v.vshnpostgresql.ListXVSHNPostgreSQL(ctx, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("cannot list VSHNPostgreSQL instances")
 	}

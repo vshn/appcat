@@ -103,7 +103,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 			stor, backupsProvider, vshnPostgresProvider := newMockedVSHNPostgresBackupStorage(t, ctrl)
 
 			vshnPostgresProvider.EXPECT().
-				ListVSHNPostgreSQL(gomock.Any(), gomock.Any()).
+				ListXVSHNPostgreSQL(gomock.Any(), gomock.Any()).
 				Return(tc.postgresqls, nil).
 				Times(1)
 
@@ -246,7 +246,7 @@ func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 			}
 
 			vshnPostgresProvider.EXPECT().
-				ListVSHNPostgreSQL(gomock.Any(), gomock.Any()).
+				ListXVSHNPostgreSQL(gomock.Any(), gomock.Any()).
 				Return(tc.postgresqls, tc.postgresqlsErr).
 				Times(1)
 

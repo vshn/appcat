@@ -3,16 +3,18 @@ module github.com/vshn/appcat-apiserver
 go 1.19
 
 require (
+	github.com/crossplane-contrib/provider-kubernetes v0.7.0
 	github.com/crossplane/crossplane v1.11.2
 	github.com/crossplane/crossplane-runtime v0.19.2
-	github.com/crossplane-contrib/provider-kubernetes v0.7.0
 	github.com/go-logr/logr v1.2.3
+	github.com/go-logr/zapr v1.2.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.25.1
 	github.com/vshn/component-appcat/apis v0.0.0-20230414110116-c7334ac8d3b1
+	go.uber.org/zap v1.24.0
 	golang.org/x/text v0.8.0
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.26.3
@@ -40,7 +42,6 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/crossplane-contrib/provider-kubernetes v0.7.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
@@ -49,7 +50,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-logr/zapr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
@@ -103,7 +103,6 @@ require (
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.8.0 // indirect

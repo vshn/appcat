@@ -35,17 +35,17 @@ func (m *MockvshnPostgresqlProvider) EXPECT() *MockvshnPostgresqlProviderMockRec
 	return m.recorder
 }
 
-// ListVSHNPostgreSQL mocks base method.
-func (m *MockvshnPostgresqlProvider) ListVSHNPostgreSQL(ctx context.Context, namespace string) (*v1.VSHNPostgreSQLList, error) {
+// ListXVSHNPostgreSQL mocks base method.
+func (m *MockvshnPostgresqlProvider) ListXVSHNPostgreSQL(ctx context.Context, namespace string) (*v1.XVSHNPostgreSQLList, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListVSHNPostgreSQL", ctx, namespace)
-	ret0, _ := ret[0].(*v1.VSHNPostgreSQLList)
+	ret := m.ctrl.Call(m, "ListXVSHNPostgreSQL", ctx, namespace)
+	ret0, _ := ret[0].(*v1.XVSHNPostgreSQLList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListVSHNPostgreSQL indicates an expected call of ListVSHNPostgreSQL.
-func (mr *MockvshnPostgresqlProviderMockRecorder) ListVSHNPostgreSQL(ctx, namespace interface{}) *gomock.Call {
+// ListXVSHNPostgreSQL indicates an expected call of ListXVSHNPostgreSQL.
+func (mr *MockvshnPostgresqlProviderMockRecorder) ListXVSHNPostgreSQL(ctx, namespace interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVSHNPostgreSQL", reflect.TypeOf((*MockvshnPostgresqlProvider)(nil).ListVSHNPostgreSQL), ctx, namespace)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListXVSHNPostgreSQL", reflect.TypeOf((*MockvshnPostgresqlProvider)(nil).ListXVSHNPostgreSQL), ctx, namespace)
 }

@@ -19,6 +19,8 @@ package main
 import (
 	"fmt"
 	"github.com/urfave/cli/v2"
+	apiserver "github.com/vshn/appcat-apiserver/apiserver/command"
+	controller "github.com/vshn/appcat-apiserver/controller/command"
 	"os"
 )
 
@@ -35,12 +37,13 @@ func main() {
 
 func newApp() *cli.App {
 	app := &cli.App{
-		Name:   "AppCat API Server",
-		Usage:  "This AppCat API Server help improve AppCat services",
-		Before: setupLogging,
+		Name:            "AppCat API Server",
+		Usage:           "This AppCat API Server help improve AppCat services",
+		Before:          setupLogging,
+		SkipFlagParsing: true,
 		Commands: []*cli.Command{
-			apiserverCommand(),
-			controllerCommand(),
+			apiserver.Command(),
+			controller.Command(),
 		},
 		Flags: []cli.Flag{
 			NewLogLevelFlag(),
@@ -48,56 +51,6 @@ func newApp() *cli.App {
 		},
 	}
 	return app
-}
-
-func controllerCommand() *cli.Command {
-	return &cli.Command{
-		Name:   "controller",
-		Usage:  "A controller to manage PostgreSQL instance deletion",
-		Action: runController,
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "metrics-addr",
-				Value: ":8080",
-				Usage: "The address the metric endpoint binds to.",
-			},
-			&cli.StringFlag{
-				Name:  "health-addr",
-				Value: ":8081",
-				Usage: "The address the probe endpoint binds to.",
-			},
-			&cli.BoolFlag{
-				Name:  "leader-elect",
-				Value: false,
-				Usage: "Enable leader election for controller manager. " +
-					"Enabling this will ensure there is only one active controller manager.",
-			},
-		},
-	}
-}
-
-func apiserverCommand() *cli.Command {
-	return &cli.Command{
-		Name:   "api-server",
-		Usage:  "Start api-server",
-		Action: runApiServer,
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "appcat-handler",
-				Usage:   "Enables AppCat handler for this Api Server",
-				Value:   true,
-				Aliases: []string{"a"},
-				EnvVars: []string{"APPCAT_HANDLER_ENABLED"},
-			},
-			&cli.BoolFlag{
-				Name:    "postgres-backup-handler",
-				Usage:   "Enables PostgreSQL backup handler for this Api Server",
-				Value:   false,
-				Aliases: []string{"pb"},
-				EnvVars: []string{"VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"},
-			},
-		},
-	}
 }
 
 func setupLogging(ctx *cli.Context) error {

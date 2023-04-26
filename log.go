@@ -29,8 +29,8 @@ func LogMetadata(c *cli.Context) error {
 	return nil
 }
 
-func SetupLogging(c *cli.Context) error {
-	log, err := newZapLogger("PostgreSQL Controller", "v0.0.1", c.Int(NewLogLevelFlag().Name), usesProductionLoggingConfig(c))
+func SetupLogging(c *cli.Context, cmd string) error {
+	log, err := newZapLogger(strings.ToUpper(cmd), "v0.0.1", c.Int(NewLogLevelFlag().Name), usesProductionLoggingConfig(c))
 	c.Context = logr.NewContext(c.Context, log)
 	return err
 }

@@ -1,54 +1,64 @@
 package command
 
 import (
+	"errors"
+	"github.com/go-logr/logr"
 	"github.com/urfave/cli/v2"
 	appcatv1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	"github.com/vshn/appcat-apiserver/apiserver/appcat"
 	"github.com/vshn/appcat-apiserver/apiserver/vshn/postgres"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+type apiServerCommand struct {
+	appcatEnabled      bool
+	vshnBackupsEnabled bool
+}
+
 func Command() *cli.Command {
+	cmd := &apiServerCommand{}
 	return &cli.Command{
-		Name:            "api-server",
-		Usage:           "Start api-server",
-		Action:          execute,
-		SkipFlagParsing: true,
+		Name:   "api-server",
+		Usage:  "Start api-server",
+		Action: cmd.execute,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:    "appcat-handler",
-				Usage:   "Enables AppCat handler for this Api Server",
-				Value:   true,
-				Aliases: []string{"a"},
-				EnvVars: []string{"APPCAT_HANDLER_ENABLED"},
+				Name:        "appcat-handler",
+				Usage:       "Enables AppCat handler for this Api Server",
+				Value:       true,
+				EnvVars:     []string{"APPCAT_HANDLER_ENABLED"},
+				Destination: &cmd.appcatEnabled,
 			},
 			&cli.BoolFlag{
-				Name:    "postgres-backup-handler",
-				Usage:   "Enables PostgreSQL backup handler for this Api Server",
-				Value:   false,
-				Aliases: []string{"pb"},
-				EnvVars: []string{"VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"},
+				Name:        "postgres-backup-handler",
+				Usage:       "Enables PostgreSQL backup handler for this Api Server",
+				Value:       false,
+				EnvVars:     []string{"VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"},
+				Destination: &cmd.vshnBackupsEnabled,
 			},
 		},
 	}
 }
 
-func execute(ctx *cli.Context) error {
-	appcatEnabled := ctx.Bool("appcat-handler")
-	vshnBackupsEnabled := ctx.Bool("postgres-backup-handler")
+func (a *apiServerCommand) execute(ctx *cli.Context) error {
+	log := logr.FromContextOrDiscard(ctx.Context)
 
-	if !appcatEnabled && !vshnBackupsEnabled {
-		klog.Fatal("Handlers are not enabled, please set at least one of APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to true")
+	ctrl.SetLogger(log)
+
+	if !a.appcatEnabled && !a.vshnBackupsEnabled {
+		err := errors.New("cannot start api server")
+		log.Error(err, "Enable at least one handler for the API Server")
+		return err
 	}
 
 	b := builder.APIServer
 
-	if appcatEnabled {
+	if a.appcatEnabled {
 		b.WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New())
 	}
 
-	if vshnBackupsEnabled {
+	if a.vshnBackupsEnabled {
 		b.WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, postgres.New())
 	}
 
@@ -58,11 +68,13 @@ func execute(ctx *cli.Context) error {
 
 	cmd, err := b.Build()
 	if err != nil {
-		klog.Fatal(err)
+		log.Error(err, "Unable to load build API Server")
+		return err
 	}
 
-	if err := cmd.Execute(); err != nil {
-		klog.Fatal(err)
+	if err = cmd.Execute(); err != nil {
+		log.Error(err, "Unable to finish execution of API Server")
+		return err
 	}
 
 	return nil

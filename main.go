@@ -37,10 +37,9 @@ func main() {
 
 func newApp() *cli.App {
 	app := &cli.App{
-		Name:            "AppCat API Server",
-		Usage:           "This AppCat API Server help improve AppCat services",
-		Before:          setupLogging,
-		SkipFlagParsing: true,
+		Name:   "AppCat API Server",
+		Usage:  "This AppCat API Server help improve AppCat services",
+		Before: setupLogging,
 		Commands: []*cli.Command{
 			apiserver.Command(),
 			controller.Command(),
@@ -54,7 +53,7 @@ func newApp() *cli.App {
 }
 
 func setupLogging(ctx *cli.Context) error {
-	err := SetupLogging(ctx)
+	err := SetupLogging(ctx, ctx.Args().First())
 	if err != nil {
 		return err
 	}

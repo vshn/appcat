@@ -12,7 +12,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 )
 
-var s = runtime.NewScheme()
+type controllerCommand struct {
+	metricsAddr, healthAddr string
+	leaderElect             bool
+}
 
 func init() {
 	_ = corev1.SchemeBuilder.AddToScheme(s)
@@ -20,34 +23,40 @@ func init() {
 	_ = vshnv1.SchemeBuilder.SchemeBuilder.AddToScheme(s)
 }
 
+var s = runtime.NewScheme()
+
 func Command() *cli.Command {
+	cmd := &controllerCommand{}
 	return &cli.Command{
 		Name:   "controller",
 		Usage:  "A controller to manage PostgreSQL instance deletion",
-		Action: execute,
+		Action: cmd.execute,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "metrics-addr",
-				Value: ":8080",
-				Usage: "The address the metric endpoint binds to.",
+				Name:        "metrics-addr",
+				Value:       ":8080",
+				Usage:       "The address the metric endpoint binds to.",
+				Destination: &cmd.metricsAddr,
 			},
 			&cli.StringFlag{
-				Name:  "health-addr",
-				Value: ":8081",
-				Usage: "The address the probe endpoint binds to.",
+				Name:        "health-addr",
+				Value:       ":8081",
+				Usage:       "The address the probe endpoint binds to.",
+				Destination: &cmd.healthAddr,
 			},
 			&cli.BoolFlag{
 				Name:  "leader-elect",
 				Value: false,
 				Usage: "Enable leader election for controller manager. " +
 					"Enabling this will ensure there is only one active controller manager.",
+				Destination: &cmd.leaderElect,
 			},
 		},
 	}
 }
 
 // Run will run the controller mode of the composition function runner.
-func execute(cli *cli.Context) error {
+func (c *controllerCommand) execute(cli *cli.Context) error {
 
 	log := logr.FromContextOrDiscard(cli.Context)
 
@@ -55,10 +64,10 @@ func execute(cli *cli.Context) error {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 s,
-		MetricsBindAddress:     cli.String("metrics-addr"),
+		MetricsBindAddress:     c.metricsAddr,
 		Port:                   9443,
-		HealthProbeBindAddress: cli.String("health-addr"),
-		LeaderElection:         cli.Bool("leader-elect"),
+		HealthProbeBindAddress: c.healthAddr,
+		LeaderElection:         c.leaderElect,
 		LeaderElectionID:       "35t6u158.appcat.vshn.io",
 	})
 	if err != nil {

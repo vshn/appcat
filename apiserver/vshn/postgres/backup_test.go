@@ -105,8 +105,8 @@ var (
 		},
 	}
 
-	vshnPostgreSQLInstances = &vshnv1.VSHNPostgreSQLList{
-		Items: []vshnv1.VSHNPostgreSQL{
+	vshnPostgreSQLInstances = &vshnv1.XVSHNPostgreSQLList{
+		Items: []vshnv1.XVSHNPostgreSQL{
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "postgres-one",

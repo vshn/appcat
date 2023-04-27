@@ -1,4 +1,4 @@
-package controller
+package postgres
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type XPostgreSQLDeletionProtectionReconciler struct {
 }
 
 func (p *XPostgreSQLDeletionProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	ctx = context.WithValue(ctx, "now", time.Now())
+	ctx = context.WithValue(ctx, "now", getCurrentTime())
 
 	log := logging.FromContext(ctx, "namespace", req.Namespace, "instance", req.Name)
 	inst := &vshnv1.XVSHNPostgreSQL{}
@@ -33,9 +33,12 @@ func (p *XPostgreSQLDeletionProtectionReconciler) Reconcile(ctx context.Context,
 	}
 
 	err = p.handleDeletionProtection(ctx, inst)
-	requeueTime := getRequeueTime(ctx, inst, inst.GetDeletionTimestamp(), inst.Spec.Parameters.Backup.Retention)
+	requeueTime := getRequeueTime(ctx, inst, inst.GetDeletionTimestamp(), inst.Spec.Parameters.Backup.DeletionRetention)
 	if err != nil {
-		return ctrl.Result{RequeueAfter: requeueTime}, err
+		return ctrl.Result{
+			Requeue:      true,
+			RequeueAfter: requeueTime,
+		}, err
 	}
 
 	if inst.DeletionTimestamp != nil {
@@ -43,7 +46,10 @@ func (p *XPostgreSQLDeletionProtectionReconciler) Reconcile(ctx context.Context,
 		err = p.deletingPostgresDB(ctx, inst)
 	}
 
-	return ctrl.Result{RequeueAfter: requeueTime}, err
+	return ctrl.Result{
+		Requeue:      true,
+		RequeueAfter: requeueTime,
+	}, err
 }
 
 func (p *XPostgreSQLDeletionProtectionReconciler) handleDeletionProtection(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) error {
@@ -89,4 +95,9 @@ func (p *XPostgreSQLDeletionProtectionReconciler) SetupWithManager(mgr ctrl.Mana
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vshnv1.XVSHNPostgreSQL{}).
 		Complete(p)
+}
+
+func getCurrentTime() time.Time {
+	t := time.Now()
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, t.Location())
 }

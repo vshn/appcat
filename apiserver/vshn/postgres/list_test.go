@@ -20,7 +20,7 @@ import (
 
 func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 	tests := map[string]struct {
-		postgresqls    *vshnv1.VSHNPostgreSQLList
+		postgresqls    *vshnv1.XVSHNPostgreSQLList
 		postgresqlsErr error
 
 		backupInfoCalls func(mock_postgres.MocksgbackupProvider, error)
@@ -50,7 +50,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 			},
 		},
 		"GivenNoPostgresData_ThenReturnEmpty": {
-			postgresqls:     &vshnv1.VSHNPostgreSQLList{},
+			postgresqls:     &vshnv1.XVSHNPostgreSQLList{},
 			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, err error) {},
 			vshnBackups: &v1.VSHNPostgresBackupList{
 				Items: []v1.VSHNPostgresBackup(nil),
@@ -74,8 +74,8 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 			},
 		},
 		"GivenBackupErrList_ThenReturnError": {
-			postgresqls: &vshnv1.VSHNPostgreSQLList{
-				Items: []vshnv1.VSHNPostgreSQL{
+			postgresqls: &vshnv1.XVSHNPostgreSQLList{
+				Items: []vshnv1.XVSHNPostgreSQL{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "postgres-two",
@@ -141,7 +141,7 @@ func (w *testWatcher) ResultChan() <-chan watch.Event {
 
 func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 	tests := map[string]struct {
-		postgresqls    *vshnv1.VSHNPostgreSQLList
+		postgresqls    *vshnv1.XVSHNPostgreSQLList
 		postgresqlsErr error
 
 		unstructuredEvents []watch.Event
@@ -192,8 +192,8 @@ func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 			},
 		},
 		"GivenErrNotFound_ThenErrNotFound": {
-			postgresqls: &vshnv1.VSHNPostgreSQLList{
-				Items: []vshnv1.VSHNPostgreSQL{
+			postgresqls: &vshnv1.XVSHNPostgreSQLList{
+				Items: []vshnv1.XVSHNPostgreSQL{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "postgres-one",

@@ -4,7 +4,7 @@ import (
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/urfave/cli/v2"
-	"github.com/vshn/appcat-apiserver/controller"
+	"github.com/vshn/appcat-apiserver/controller/postgres"
 	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -74,7 +74,7 @@ func (c *controllerCommand) execute(cli *cli.Context) error {
 		return err
 	}
 
-	xpg := &controller.XPostgreSQLDeletionProtectionReconciler{
+	xpg := &postgres.XPostgreSQLDeletionProtectionReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}

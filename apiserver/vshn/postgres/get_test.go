@@ -17,7 +17,7 @@ import (
 func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 	tests := map[string]struct {
 		name               string
-		postgresqls        *vshnv1.VSHNPostgreSQLList
+		postgresqls        *vshnv1.XVSHNPostgreSQLList
 		backupInfo         *v1.SGBackupInfo
 		backupInfoCalls    func(mock_postgres.MocksgbackupProvider, string)
 		vshnPostgresBackup *v1.VSHNPostgresBackup
@@ -61,7 +61,7 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 		},
 		"GivenNoPostgresInstances_ThenErrNotFound": {
 			name:        "one",
-			postgresqls: &vshnv1.VSHNPostgreSQLList{},
+			postgresqls: &vshnv1.XVSHNPostgreSQLList{},
 			backupInfo:  nil,
 			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, name string) {
 				provider.EXPECT().

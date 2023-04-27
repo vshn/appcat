@@ -39,7 +39,10 @@ func (p *XPostgreSQLDeletionProtectionReconciler) Reconcile(ctx context.Context,
 	requeueTime := getRequeueTime(ctx, inst, inst.GetDeletionTimestamp(), inst.Spec.Parameters.Backup.DeletionRetention)
 	if inst.DeletionTimestamp != nil {
 		log.Info("Deleting database")
-		err = p.deletingPostgresDB(ctx, inst)
+		err = p.deletePostgresDB(ctx, inst)
+		if err != nil {
+		    return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{

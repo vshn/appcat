@@ -65,7 +65,7 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
-  - vshnpostgresqls
+  - xvshnpostgresqls
   verbs:
   - get
   - list

@@ -19,8 +19,8 @@ type apiServerCommand struct {
 func Command() *cli.Command {
 	cmd := &apiServerCommand{}
 	return &cli.Command{
-		Name:   "api-server",
-		Usage:  "Start api-server",
+		Name:   "apiserver",
+		Usage:  "Start apiserver",
 		Action: cmd.execute,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{

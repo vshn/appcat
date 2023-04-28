@@ -1,17 +1,3 @@
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: postgres-deletion-protection-manager
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: postgres-deletion-protection-manager
-subjects:
-  - kind: ServiceAccount
-    name: postgres-deletion-protection-manager
-    namespace: appcat-controllers
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

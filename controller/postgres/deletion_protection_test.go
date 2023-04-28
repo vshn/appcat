@@ -14,10 +14,8 @@ import (
 	"time"
 )
 
-var currentTime = time.Now()
-
 func Test_Handle(t *testing.T) {
-	previousDay := currentTime.AddDate(0, 0, -1)
+	previousDay := getCurrentTime().AddDate(0, 0, -1)
 	tests := map[string]struct {
 		ctx           context.Context
 		obj           v1.XVSHNPostgreSQL
@@ -47,21 +45,21 @@ func Test_Handle(t *testing.T) {
 			expectedPatch: getPatch(opAdd),
 		},
 		"WhenRetentionEnabledAndFinalizerAndDeletedAndRetentionNonZero_ThenNilPatch": {
-			ctx:           context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:           context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:           getXVSHNPostgreSQL(true, &previousDay),
 			enabled:       true,
 			retention:     1,
 			expectedPatch: nil,
 		},
 		"WhenRetentionEnabledAndFinalizerAndDeletedAndRetentionZero_ThenNilPatch": {
-			ctx:           context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:           context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:           getXVSHNPostgreSQL(true, &previousDay),
 			enabled:       true,
 			retention:     0,
 			expectedPatch: getPatch(opRemove),
 		},
 		"WhenRetentionEnabledAndFinalizerAndNotDeleted_ThenNilPatch": {
-			ctx:           context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:           context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:           getXVSHNPostgreSQL(true, nil),
 			enabled:       true,
 			retention:     0,
@@ -82,9 +80,9 @@ func Test_Handle(t *testing.T) {
 }
 
 func Test_CheckRetention(t *testing.T) {
-	twoDaysBefore := currentTime.AddDate(0, 0, -2)
-	previousDay := currentTime.AddDate(0, 0, -1)
-	nextDay := currentTime.AddDate(0, 0, 1)
+	twoDaysBefore := getCurrentTime().AddDate(0, 0, -2)
+	previousDay := getCurrentTime().AddDate(0, 0, -1)
+	nextDay := getCurrentTime().AddDate(0, 0, 1)
 	tests := map[string]struct {
 		ctx        context.Context
 		obj        v1.XVSHNPostgreSQL
@@ -92,31 +90,31 @@ func Test_CheckRetention(t *testing.T) {
 		expectedOp jsonOp
 	}{
 		"WhenDeletionTimePlusRetentionTimeBeforeCurrentRuntime_ThenRemoveOp": {
-			ctx:        context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
 			retention:  1,
 			expectedOp: opRemove,
 		},
 		"WhenDeletionTimeAndNoRetentionBeforeCurrentRuntime_ThenRemoveOp": {
-			ctx:        context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
 			retention:  0,
 			expectedOp: opRemove,
 		},
 		"WhenDeletionTimePlusRetentionAfterCurrentRuntime_ThenNonOp": {
-			ctx:        context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
 			retention:  5,
 			expectedOp: opNone,
 		},
 		"WhenDeletionTimeWithoutRetentionAfterCurrentRuntime_ThenNonOp": {
-			ctx:        context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &nextDay),
 			retention:  5,
 			expectedOp: opNone,
 		},
 		"WhenDeletionTimeWithRetentionEqualsCurrentRuntime_ThenNonOp": {
-			ctx:        context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &previousDay),
 			retention:  1,
 			expectedOp: opNone,
@@ -135,7 +133,7 @@ func Test_CheckRetention(t *testing.T) {
 }
 
 func Test_GetRequeueTime(t *testing.T) {
-	previousDay := currentTime.AddDate(0, 0, -1)
+	previousDay := getCurrentTime().AddDate(0, 0, -1)
 	tests := map[string]struct {
 		ctx              context.Context
 		obj              v1.XVSHNPostgreSQL
@@ -144,14 +142,14 @@ func Test_GetRequeueTime(t *testing.T) {
 		expectedDuration time.Duration
 	}{
 		"WhenNoDeletion_ThenReturnIn30Seconds": {
-			ctx:              context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:              context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:              getXVSHNPostgreSQL(true, nil),
 			deletionTime:     nil,
 			retention:        1,
 			expectedDuration: time.Second * 30,
 		},
 		"WhenDeletionTime_ThenCalculateDuration": {
-			ctx:              context.WithValue(context.Background(), currentTimeKey, currentTime),
+			ctx:              context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:              getXVSHNPostgreSQL(true, &previousDay),
 			deletionTime:     &previousDay,
 			retention:        2,

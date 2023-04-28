@@ -71,7 +71,7 @@ func checkRetention(ctx context.Context, inst client.Object, retention int) json
 	timestamp := inst.GetDeletionTimestamp()
 	expireDate := timestamp.AddDate(0, 0, retention)
 	op := opNone
-	now := ctx.Value(currentTimeKey).(time.Time)
+	now := getCurrentTime()
 	if now.After(expireDate) {
 		log.Info("Retention expired, removing finalizer")
 		removed := controllerutil.RemoveFinalizer(inst, finalizerName)
@@ -84,7 +84,7 @@ func checkRetention(ctx context.Context, inst client.Object, retention int) json
 
 func getRequeueTime(ctx context.Context, inst client.Object, deletionTime *v1.Time, retention int) time.Duration {
 	log := logging.FromContext(ctx, "namespace", inst.GetNamespace(), "instance", inst.GetName())
-	now := ctx.Value(currentTimeKey).(time.Time)
+	now := getCurrentTime()
 	if deletionTime != nil {
 		deletionIn := deletionTime.AddDate(0, 0, retention).Sub(now)
 		log.V(1).Info("Deletion in: " + deletionIn.String())
@@ -125,4 +125,9 @@ func getPatchObjectFinalizer(log logr.Logger, inst client.Object, op jsonOp) (cl
 	log.V(1).Info("Patching object", "patch", string(patch))
 
 	return client.RawPatch(types.JSONPatchType, patch), nil
+}
+
+func getCurrentTime() time.Time {
+	t := time.Now()
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, t.Location())
 }

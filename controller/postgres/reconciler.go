@@ -4,15 +4,13 @@ import (
 	"context"
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	logging "sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
-
 	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logging "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type XPostgreSQLDeletionProtectionReconciler struct {
@@ -21,8 +19,6 @@ type XPostgreSQLDeletionProtectionReconciler struct {
 }
 
 func (p *XPostgreSQLDeletionProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	ctx = context.WithValue(ctx, "now", getCurrentTime())
-
 	log := logging.FromContext(ctx, "namespace", req.Namespace, "instance", req.Name)
 	inst := &vshnv1.XVSHNPostgreSQL{}
 	err := p.Get(ctx, req.NamespacedName, inst)
@@ -41,7 +37,7 @@ func (p *XPostgreSQLDeletionProtectionReconciler) Reconcile(ctx context.Context,
 		log.Info("Deleting database")
 		err = p.deletePostgresDB(ctx, inst)
 		if err != nil {
-		    return ctrl.Result{}, err
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -76,7 +72,7 @@ func (p *XPostgreSQLDeletionProtectionReconciler) handleDeletionProtection(ctx c
 	return nil
 }
 
-func (p *XPostgreSQLDeletionProtectionReconciler) deletingPostgresDB(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) error {
+func (p *XPostgreSQLDeletionProtectionReconciler) deletePostgresDB(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) error {
 	log := logging.FromContext(ctx, "namespace", inst.GetNamespace(), "instance", inst.GetName())
 
 	log.V(1).Info("Deleting sgcluster object")
@@ -94,9 +90,4 @@ func (p *XPostgreSQLDeletionProtectionReconciler) SetupWithManager(mgr ctrl.Mana
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vshnv1.XVSHNPostgreSQL{}).
 		Complete(p)
-}
-
-func getCurrentTime() time.Time {
-	t := time.Now()
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, t.Location())
 }

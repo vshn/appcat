@@ -3,7 +3,7 @@ package postgres
 import (
 	"fmt"
 	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
-	mock_postgres "github.com/vshn/appcat-apiserver/apiserver/vshn/postgres/mock"
+	"github.com/vshn/appcat-apiserver/test/mocks"
 	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +23,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 		postgresqls    *vshnv1.XVSHNPostgreSQLList
 		postgresqlsErr error
 
-		backupInfoCalls func(mock_postgres.MocksgbackupProvider, error)
+		backupInfoCalls func(mocks.MocksgbackupProvider, error)
 		backupInfosErr  error
 
 		vshnBackups *v1.VSHNPostgresBackupList
@@ -31,7 +31,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 	}{
 		"GivenPostgresDataAndListOfBackupInfos_ThenReturnVshnBackups": {
 			postgresqls: vshnPostgreSQLInstances,
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, err error) {
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error) {
 				provider.EXPECT().
 					ListSGBackup(gomock.Any(), "namespace-one", gomock.Any()).
 					Return(&[]v1.SGBackupInfo{*backupInfoOne}, nil).
@@ -51,14 +51,14 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 		},
 		"GivenNoPostgresData_ThenReturnEmpty": {
 			postgresqls:     &vshnv1.XVSHNPostgreSQLList{},
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, err error) {},
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error) {},
 			vshnBackups: &v1.VSHNPostgresBackupList{
 				Items: []v1.VSHNPostgresBackup(nil),
 			},
 		},
 		"GivenNoBackups_ThenReturnEmpty": {
 			postgresqls: vshnPostgreSQLInstances,
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, err error) {
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error) {
 				provider.EXPECT().
 					ListSGBackup(gomock.Any(), "namespace-one", gomock.Any()).
 					Return(&[]v1.SGBackupInfo{}, nil).
@@ -86,7 +86,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 					},
 				},
 			},
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, err error) {
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error) {
 				provider.EXPECT().
 					ListSGBackup(gomock.Any(), "namespace-two", gomock.Any()).
 					Return(&[]v1.SGBackupInfo{}, err).
@@ -147,7 +147,7 @@ func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 		unstructuredEvents []watch.Event
 		unstructuredErr    error
 
-		backupInfoCalls func(mock_postgres.MocksgbackupProvider, error, []watch.Interface)
+		backupInfoCalls func(mocks.MocksgbackupProvider, error, []watch.Interface)
 
 		stopWatchCounterOne int
 		stopWatchCounterTwo int
@@ -159,7 +159,7 @@ func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 			postgresqls:         vshnPostgreSQLInstances,
 			stopWatchCounterOne: 1,
 			stopWatchCounterTwo: 1,
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, _ error, watches []watch.Interface) {
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, _ error, watches []watch.Interface) {
 				provider.EXPECT().
 					WatchSGBackup(gomock.Any(), "namespace-one", gomock.Any()).
 					Return(watches[0], nil).
@@ -207,7 +207,7 @@ func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 			unstructuredErr: apierrors.NewNotFound(schema.GroupResource{
 				Resource: "sgbackups",
 			}, "not-found"),
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, err error, _ []watch.Interface) {
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error, _ []watch.Interface) {
 				provider.EXPECT().
 					WatchSGBackup(gomock.Any(), "namespace-one", gomock.Any()).
 					Return(nil, err).
@@ -221,7 +221,7 @@ func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 		"GivenPostgresInstancesError_ThenError": {
 			postgresqlsErr:  fmt.Errorf("cannot get postgres instances"),
 			err:             fmt.Errorf("cannot list VSHNPostgreSQL instances"),
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, err error, _ []watch.Interface) {},
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error, _ []watch.Interface) {},
 		},
 	}
 

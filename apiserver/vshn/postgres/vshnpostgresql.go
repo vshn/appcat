@@ -6,9 +6,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var (
+	claimNamespaceLabel = "crossplane.io/claim-namespace"
+	claimNameLabel      = "crossplane.io/claim"
+)
+
 // vshnPostgresqlProvider is an abstraction to interact with the K8s API
-//
-//go:generate go run github.com/golang/mock/mockgen -source=$GOFILE -destination=./mock/$GOFILE
 type vshnPostgresqlProvider interface {
 	ListXVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.XVSHNPostgreSQLList, error)
 }
@@ -20,8 +23,16 @@ type kubeXVSHNPostgresqlProvider struct {
 // ListXVSHNPostgreSQL fetches a list of XVSHNPostgreSQL.
 func (k *kubeXVSHNPostgresqlProvider) ListXVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.XVSHNPostgreSQLList, error) {
 	list := &vshnv1.XVSHNPostgreSQLList{}
-	err := k.Client.List(ctx, list, &client.ListOptions{
-		Namespace: namespace,
-	})
+	err := k.Client.List(ctx, list)
+	cleanedList := make([]vshnv1.XVSHNPostgreSQL, 0)
+	for _, p := range list.Items {
+		if p.Labels[claimNamespaceLabel] == "" || p.Labels[claimNameLabel] == "" {
+			continue
+		}
+		if p.Labels[claimNamespaceLabel] == namespace {
+			cleanedList = append(cleanedList, p)
+		}
+	}
+	list.Items = cleanedList
 	return list, err
 }

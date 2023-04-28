@@ -3,7 +3,7 @@ package appcat
 import (
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	v1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
-	"github.com/vshn/appcat-apiserver/apiserver/appcat/mock"
+	"github.com/vshn/appcat-apiserver/test/mocks"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"testing"
 
@@ -12,9 +12,9 @@ import (
 )
 
 // newMockedAppCatStorage is a mocked instance of AppCatStorage
-func newMockedAppCatStorage(t *testing.T, ctrl *gomock.Controller) (rest.StandardStorage, *mock_appcat.MockcompositionProvider) {
+func newMockedAppCatStorage(t *testing.T, ctrl *gomock.Controller) (rest.StandardStorage, *mocks.MockcompositionProvider) {
 	t.Helper()
-	comp := mock_appcat.NewMockcompositionProvider(ctrl)
+	comp := mocks.NewMockcompositionProvider(ctrl)
 	stor := &appcatStorage{
 		compositions: comp,
 	}

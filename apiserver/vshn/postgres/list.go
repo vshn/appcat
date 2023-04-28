@@ -38,7 +38,7 @@ func (v *vshnPostgresBackupStorage) List(ctx context.Context, options *metainter
 			return nil, apiserver.ResolveError(v1.GetGroupResource(v1.ResourceBackup), err)
 		}
 		for _, b := range *bis {
-			vb := v1.NewVSHNPostgresBackup(&b, value.Name, namespace)
+			vb := v1.NewVSHNPostgresBackup(&b, value.Labels[claimNameLabel], namespace)
 			if vb != nil {
 				backups.Items = append(backups.Items, *vb)
 			}
@@ -85,7 +85,7 @@ func (v *vshnPostgresBackupStorage) Watch(ctx context.Context, options *metainte
 		db := ""
 		for _, value := range instances.Items {
 			if value.Status.InstanceNamespace == sgbackupInfo.Namespace {
-				db = value.Name
+				db = value.Labels[claimNameLabel]
 			}
 		}
 

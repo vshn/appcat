@@ -37,7 +37,7 @@ func (v *vshnPostgresBackupStorage) Get(ctx context.Context, name string, _ *met
 			return nil, err
 		}
 
-		vshnBackup = v1.NewVSHNPostgresBackup(backupInfo, value.Name, namespace)
+		vshnBackup = v1.NewVSHNPostgresBackup(backupInfo, value.Labels[claimNameLabel], namespace)
 	}
 
 	if vshnBackup == nil {

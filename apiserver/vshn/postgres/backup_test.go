@@ -2,7 +2,8 @@ package postgres
 
 import (
 	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
-	mock_postgres "github.com/vshn/appcat-apiserver/apiserver/vshn/postgres/mock"
+	"github.com/vshn/appcat-apiserver/test/mocks"
+
 	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,10 +15,10 @@ import (
 )
 
 // newMockedVSHNPostgresBackupStorage is a mocked instance of vshnPostgresBackup
-func newMockedVSHNPostgresBackupStorage(t *testing.T, ctrl *gomock.Controller) (rest.StandardStorage, *mock_postgres.MocksgbackupProvider, *mock_postgres.MockvshnPostgresqlProvider) {
+func newMockedVSHNPostgresBackupStorage(t *testing.T, ctrl *gomock.Controller) (rest.StandardStorage, *mocks.MocksgbackupProvider, *mocks.MockvshnPostgresqlProvider) {
 	t.Helper()
-	sgbackup := mock_postgres.NewMocksgbackupProvider(ctrl)
-	vshnpostgres := mock_postgres.NewMockvshnPostgresqlProvider(ctrl)
+	sgbackup := mocks.NewMocksgbackupProvider(ctrl)
+	vshnpostgres := mocks.NewMockvshnPostgresqlProvider(ctrl)
 	stor := &vshnPostgresBackupStorage{
 		sgbackups:      sgbackup,
 		vshnpostgresql: vshnpostgres,
@@ -109,7 +110,11 @@ var (
 		Items: []vshnv1.XVSHNPostgreSQL{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "postgres-one",
+					Name: "postgres-one-tty",
+					Labels: map[string]string{
+						claimNameLabel:      "postgres-one",
+						claimNamespaceLabel: "namespace-claim",
+					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
 					InstanceNamespace: "namespace-one",
@@ -117,7 +122,11 @@ var (
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "postgres-two",
+					Name: "postgres-two-bbf",
+					Labels: map[string]string{
+						claimNameLabel:      "postgres-two",
+						claimNamespaceLabel: "namespace-claim",
+					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
 					InstanceNamespace: "namespace-two",

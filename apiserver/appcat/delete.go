@@ -13,7 +13,7 @@ import (
 var _ rest.GracefulDeleter = &appcatStorage{}
 var _ rest.CollectionDeleter = &appcatStorage{}
 
-func (s appcatStorage) Delete(ctx context.Context, name string, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions) (runtime.Object, bool, error) {
+func (s *appcatStorage) Delete(ctx context.Context, name string, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions) (runtime.Object, bool, error) {
 	return &v1.AppCat{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,

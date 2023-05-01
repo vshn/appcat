@@ -11,7 +11,7 @@ import (
 var _ rest.Updater = &appcatStorage{}
 var _ rest.CreaterUpdater = &appcatStorage{}
 
-func (s appcatStorage) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
+func (s *appcatStorage) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
 	return &v1.AppCat{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,

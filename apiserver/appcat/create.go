@@ -10,6 +10,6 @@ import (
 
 var _ rest.Creater = &appcatStorage{}
 
-func (s appcatStorage) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {
+func (s *appcatStorage) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {
 	return nil, fmt.Errorf("method not implemented")
 }

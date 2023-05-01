@@ -22,8 +22,6 @@ var (
 )
 
 // sgbackupProvider is an abstraction to interact with the K8s API
-//
-//go:generate go run github.com/golang/mock/mockgen -source=$GOFILE -destination=./mock/$GOFILE
 type sgbackupProvider interface {
 	GetSGBackup(ctx context.Context, name, namespace string) (*v1.SGBackupInfo, error)
 	ListSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (*[]v1.SGBackupInfo, error)

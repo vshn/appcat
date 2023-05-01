@@ -10,8 +10,6 @@ import (
 )
 
 // compositionProvider is an abstraction to interact with the K8s API
-//
-//go:generate go run github.com/golang/mock/mockgen -source=$GOFILE -destination=./mock/$GOFILE
 type compositionProvider interface {
 	GetComposition(ctx context.Context, name string, options *metav1.GetOptions) (*v1.Composition, error)
 	ListCompositions(ctx context.Context, options *metainternalversion.ListOptions) (*v1.CompositionList, error)

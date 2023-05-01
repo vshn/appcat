@@ -1,10 +1,10 @@
-package main
+package command
 
 import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
@@ -15,8 +15,8 @@ import (
 
 // LogMetadata prints various metadata to the root logger.
 // It prints version, architecture and current user ID and returns nil.
-func LogMetadata(c *cli.Context) error {
-	log := logr.FromContextOrDiscard(c.Context)
+func LogMetadata(cmd *cobra.Command) error {
+	log := logr.FromContextOrDiscard(cmd.Context())
 	log.WithValues(
 		"version", "v0.0.1",
 		"date", time.Now(),
@@ -25,18 +25,15 @@ func LogMetadata(c *cli.Context) error {
 		"go_version", runtime.Version(),
 		"uid", os.Getuid(),
 		"gid", os.Getgid(),
-	).Info("Starting up " + "PostgreSQL Controller")
+	).Info("Starting up " + cmd.Short)
 	return nil
 }
 
-func SetupLogging(c *cli.Context, cmd string) error {
-	log, err := newZapLogger(strings.ToUpper(cmd), "v0.0.1", c.Int(NewLogLevelFlag().Name), usesProductionLoggingConfig(c))
-	c.Context = logr.NewContext(c.Context, log)
+func SetupLogging(cmd *cobra.Command, logLevel int, logFormat string) error {
+	isJson := strings.EqualFold("JSON", logFormat)
+	log, err := newZapLogger(strings.ToUpper(cmd.Use), "v0.0.1", logLevel, isJson)
+	cmd.SetContext(logr.NewContext(cmd.Context(), log))
 	return err
-}
-
-func usesProductionLoggingConfig(c *cli.Context) bool {
-	return strings.EqualFold("JSON", c.String(NewLogFormatFlag().Name))
 }
 
 func newZapLogger(name, version string, verbosityLevel int, useProductionConfig bool) (logr.Logger, error) {
@@ -59,27 +56,4 @@ func newZapLogger(name, version string, verbosityLevel int, useProductionConfig 
 		return zlog.WithValues("version", version), nil
 	}
 	return zlog, nil
-}
-
-func NewLogLevelFlag() *cli.IntFlag {
-	return &cli.IntFlag{
-		Name: "log-level", Aliases: []string{"v"}, EnvVars: []string{"LOG_LEVEL"},
-		Usage: "number of the log level verbosity",
-		Value: 0,
-	}
-}
-
-func NewLogFormatFlag() *cli.StringFlag {
-	return &cli.StringFlag{
-		Name: "log-format", EnvVars: []string{"LOG_FORMAT"},
-		Usage: "sets the log format (values: [json, console])",
-		Value: "console",
-		Action: func(context *cli.Context, format string) error {
-			if format == "console" || format == "json" {
-				return nil
-			}
-			_ = cli.ShowAppHelp(context)
-			return fmt.Errorf("unknown log format: %s", format)
-		},
-	}
 }

@@ -7,6 +7,8 @@ spec:
   parameters:
     backup:
       schedule: "* * * * *"
+      deletionProtection: true
+      deletionRetention: 7
     service:
       majorVersion: "15" 
       pgSettings:

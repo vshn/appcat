@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: postgres-deletion-protection-manager
+rules:
+  - apiGroups:
+      - vshn.appcat.vshn.io
+    resources:
+      - xvshnpostgresqls
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - kubernetes.crossplane.io
+    resources:
+      - objects
+    verbs:
+      - delete

@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/github/v/release/appuio/control-api)](https://github.com/appuio/control-api/releases)
 [![GitHub downloads](https://img.shields.io/github/downloads/vshn/appcat-apiserver/total)](https://github.com/appuio/control-api/releases)
 
-# appcat-apiserve
+# appcat-apiserver
 
 ## Generate Kubernetes code
 
@@ -47,11 +47,11 @@ On some docker distributions the host IP is accessible via `host.docker.internal
 For Lima distribution the host IP is accessible via `host.lima.internal`.
 
 ```bash
+make local-debug
+
 HOSTIP=$(docker inspect appcat-apiserver-v1.24.0-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway')
 # HOSTIP=host.docker.internal # On some docker distributions
 # HOSTIP=host.lima.internal # On lima distributions
-
-make local-debug
 
 kind get kubeconfig --name appcat-apiserver-v1.24.0  > ~/.kube/config 
 
@@ -93,10 +93,17 @@ make apply-test-cases
 
 After the above steps just run the API server via IDE with the following arguments.
 ```
-api --secure-port=9443 --kubeconfig ~/.kube/config --authentication-kubeconfig ~/.kube/config --authorization-kubeconfig ~/.kube/config --tls-cert-file=dev/certificates/apiserver.crt --tls-private-key-file=dev/certificates/apiserver.key
+apiserver --secure-port=9443 --kubeconfig=$HOME/.kube/config --authentication-kubeconfig=$HOME/.kube/config --authorization-kubeconfig=$HOME/.kube/config --tls-cert-file=dev/certificates/apiserver.crt --tls-private-key-file=dev/certificates/apiserver.key
 ```
 
 ## Protobuf installation
 Protocol Buffers (Protobuf) is a free and open-source cross-platform data format used to serialize structured data.
 Kubernetes internally uses gRPC clients with protobuf serialization. APIServer objects when handled internally in K8S
 need to implement protobuf interface. The implementation of the interface is done by [code-generator](https://github.com/kubernetes/code-generator). Two dependencies are required to use this tool [protoc](https://github.com/protocolbuffers/protobuf) and [protoc-gen-go](https://google.golang.org/protobuf/cmd/protoc-gen-go).
+
+## Controller
+A postgres controller has been added to this API Server. The controller takes care of database deletion protection.
+The controller insures via a finalizer in composite `XVSHNPostgreSQL` resource that the backups are still available
+when the database instance is deleted. When deletion retention expires, the backups with the remaining resources
+are cleaned up automatically.
+This controller addition to this repository is a temporary solution until we move to a common AppCat repository.

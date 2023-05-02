@@ -33,7 +33,7 @@ func New() restbuilder.ResourceHandlerProvider {
 			sgbackups: &kubeSGBackupProvider{
 				DynamicClient: dc.Resource(sgbackupGroupVersionResource),
 			},
-			vshnpostgresql: &kubeVSHNPostgresqlProvider{
+			vshnpostgresql: &kubeXVSHNPostgresqlProvider{
 				Client: c,
 			},
 		}, nil

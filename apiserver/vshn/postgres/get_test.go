@@ -2,7 +2,7 @@ package postgres
 
 import (
 	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
-	mock_postgres "github.com/vshn/appcat-apiserver/apiserver/vshn/postgres/mock"
+	"github.com/vshn/appcat-apiserver/test/mocks"
 	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"testing"
@@ -17,9 +17,9 @@ import (
 func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 	tests := map[string]struct {
 		name               string
-		postgresqls        *vshnv1.VSHNPostgreSQLList
+		postgresqls        *vshnv1.XVSHNPostgreSQLList
 		backupInfo         *v1.SGBackupInfo
-		backupInfoCalls    func(mock_postgres.MocksgbackupProvider, string)
+		backupInfoCalls    func(mocks.MocksgbackupProvider, string)
 		vshnPostgresBackup *v1.VSHNPostgresBackup
 		err                error
 	}{
@@ -27,7 +27,7 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 			name:        "one",
 			postgresqls: vshnPostgreSQLInstances,
 			backupInfo:  backupInfoOne,
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, name string) {
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
 				provider.EXPECT().
 					GetSGBackup(gomock.Any(), name, "namespace-one").
 					Return(backupInfoOne, nil).
@@ -45,7 +45,7 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 			name:        "one",
 			postgresqls: vshnPostgreSQLInstances,
 			backupInfo:  nil,
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, name string) {
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
 				provider.EXPECT().
 					GetSGBackup(gomock.Any(), name, "namespace-one").
 					Return(nil, apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), name)).
@@ -61,9 +61,9 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 		},
 		"GivenNoPostgresInstances_ThenErrNotFound": {
 			name:        "one",
-			postgresqls: &vshnv1.VSHNPostgreSQLList{},
+			postgresqls: &vshnv1.XVSHNPostgreSQLList{},
 			backupInfo:  nil,
-			backupInfoCalls: func(provider mock_postgres.MocksgbackupProvider, name string) {
+			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
 				provider.EXPECT().
 					GetSGBackup(gomock.Any(), gomock.Any(), gomock.Any()).
 					Times(0)
@@ -81,7 +81,7 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 			s, backupProvider, postgresProvider := newMockedVSHNPostgresBackupStorage(t, ctrl)
 
 			postgresProvider.EXPECT().
-				ListVSHNPostgreSQL(gomock.Any(), gomock.Any()).
+				ListXVSHNPostgreSQL(gomock.Any(), gomock.Any()).
 				Return(tc.postgresqls, nil).
 				Times(1)
 

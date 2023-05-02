@@ -16,4 +16,6 @@ import (
 	_ "sigs.k8s.io/kind"
 	// To have protobuf generator
 	_ "k8s.io/code-generator"
+	// mock tool
+	_ "github.com/vektra/mockery/v2"
 )

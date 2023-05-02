@@ -4,7 +4,7 @@ cert_manager_sentinel = $(kind_dir)/cert_manager_sentinel
 
 .PHONY: local-install ## Install dependencies, AppCat APIServer and apply test cases
 local-install: export KUBECONFIG = $(KIND_KUBECONFIG)
-local-install: local-debug appcat-apiserver apply-test-cases
+local-install: local-debug appcat-apiserver appcat-controller
 
 .PHONY: local-debug ## Install dependencies and apply test cases. API Server should be installed separately for debugging purposes
 local-debug: export KUBECONFIG = $(KIND_KUBECONFIG)
@@ -37,6 +37,11 @@ $(crossplane_sentinel): $(KIND_KUBECONFIG)
 		--namespace syn-crossplane \
 		--set "args[0]='--debug'" \
 		--set "args[1]='--enable-composition-revisions'" \
+		--set "args[2]='--enable-composition-functions'" \
+		--set "args[3]='--enable-environment-configs'" \
+		--set "xfn.enabled=true" \
+		--set "xfn.image.repository=ghcr.io/vshn/appcat-comp-functions" \
+		--set "xfn.image.tag=latest" \
 		--set webhooks.enabled=true \
 		--wait
 	@touch $@
@@ -66,11 +71,20 @@ $(cert_manager_sentinel): $(KIND_KUBECONFIG)
 appcat-apiserver: export KUBECONFIG = $(KIND_KUBECONFIG)
 appcat-apiserver: export IMG_TAG=v0.0.1
 appcat-apiserver: export CONTAINER_IMAGE = ghcr.io/vshn/appcat-apiserver:${IMG_TAG}
-appcat-apiserver: install-dependencies
-	kubectl apply -f config/namespace.yaml
-	kubectl apply -f config/
-	yq e '.spec.template.spec.containers[0].image=strenv(CONTAINER_IMAGE)' config/aggregated-apiserver.yaml | kubectl apply -f -
-	yq e '.spec.insecureSkipTLSVerify=true' config/apiservice.yaml | kubectl apply -f -
+appcat-apiserver: local-debug apply-test-cases
+	kubectl apply -f config/apiserver/namespace.yaml
+	kubectl apply -f config/apiserver
+	yq e '.spec.template.spec.containers[0].image=strenv(CONTAINER_IMAGE)' config/apiserver/aggregated-apiserver.yaml | kubectl apply -f -
+	yq e '.spec.insecureSkipTLSVerify=true' config/apiserver/apiservice.yaml | kubectl apply -f -
+
+.PHONY: appcat-controller ## Installs AppCat APIServer in kind cluster
+appcat-controller: export KUBECONFIG = $(KIND_KUBECONFIG)
+appcat-controller: export IMG_TAG=v0.0.1
+appcat-controller: export CONTAINER_IMAGE = ghcr.io/vshn/appcat-apiserver:${IMG_TAG}
+appcat-controller: local-debug apply-test-cases
+	kubectl apply -f config/controller/namespace.yaml
+	kubectl apply -f config/controller
+	yq e '.spec.template.spec.containers[0].image=strenv(CONTAINER_IMAGE)' config/controller/deployment.yaml | kubectl apply -f -
 
 .PHONY: .wait-provider
 .wait-provider:

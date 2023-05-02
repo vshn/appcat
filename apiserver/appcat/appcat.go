@@ -43,11 +43,11 @@ type appcatStorage struct {
 	compositions compositionProvider
 }
 
-func (s appcatStorage) New() runtime.Object {
+func (s *appcatStorage) New() runtime.Object {
 	return &v1.AppCat{}
 }
 
-func (s appcatStorage) Destroy() {}
+func (s *appcatStorage) Destroy() {}
 
 var _ rest.Scoper = &appcatStorage{}
 var _ rest.Storage = &appcatStorage{}

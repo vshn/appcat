@@ -46,6 +46,18 @@ spec:
                       description: Backup contains settings to control the backups
                         of an instance.
                       properties:
+                        deletionProtection:
+                          default: true
+                          description: DeletionProtection will protect the instance
+                            from being deleted for the given retention time. This
+                            is enabled by default.
+                          type: boolean
+                        deletionRetention:
+                          default: 7
+                          description: DeletionRetention specifies in days how long
+                            the instance should be kept after deletion. The default
+                            is keeping it one week.
+                          type: integer
                         retention:
                           default: 6
                           pattern: ^[1-9][0-9]*$
@@ -59,6 +71,7 @@ spec:
                           type: string
                       type: object
                     maintenance:
+                      default: {}
                       description: Maintenance contains settings to control the maintenance
                         of an instance.
                       properties:
@@ -66,7 +79,7 @@ spec:
                           default: tuesday
                           description: DayOfWeek specifies at which weekday the maintenance
                             is held place. Allowed values are [monday, tuesday, wednesday,
-                            thursday, friday, saturday, sunday, never]
+                            thursday, friday, saturday, sunday]
                           enum:
                             - monday
                             - tuesday
@@ -75,7 +88,6 @@ spec:
                             - friday
                             - saturday
                             - sunday
-                            - never
                           type: string
                         timeOfDay:
                           default: '22:30:00'
@@ -157,27 +169,143 @@ spec:
                         a service.
                       properties:
                         cpu:
-                          default: 600m
                           description: CPU defines the amount of Kubernetes CPUs for
                             an instance.
                           type: string
                         disk:
-                          default: 5Gi
                           description: Disk defines the amount of disk space for an
                             instance.
                           type: string
                         memory:
-                          default: 3500Mi
                           description: Memory defines the amount of memory in units
                             of bytes for an instance.
                           type: string
+                        plan:
+                          default: standard-2
+                          description: |
+                            Plan is the name of the resource plan that defines the compute resources.
+
+                            The following plans are available:
+
+                              plus-2 - CPU: 400m; Memory: 1728Mi; Disk: 20Gi - Will be scheduled on APPUiO Cloud plus nodes
+
+                              plus-4 - CPU: 900m; Memory: 3776Mi; Disk: 40Gi - Will be scheduled on APPUiO Cloud plus nodes
+
+                              standard-2 - CPU: 400m; Memory: 1728Mi; Disk: 20Gi
+
+                              standard-4 - CPU: 900m; Memory: 3776Mi; Disk: 40Gi
+                          enum:
+                            - plus-2
+                            - plus-4
+                            - standard-2
+                            - standard-4
+                          type: string
+                        requests:
+                          description: Requests defines CPU and memory requests for
+                            an instance
+                          properties:
+                            cpu:
+                              description: CPU defines the amount of Kubernetes CPUs
+                                for an instance.
+                              type: string
+                            memory:
+                              description: Memory defines the amount of memory in
+                                units of bytes for an instance.
+                              type: string
+                          type: object
                       type: object
                   type: object
               type: object
             status:
               description: Status reflects the observed state of a VSHNPostgreSQL.
               properties:
-                certificateDebug:
+                ObjectBackupConfigConditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        description: LastTransitionTime is the last time the condition
+                          transitioned from one status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: Message is a human-readable message indicating
+                          details about the transition.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: ObservedGeneration represents the .metadata.generation
+                          that the condition was set based upon. For instance, if
+                          .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration
+                          is 9, the condition is out of date with respect to the current
+                          state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: Reason contains a programmatic identifier indicating
+                          the reason for the condition's last transition.
+                        maxLength: 1024
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False,
+                          Unknown.
+                        enum:
+                          - 'True'
+                          - 'False'
+                          - Unknown
+                        type: string
+                      type:
+                        description: Type of condition.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    type: object
+                  type: array
+                ObjectBucketConditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        description: LastTransitionTime is the last time the condition
+                          transitioned from one status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: Message is a human-readable message indicating
+                          details about the transition.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: ObservedGeneration represents the .metadata.generation
+                          that the condition was set based upon. For instance, if
+                          .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration
+                          is 9, the condition is out of date with respect to the current
+                          state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: Reason contains a programmatic identifier indicating
+                          the reason for the condition's last transition.
+                        maxLength: 1024
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False,
+                          Unknown.
+                        enum:
+                          - 'True'
+                          - 'False'
+                          - Unknown
+                        type: string
+                      type:
+                        description: Type of condition.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    type: object
+                  type: array
+                certificateConditions:
                   items:
                     properties:
                       lastTransitionTime:
@@ -224,7 +352,7 @@ spec:
                   description: InstanceNamespace contains the name of the namespace
                     where the instance resides
                   type: string
-                localCADebug:
+                localCAConditions:
                   items:
                     properties:
                       lastTransitionTime:
@@ -267,7 +395,7 @@ spec:
                         type: string
                     type: object
                   type: array
-                namespaceDebug:
+                namespaceConditions:
                   items:
                     properties:
                       lastTransitionTime:
@@ -310,7 +438,7 @@ spec:
                         type: string
                     type: object
                   type: array
-                networkPolicyDebug:
+                networkPolicyConditions:
                   items:
                     properties:
                       lastTransitionTime:
@@ -353,7 +481,7 @@ spec:
                         type: string
                     type: object
                   type: array
-                pgclusterDebug:
+                pgclusterConditions:
                   items:
                     properties:
                       lastTransitionTime:
@@ -396,7 +524,7 @@ spec:
                         type: string
                     type: object
                   type: array
-                pgconfigDebug:
+                pgconfigConditions:
                   items:
                     properties:
                       lastTransitionTime:
@@ -484,7 +612,7 @@ spec:
                         type: string
                     type: object
                   type: array
-                profileDebug:
+                profileConditions:
                   items:
                     properties:
                       lastTransitionTime:
@@ -527,93 +655,7 @@ spec:
                         type: string
                     type: object
                   type: array
-                s3BackupConfigDebug:
-                  items:
-                    properties:
-                      lastTransitionTime:
-                        description: LastTransitionTime is the last time the condition
-                          transitioned from one status to another.
-                        format: date-time
-                        type: string
-                      message:
-                        description: Message is a human-readable message indicating
-                          details about the transition.
-                        maxLength: 32768
-                        type: string
-                      observedGeneration:
-                        description: ObservedGeneration represents the .metadata.generation
-                          that the condition was set based upon. For instance, if
-                          .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration
-                          is 9, the condition is out of date with respect to the current
-                          state of the instance.
-                        format: int64
-                        minimum: 0
-                        type: integer
-                      reason:
-                        description: Reason contains a programmatic identifier indicating
-                          the reason for the condition's last transition.
-                        maxLength: 1024
-                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
-                        type: string
-                      status:
-                        description: Status of the condition, one of True, False,
-                          Unknown.
-                        enum:
-                          - 'True'
-                          - 'False'
-                          - Unknown
-                        type: string
-                      type:
-                        description: Type of condition.
-                        maxLength: 316
-                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
-                        type: string
-                    type: object
-                  type: array
-                s3BucketDebug:
-                  items:
-                    properties:
-                      lastTransitionTime:
-                        description: LastTransitionTime is the last time the condition
-                          transitioned from one status to another.
-                        format: date-time
-                        type: string
-                      message:
-                        description: Message is a human-readable message indicating
-                          details about the transition.
-                        maxLength: 32768
-                        type: string
-                      observedGeneration:
-                        description: ObservedGeneration represents the .metadata.generation
-                          that the condition was set based upon. For instance, if
-                          .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration
-                          is 9, the condition is out of date with respect to the current
-                          state of the instance.
-                        format: int64
-                        minimum: 0
-                        type: integer
-                      reason:
-                        description: Reason contains a programmatic identifier indicating
-                          the reason for the condition's last transition.
-                        maxLength: 1024
-                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
-                        type: string
-                      status:
-                        description: Status of the condition, one of True, False,
-                          Unknown.
-                        enum:
-                          - 'True'
-                          - 'False'
-                          - Unknown
-                        type: string
-                      type:
-                        description: Type of condition.
-                        maxLength: 316
-                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
-                        type: string
-                    type: object
-                  type: array
-                secretDebug:
+                secretConditions:
                   items:
                     properties:
                       lastTransitionTime:

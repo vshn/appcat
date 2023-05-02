@@ -19,18 +19,7 @@ func newAPIServerCMD() *cobra.Command {
 	var appcatEnabled, vshnBackupsEnabled bool
 
 	if os.Args[1] == apiServerCMDStr {
-		appcatEnabled, err := strconv.ParseBool(os.Getenv("APPCAT_HANDLER_ENABLED"))
-		if err != nil {
-			log.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
-		}
-		vshnBackupsEnabled, err := strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
-		if err != nil {
-			log.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
-		}
-
-		if !appcatEnabled && !vshnBackupsEnabled {
-			log.Fatal("Handlers are not enabled, please set at least one of APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to True")
-		}
+		appcatEnabled, vshnBackupsEnabled = parseEnvVariables()
 	}
 
 	b := builder.APIServer
@@ -55,4 +44,20 @@ func newAPIServerCMD() *cobra.Command {
 		log.Fatal(err, "Unable to load build API Server")
 	}
 	return cmd
+}
+
+func parseEnvVariables() (bool, bool) {
+	appcatEnabled, err := strconv.ParseBool(os.Getenv("APPCAT_HANDLER_ENABLED"))
+	if err != nil {
+		log.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
+	}
+	vshnBackupsEnabled, err := strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
+	if err != nil {
+		log.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
+	}
+
+	if !appcatEnabled && !vshnBackupsEnabled {
+		log.Fatal("Handlers are not enabled, please set at least one of APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to True")
+	}
+	return appcatEnabled, vshnBackupsEnabled
 }

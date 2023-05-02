@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	finalizerName  = "appcat.io/deletionProtection"
-	currentTimeKey = "now"
+	finalizerName = "appcat.io/deletionProtection"
 )
 
 type jsonOp string

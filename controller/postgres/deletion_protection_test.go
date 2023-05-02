@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+var currentTimeKey = "now"
+
 func Test_Handle(t *testing.T) {
 	previousDay := getCurrentTime().AddDate(0, 0, -1)
 	tests := map[string]struct {

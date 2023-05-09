@@ -47,13 +47,14 @@ On some docker distributions the host IP is accessible via `host.docker.internal
 For Lima distribution the host IP is accessible via `host.lima.internal`.
 
 ```bash
-make local-debug
+# Run this command in kindev -> https://github.com/vshn/kindev
+make appcat-apiserver
 
-HOSTIP=$(docker inspect appcat-apiserver-v1.24.0-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway')
+HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway')
 # HOSTIP=host.docker.internal # On some docker distributions
 # HOSTIP=host.lima.internal # On lima distributions
 
-kind get kubeconfig --name appcat-apiserver-v1.24.0  > ~/.kube/config 
+kind get kubeconfig --name kindev  > ~/.kube/config 
 
 cat <<EOF | sed -e "s/172.21.0.1/$HOSTIP/g" | kubectl apply -f -
 apiVersion: apiregistration.k8s.io/v1
@@ -87,13 +88,11 @@ spec:
   type: ExternalName
   externalName: 172.21.0.1 # Change to host IP
 EOF
-
-make apply-test-cases
 ```
 
 After the above steps just run the API server via IDE with the following arguments.
 ```
-apiserver --secure-port=9443 --kubeconfig=$HOME/.kube/config --authentication-kubeconfig=$HOME/.kube/config --authorization-kubeconfig=$HOME/.kube/config --tls-cert-file=dev/certificates/apiserver.crt --tls-private-key-file=dev/certificates/apiserver.key
+apiserver --secure-port=9443 --kubeconfig=<your-home-path>/.kube/config --authentication-kubeconfig=<your-home-path>/.kube/config --authorization-kubeconfig=<your-home-path>/.kube/config
 ```
 
 ## Protobuf installation

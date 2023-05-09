@@ -12,4 +12,7 @@ appcat-apiserver
 .cache
 .public
 
+# debug
+apiserver.local.config
+
 

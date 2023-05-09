@@ -45,8 +45,6 @@ $(protoc_bin): | $(go_bin)
 	@unzip $(go_bin)/protoc.zip -d .work
 	@rm $(go_bin)/protoc.zip
 
-include kind/kind.mk
-include dev/local.mk
 -include docs/antora-preview.mk docs/antora-build.mk
 
 .PHONY: help
@@ -58,11 +56,11 @@ generate: export PATH := $(go_bin):$(PATH)
 generate: $(protoc_bin) ## Generate code with controller-gen and protobuf.
 	go generate ./...
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths="./apis/..."
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="{./apis/...,./apiserver/...}" output:artifacts:config=config/
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="{./apis/...,./apiserver/...}" output:artifacts:config=config/apiserver
 	go run k8s.io/code-generator/cmd/go-to-protobuf \
 		--packages=github.com/vshn/appcat-apiserver/apis/appcat/v1 \
 		--output-base=./.work/tmp \
-		--go-header-file=./hack/boilerplate.txt  \
+		--go-header-file=./apiserver/hack/boilerplate.txt  \
         --apimachinery-packages='-k8s.io/apimachinery/pkg/util/intstr,-k8s.io/apimachinery/pkg/api/resource,-k8s.io/apimachinery/pkg/runtime/schema,-k8s.io/apimachinery/pkg/runtime,-k8s.io/apimachinery/pkg/apis/meta/v1,-k8s.io/apimachinery/pkg/apis/meta/v1beta1,-k8s.io/api/core/v1,-k8s.io/api/rbac/v1' \
         --proto-import=./.work/kubernetes/vendor/ && \
     	mv ./.work/tmp/github.com/vshn/appcat-apiserver/apis/appcat/v1/generated.pb.go ./apis/appcat/v1/ && \

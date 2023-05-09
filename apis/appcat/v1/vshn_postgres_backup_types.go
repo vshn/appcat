@@ -8,7 +8,7 @@ import (
 )
 
 // +kubebuilder:rbac:groups="stackgres.io",resources=sgbackups,verbs=get;list;watch
-// +kubebuilder:rbac:groups="vshn.appcat.vshn.io",resources=vshnpostgresqls,verbs=get;list;watch
+// +kubebuilder:rbac:groups="vshn.appcat.vshn.io",resources=xvshnpostgresqls,verbs=get;list;watch
 
 var (
 	// ResourceBackup is the name of this backup resource in plural form

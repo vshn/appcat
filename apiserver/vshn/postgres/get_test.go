@@ -2,8 +2,8 @@ package postgres
 
 import (
 	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
+	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
 	"github.com/vshn/appcat-apiserver/test/mocks"
-	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"testing"
 

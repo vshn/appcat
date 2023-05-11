@@ -5,8 +5,8 @@ import (
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
 	"github.com/vshn/appcat-apiserver/comp-functions/runtime"
-	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	v1 "k8s.io/api/core/v1"
 	"testing"
 

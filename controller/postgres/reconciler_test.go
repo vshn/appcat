@@ -8,7 +8,6 @@ import (
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	v1 "github.com/vshn/component-appcat/apis/vshn/v1"
-	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,7 +23,7 @@ var (
 )
 
 func init() {
-	_ = vshnv1.AddToScheme(s)
+	_ = v1.AddToScheme(s)
 	_ = corev1.AddToScheme(s)
 	_ = xkube.SchemeBuilder.AddToScheme(s)
 }
@@ -262,7 +261,7 @@ func Test_Reconcile(t *testing.T) {
 			assert.Equal(t, tc.expectedResult, result)
 
 			// Assert that the composite finalizers are as expected
-			resultComposite := &vshnv1.XVSHNPostgreSQL{}
+			resultComposite := &v1.XVSHNPostgreSQL{}
 			getObjectToAssert(t, resultComposite, fclient, client.ObjectKeyFromObject(&tc.inst))
 
 			// Assert that the namespace also has the finalizers

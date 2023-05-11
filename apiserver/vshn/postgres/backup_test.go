@@ -4,7 +4,7 @@ import (
 	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
 	"github.com/vshn/appcat-apiserver/test/mocks"
 
-	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/registry/rest"

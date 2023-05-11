@@ -46,6 +46,7 @@ $(protoc_bin): | $(go_bin)
 	@rm $(go_bin)/protoc.zip
 
 -include docs/antora-preview.mk docs/antora-build.mk
+-include apis/generate.mk
 
 .PHONY: help
 help: ## Display this help.
@@ -108,4 +109,4 @@ docker-push: docker-build ## Push docker image with the manager.
 
 .PHONY: clean
 clean:
-	rm -rf bin/ appcat-apiserver .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config
+	rm -rf bin/ appcat-apiserver .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated

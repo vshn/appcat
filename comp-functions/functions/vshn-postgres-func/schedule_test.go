@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
 
 	fnv1aplha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 )

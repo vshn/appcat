@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
 	"github.com/vshn/appcat-apiserver/test/mocks"
-	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 )

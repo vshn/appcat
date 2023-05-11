@@ -18,8 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	appcatv1 "github.com/vshn/component-appcat/apis/v1"
-	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
+	v1 "github.com/vshn/appcat-apiserver/apis/v1"
+	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
 )
 
 func TestVSHNPostgreSQL_StartStop(t *testing.T) {
@@ -290,7 +290,7 @@ func newTestVSHNPostgre(namespace, name, cred string) *vshnv1.VSHNPostgreSQL {
 			Namespace: namespace,
 		},
 		Spec: vshnv1.VSHNPostgreSQLSpec{
-			WriteConnectionSecretToRef: appcatv1.LocalObjectReference{
+			WriteConnectionSecretToRef: v1.LocalObjectReference{
 				Name: cred,
 			},
 		},

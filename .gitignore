@@ -15,4 +15,5 @@ appcat-apiserver
 # debug
 apiserver.local.config
 
-
+# Kubebuilder
+/apis/generated/

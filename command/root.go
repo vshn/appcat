@@ -8,6 +8,11 @@ import (
 )
 
 var (
+	metricsAddr, healthAddr, probeAddr string
+	leaderElect, enableVSHNPostgreSQL  bool
+)
+
+var (
 	logLevel  int
 	logFormat string
 	rootCmd   = &cobra.Command{
@@ -31,7 +36,7 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.AddCommand(controller, apiServerCmd)
+	rootCmd.AddCommand(xpostgresql, apiServerCmd, sliProber)
 }
 
 func setupLogging(cmd *cobra.Command, _ []string) error {

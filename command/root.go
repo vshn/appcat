@@ -36,7 +36,7 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.AddCommand(xpostgresql, apiServerCmd, sliProber)
+	rootCmd.AddCommand(xpostgresql, apiServerCmd, sliProber, grpcCommand)
 }
 
 func setupLogging(cmd *cobra.Command, _ []string) error {

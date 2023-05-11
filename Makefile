@@ -107,6 +107,5 @@ docker-push: docker-build ## Push docker image with the manager.
 	docker push ${GHCR_IMG}
 
 .PHONY: clean
-clean: kind-clean
 clean:
-	rm -rf bin/ appcat-apiserver .work/ docs/node_modules $docs_out_dir .public .cache
+	rm -rf bin/ appcat-apiserver .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config

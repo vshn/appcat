@@ -1,0 +1,10 @@
+= VSHN Postgres Function-io
+
+The set of transformation go functions applied to a VSHN Postgres composition.
+
+== Transformation URL-CONNECTION-DETAILS
+
+The function URL-CONNECTION-DETAILS adds a new `POSTGRES_URL` entry in  the connection detail of the composite. The value is defined as `postgres://user:password@host:port/db`. Once it is executed the client has access to the URL of its database via connection secret.
+
+
+

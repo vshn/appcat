@@ -1,0 +1,26 @@
+= Runtime Library
+
+The runtime library helps to facilitate the implementation of transformation go functions.
+It allows to operate on underlying function-io resources and composites. There are 2 objects accessible
+from a runtime object:
+
+- `Observed` - the observed state of the XR and any existing composed resources.
+- `Desired` - the desired state of the XR and any composed resources.
+
+For more information on how function-io operates check the https://docs.crossplane.io/knowledge-base/guides/composition-functions/#functionio[documentation]
+from Crossplane.
+
+== Desired Object
+
+The runtime desired object has methods to obtain and update desired resources from function-io.
+
+== Observed Object
+
+The runtime observed object has methods to obtain observed resources from function-io.
+
+== Result Object
+
+Any transformation go function expects a `runtime.Result` object. This object type wraps the Crossplane
+own Result type. The runtime library has simple functions that allows creation of `runtime.Result` objects
+in various states - `fatal`, `warning` or `normal`. To understand the difference between these states
+consult crossplane https://docs.crossplane.io/knowledge-base/guides/composition-functions/#functionio[documentation].

@@ -1,0 +1,759 @@
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: FunctionIO
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"vshn.appcat.vshn.io/v1","kind":"VSHNPostgreSQL","metadata":{"annotations":{},"name":"pgsql","namespace":"glrf-test"},"spec":{"parameters":{"service":{"majorVersion":"15"}},"writeConnectionSecretToRef":{"name":"postgres-creds"}}}
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: glrf-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+        resourceVersion: "481074263"
+        uid: 0cbf744b-7529-4d33-afe6-26bc5a575f7c
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: glrf-test
+        compositionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          monitoring:
+            alertmanagerConfigSecretRef: test
+            alertmanagerConfigTemplate:
+              route:
+                groupBy: [ 'job' ]
+                groupWait: 30s
+                groupInterval: 5m
+                repeatInterval: 12h
+                receiver: 'webhook'
+              receivers:
+                - name: 'webhook'
+                  webhookConfigs:
+                    - url: 'http://example.com/'
+          encryption:
+            enabled: "true"
+          backup:
+            retention: 6
+            schedule: 0 22 * * *
+          maintenance:
+            dayOfWeek: tuesday
+            timeOfDay: "22:30:00"
+          service:
+            majorVersion: "15"
+          size:
+            cpu: 600m
+            disk: 5Gi
+            memory: 3500Mi
+            plan: standard-2
+        resourceRefs:
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: ns-observer-pgsql-gc9x4
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: vshn-postgresql-pgsql-gc9x4
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-service-rolebinding
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-localca
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-certificate
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-profile
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-pgconf
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-cluster
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-connection
+          - apiVersion: appcat.vshn.io/v1
+            kind: XObjectBucket
+            name: pgsql-gc9x4
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-object-storage
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-maintenanceserviceaccount
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-maintenancerole
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-maintenancerolebinding
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-maintenancejob
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-podmonitor
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-prometheusrule
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-network-policy
+        writeConnectionSecretToRef:
+          name: 0cbf744b-7529-4d33-afe6-26bc5a575f7c
+          namespace: syn-crossplane
+      status:
+        certificateConditions:
+          - lastTransitionTime: "2023-03-21T16:53:16Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:52Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        conditions:
+          - lastTransitionTime: "2023-03-21T16:52:32Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+          - lastTransitionTime: "2023-03-23T09:01:04Z"
+            reason: Available
+            status: "True"
+            type: Ready
+        connectionDetails:
+          lastPublishedTime: "2023-03-21T16:54:36Z"
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+        localCAConditions:
+          - lastTransitionTime: "2023-03-21T16:53:15Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:52Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        namespaceConditions:
+          - lastTransitionTime: "2023-03-21T16:53:14Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:51Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        networkPolicyConditions:
+          - lastTransitionTime: "2023-03-21T16:53:24Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:53:00Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        pgclusterConditions:
+          - lastTransitionTime: "2023-03-21T16:53:44Z"
+            reason: Available
+            status: "True"
+            type: Ready
+        pgconfigConditions:
+          - lastTransitionTime: "2023-03-21T16:53:16Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:52Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        profileConditions:
+          - lastTransitionTime: "2023-03-21T16:53:16Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:52Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        secretConditions:
+          - lastTransitionTime: "2023-03-21T16:54:07Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+          - lastTransitionTime: "2023-03-21T16:54:07Z"
+            reason: Available
+            status: "True"
+            type: Ready
+  resources:
+    - name: connection
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-connection
+          namespace: test
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: pgsql-connection
+                namespace: vshn-postgresql-pgsql-gc9x4
+              data:
+                PPOSTGRESQL_DB: cG9zdGdyZXM=
+                POSTGRESQL_HOST: cGdzcWwtYXBwMS1wcm9kLXpkejRzLnZzaG4tcG9zdGdyZXNxbC1wZ3NxbC1hcHAxLXByb2QtemR6NHMuc3ZjLmNsdXN0ZXIubG9jYWw=
+                POSTGRESQL_PASSWORD: NTY4MC0xNTI2LTRmMGQtYTAw
+                POSTGRESQL_PORT: NTQzMg==
+                POSTGRESQL_USER: cG9zdGdyZXM=
+          providerConfigRef:
+            name: kubernetes
+          references:
+            - patchesFrom:
+                apiVersion: v1
+                fieldPath: data.superuser-password
+                kind: Secret
+                name: ""
+                namespace: ""
+              toFieldPath: data.POSTGRESQL_PASSWORD
+            - patchesFrom:
+                apiVersion: v1
+                fieldPath: data[ca.crt]
+                kind: Secret
+                name: tls-certificate
+                namespace: ""
+              toFieldPath: data[ca.crt]
+            - patchesFrom:
+                apiVersion: v1
+                fieldPath: data[tls.crt]
+                kind: Secret
+                name: tls-certificate
+                namespace: ""
+              toFieldPath: data[tls.crt]
+            - patchesFrom:
+                apiVersion: v1
+                fieldPath: data[tls.key]
+                kind: Secret
+                name: tls-certificate
+                namespace: ""
+              toFieldPath: data[tls.key]
+          writeConnectionSecretToRef:
+            name: ""
+            namespace: ""
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: pgsql-connection
+                namespace: vshn-postgresql-pgsql-gc9x4
+              data:
+                POSTGRESQL_DB: cG9zdGdyZXM=
+                POSTGRESQL_HOST: cGdzcWwtYXBwMS1wcm9kLXpkejRzLnZzaG4tcG9zdGdyZXNxbC1wZ3NxbC1hcHAxLXByb2QtemR6NHMuc3ZjLmNsdXN0ZXIubG9jYWw=
+                POSTGRESQL_PASSWORD: NTY4MC0xNTI2LTRmMGQtYTAw
+                POSTGRESQL_PORT: NTQzMg==
+                POSTGRESQL_USER: cG9zdGdyZXM=
+      connectionDetails:
+        - fromConnectionSecretKey: ca.crt
+          name: ca.crt
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: tls.crt
+          name: tls.crt
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: tls.key
+          name: tls.key
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_URL
+          name: POSTGRESQL_URL
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_DB
+          name: POSTGRESQL_DB
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_HOST
+          name: POSTGRESQL_HOST
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_PORT
+          name: POSTGRESQL_PORT
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_USER
+          name: POSTGRESQL_USER
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_PASSWORD
+          name: POSTGRESQL_PASSWORD
+          type: FromConnectionSecretKey
+      patches:
+        - fromFieldPath: status.conditions
+          toFieldPath: status.secretConditions
+          type: ToCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-connection'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/claim-name]
+          toFieldPath: spec.forProvider.manifest.metadata.name
+          transforms:
+            - string:
+                fmt: '%s-connection'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - combine:
+            strategy: string
+            string:
+              fmt: '%s.vshn-postgresql-%s.svc.cluster.local'
+            variables:
+              - fromFieldPath: metadata.labels[crossplane.io/composite]
+              - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.stringData.POSTGRESQL_HOST
+          type: CombineFromComposite
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[0].patchesFrom.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[0].patchesFrom.name
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.writeConnectionSecretToRef.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/claim-name]
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+            - string:
+                fmt: '%s-connection'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[1].patchesFrom.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[2].patchesFrom.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[3].patchesFrom.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"vshn.appcat.vshn.io/v1","kind":"VSHNPostgreSQL","metadata":{"annotations":{},"name":"pgsql","namespace":"glrf-test"},"spec":{"parameters":{"service":{"majorVersion":"15"}},"writeConnectionSecretToRef":{"name":"postgres-creds"}}}
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: glrf-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+        resourceVersion: "481074263"
+        uid: 0cbf744b-7529-4d33-afe6-26bc5a575f7c
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: glrf-test
+        compositionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          backup:
+            retention: 6
+            schedule: 0 22 * * *
+          maintenance:
+            dayOfWeek: tuesday
+            timeOfDay: "22:30:00"
+          service:
+            majorVersion: "15"
+          size:
+            cpu: 600m
+            disk: 5Gi
+            memory: 3500Mi
+            plan: standard-2
+        resourceRefs:
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: ns-observer-pgsql-gc9x4
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: vshn-postgresql-pgsql-gc9x4
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-service-rolebinding
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-localca
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-certificate
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-profile
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-pgconf
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-cluster
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-connection
+          - apiVersion: appcat.vshn.io/v1
+            kind: XObjectBucket
+            name: pgsql-gc9x4
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-object-storage
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-maintenanceserviceaccount
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-maintenancerole
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-maintenancerolebinding
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-maintenancejob
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-podmonitor
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-prometheusrule
+          - apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            name: pgsql-gc9x4-network-policy
+        writeConnectionSecretToRef:
+          name: 0cbf744b-7529-4d33-afe6-26bc5a575f7c
+          namespace: syn-crossplane
+      status:
+        certificateConditions:
+          - lastTransitionTime: "2023-03-21T16:53:16Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:52Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        conditions:
+          - lastTransitionTime: "2023-03-21T16:52:32Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+          - lastTransitionTime: "2023-03-23T09:01:04Z"
+            reason: Available
+            status: "True"
+            type: Ready
+        connectionDetails:
+          lastPublishedTime: "2023-03-21T16:54:36Z"
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+        localCAConditions:
+          - lastTransitionTime: "2023-03-21T16:53:15Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:52Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        namespaceConditions:
+          - lastTransitionTime: "2023-03-21T16:53:14Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:51Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        networkPolicyConditions:
+          - lastTransitionTime: "2023-03-21T16:53:24Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:53:00Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        pgclusterConditions:
+          - lastTransitionTime: "2023-03-21T16:53:44Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-23T09:00:30Z"
+            message: |
+              update failed: cannot apply object: cannot patch object: admission webhook
+              "sgcluster.stackgres-operator.syn-stackgres-operator" denied the request: Decrease
+              of persistent volume size is not supported'
+            reason: ReconcileError
+            status: "False"
+            type: Synced
+        pgconfigConditions:
+          - lastTransitionTime: "2023-03-21T16:53:16Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:52Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        profileConditions:
+          - lastTransitionTime: "2023-03-21T16:53:16Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2023-03-21T16:52:52Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+        secretConditions:
+          - lastTransitionTime: "2023-03-21T16:54:07Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+          - lastTransitionTime: "2023-03-21T16:54:07Z"
+            reason: Available
+            status: "True"
+            type: Ready
+  resources:
+    - name: connection
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-connection
+          namespace: test
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: pgsql-connection
+                namespace: vshn-postgresql-pgsql-gc9x4
+              data:
+                POSTGRESQL_PASSWORD: NjM5Yi05MDc2LTRkZTYtYTM1
+              stringData:
+                POSTGRESQL_DB: postgres
+                POSTGRESQL_HOST: pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc.cluster.local
+                POSTGRESQL_PORT: "5432"
+                POSTGRESQL_USER: postgres
+          providerConfigRef:
+            name: kubernetes
+          references:
+            - patchesFrom:
+                apiVersion: v1
+                fieldPath: data.superuser-password
+                kind: Secret
+                name: ""
+                namespace: ""
+              toFieldPath: data.POSTGRESQL_PASSWORD
+            - patchesFrom:
+                apiVersion: v1
+                fieldPath: data[ca.crt]
+                kind: Secret
+                name: tls-certificate
+                namespace: ""
+              toFieldPath: data[ca.crt]
+            - patchesFrom:
+                apiVersion: v1
+                fieldPath: data[tls.crt]
+                kind: Secret
+                name: tls-certificate
+                namespace: ""
+              toFieldPath: data[tls.crt]
+            - patchesFrom:
+                apiVersion: v1
+                fieldPath: data[tls.key]
+                kind: Secret
+                name: tls-certificate
+                namespace: ""
+              toFieldPath: data[tls.key]
+          writeConnectionSecretToRef:
+            name: ""
+            namespace: ""
+      connectionDetails:
+        - fromConnectionSecretKey: ca.crt
+          name: ca.crt
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: tls.crt
+          name: tls.crt
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: tls.key
+          name: tls.key
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_URL
+          name: POSTGRESQL_URL
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_DB
+          name: POSTGRESQL_DB
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_HOST
+          name: POSTGRESQL_HOST
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_PORT
+          name: POSTGRESQL_PORT
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_USER
+          name: POSTGRESQL_USER
+          type: FromConnectionSecretKey
+        - fromConnectionSecretKey: POSTGRESQL_PASSWORD
+          name: POSTGRESQL_PASSWORD
+          type: FromConnectionSecretKey
+      patches:
+        - fromFieldPath: status.conditions
+          toFieldPath: status.secretConditions
+          type: ToCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: metadata.name
+          transforms:
+            - string:
+                fmt: '%s-connection'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/claim-name]
+          toFieldPath: spec.forProvider.manifest.metadata.name
+          transforms:
+            - string:
+                fmt: '%s-connection'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - combine:
+            strategy: string
+            string:
+              fmt: '%s.vshn-postgresql-%s.svc.cluster.local'
+            variables:
+              - fromFieldPath: metadata.labels[crossplane.io/composite]
+              - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.forProvider.manifest.stringData.POSTGRESQL_HOST
+          type: CombineFromComposite
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[0].patchesFrom.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[0].patchesFrom.name
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.writeConnectionSecretToRef.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/claim-name]
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+            - string:
+                fmt: '%s-connection'
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[1].patchesFrom.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[2].patchesFrom.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+        - fromFieldPath: metadata.labels[crossplane.io/composite]
+          toFieldPath: spec.references[3].patchesFrom.namespace
+          transforms:
+            - string:
+                fmt: vshn-postgresql-%s
+                type: Format
+              type: string
+          type: FromCompositeFieldPath
+results:
+  - severity: Normal
+    message: "Successfully composed VSHNPostgreSQL database"

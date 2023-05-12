@@ -19,3 +19,12 @@ rules:
       - objects
     verbs:
       - delete
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+      - update
+      - list
+      - watch

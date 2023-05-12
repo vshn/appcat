@@ -32,13 +32,14 @@ func init() {
 func Test_Reconcile(t *testing.T) {
 	previousDay := metav1.Time{Time: getCurrentTime().AddDate(0, 0, -1)}
 	tests := []struct {
-		name              string
-		req               reconcile.Request
-		inst              v1.XVSHNPostgreSQL
-		expectFinalizer   bool
-		instanceNamespace string
-		expectedResult    ctrl.Result
-		expectedError     error
+		name                    string
+		req                     reconcile.Request
+		inst                    v1.XVSHNPostgreSQL
+		instanceNamespace       corev1.Namespace
+		expectedResult          ctrl.Result
+		expectedError           error
+		expectFinalizer         bool
+		expectInstanceNamespace bool
 	}{
 		{
 			name: "WhenInstanceNotDeletedAndNoFinalizer_ThenPatchAndDontDeleteInstanceAndRequeueDefault",
@@ -60,12 +61,17 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			instanceNamespace: "vshn-postgresql-instance-1",
-			expectFinalizer:   true,
+			instanceNamespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vshn-postgresql-instance-1",
+				},
+			},
+			expectFinalizer: true,
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: time.Second * 30,
 			},
+			expectInstanceNamespace: true,
 		},
 		{
 			name: "WhenInstanceNotDeletedAndFinalizer_ThenNoPatchAndDontDeleteInstanceAndRequeueDefault",
@@ -87,12 +93,17 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			instanceNamespace: "vshn-postgresql-instance-1",
-			expectFinalizer:   true,
+			instanceNamespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vshn-postgresql-instance-1",
+				},
+			},
+			expectFinalizer: true,
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: time.Second * 30,
 			},
+			expectInstanceNamespace: true,
 		},
 		{
 			name: "WhenInstanceDeletedAndFinalizer_ThenNoPatchAndDontDeleteInstanceAndRequeueDefault",
@@ -116,11 +127,17 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			instanceNamespace: "vshn-postgresql-instance-1",
+			instanceNamespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vshn-postgresql-instance-1",
+				},
+			},
+			expectFinalizer: true,
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: time.Hour * 24,
 			},
+			expectInstanceNamespace: true,
 		},
 		{
 			name: "WhenInstanceDeletedAndRetentionHigherThanCurrentTime_ThenDeleteInstanceAndRequeueDifferenceTime",
@@ -143,11 +160,16 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			instanceNamespace: "vshn-postgresql-instance-1",
+			instanceNamespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vshn-postgresql-instance-1",
+				},
+			},
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: time.Hour * 24,
 			},
+			expectInstanceNamespace: true,
 		},
 		{
 			name: "WhenInstanceDeletedAndRetentionLowerThanCurrentTime_ThenDeleteInstanceAndRequeueDifferenceTimeNegative",
@@ -170,18 +192,57 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			instanceNamespace: "vshn-postgresql-instance-1",
+			instanceNamespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vshn-postgresql-instance-1",
+				},
+			},
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: -time.Hour * 24,
 			},
+			expectInstanceNamespace: true,
+		},
+		{
+			name: "WhenInstanceNamespaceIsDeleted_ThenExpectRemoveFinalizerFromInstance",
+			req: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name: "instance-1",
+				},
+			},
+			inst: v1.XVSHNPostgreSQL{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "instance-1",
+					Finalizers: []string{finalizerName},
+				},
+				Spec: v1.VSHNPostgreSQLSpec{
+					Parameters: v1.VSHNPostgreSQLParameters{
+						Backup: v1.VSHNPostgreSQLBackup{
+							DeletionProtection: true,
+							DeletionRetention:  0,
+						},
+					},
+				},
+			},
+			instanceNamespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "vshn-postgresql-instance-1",
+					DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					Finalizers:        []string{finalizerName},
+				},
+			},
+			expectedResult: ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: time.Second * 30,
+			},
+			expectInstanceNamespace: false,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 
 			// GIVEN
-			fclient := fake.NewFakeClientWithScheme(s, &tc.inst, getInstanceNamespace(tc.instanceNamespace))
+			fclient := fake.NewFakeClientWithScheme(s, &tc.inst, &tc.instanceNamespace)
 			reconciler := XPostgreSQLDeletionProtectionReconciler{
 				Client: fclient,
 			}
@@ -203,21 +264,19 @@ func Test_Reconcile(t *testing.T) {
 
 			// Assert that the namespace also has the finalizers
 			resultNs := &corev1.Namespace{}
-			getObjectToAssert(t, resultNs, fclient, client.ObjectKey{Name: tc.instanceNamespace})
+			if tc.expectInstanceNamespace {
+				getObjectToAssert(t, resultNs, fclient, client.ObjectKeyFromObject(&tc.instanceNamespace))
+			} else {
+				assert.Error(t, fclient.Get(context.TODO(), client.ObjectKeyFromObject(&tc.instanceNamespace), resultNs))
+			}
 
 			if tc.expectFinalizer {
 				assert.Contains(t, resultComposite.GetFinalizers(), finalizerName)
 				assert.Contains(t, resultNs.GetFinalizers(), finalizerName)
+			} else {
+				assert.NotContains(t, resultComposite.GetFinalizers(), finalizerName)
 			}
 		})
-	}
-}
-
-func getInstanceNamespace(name string) *corev1.Namespace {
-	return &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
 	}
 }
 

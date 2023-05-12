@@ -247,3 +247,18 @@ if You want to run gRPC server in local kind cluster, please use:
         ```
 
 That's all - You can now run Your claims. This documentation and above workaround is just temporary solution, it should disappear once we actually implement composition functions. 
+
+
+## Generate XRDs with Go / KubeBuilder
+
+In `/apis` there is code in Go to generate the XRDs (composites) as this is in OpenAPI.
+This code generates the OpenAPI scheme using [Kubebuilder](https://kubebuilder.io/).
+
+See following pages for learning how to do that:
+- https://kubebuilder.io/reference/generating-crd.html
+- https://kubebuilder.io/reference/markers.html
+
+To run the composition generator, run `make generate-crd`.
+You need to have `go` installed for this to work.
+
+After that, you are able to update the golden files for the component: `make gen-golden-all`.

@@ -27,7 +27,7 @@ spec:
       securityContext:
         runAsNonRoot: true
       containers:
-      - image: ghcr.io/vshn/appcat-sli-exporter:latest
+      - image: ghcr.io/vshn/appcat-apiserver:common-repo
         name: manager
         securityContext:
           allowPrivilegeEscalation: false

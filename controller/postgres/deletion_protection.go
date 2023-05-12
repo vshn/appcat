@@ -112,10 +112,15 @@ func getPatchObjectFinalizer(log logr.Logger, inst client.Object, op jsonOp) (cl
 
 	log.V(1).Info("Index size", "size", index, "found finalizers", inst.GetFinalizers())
 
+	strIndex := strconv.Itoa(index)
+	if op == opAdd {
+		strIndex = "-"
+	}
+
 	patchOps := []jsonpatch{
 		{
 			Op:    op,
-			Path:  "/metadata/finalizers/" + strconv.Itoa(index),
+			Path:  "/metadata/finalizers/" + strIndex,
 			Value: finalizerName,
 		},
 	}

@@ -237,10 +237,11 @@ func getXVSHNPostgreSQL(addFinalizer bool, deletedTime *time.Time) v1.XVSHNPostg
 }
 
 func getPatch(op jsonOp) client.Patch {
+	if op == opAdd {
 	patchOps := []jsonpatch{
 		{
 			Op:    op,
-			Path:  "/metadata/finalizers/" + strconv.Itoa(0),
+			Path:  "/metadata/finalizers/" + strIndex,
 			Value: finalizerName,
 		},
 	}

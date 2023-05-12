@@ -5,38 +5,52 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/stretchr/testify/assert"
-	"github.com/vshn/appcat-apiserver/test/mocks"
 	v1 "github.com/vshn/component-appcat/apis/vshn/v1"
+	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+var (
+	s = runtime.NewScheme()
+)
+
+func init() {
+	_ = vshnv1.AddToScheme(s)
+	_ = corev1.AddToScheme(s)
+	_ = xkube.SchemeBuilder.AddToScheme(s)
+}
+
 func Test_Reconcile(t *testing.T) {
 	previousDay := metav1.Time{Time: getCurrentTime().AddDate(0, 0, -1)}
-	tests := map[string]struct {
-		req                 reconcile.Request
-		inst                v1.XVSHNPostgreSQL
-		getInstanceTimes    int
-		patchInstanceTimes  int
-		deleteInstanceTimes int
-		expectedResult      ctrl.Result
-		expectedError       error
+	tests := []struct {
+		name              string
+		req               reconcile.Request
+		inst              v1.XVSHNPostgreSQL
+		expectFinalizer   bool
+		instanceNamespace string
+		expectedResult    ctrl.Result
+		expectedError     error
 	}{
-		"WhenInstanceNotDeletedAndNoFinalizer_ThenPatchAndDontDeleteInstanceAndRequeueDefault": {
+		{
+			name: "WhenInstanceNotDeletedAndNoFinalizer_ThenPatchAndDontDeleteInstanceAndRequeueDefault",
 			req: reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Namespace: "instance-1",
-					Name:      "namespace-1",
+					Name: "instance-1",
 				},
 			},
 			inst: v1.XVSHNPostgreSQL{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "instance-1",
-					Namespace: "namespace-1",
+					Name:       "instance-1",
+					Finalizers: []string{"dummy"}, // we can't jsonpatch an empty array...
 				},
 				Spec: v1.VSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
@@ -46,25 +60,23 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    2,
-			patchInstanceTimes:  1,
-			deleteInstanceTimes: 0,
+			instanceNamespace: "vshn-postgresql-instance-1",
+			expectFinalizer:   true,
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: time.Second * 30,
 			},
 		},
-		"WhenInstanceNotDeletedAndFinalizer_ThenNoPatchAndDontDeleteInstanceAndRequeueDefault": {
+		{
+			name: "WhenInstanceNotDeletedAndFinalizer_ThenNoPatchAndDontDeleteInstanceAndRequeueDefault",
 			req: reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Namespace: "instance-1",
-					Name:      "namespace-1",
+					Name: "instance-1",
 				},
 			},
 			inst: v1.XVSHNPostgreSQL{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "instance-1",
-					Namespace:  "namespace-1",
 					Finalizers: []string{finalizerName},
 				},
 				Spec: v1.VSHNPostgreSQLSpec{
@@ -75,25 +87,23 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    2,
-			patchInstanceTimes:  0,
-			deleteInstanceTimes: 0,
+			instanceNamespace: "vshn-postgresql-instance-1",
+			expectFinalizer:   true,
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: time.Second * 30,
 			},
 		},
-		"WhenInstanceDeletedAndFinalizer_ThenNoPatchAndDontDeleteInstanceAndRequeueDefault": {
+		{
+			name: "WhenInstanceDeletedAndFinalizer_ThenNoPatchAndDontDeleteInstanceAndRequeueDefault",
 			req: reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Namespace: "instance-1",
-					Name:      "namespace-1",
+					Name: "instance-1",
 				},
 			},
 			inst: v1.XVSHNPostgreSQL{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "instance-1",
-					Namespace:         "namespace-1",
 					DeletionTimestamp: &previousDay,
 					Finalizers:        []string{finalizerName},
 				},
@@ -106,25 +116,22 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    2,
-			patchInstanceTimes:  0,
-			deleteInstanceTimes: 1,
+			instanceNamespace: "vshn-postgresql-instance-1",
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: time.Hour * 24,
 			},
 		},
-		"WhenInstanceDeletedAndRetentionHigherThanCurrentTime_ThenDeleteInstanceAndRequeueDifferenceTime": {
+		{
+			name: "WhenInstanceDeletedAndRetentionHigherThanCurrentTime_ThenDeleteInstanceAndRequeueDifferenceTime",
 			req: reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Namespace: "instance-1",
-					Name:      "namespace-1",
+					Name: "instance-1",
 				},
 			},
 			inst: v1.XVSHNPostgreSQL{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "instance-1",
-					Namespace:         "namespace-1",
 					DeletionTimestamp: &previousDay,
 				},
 				Spec: v1.VSHNPostgreSQLSpec{
@@ -136,25 +143,22 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    2,
-			patchInstanceTimes:  1,
-			deleteInstanceTimes: 1,
+			instanceNamespace: "vshn-postgresql-instance-1",
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: time.Hour * 24,
 			},
 		},
-		"WhenInstanceDeletedAndRetentionLowerThanCurrentTime_ThenDeleteInstanceAndRequeueDifferenceTimeNegative": {
+		{
+			name: "WhenInstanceDeletedAndRetentionLowerThanCurrentTime_ThenDeleteInstanceAndRequeueDifferenceTimeNegative",
 			req: reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Namespace: "instance-1",
-					Name:      "namespace-1",
+					Name: "instance-1",
 				},
 			},
 			inst: v1.XVSHNPostgreSQL{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "instance-1",
-					Namespace:         "namespace-1",
 					DeletionTimestamp: &previousDay,
 				},
 				Spec: v1.VSHNPostgreSQLSpec{
@@ -166,37 +170,21 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    2,
-			patchInstanceTimes:  1,
-			deleteInstanceTimes: 1,
+			instanceNamespace: "vshn-postgresql-instance-1",
 			expectedResult: ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: -time.Hour * 24,
 			},
 		},
 	}
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 
 			// GIVEN
-			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
-			mockedClient := mocks.NewMockClient(mockCtrl)
+			fclient := fake.NewFakeClientWithScheme(s, &tc.inst, getInstanceNamespace(tc.instanceNamespace))
 			reconciler := XPostgreSQLDeletionProtectionReconciler{
-				Client: mockedClient,
+				Client: fclient,
 			}
-
-			mockedClient.EXPECT().
-				Get(gomock.Any(), gomock.Any(), gomock.Any()).
-				MaxTimes(tc.getInstanceTimes)
-
-			mockedClient.EXPECT().
-				Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-				MaxTimes(tc.patchInstanceTimes)
-
-			mockedClient.EXPECT().
-				Delete(gomock.Any(), gomock.Any()).
-				MaxTimes(tc.deleteInstanceTimes)
 
 			// WHEN
 			result, err := reconciler.Reconcile(context.Background(), tc.req)
@@ -204,8 +192,30 @@ func Test_Reconcile(t *testing.T) {
 			// THEN
 			if tc.expectedError != nil {
 				assert.Error(t, tc.expectedError, err)
+			} else {
+				assert.NoError(t, err)
 			}
 			assert.Equal(t, tc.expectedResult, result)
+
+			// Assert that the composite finalizers are as expected
+			resultComposite := &vshnv1.XVSHNPostgreSQL{}
+			getObjectToAssert(t, resultComposite, fclient, client.ObjectKeyFromObject(&tc.inst))
+			if tc.expectFinalizer {
+				assert.Contains(t, resultComposite.GetFinalizers(), finalizerName)
+			}
 		})
 	}
+}
+
+func getInstanceNamespace(name string) *corev1.Namespace {
+	return &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+}
+
+func getObjectToAssert(t assert.TestingT, obj client.Object, fclient client.Client, key client.ObjectKey) {
+	err := fclient.Get(context.TODO(), key, obj)
+	assert.NoError(t, err)
 }

@@ -7,21 +7,32 @@ import (
 	"testing"
 	"time"
 
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	v1 "github.com/vshn/component-appcat/apis/vshn/v1"
-	apis "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var currentTimeKey = "now"
+var (
+	currentTimeKey = "now"
+)
+
+func init() {
+	_ = vshnv1.AddToScheme(s)
+	_ = corev1.AddToScheme(s)
+	_ = xkube.SchemeBuilder.AddToScheme(s)
+}
 
 func Test_Handle(t *testing.T) {
 	previousDay := getCurrentTime().AddDate(0, 0, -1)
 	tests := map[string]struct {
 		ctx           context.Context
-		obj           v1.XVSHNPostgreSQL
+		obj           vshnv1.XVSHNPostgreSQL
 		enabled       bool
 		retention     int
 		expectedPatch client.Patch
@@ -88,7 +99,7 @@ func Test_CheckRetention(t *testing.T) {
 	nextDay := getCurrentTime().AddDate(0, 0, 1)
 	tests := map[string]struct {
 		ctx        context.Context
-		obj        v1.XVSHNPostgreSQL
+		obj        vshnv1.XVSHNPostgreSQL
 		retention  int
 		expectedOp jsonOp
 	}{
@@ -139,7 +150,7 @@ func Test_GetRequeueTime(t *testing.T) {
 	previousDay := getCurrentTime().AddDate(0, 0, -1)
 	tests := map[string]struct {
 		ctx              context.Context
-		obj              v1.XVSHNPostgreSQL
+		obj              vshnv1.XVSHNPostgreSQL
 		deletionTime     *time.Time
 		retention        int
 		expectedDuration time.Duration
@@ -176,7 +187,7 @@ func Test_GetRequeueTime(t *testing.T) {
 
 func Test_GetPatchObjectFinalizer(t *testing.T) {
 	tests := map[string]struct {
-		obj           v1.XVSHNPostgreSQL
+		obj           vshnv1.XVSHNPostgreSQL
 		op            jsonOp
 		expectedPatch client.Patch
 	}{
@@ -218,21 +229,21 @@ func Test_GetPatchObjectFinalizer(t *testing.T) {
 	}
 }
 
-func transformToK8sTime(t *time.Time) *apis.Time {
+func transformToK8sTime(t *time.Time) *metav1.Time {
 	if t != nil {
-		temp := apis.NewTime(*t)
+		temp := metav1.NewTime(*t)
 		return &temp
 	}
 	return nil
 }
 
-func getXVSHNPostgreSQL(addFinalizer bool, deletedTime *time.Time) v1.XVSHNPostgreSQL {
-	obj := v1.XVSHNPostgreSQL{}
+func getXVSHNPostgreSQL(addFinalizer bool, deletedTime *time.Time) vshnv1.XVSHNPostgreSQL {
+	obj := vshnv1.XVSHNPostgreSQL{}
 	if addFinalizer {
 		obj.Finalizers = []string{finalizerName}
 	}
 	if deletedTime != nil {
-		obj.SetDeletionTimestamp(&apis.Time{Time: *deletedTime})
+		obj.SetDeletionTimestamp(&metav1.Time{Time: *deletedTime})
 	}
 	return obj
 }
@@ -251,4 +262,133 @@ func getPatch(op jsonOp) client.Patch {
 	}
 	patch, _ := json.Marshal(patchOps)
 	return client.RawPatch(types.JSONPatchType, patch)
+}
+
+func Test_instanceNamespaceDeleted(t *testing.T) {
+	tests := []struct {
+		name          string
+		want          jsonOp
+		wantDeleted   bool
+		wantFinalizer bool
+		wantErr       bool
+		instance      vshnv1.XVSHNPostgreSQL
+		namespace     corev1.Namespace
+		enabled       bool
+	}{
+		{
+			name:          "GivenEnabledAndNotDeleted_ThenExpectNoOpAndFinalizer",
+			want:          opNone,
+			wantFinalizer: true,
+			enabled:       true,
+			instance: vshnv1.XVSHNPostgreSQL{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "instance-1",
+				},
+			},
+			namespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vshn-postgresql-instance-1",
+				},
+			},
+		},
+		{
+			name:          "GivenEnabledAndDeleted_ThenExpectRemoveOpAndNoObject",
+			want:          opRemove,
+			wantFinalizer: false,
+			wantDeleted:   true,
+			enabled:       true,
+			instance: vshnv1.XVSHNPostgreSQL{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "instance-1",
+				},
+			},
+			namespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "vshn-postgresql-instance-1",
+					DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					Finalizers:        []string{finalizerName},
+				},
+			},
+		},
+		{
+			name:          "GivenNotEnabledAndNotDeleted_ThenExpectNoOpAndNoFinalizer",
+			want:          opNone,
+			wantFinalizer: false,
+			enabled:       false,
+			instance: vshnv1.XVSHNPostgreSQL{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "instance-1",
+				},
+			},
+			namespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vshn-postgresql-instance-1",
+				},
+			},
+		},
+		{
+			name:          "GivenNotEnabledAndNotFound_ThenExpectNoOpAndNoObject",
+			want:          opNone,
+			wantFinalizer: false,
+			wantDeleted:   true,
+			enabled:       false,
+			instance: vshnv1.XVSHNPostgreSQL{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "instance-1",
+				},
+			},
+			namespace: corev1.Namespace{},
+		},
+		{
+			name:          "GivenNotEnabledAndFinalizer_ThenExpectRemoveOpAndNoFinalizer",
+			want:          opRemove,
+			wantFinalizer: false,
+			enabled:       false,
+			instance: vshnv1.XVSHNPostgreSQL{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "instance-1",
+				},
+			},
+			namespace: corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "vshn-postgresql-instance-1",
+					Finalizers: []string{finalizerName},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			// Given
+			fclient := fake.NewFakeClientWithScheme(s, &tt.instance, &tt.namespace)
+			logger := logr.Discard()
+
+			// When
+			got, err := instanceNamespaceDeleted(context.TODO(), logger, &tt.instance, tt.enabled, fclient)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("instanceNamespaceDeleted() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			// Then
+			if got != tt.want {
+				t.Errorf("instanceNamespaceDeleted() = %v, want %v", got, tt.want)
+			}
+
+			resultNs := &corev1.Namespace{}
+			err = fclient.Get(context.TODO(), client.ObjectKey{Name: "vshn-postgresql-" + tt.instance.Name}, resultNs)
+
+			if tt.wantDeleted {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			if tt.wantFinalizer {
+				assert.Contains(t, resultNs.GetFinalizers(), finalizerName)
+			} else {
+				assert.NotContains(t, resultNs.GetFinalizers(), finalizerName)
+			}
+		})
+	}
 }

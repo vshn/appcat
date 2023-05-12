@@ -82,7 +82,11 @@ func (p *XPostgreSQLDeletionProtectionReconciler) deletePostgresDB(ctx context.C
 		},
 	}
 
-	return p.Delete(ctx, o)
+	err := p.Delete(ctx, o)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

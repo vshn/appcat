@@ -2,6 +2,9 @@ package postgres
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/vshn/appcat-apiserver/test/mocks"
@@ -10,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
-	"time"
 )
 
 func Test_Reconcile(t *testing.T) {
@@ -45,7 +46,7 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    1,
+			getInstanceTimes:    2,
 			patchInstanceTimes:  1,
 			deleteInstanceTimes: 0,
 			expectedResult: ctrl.Result{
@@ -74,7 +75,7 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    1,
+			getInstanceTimes:    2,
 			patchInstanceTimes:  0,
 			deleteInstanceTimes: 0,
 			expectedResult: ctrl.Result{
@@ -105,7 +106,7 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    1,
+			getInstanceTimes:    2,
 			patchInstanceTimes:  0,
 			deleteInstanceTimes: 1,
 			expectedResult: ctrl.Result{
@@ -135,7 +136,7 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    1,
+			getInstanceTimes:    2,
 			patchInstanceTimes:  1,
 			deleteInstanceTimes: 1,
 			expectedResult: ctrl.Result{
@@ -165,7 +166,7 @@ func Test_Reconcile(t *testing.T) {
 					},
 				},
 			},
-			getInstanceTimes:    1,
+			getInstanceTimes:    2,
 			patchInstanceTimes:  1,
 			deleteInstanceTimes: 1,
 			expectedResult: ctrl.Result{
@@ -187,7 +188,6 @@ func Test_Reconcile(t *testing.T) {
 
 			mockedClient.EXPECT().
 				Get(gomock.Any(), gomock.Any(), gomock.Any()).
-				SetArg(2, tc.inst).
 				MaxTimes(tc.getInstanceTimes)
 
 			mockedClient.EXPECT().

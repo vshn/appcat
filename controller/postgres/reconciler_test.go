@@ -200,8 +200,14 @@ func Test_Reconcile(t *testing.T) {
 			// Assert that the composite finalizers are as expected
 			resultComposite := &vshnv1.XVSHNPostgreSQL{}
 			getObjectToAssert(t, resultComposite, fclient, client.ObjectKeyFromObject(&tc.inst))
+
+			// Assert that the namespace also has the finalizers
+			resultNs := &corev1.Namespace{}
+			getObjectToAssert(t, resultNs, fclient, client.ObjectKey{Name: tc.instanceNamespace})
+
 			if tc.expectFinalizer {
 				assert.Contains(t, resultComposite.GetFinalizers(), finalizerName)
+				assert.Contains(t, resultNs.GetFinalizers(), finalizerName)
 			}
 		})
 	}

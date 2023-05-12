@@ -3,15 +3,16 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	v1 "github.com/vshn/component-appcat/apis/vshn/v1"
 	apis "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
-	"testing"
-	"time"
 )
 
 var currentTimeKey = "now"
@@ -237,7 +238,10 @@ func getXVSHNPostgreSQL(addFinalizer bool, deletedTime *time.Time) v1.XVSHNPostg
 }
 
 func getPatch(op jsonOp) client.Patch {
+	strIndex := strconv.Itoa(0)
 	if op == opAdd {
+		strIndex = "-"
+	}
 	patchOps := []jsonpatch{
 		{
 			Op:    op,

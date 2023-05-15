@@ -121,4 +121,4 @@ docker-push: docker-build ## Push docker image with the manager.
 
 .PHONY: clean
 clean:
-	rm -rf bin/ appcat-apiserver .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated
+	rm -rf bin/ appcat-apiserver .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated default.sock

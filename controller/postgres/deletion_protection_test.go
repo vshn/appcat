@@ -361,7 +361,10 @@ func Test_instanceNamespaceDeleted(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			// Given
-			fclient := fake.NewFakeClientWithScheme(s, &tt.instance, &tt.namespace)
+			fclient := fake.NewClientBuilder().
+				WithScheme(s).
+				WithRuntimeObjects(&tt.instance, &tt.namespace).
+				Build()
 			logger := logr.Discard()
 
 			// When

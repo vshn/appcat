@@ -242,7 +242,10 @@ func Test_Reconcile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			// GIVEN
-			fclient := fake.NewFakeClientWithScheme(s, &tc.inst, &tc.instanceNamespace)
+			fclient := fake.NewClientBuilder().
+				WithScheme(s).
+				WithObjects(&tc.inst, &tc.instanceNamespace).
+				Build()
 			reconciler := XPostgreSQLDeletionProtectionReconciler{
 				Client: fclient,
 			}

@@ -2,7 +2,7 @@ package sli_exporter
 
 import (
 	"context"
-	probes2 "github.com/vshn/appcat-apiserver/pkg/controller/sli-exporter/probes"
+	"github.com/vshn/appcat-apiserver/pkg/sli-exporter/probes"
 	"testing"
 	"time"
 
@@ -35,7 +35,7 @@ func TestVSHNPostgreSQL_StartStop(t *testing.T) {
 			Name:      "foo",
 		},
 	}
-	pi := probes2.ProbeInfo{
+	pi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "foo",
 		Namespace: "bar",
@@ -65,7 +65,7 @@ func TestVSHNPostgreSQL_StartStop_WithFializer(t *testing.T) {
 			Name:      "foo",
 		},
 	}
-	pi := probes2.ProbeInfo{
+	pi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "foo",
 		Namespace: "bar",
@@ -94,17 +94,17 @@ func TestVSHNPostgreSQL_Multi(t *testing.T) {
 		newTestVSHNPostgreCred("buzz", "creds"),
 	)
 
-	barPi := probes2.ProbeInfo{
+	barPi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "foo",
 		Namespace: "bar",
 	}
-	barerPi := probes2.ProbeInfo{
+	barerPi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "fooer",
 		Namespace: "bar",
 	}
-	buzzPi := probes2.ProbeInfo{
+	buzzPi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "foo",
 		Namespace: "buzz",
@@ -136,7 +136,7 @@ func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
 	r, manager, _ := setupVSHNPostgreTest(t,
 		db,
 	)
-	pi := probes2.ProbeInfo{
+	pi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "foo",
 		Namespace: "bar",
@@ -155,7 +155,7 @@ func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
 	r, manager, _ := setupVSHNPostgreTest(t,
 		db,
 	)
-	pi := probes2.ProbeInfo{
+	pi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "foo",
 		Namespace: "bar",
@@ -172,7 +172,7 @@ func TestVSHNPostgreSQL_Started_NoCreds_Probe_Failure(t *testing.T) {
 	r, manager, _ := setupVSHNPostgreTest(t,
 		db,
 	)
-	pi := probes2.ProbeInfo{
+	pi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "foo",
 		Namespace: "bar",
@@ -200,7 +200,7 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 		db,
 		cred,
 	)
-	r.PostgreDialer = func(service, name, namespace, dsn string, ops ...func(*pgxpool.Config) error) (*probes2.PostgreSQL, error) {
+	r.PostgreDialer = func(service, name, namespace, dsn string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 
 		assert.Equal(t, "VSHNPostgreSQL", service)
 		assert.Equal(t, "foo", name)
@@ -215,7 +215,7 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 			Name:      "foo",
 		},
 	}
-	pi := probes2.ProbeInfo{
+	pi := probes.ProbeInfo{
 		Service:   "VSHNPostgreSQL",
 		Name:      "foo",
 		Namespace: "bar",
@@ -231,8 +231,8 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 	assert.False(t, manager.probers[pi])
 }
 
-func fakePostgreDialer(service string, name string, namespace string, dsn string, ops ...func(*pgxpool.Config) error) (*probes2.PostgreSQL, error) {
-	p := &probes2.PostgreSQL{
+func fakePostgreDialer(service string, name string, namespace string, dsn string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+	p := &probes.PostgreSQL{
 		Service:   service,
 		Instance:  name,
 		Namespace: namespace,
@@ -243,22 +243,22 @@ func fakePostgreDialer(service string, name string, namespace string, dsn string
 var _ probeManager = &fakeProbeManager{}
 
 type fakeProbeManager struct {
-	probers map[probes2.ProbeInfo]bool
+	probers map[probes.ProbeInfo]bool
 }
 
 func newFakeProbeManager() *fakeProbeManager {
 	return &fakeProbeManager{
-		probers: map[probes2.ProbeInfo]bool{},
+		probers: map[probes.ProbeInfo]bool{},
 	}
 }
 
 // StartProbe implements probeManager
-func (m *fakeProbeManager) StartProbe(p probes2.Prober) {
+func (m *fakeProbeManager) StartProbe(p probes.Prober) {
 	m.probers[p.GetInfo()] = true
 }
 
 // StopProbe implements probeManager
-func (m *fakeProbeManager) StopProbe(p probes2.ProbeInfo) {
+func (m *fakeProbeManager) StopProbe(p probes.ProbeInfo) {
 	m.probers[p] = false
 }
 

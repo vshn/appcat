@@ -32,30 +32,6 @@ var GrpcCMD = &cobra.Command{
 	RunE:  executeGRPCServer,
 }
 
-var postgresFunctions = []runtime.Transform{
-	{
-		Name:          "url-connection-details",
-		TransformFunc: vpf.AddUrlToConnectionDetails,
-	},
-	{
-		Name:          "user-alerting",
-		TransformFunc: vpf.AddUserAlerting,
-	},
-	{
-		Name:          "random-default-schedule",
-		TransformFunc: vpf.TransformSchedule,
-	},
-	{
-		Name:          "encrypted-pvc-secret",
-		TransformFunc: vpf.AddPvcSecret,
-	},
-}
-
-type server struct {
-	pb.UnimplementedContainerizedFunctionRunnerServiceServer
-	logger logr.Logger
-}
-
 // Run will run the controller mode of the composition function runner.
 func executeGRPCServer(cmd *cobra.Command, _ []string) error {
 	log := logr.FromContextOrDiscard(cmd.Context())
@@ -83,29 +59,39 @@ func executeGRPCServer(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+var images = map[string][]runtime.Transform{
+	"postgresql": {
+		{
+			Name:          "url-connection-details",
+			TransformFunc: vpf.AddUrlToConnectionDetails,
+		},
+		{
+			Name:          "user-alerting",
+			TransformFunc: vpf.AddUserAlerting,
+		},
+		{
+			Name:          "random-default-schedule",
+			TransformFunc: vpf.TransformSchedule,
+		},
+		{
+			Name:          "encrypted-pvc-secret",
+			TransformFunc: vpf.AddPvcSecret,
+		},
+	},
+}
+
+type server struct {
+	pb.UnimplementedContainerizedFunctionRunnerServiceServer
+	logger logr.Logger
+}
+
 func (s *server) RunFunction(ctx context.Context, in *pb.RunFunctionRequest) (*pb.RunFunctionResponse, error) {
 	ctx = logr.NewContext(ctx, s.logger)
-	switch in.Image {
-	case "postgresql":
-		fnio, err := runtime.RunCommand(ctx, in.Input, postgresFunctions)
-		if err != nil {
-			return &pb.RunFunctionResponse{
-				Output: fnio,
-			}, status.Errorf(codes.Aborted, "Can't process request for PostgreSQL")
-		}
-		return &pb.RunFunctionResponse{
-			Output: fnio,
-		}, nil
-	case "redis":
-		return &pb.RunFunctionResponse{
-			// return what was sent as it's currently not supported
-			Output: in.Input,
-		}, status.Error(codes.Unimplemented, "Redis is not yet implemented")
-	default:
-		return &pb.RunFunctionResponse{
-			Output: []byte("Bad configuration"),
-		}, status.Error(codes.NotFound, "Unknown request")
+	fnio, err := runtime.RunCommand(ctx, in.Input, images[in.Image])
+	if err != nil {
+		err = status.Errorf(codes.Aborted, "Can't process request for PostgreSQL")
 	}
+	return &pb.RunFunctionResponse{Output: fnio}, err
 }
 
 // socket isn't removed after server stop listening and blocks another starts

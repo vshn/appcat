@@ -19,7 +19,7 @@ package sli_exporter
 import (
 	"context"
 	"fmt"
-	probes2 "github.com/vshn/appcat-apiserver/pkg/controller/sli-exporter/probes"
+	"github.com/vshn/appcat-apiserver/pkg/sli-exporter/probes"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,12 +43,12 @@ type VSHNPostgreSQLReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	PostgreDialer      func(service, name, namespace, dsn string, ops ...func(*pgxpool.Config) error) (*probes2.PostgreSQL, error)
+	PostgreDialer      func(service, name, namespace, dsn string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
 }
 
 type probeManager interface {
-	StartProbe(p probes2.Prober)
-	StopProbe(p probes2.ProbeInfo)
+	StartProbe(p probes.Prober)
+	StopProbe(p probes.ProbeInfo)
 }
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=vshnpostgresqls,verbs=get;list;watch
@@ -65,7 +65,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if apierrors.IsNotFound(err) || inst.DeletionTimestamp != nil {
 		l.Info("Stopping Probe")
-		r.ProbeManager.StopProbe(probes2.ProbeInfo{
+		r.ProbeManager.StopProbe(probes.ProbeInfo{
 			Service:   vshnpostgresqlsServiceKey,
 			Name:      req.Name,
 			Namespace: req.Namespace,
@@ -97,7 +97,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		// Create a pobe that will always fail
-		probe, err = probes2.NewFailingPostgreSQL(vshnpostgresqlsServiceKey, inst.Name, inst.Namespace)
+		probe, err = probes.NewFailingPostgreSQL(vshnpostgresqlsServiceKey, inst.Name, inst.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -108,7 +108,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return res, nil
 }
 
-func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshnv1.VSHNPostgreSQL) (probes2.Prober, error) {
+func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshnv1.VSHNPostgreSQL) (probes.Prober, error) {
 
 	credSecret := corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{
@@ -128,7 +128,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 			credSecret.Data["POSTGRESQL_HOST"],
 			credSecret.Data["POSTGRESQL_PORT"],
 			credSecret.Data["POSTGRESQL_DB"],
-		), probes2.PGWithCA(credSecret.Data["ca.crt"]))
+		), probes.PGWithCA(credSecret.Data["ca.crt"]))
 	if err != nil {
 		return nil, err
 	}

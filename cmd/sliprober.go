@@ -5,8 +5,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
-	"github.com/vshn/appcat-apiserver/pkg/controller/sli-exporter"
-	probes2 "github.com/vshn/appcat-apiserver/pkg/controller/sli-exporter/probes"
+	"github.com/vshn/appcat-apiserver/pkg/sli-exporter"
+	"github.com/vshn/appcat-apiserver/pkg/sli-exporter/probes"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
@@ -63,7 +63,7 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 		log.Error(err, "unable to start manager")
 		return err
 	}
-	probeManager := probes2.NewManager(log)
+	probeManager := probes.NewManager(log)
 
 	err = metrics.Registry.Register(probeManager.Collector())
 	if err != nil {
@@ -77,7 +77,7 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 			Scheme:             mgr.GetScheme(),
 			ProbeManager:       &probeManager,
 			StartupGracePeriod: 15 * time.Minute,
-			PostgreDialer:      probes2.NewPostgreSQL,
+			PostgreDialer:      probes.NewPostgreSQL,
 		}).SetupWithManager(mgr); err != nil {
 			log.Error(err, "unable to create controller", "controller", "VSHNPostgreSQL")
 			return err

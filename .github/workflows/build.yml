@@ -1,12 +1,13 @@
-name: Lint
+name: Build
 
 on:
   pull_request: {}
   push:
     branches:
       - master
+
 jobs:
-  go-lint:
+  go-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -25,5 +26,5 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Run linters
-        run: make lint
+      - name: Run build
+        run: make build

@@ -16,7 +16,7 @@ import (
 
 func loadRuntimeFromFile(t assert.TestingT, file string) *runtime.Runtime {
 	p, _ := filepath.Abs(".")
-	before, _, _ := strings.Cut(p, "/functions")
+	before, _, _ := strings.Cut(p, "pkg")
 	f, err := os.Open(before + "/test/transforms/vshn-postgres/" + file)
 	assert.NoError(t, err)
 	b1, err := os.ReadFile(f.Name())

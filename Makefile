@@ -11,6 +11,13 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+OS := $(shell uname)
+ifeq ($(OS), Darwin)
+	sed ?= gsed
+else
+	sed ?= sed
+endif
+
 # For alpine image it is required the following env before building the application
 DOCKER_IMAGE_GOOS = linux
 DOCKER_IMAGE_GOARCH = amd64
@@ -46,7 +53,6 @@ $(protoc_bin): | $(go_bin)
 	@rm $(go_bin)/protoc.zip
 
 -include docs/antora-preview.mk docs/antora-build.mk
--include apis/generate.mk
 
 .PHONY: help
 help: ## Display this help.
@@ -55,13 +61,19 @@ help: ## Display this help.
 .PHONY: generate
 generate: export PATH := $(go_bin):$(PATH)
 generate: $(protoc_bin) ## Generate code with controller-gen and protobuf.
+	rm -rf apis/generated
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths=./apis/... object crd:crdVersions=v1 output:artifacts:config=./apis/generated
 	go generate ./...
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths="./apis/..."
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="{./apis/...,./apiserver/...}" output:artifacts:config=config/apiserver
+	# Because yaml is such a fun and easy specification, we need to hack some things here.
+	# Depending on the yaml parser implementation the equal sign (=) has special meaning, or not...
+	# So we make it explicitly a string.
+	$(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' apis/generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml
+	rm -rf crds && cp -r apis/generated crds
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="{./apis/...,./pkg/apiserver/...}" output:artifacts:config=config/apiserver
 	go run k8s.io/code-generator/cmd/go-to-protobuf \
 		--packages=github.com/vshn/appcat-apiserver/apis/appcat/v1 \
 		--output-base=./.work/tmp \
-		--go-header-file=./apiserver/hack/boilerplate.txt  \
+		--go-header-file=./pkg/apiserver/hack/boilerplate.txt  \
         --apimachinery-packages='-k8s.io/apimachinery/pkg/util/intstr,-k8s.io/apimachinery/pkg/api/resource,-k8s.io/apimachinery/pkg/runtime/schema,-k8s.io/apimachinery/pkg/runtime,-k8s.io/apimachinery/pkg/apis/meta/v1,-k8s.io/apimachinery/pkg/apis/meta/v1beta1,-k8s.io/api/core/v1,-k8s.io/api/rbac/v1' \
         --proto-import=./.work/kubernetes/vendor/ && \
     	mv ./.work/tmp/github.com/vshn/appcat-apiserver/apis/appcat/v1/generated.pb.go ./apis/appcat/v1/ && \

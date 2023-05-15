@@ -26,7 +26,7 @@ var (
 )
 
 var GrpcCMD = &cobra.Command{
-	Use:   "grpc",
+	Use:   "start grpc",
 	Short: "GRPC Server",
 	Long:  "Run the GRPC Server for crossplane composition functions",
 	RunE:  executeGRPCServer,

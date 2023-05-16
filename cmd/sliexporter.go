@@ -5,8 +5,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
-	"github.com/vshn/appcat-apiserver/pkg/sli-exporter"
-	"github.com/vshn/appcat-apiserver/pkg/sli-exporter/probes"
+	"github.com/vshn/appcat-apiserver/pkg/sliexporter"
+	"github.com/vshn/appcat-apiserver/pkg/sliexporter/probes"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
@@ -72,7 +72,7 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 	}
 
 	if s.enableVSHNPostgreSQL {
-		if err = (&sli_exporter.VSHNPostgreSQLReconciler{
+		if err = (&sliexporter.VSHNPostgreSQLReconciler{
 			Client:             mgr.GetClient(),
 			Scheme:             mgr.GetScheme(),
 			ProbeManager:       &probeManager,

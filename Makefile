@@ -105,10 +105,6 @@ build:
 test: ## Run tests
 	go test ./...
 
-.PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go
-
 .PHONY: docker-build
 docker-build:
 	env CGO_ENABLED=0 GOOS=$(DOCKER_IMAGE_GOOS) GOARCH=$(DOCKER_IMAGE_GOARCH) \

@@ -1,8 +1,8 @@
-package sli_exporter
+package sliexporter
 
 import (
 	"context"
-	"github.com/vshn/appcat-apiserver/pkg/sli-exporter/probes"
+	"github.com/vshn/appcat-apiserver/pkg/sliexporter/probes"
 	"testing"
 	"time"
 

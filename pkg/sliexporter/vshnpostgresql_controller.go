@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sli_exporter
+package sliexporter
 
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat-apiserver/pkg/sli-exporter/probes"
+	"github.com/vshn/appcat-apiserver/pkg/sliexporter/probes"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"

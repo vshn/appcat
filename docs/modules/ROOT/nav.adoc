@@ -2,16 +2,16 @@
 * https://github.com/vshn/go-bootstrap/releases[Changelog,window=_blank] 🔗
 
 .Tutorials
-* xref:tutorials/dev-environment.adoc[Dev]
+//* xref:tutorials/example.adoc[Dev]
 
 .How To
 //* xref:how-tos/example.adoc[Example How-To]
 
 .Technical reference
-* xref:references/env-variables.adoc[Env variables]
+* xref:references/apiserver/env-variables.adoc[Env variables]
 
 .Explanation
-* xref:explanations/boostrap.adoc[Boostrap]
+* xref:explanations/apiserver/boostrap.adoc[Boostrap]
 * xref:explanations/comp-functions/runtime.adoc[Runtime Library]
 * xref:explanations/comp-functions/vshn-postgres.adoc[VSHN Postgres Functions]
 

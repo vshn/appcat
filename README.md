@@ -4,9 +4,52 @@
 [![Version](https://img.shields.io/github/v/release/appuio/control-api)](https://github.com/appuio/control-api/releases)
 [![GitHub downloads](https://img.shields.io/github/downloads/vshn/appcat-apiserver/total)](https://github.com/appuio/control-api/releases)
 
-# appcat-apiserver
+# AppCat
 
-## Generate Kubernetes code
+This repository has k8s tools to manage AppCat services.
+
+## Architecture
+
+```
+.
+├── apis
+|   ├── appcat // API server related apis
+|   ├── exoscale // exoscale apis
+|   ├── v1 // common apis
+|   ├── vshn // VSHN managed services apis
+├── cmd // cobra command lines for each AppCat tool
+|   ├── apiserver.go
+|   ├── controller.go
+|   ├── grpc.go
+│   └── sliexporter.go
+├── config // kubernetes resources
+|   ├── apiserver 
+│   ├── controller
+│   └── sliexporter // uses kustomize
+├── crds // VSHN exposed resources from apis
+├── docs
+├── pkg // go code for each AppCat tool
+|   ├── apiserver 
+|   ├── controller
+|   ├── grpc
+│   └── sliexporter
+├── test // mocks, test cases, grps test client
+├── Dockerfile
+├── log.go
+├── main.go
+├── probes
+├── README.md
+└── tools.go
+```
+
+## Generate Kubernetes code, XRDs with Go / KubeBuilder
+
+In `/apis` there is code in Go to generate the XRDs (composites) as this is in OpenAPI.
+This code generates the OpenAPI scheme using [Kubebuilder](https://kubebuilder.io/).
+
+See following pages for learning how to do that:
+- https://kubebuilder.io/reference/generating-crd.html
+- https://kubebuilder.io/reference/markers.html
 
 If you make changes to the auto generated code you'll need to run code generation.
 This can be done with make:
@@ -25,19 +68,22 @@ See `make help` for a list of build targets.
 
 ## Local development environment
 
-You can setup a [kind]-based local environment with
+You can setup a [kind]-based local environment with all dependencies in [kindev](https://github.com/vshn/kindev).
 
-```bash
-make local-install
-```
+## API Server
 
-See [docs](./docs/modules/ROOT/pages/tutorials/dev-environment.md) for more details on the local environment setup.
+The AppCat API Server facilitates work with AppCat services.
 
-Please be aware that the productive deployment of the appcat-apiserver may run on a different Kubernetes distribution than [kind].
+### Capabilities
 
-[kind]: https://kind.sigs.k8s.io/
+The API Server is able to manage the following:
 
-## Debugging in IDE
+| RESOURCE           | DESCRIPTION                                             |
+|--------------------|---------------------------------------------------------|
+| `AppCat`           | Shows active AppCat services in a cluster               |
+| `PotsgreSQLBackup` | Shows available backups of an AppCat PostgreSQL service |
+
+### Debugging in IDE
 To run the API server on your local machine you need to register the IDE running instance with kind cluster.
 This can be achieved with the following guide.
 
@@ -95,18 +141,22 @@ After the above steps just run the API server via IDE with the following argumen
 apiserver --secure-port=9443 --kubeconfig=<your-home-path>/.kube/config --authentication-kubeconfig=<your-home-path>/.kube/config --authorization-kubeconfig=<your-home-path>/.kube/config
 ```
 
-## Protobuf installation
+### Protobuf installation
 Protocol Buffers (Protobuf) is a free and open-source cross-platform data format used to serialize structured data.
 Kubernetes internally uses gRPC clients with protobuf serialization. APIServer objects when handled internally in K8S
 need to implement protobuf interface. The implementation of the interface is done by [code-generator](https://github.com/kubernetes/code-generator). Two dependencies are required to use this tool [protoc](https://github.com/protocolbuffers/protobuf) and [protoc-gen-go](https://google.golang.org/protobuf/cmd/protoc-gen-go).
 
-## Controller
-A postgres controller has been added to this API Server. The controller takes care of database deletion protection.
-The controller insures via a finalizer in composite `XVSHNPostgreSQL` resource that the backups are still available
-when the database instance is deleted. When deletion retention expires, the backups with the remaining resources
-are cleaned up automatically.
-This controller addition to this repository is a temporary solution until we move to a common AppCat repository.
 
+## Controller
+The AppCat Controller resolves certain issues that cannot be achieved with crossplane. 
+
+### Capabilities
+
+The controller manages and achieves the following:
+
+| RESOURCE          | GOAL                        | DESCRIPTION                                  |
+|-------------------|-----------------------------|----------------------------------------------|
+| `XVSHNPostgreSQL` | Deletion Protection Support | Manages finalizers before and after deletion |
 
 ## SLI Exporter
 ### Metrics
@@ -118,57 +168,24 @@ The exporter exposes a histogram `appcat_probes_seconds` with four labels
 * `name`, the name of the claim that was monitored
 * `reason`, if the probe was successful. Can either be `success`, `fail-timeout`, or `fail-unkown`
 
-### Architecture
-
-```
-.
-├── config // Kustomize files to deploy the exporter
-├── controllers
-│   └── vshnpostgresql_controller.go // starts probes for VSHNPostgreSQL claims
-├── Dockerfile
-├── main.go
-├── probes
-│   ├── manager.go // manages all started probes and exposes metrics
-│   └── postgresql.go // prober implementation for postgresql
-├── README.md
-└── tools.go
-```
-
 #### Adding a Prober
 
-To add a prober for a new service, add a file in `probes/` that adds another implementation of the `Prober` interface.
+To add a prober for a new service, add a file in `pkg/sliexporter/probes/` that adds another implementation of the `Prober` interface.
 
 #### Adding an AppCat service
 
 There should be a separate controller per AppCat Claim type.
-Add another controller for each service that should be probed.
+Add another controller for each service that should be probed in `pkg/sliexporter/`.
 
 #### Adding SLA exceptions
 
 If possible SLA exceptions should be implemented as a middleware for the `Prober` interface.
 
 
-## Crossplane Composition Functions with GRPS Server
+## Crossplane Composition Functions with gRPC Server
 
-```
-.
-├── docs
-├── functions
-│   ├── vshn-common-func
-│   ├── vshn-postgres-func
-│   └── vshn-redis-func
-├── kind
-├── runtime
-└── test
-```
-
-- `./docs` contains relevant documentation in regard to this repository
-- `./functions` contains the actual logic for each function-io. Each function-io can have multiple transformation go functions
-- `./runtime` contains a library with helper methods which helps with adding new functions.
-- `./kind` contains relevant files for local dev cluster
-- `./test` contains test files
-
-Check out the docs to understand how functions from this repository work.
+The gRPC Server that manages crossplane composition functions. The functions are found in `pkg/comp-functions/functions`
+There package `pkg/comp-functions/runtime` contains a library with helper methods which helps with adding new functions.
 
 ### Add a new function-io
 
@@ -177,28 +194,17 @@ A function-io corresponds to one and only one composition thus multiple transfor
 can be added to a function-io.
 For instance, in `vshn-postgres-func` there are multiple transformation go functions such as `url` or `alerting`.
 
-
 To add a new function to PostgreSQL by VSHN:
 
-- Create a new package under `./functions/`.
-- Create a go file and add a new transform go function to the list in `./cmd/<your-new-function-io>`.
-- Implement the actual `Transform()` go function by using the helper functions from `runtime/desired.go` and `runtime/observed.go`.
-- Register the transform go function in the `main.go`.
-- Create a new app.go under `./cmd/<your-new-function-io>` and define a new `AppInfo` object.
-
-This architecture allows us to run all the functions with a single command. But for debugging and development purpose it's possible to run each function separately, by using the `--function` flag.
-
-### Manually testing a function
-To test a function you can leverage the FunctionIO file in the `./test` folder.
-
-`cat test/function-io.yaml | go run cmd/vshn-postgres-func/main.go --function myfunction > test.yaml`
-
+- Create a new package under `./pkg/comp-functions/functions/` in case one does not exist for a composition.
+- Implement a `Transform()` go function by using the helper functions from `runtime/desired.go` and `runtime/observed.go`.
+- Add a new transform go function to the `images` variable in `./cmd/grpc.go`.
 
 ### Usage of gRPC server - local development + kind cluster
 
 entrypoint to start working with gRPC server is to run:
 ```
-go run main.go -socket default.sock
+go run main.go start grpc --socket default.sock
 ```
 
 it will create a socket file in Your local directory which is easier for development - no need to set permissions and directory structure.
@@ -206,7 +212,7 @@ it will create a socket file in Your local directory which is easier for develop
 It's also possible to trigger fake request to gRPC server by client (to imitate Crossplane):
 ```
 cd test/grpc-client
-go run main.go
+go run main.go start grpc
 ```
 
 if You want to run gRPC server in local kind cluster, please use:
@@ -246,19 +252,4 @@ if You want to run gRPC server in local kind cluster, please use:
             apiVersion: kubernetes.crossplane.io/v1alpha1
         ```
 
-That's all - You can now run Your claims. This documentation and above workaround is just temporary solution, it should disappear once we actually implement composition functions. 
-
-
-## Generate XRDs with Go / KubeBuilder
-
-In `/apis` there is code in Go to generate the XRDs (composites) as this is in OpenAPI.
-This code generates the OpenAPI scheme using [Kubebuilder](https://kubebuilder.io/).
-
-See following pages for learning how to do that:
-- https://kubebuilder.io/reference/generating-crd.html
-- https://kubebuilder.io/reference/markers.html
-
-To run the composition generator, run `make generate-crd`.
-You need to have `go` installed for this to work.
-
-After that, you are able to update the golden files for the component: `make gen-golden-all`.
+That's all - You can now run Your claims. This documentation and above workaround is just temporary solution, it should disappear once we actually implement composition functions.

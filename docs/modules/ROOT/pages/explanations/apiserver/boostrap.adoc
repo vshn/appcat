@@ -11,16 +11,3 @@ In order to achieve the scaffolding the following operations have been made:
 . Create API `apiserver-boot create group version resource --group appcat --version v1 --kind AppCat --non-namespaced`
 . Clean go dependencies `go mod tidy`
 . Generate necessary boilerplate code `make generate`
-
-== Trying the api server
-
-. Create certificate folder `mkdir -p config/certificates`
-. Create a certificate `openssl req -x509 -newkey rsa:2048 -keyout config/certificates/apiserver_ca.key -out config/certificates/apiserver_ca.crt -days 365 -nodes -subj /C=un/ST=st/L=l/O=o/OU=ou/CN=appcat-certificate-authority`
-. Build the image ex `apiserver-boot build container --image="docker.io/gsaratura/appcat-apiserver-test:v0.0.1"`
-. Generate k8s manifests `apiserver-boot build config --namespace default --name appcat --image="docker.io/gsaratura/appcat-apiserver-test:v0.0.1"`
-. Create a kind cluster `kind create cluster --name test-api-server`
-. Access the cluster `kind get kubeconfig --name test-api-server  > ~/.kube/config`
-. Load the build docker image into the cluster `kind load docker-image "docker.io/gsaratura/appcat-apiserver-test:v0.0.1" --nodes test-api-server-control-plane --name test-api-server`
-. Apply the manifests `kubectl create -f config/`
-. Check the api server `kubectl get pods`
-

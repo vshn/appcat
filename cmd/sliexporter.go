@@ -1,13 +1,11 @@
 package cmd
 
 import (
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
+	"github.com/vshn/appcat-apiserver/pkg"
 	"github.com/vshn/appcat-apiserver/pkg/sliexporter"
 	"github.com/vshn/appcat-apiserver/pkg/sliexporter/probes"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -24,7 +22,7 @@ type sliProber struct {
 }
 
 var s = sliProber{
-	scheme: runtime.NewScheme(),
+	scheme: pkg.SetupScheme(),
 }
 
 var SLIProberCMD = &cobra.Command{
@@ -35,10 +33,6 @@ var SLIProberCMD = &cobra.Command{
 }
 
 func init() {
-	_ = corev1.SchemeBuilder.AddToScheme(s.scheme)
-	_ = xkube.SchemeBuilder.AddToScheme(s.scheme)
-	_ = vshnv1.SchemeBuilder.SchemeBuilder.AddToScheme(s.scheme)
-
 	SLIProberCMD.Flags().StringVar(&s.metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	SLIProberCMD.Flags().StringVar(&s.probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	SLIProberCMD.Flags().BoolVar(&s.leaderElect, "leader-elect", false, "Enable leader election for controller manager. "+

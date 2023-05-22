@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
+	"github.com/vshn/appcat-apiserver/pkg"
 	"github.com/vshn/appcat-apiserver/pkg/controller/postgres"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -19,7 +17,7 @@ type controller struct {
 }
 
 var c = controller{
-	scheme: runtime.NewScheme(),
+	scheme: pkg.SetupScheme(),
 }
 
 var ControllerCMD = &cobra.Command{
@@ -30,10 +28,6 @@ var ControllerCMD = &cobra.Command{
 }
 
 func init() {
-	_ = corev1.SchemeBuilder.AddToScheme(c.scheme)
-	_ = xkube.SchemeBuilder.AddToScheme(c.scheme)
-	_ = vshnv1.SchemeBuilder.SchemeBuilder.AddToScheme(c.scheme)
-
 	ControllerCMD.Flags().StringVar(&c.metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	ControllerCMD.Flags().StringVar(&c.healthAddr, "health-addr", ":8081", "The address the probe endpoint binds to.")
 	ControllerCMD.Flags().BoolVar(&c.leaderElect, "leader-elect", false, "Enable leader election for controller manager. "+

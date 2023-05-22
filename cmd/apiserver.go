@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	appcatv1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
-	"github.com/vshn/appcat-apiserver/pkg/apiserver/appcat"
-	"github.com/vshn/appcat-apiserver/pkg/apiserver/vshn/postgres"
+	appcatv1 "github.com/vshn/appcat/apis/appcat/v1"
+	"github.com/vshn/appcat/pkg/apiserver/appcat"
+	"github.com/vshn/appcat/pkg/apiserver/vshn/postgres"
 	"log"
 	"os"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"

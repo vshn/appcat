@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 IMG_TAG ?= latest
-GHCR_IMG ?= ghcr.io/vshn/appcat-apiserver:$(IMG_TAG)
+GHCR_IMG ?= ghcr.io/vshn/appcat:$(IMG_TAG)
 DOCKER_CMD ?= docker
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -23,11 +23,11 @@ DOCKER_IMAGE_GOOS = linux
 DOCKER_IMAGE_GOARCH = amd64
 
 PROJECT_ROOT_DIR = .
-PROJECT_NAME ?= appcat-apiserver
+PROJECT_NAME ?= appcat
 PROJECT_OWNER ?= vshn
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-BIN_FILENAME ?= $(PROJECT_DIR)/appcat-apiserver
+BIN_FILENAME ?= $(PROJECT_DIR)/appcat
 
 ## BUILD:go
 go_bin ?= $(PWD)/.work/bin
@@ -61,6 +61,7 @@ help: ## Display this help.
 .PHONY: generate
 generate: export PATH := $(go_bin):$(PATH)
 generate: $(protoc_bin) ## Generate code with controller-gen and protobuf.
+	go version
 	rm -rf apis/generated
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths=./apis/... object crd:crdVersions=v1 output:artifacts:config=./apis/generated
 	go generate ./...
@@ -69,14 +70,14 @@ generate: $(protoc_bin) ## Generate code with controller-gen and protobuf.
 	# So we make it explicitly a string.
 	$(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' apis/generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml
 	rm -rf crds && cp -r apis/generated crds
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-apiserver paths="{./apis/...,./pkg/apiserver/...}" output:artifacts:config=config/apiserver
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat paths="{./apis/...,./pkg/apiserver/...}" output:artifacts:config=config/apiserver
 	go run k8s.io/code-generator/cmd/go-to-protobuf \
-		--packages=github.com/vshn/appcat-apiserver/apis/appcat/v1 \
+		--packages=github.com/vshn/appcat/apis/appcat/v1 \
 		--output-base=./.work/tmp \
 		--go-header-file=./pkg/apiserver/hack/boilerplate.txt  \
         --apimachinery-packages='-k8s.io/apimachinery/pkg/util/intstr,-k8s.io/apimachinery/pkg/api/resource,-k8s.io/apimachinery/pkg/runtime/schema,-k8s.io/apimachinery/pkg/runtime,-k8s.io/apimachinery/pkg/apis/meta/v1,-k8s.io/apimachinery/pkg/apis/meta/v1beta1,-k8s.io/api/core/v1,-k8s.io/api/rbac/v1' \
         --proto-import=./.work/kubernetes/vendor/ && \
-    	mv ./.work/tmp/github.com/vshn/appcat-apiserver/apis/appcat/v1/generated.pb.go ./apis/appcat/v1/ && \
+    	mv ./.work/tmp/github.com/vshn/appcat/apis/appcat/v1/generated.pb.go ./apis/appcat/v1/ && \
     	rm -rf ./.work/tmp
 
 .PHONY: fmt
@@ -117,4 +118,4 @@ docker-push: docker-build ## Push docker image with the manager.
 
 .PHONY: clean
 clean:
-	rm -rf bin/ appcat-apiserver .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated default.sock
+	rm -rf bin/ appcat .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated default.sock

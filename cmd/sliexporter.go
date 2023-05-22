@@ -3,9 +3,9 @@ package cmd
 import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	"github.com/vshn/appcat-apiserver/pkg"
-	"github.com/vshn/appcat-apiserver/pkg/sliexporter"
-	"github.com/vshn/appcat-apiserver/pkg/sliexporter/probes"
+	"github.com/vshn/appcat/pkg"
+	"github.com/vshn/appcat/pkg/sliexporter"
+	"github.com/vshn/appcat/pkg/sliexporter/probes"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"

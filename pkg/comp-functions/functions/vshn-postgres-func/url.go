@@ -3,8 +3,8 @@ package vshnpostgres
 import (
 	"context"
 	"github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
-	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
-	runtime2 "github.com/vshn/appcat-apiserver/pkg/comp-functions/runtime"
+	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	runtime2 "github.com/vshn/appcat/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )

@@ -3,8 +3,8 @@ package appcat
 import (
 	"context"
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
-	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
-	"github.com/vshn/appcat-apiserver/pkg/apiserver"
+	"github.com/vshn/appcat/apis/appcat/v1"
+	"github.com/vshn/appcat/pkg/apiserver"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"

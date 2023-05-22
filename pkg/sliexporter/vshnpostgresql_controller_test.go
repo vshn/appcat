@@ -2,7 +2,7 @@ package sliexporter
 
 import (
 	"context"
-	"github.com/vshn/appcat-apiserver/pkg/sliexporter/probes"
+	"github.com/vshn/appcat/pkg/sliexporter/probes"
 	"testing"
 	"time"
 
@@ -18,8 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	v1 "github.com/vshn/appcat-apiserver/apis/v1"
-	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
+	v1 "github.com/vshn/appcat/apis/v1"
+	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 )
 
 func TestVSHNPostgreSQL_StartStop(t *testing.T) {

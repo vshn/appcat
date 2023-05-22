@@ -2,7 +2,7 @@ package vshnpostgres
 
 import (
 	"context"
-	"github.com/vshn/appcat-apiserver/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"os"
 	"path/filepath"
 	"reflect"

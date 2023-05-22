@@ -2,13 +2,13 @@ package vshnpostgres
 
 import (
 	"context"
-	"github.com/vshn/appcat-apiserver/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	"github.com/stretchr/testify/assert"
-	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )

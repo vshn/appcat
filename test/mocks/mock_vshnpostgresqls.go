@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
+	v1 "github.com/vshn/appcat/apis/vshn/v1"
 )
 
 // MockvshnPostgresqlProvider is a mock of vshnPostgresqlProvider interface.

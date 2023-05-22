@@ -3,12 +3,12 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
-	runtime2 "github.com/vshn/appcat-apiserver/pkg/comp-functions/runtime"
+	runtime2 "github.com/vshn/appcat/pkg/comp-functions/runtime"
 
 	"github.com/sethvargo/go-password/password"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
-	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

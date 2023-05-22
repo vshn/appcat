@@ -3,8 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat-apiserver/apis/appcat/v1"
-	"github.com/vshn/appcat-apiserver/pkg/apiserver"
+	"github.com/vshn/appcat/apis/appcat/v1"
+	"github.com/vshn/appcat/pkg/apiserver"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

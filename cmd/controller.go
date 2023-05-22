@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	"github.com/vshn/appcat-apiserver/pkg"
-	"github.com/vshn/appcat-apiserver/pkg/controller/postgres"
+	"github.com/vshn/appcat/pkg"
+	"github.com/vshn/appcat/pkg/controller/postgres"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"

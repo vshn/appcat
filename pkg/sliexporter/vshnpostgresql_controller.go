@@ -19,7 +19,7 @@ package sliexporter
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat-apiserver/pkg/sliexporter/probes"
+	"github.com/vshn/appcat/pkg/sliexporter/probes"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	vshnv1 "github.com/vshn/appcat-apiserver/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 )
 
 var vshnpostgresqlsServiceKey = "VSHNPostgreSQL"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/vshn/appcat-apiserver/cmd"
+	"github.com/vshn/appcat/cmd"
 	"os"
 )
 

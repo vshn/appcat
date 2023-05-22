@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v1 "github.com/vshn/appcat-apiserver/apis/appcat/v1"
+	v1 "github.com/vshn/appcat/apis/appcat/v1"
 	internalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	watch "k8s.io/apimachinery/pkg/watch"
 )

@@ -2,7 +2,7 @@ package v1
 
 import (
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	v1 "github.com/vshn/appcat-apiserver/apis/v1"
+	v1 "github.com/vshn/appcat/apis/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

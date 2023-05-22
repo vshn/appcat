@@ -31,12 +31,12 @@ func LogMetadata(cmd *cobra.Command) error {
 
 func SetupLogging(cmd *cobra.Command, logLevel int, logFormat string) error {
 	isJson := strings.EqualFold("JSON", logFormat)
-	log, err := newZapLogger(strings.ToUpper(cmd.Use), "v0.0.1", logLevel, isJson)
+	log, err := newZapLogger(strings.ToUpper(cmd.Use), logLevel, isJson)
 	cmd.SetContext(logr.NewContext(cmd.Context(), log))
 	return err
 }
 
-func newZapLogger(name, version string, verbosityLevel int, useProductionConfig bool) (logr.Logger, error) {
+func newZapLogger(name string, verbosityLevel int, useProductionConfig bool) (logr.Logger, error) {
 	cfg := zap.NewDevelopmentConfig()
 	cfg.EncoderConfig.ConsoleSeparator = " | "
 	if useProductionConfig {
@@ -51,9 +51,5 @@ func newZapLogger(name, version string, verbosityLevel int, useProductionConfig 
 	}
 	zap.ReplaceGlobals(z)
 	zlog := zapr.NewLogger(z).WithName(name)
-	if useProductionConfig {
-		// Append the version to each log so that logging stacks like EFK/Loki can correlate errors with specific versions.
-		return zlog.WithValues("version", version), nil
-	}
 	return zlog, nil
 }

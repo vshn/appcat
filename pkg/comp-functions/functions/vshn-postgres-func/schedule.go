@@ -3,7 +3,7 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
-	runtime2 "github.com/vshn/appcat-apiserver/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat-apiserver/pkg/comp-functions/runtime"
 	"math/rand"
 	"time"
 
@@ -19,12 +19,12 @@ var (
 // TransformSchedule initializes the backup and maintenance schedules  if the user did not explicitly provide a schedule.
 // The maintenance will be set to a random time on Tuesday night between 21:00 and 5:00, and the backup schedule will be set to once a day between 20:00 and 4:00.
 // If neither maintenance nor backup is set, the function will make sure that there will be backup scheduled one hour before the maintenance.
-func TransformSchedule(ctx context.Context, iof *runtime2.Runtime) runtime2.Result {
+func TransformSchedule(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 
 	comp := vshnv1.VSHNPostgreSQL{}
 	err := iof.Desired.GetComposite(ctx, &comp)
 	if err != nil {
-		return runtime2.NewFatalErr(ctx, "failed to parse composite", err)
+		return runtime.NewFatalErr(ctx, "failed to parse composite", err)
 	}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -49,8 +49,8 @@ func TransformSchedule(ctx context.Context, iof *runtime2.Runtime) runtime2.Resu
 
 	err = iof.Desired.SetComposite(ctx, &comp)
 	if err != nil {
-		return runtime2.NewFatalErr(ctx, "failed to set composite", err)
+		return runtime.NewFatalErr(ctx, "failed to set composite", err)
 	}
 
-	return runtime2.NewNormal()
+	return runtime.NewNormal()
 }

@@ -1,6 +1,6 @@
 module github.com/vshn/appcat-apiserver
 
-go 1.19
+go 1.20
 
 require (
 	github.com/crossplane-contrib/provider-kubernetes v0.7.0

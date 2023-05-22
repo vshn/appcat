@@ -217,7 +217,8 @@ go run main.go start grpc
 
 if You want to run gRPC server in local kind cluster, please use:
 1. [kindev](https://github.com/vshn/kindev). In makefile replace target:
-    1. ```
+    1.
+    ```
       $(crossplane_sentinel): export KUBECONFIG = $(KIND_KUBECONFIG)
       $(crossplane_sentinel): kind-setup local-pv-setup
       # below line loads image to kind
@@ -235,7 +236,8 @@ if You want to run gRPC server in local kind cluster, please use:
 	  @touch $@   
       ```
 2. [component-appcat](https://github.com/vshn/component-appcat) please append [file](https://github.com/vshn/component-appcat/blob/master/tests/golden/vshn/appcat/appcat/21_composition_vshn_postgres.yaml) with:
-    1.   ```
+    1.
+    ```
         compositeTypeRef:
           apiVersion: vshn.appcat.vshn.io/v1
           kind: XVSHNPostgreSQL

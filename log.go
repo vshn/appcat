@@ -18,7 +18,6 @@ import (
 func LogMetadata(cmd *cobra.Command) error {
 	log := logr.FromContextOrDiscard(cmd.Context())
 	log.WithValues(
-		"version", "v0.0.1",
 		"date", time.Now(),
 		"go_os", runtime.GOOS,
 		"go_arch", runtime.GOARCH,

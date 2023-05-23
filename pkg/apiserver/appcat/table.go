@@ -3,13 +3,14 @@ package appcat
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat/apis/appcat/v1"
+	"time"
+
+	v1 "github.com/vshn/appcat/apis/appcat/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/apiserver/pkg/registry/rest"
-	"time"
 )
 
 var _ rest.TableConvertor = &appcatStorage{}
@@ -60,9 +61,9 @@ func appcatToTableRow(appcat *v1.AppCat) metav1.TableRow {
 	return metav1.TableRow{
 		Cells: []interface{}{
 			appcat.GetName(),
-			appcat.Spec[appCatDisplayname],
-			appcat.Spec[appCatZone],
-			appcat.Spec[appCatDocs],
+			appcat.ServiceMetadata[appCatDisplayname],
+			appcat.ServiceMetadata[appCatZone],
+			appcat.ServiceMetadata[appCatDocs],
 			duration.HumanDuration(time.Since(appcat.GetCreationTimestamp().Time))},
 		Object: runtime.RawExtension{Object: appcat},
 	}

@@ -2,8 +2,9 @@ package appcat
 
 import (
 	"context"
-	v1 "github.com/vshn/appcat/apis/appcat/v1"
 	"testing"
+
+	v1 "github.com/vshn/appcat/apis/appcat/v1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,8 @@ func TestAppCatStorage_ConvertToTable(t *testing.T) {
 		"GivenAppCat_ThenSingleRow": {
 			obj: &v1.AppCat{
 				ObjectMeta: metav1.ObjectMeta{Name: "pippo"},
-				Spec: map[string]string{
+
+				ServiceMetadata: map[string]string{
 					"zone":        "rma1",
 					"displayname": "ObjectStorage",
 				},

@@ -7,6 +7,7 @@ rules:
       - vshn.appcat.vshn.io
     resources:
       - xvshnpostgresqls
+      - xvshnpostgresqls/finalizers
     verbs:
       - get
       - list
@@ -28,3 +29,4 @@ rules:
       - update
       - list
       - watch
+      - delete

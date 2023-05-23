@@ -38,9 +38,9 @@ type AppCat struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	ServiceMetadata `json:"serviceMetadata,omitempty"`
-	Plans           map[string]VSHNPlan `json:"plans,omitempty"`
-	Status          AppCatStatus        `json:"status,omitempty"`
+	Details `json:"details,omitempty"`
+	Plans   map[string]VSHNPlan `json:"plans,omitempty"`
+	Status  AppCatStatus        `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -53,8 +53,8 @@ type AppCatList struct {
 	Items []AppCat `json:"items"`
 }
 
-// ServiceMetadata are fields that are dynamically parsed from the annotations on a composition.
-type ServiceMetadata map[string]string
+// Details are fields that are dynamically parsed from the annotations on a composition.
+type Details map[string]string
 
 // VSHNPlan represents a plan for a VSHN service.
 // It ignores the scheduling labels and other internal fields.
@@ -132,7 +132,7 @@ func NewAppCatFromComposition(comp *v1.Composition) *AppCat {
 		Status: AppCatStatus{
 			CompositionName: comp.Name,
 		},
-		ServiceMetadata: ServiceMetadata{},
+		Details: Details{},
 	}
 	appCat.Annotations = nil
 	appCat.Labels = nil
@@ -144,7 +144,7 @@ func NewAppCatFromComposition(comp *v1.Composition) *AppCat {
 			}
 			if strings.HasPrefix(k, PrefixAppCatKey) {
 				index := strings.LastIndex(k, "/")
-				appCat.ServiceMetadata[makeCamelCase(k[index+1:])] = v
+				appCat.Details[makeCamelCase(k[index+1:])] = v
 			}
 		}
 	}
@@ -170,7 +170,10 @@ func parsePlansJSON(jsonPlans string, spec *AppCat) {
 
 	err := json.Unmarshal([]byte(jsonPlans), &plans)
 	if err != nil {
-		spec.ServiceMetadata["plans"] = err.Error()
+		spec.Plans = map[string]VSHNPlan{
+			"Plans are currently not available": {},
+		}
+		return
 	}
 	spec.Plans = plans
 }

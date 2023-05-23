@@ -61,9 +61,9 @@ func appcatToTableRow(appcat *v1.AppCat) metav1.TableRow {
 	return metav1.TableRow{
 		Cells: []interface{}{
 			appcat.GetName(),
-			appcat.ServiceMetadata[appCatDisplayname],
-			appcat.ServiceMetadata[appCatZone],
-			appcat.ServiceMetadata[appCatDocs],
+			appcat.Details[appCatDisplayname],
+			appcat.Details[appCatZone],
+			appcat.Details[appCatDocs],
 			duration.HumanDuration(time.Since(appcat.GetCreationTimestamp().Time))},
 		Object: runtime.RawExtension{Object: appcat},
 	}

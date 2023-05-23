@@ -29,7 +29,7 @@ func TestAppCatStorage_ConvertToTable(t *testing.T) {
 			obj: &v1.AppCat{
 				ObjectMeta: metav1.ObjectMeta{Name: "pippo"},
 
-				ServiceMetadata: map[string]string{
+				Details: map[string]string{
 					"zone":        "rma1",
 					"displayname": "ObjectStorage",
 				},

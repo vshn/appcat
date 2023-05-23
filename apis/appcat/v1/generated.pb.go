@@ -284,7 +284,7 @@ var xxx_messageInfo_VSHNSize proto.InternalMessageInfo
 func init() {
 	proto.RegisterType((*AppCat)(nil), "github.com.vshn.appcat.apis.appcat.v1.AppCat")
 	proto.RegisterMapType((map[string]VSHNPlan)(nil), "github.com.vshn.appcat.apis.appcat.v1.AppCat.PlansEntry")
-	proto.RegisterMapType((ServiceMetadata)(nil), "github.com.vshn.appcat.apis.appcat.v1.AppCat.ServiceMetadataEntry")
+	proto.RegisterMapType((Details)(nil), "github.com.vshn.appcat.apis.appcat.v1.AppCat.ServiceMetadataEntry")
 	proto.RegisterType((*AppCatList)(nil), "github.com.vshn.appcat.apis.appcat.v1.AppCatList")
 	proto.RegisterType((*AppCatStatus)(nil), "github.com.vshn.appcat.apis.appcat.v1.AppCatStatus")
 	proto.RegisterType((*SGBackupInfo)(nil), "github.com.vshn.appcat.apis.appcat.v1.SGBackupInfo")
@@ -416,14 +416,14 @@ func (m *AppCat) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			dAtA[i] = 0x1a
 		}
 	}
-	if len(m.ServiceMetadata) > 0 {
-		keysForServiceMetadata := make([]string, 0, len(m.ServiceMetadata))
-		for k := range m.ServiceMetadata {
+	if len(m.Details) > 0 {
+		keysForServiceMetadata := make([]string, 0, len(m.Details))
+		for k := range m.Details {
 			keysForServiceMetadata = append(keysForServiceMetadata, string(k))
 		}
 		github_com_gogo_protobuf_sortkeys.Strings(keysForServiceMetadata)
 		for iNdEx := len(keysForServiceMetadata) - 1; iNdEx >= 0; iNdEx-- {
-			v := m.ServiceMetadata[string(keysForServiceMetadata[iNdEx])]
+			v := m.Details[string(keysForServiceMetadata[iNdEx])]
 			baseI := i
 			i -= len(v)
 			copy(dAtA[i:], v)
@@ -818,8 +818,8 @@ func (m *AppCat) Size() (n int) {
 	_ = l
 	l = m.ObjectMeta.Size()
 	n += 1 + l + sovGenerated(uint64(l))
-	if len(m.ServiceMetadata) > 0 {
-		for k, v := range m.ServiceMetadata {
+	if len(m.Details) > 0 {
+		for k, v := range m.Details {
 			_ = k
 			_ = v
 			mapEntrySize := 1 + len(k) + sovGenerated(uint64(len(k))) + 1 + len(v) + sovGenerated(uint64(len(v)))
@@ -970,14 +970,14 @@ func (this *AppCat) String() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForServiceMetadata := make([]string, 0, len(this.ServiceMetadata))
-	for k := range this.ServiceMetadata {
+	keysForServiceMetadata := make([]string, 0, len(this.Details))
+	for k := range this.Details {
 		keysForServiceMetadata = append(keysForServiceMetadata, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForServiceMetadata)
 	mapStringForServiceMetadata := "ServiceMetadata{"
 	for _, k := range keysForServiceMetadata {
-		mapStringForServiceMetadata += fmt.Sprintf("%v: %v,", k, this.ServiceMetadata[k])
+		mapStringForServiceMetadata += fmt.Sprintf("%v: %v,", k, this.Details[k])
 	}
 	mapStringForServiceMetadata += "}"
 	keysForPlans := make([]string, 0, len(this.Plans))
@@ -1198,8 +1198,8 @@ func (m *AppCat) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.ServiceMetadata == nil {
-				m.ServiceMetadata = make(ServiceMetadata)
+			if m.Details == nil {
+				m.Details = make(Details)
 			}
 			var mapkey string
 			var mapvalue string
@@ -1294,7 +1294,7 @@ func (m *AppCat) Unmarshal(dAtA []byte) error {
 					iNdEx += skippy
 				}
 			}
-			m.ServiceMetadata[mapkey] = mapvalue
+			m.Details[mapkey] = mapvalue
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {

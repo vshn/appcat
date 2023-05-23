@@ -29,7 +29,7 @@ var (
 			Name: "one",
 		},
 
-		ServiceMetadata: map[string]string{
+		Details: map[string]string{
 			"zone":        "rma1",
 			"displayname": "one",
 			"docs":        "https://docs.com",
@@ -57,7 +57,7 @@ var (
 			Name: "two",
 		},
 
-		ServiceMetadata: map[string]string{
+		Details: map[string]string{
 			"zone":               "lpg",
 			"displayname":        "two",
 			"docs":               "https://docs.com",

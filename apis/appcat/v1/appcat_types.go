@@ -1,11 +1,13 @@
 package v1
 
 import (
+	"encoding/json"
+	"regexp"
+	"strings"
+
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"regexp"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,8 +38,9 @@ type AppCat struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AppCatSpec   `json:"spec,omitempty"`
-	Status AppCatStatus `json:"status,omitempty"`
+	ServiceMetadata `json:"serviceMetadata,omitempty"`
+	Plans           map[string]VSHNPlan `json:"plans,omitempty"`
+	Status          AppCatStatus        `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -50,9 +53,25 @@ type AppCatList struct {
 	Items []AppCat `json:"items"`
 }
 
-// AppCatSpec defines the desired state of AppCat
-// The desired state of AppCat is dynamically populated from composition's labels
-type AppCatSpec map[string]string
+// ServiceMetadata are fields that are dynamically parsed from the annotations on a composition.
+type ServiceMetadata map[string]string
+
+// VSHNPlan represents a plan for a VSHN service.
+// It ignores the scheduling labels and other internal fields.
+type VSHNPlan struct {
+	Note string `json:"note,omitempty"`
+	// JSize is called JSize because protobuf creates a method Size()
+	JSize VSHNSize `json:"size,omitempty"`
+}
+
+// VSHNSize describes the aspects of the actual plan.
+// This needs to be a separate struct as the protobuf generator can't handle
+// embedded struct apparently.
+type VSHNSize struct {
+	CPU    string `json:"cpu,omitempty"`
+	Disk   string `json:"disk,omitempty"`
+	Memory string `json:"memory,omitempty"`
+}
 
 // AppCat needs to implement the builder resource interface
 var _ resource.Object = &AppCat{}
@@ -107,26 +126,30 @@ func NewAppCatFromComposition(comp *v1.Composition) *AppCat {
 	if comp == nil || comp.Labels == nil || comp.Labels[OfferedKey] != OfferedValue {
 		return nil
 	}
-	spec := AppCatSpec{}
+
+	appCat := &AppCat{
+		ObjectMeta: *comp.ObjectMeta.DeepCopy(),
+		Status: AppCatStatus{
+			CompositionName: comp.Name,
+		},
+		ServiceMetadata: ServiceMetadata{},
+	}
+	appCat.Annotations = nil
+	appCat.Labels = nil
 	if comp.Annotations != nil {
 		for k, v := range comp.Annotations {
+			if k == PrefixAppCatKey+"/plans" {
+				parsePlansJSON(v, appCat)
+				continue
+			}
 			if strings.HasPrefix(k, PrefixAppCatKey) {
 				index := strings.LastIndex(k, "/")
-				spec[makeCamelCase(k[index+1:])] = v
+				appCat.ServiceMetadata[makeCamelCase(k[index+1:])] = v
 			}
 		}
 	}
 
-	appcat := &AppCat{
-		ObjectMeta: *comp.ObjectMeta.DeepCopy(),
-		Spec:       spec,
-		Status: AppCatStatus{
-			CompositionName: comp.Name,
-		},
-	}
-	appcat.Annotations = nil
-	appcat.Labels = nil
-	return appcat
+	return appCat
 }
 
 // makeCamelCase transforms any string in camel case string
@@ -140,4 +163,14 @@ func makeCamelCase(s string) string {
 		strCamel += cases.Title(language.English).String(v)
 	}
 	return strCamel
+}
+
+func parsePlansJSON(jsonPlans string, spec *AppCat) {
+	plans := map[string]VSHNPlan{}
+
+	err := json.Unmarshal([]byte(jsonPlans), &plans)
+	if err != nil {
+		spec.ServiceMetadata["plans"] = err.Error()
+	}
+	spec.Plans = plans
 }

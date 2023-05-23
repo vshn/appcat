@@ -1,10 +1,11 @@
 package v1
 
 import (
+	"testing"
+
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func TestNewAppCatFromComposition(t *testing.T) {
@@ -56,9 +57,11 @@ func TestNewAppCatFromComposition(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "comp-1",
 				},
-				Spec: map[string]string{
+
+				ServiceMetadata: map[string]string{
 					"zone": "rma1",
 				},
+
 				Status: AppCatStatus{
 					CompositionName: "comp-1",
 				},

@@ -21,6 +21,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.3
 	github.com/vektra/mockery/v2 v2.26.1
+	github.com/vshn/appcat-apiserver v0.2.3
 	go.uber.org/zap v1.24.0
 	golang.org/x/text v0.8.0
 	google.golang.org/grpc v1.52.0

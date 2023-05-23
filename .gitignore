@@ -3,7 +3,7 @@ dist/
 .github/release-notes.md
 
 # Binaries for programs and plugins
-appcat-apiserver
+appcat
 
 # temp file, editor and IDE paraphernalia
 .idea
@@ -12,4 +12,8 @@ appcat-apiserver
 .cache
 .public
 
+# debug
+apiserver.local.config
 
+# Kubebuilder
+/apis/generated/

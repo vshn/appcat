@@ -21,7 +21,7 @@ spec:
         - args:
             - "controller"
             - "--leader-elect"
-          image: "ghcr.io/vshn/appcat-apiserver:v0.0.1" #patched
+          image: "ghcr.io/vshn/appcat:v0.0.1" #patched
           name: manager
           livenessProbe:
             httpGet:

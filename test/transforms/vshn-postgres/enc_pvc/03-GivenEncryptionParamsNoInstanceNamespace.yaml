@@ -1,0 +1,56 @@
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: FunctionIO
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        annotations:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: psql
+        name: psql
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: unit-test
+        compositionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          encryption:
+            enabled: true
+desired:
+  composite:
+    connectionDetails: null
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: psql
+        name: psql
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}

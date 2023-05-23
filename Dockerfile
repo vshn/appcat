@@ -1,6 +1,6 @@
 FROM docker.io/library/alpine:3.15 as runtime
 
-ENTRYPOINT ["appcat-apiserver"]
+ENTRYPOINT ["appcat"]
 
 RUN \
   apk add --update --no-cache \
@@ -11,8 +11,8 @@ RUN \
 RUN \
   mkdir /.cache && chmod -R g=u /.cache
 
-COPY appcat-apiserver /usr/local/bin/
+COPY appcat /usr/local/bin/
 
-RUN chmod a+x /usr/local/bin/appcat-apiserver
+RUN chmod a+x /usr/local/bin/appcat
 
 USER 65532:0

@@ -26,4 +26,4 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Run linters
-        run: make generate lint
+        run: make lint

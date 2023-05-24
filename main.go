@@ -2,14 +2,20 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/cmd"
-	"os"
 )
 
 func init() {
-	rootCmd.AddCommand(cmd.ControllerCMD, cmd.APIServerCMD, cmd.SLIProberCMD, cmd.GrpcCMD)
+	rootCmd.AddCommand(
+		cmd.ControllerCMD,
+		cmd.APIServerCMD,
+		cmd.SLIProberCMD,
+		cmd.GrpcCMD,
+		cmd.MaintenanceCMD)
 }
 
 func main() {

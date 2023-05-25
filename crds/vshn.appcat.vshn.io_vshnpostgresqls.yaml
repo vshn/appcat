@@ -3478,6 +3478,9 @@ spec:
                                   type: array
                               type: object
                           type: object
+                        email:
+                          description: Email necessary to send alerts via email
+                          type: string
                       type: object
                     network:
                       description: Network contains any network related settings.

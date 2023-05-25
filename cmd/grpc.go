@@ -89,6 +89,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "maintenance-job",
 			TransformFunc: vpf.AddMaintenanceJob,
 		},
+		{
+			Name:          "mailgun-alerting",
+			TransformFunc: vpf.MailgunAlerting,
+		},
 	},
 }
 

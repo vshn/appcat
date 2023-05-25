@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sgv1 "github.com/vshn/appcat/apis/stackgres/v1"
+	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
-	vshnv1 "github.com/vshn/component-appcat/apis/vshn/v1"
 
 	fnv1aplha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 )

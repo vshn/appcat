@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"context"
+	"net"
+	"os"
+
 	pb "github.com/crossplane/crossplane/apis/apiextensions/fn/proto/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -10,8 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"net"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -68,6 +69,10 @@ var images = map[string][]runtime.Transform{
 		{
 			Name:          "user-alerting",
 			TransformFunc: vpf.AddUserAlerting,
+		},
+		{
+			Name:          "restart",
+			TransformFunc: vpf.TransformRestart,
 		},
 		{
 			Name:          "random-default-schedule",

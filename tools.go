@@ -18,4 +18,7 @@ import (
 	_ "k8s.io/code-generator"
 	// mock tool
 	_ "github.com/vektra/mockery/v2"
+	// Add any build-time dependencies here with blank imports like `_ "package"`
+	_ "github.com/deepmap/oapi-codegen/cmd/oapi-codegen"
+	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
 )

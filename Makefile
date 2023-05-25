@@ -29,6 +29,10 @@ PROJECT_OWNER ?= vshn
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 BIN_FILENAME ?= $(PROJECT_DIR)/appcat
 
+## Stackgres CRDs
+STACKGRES_VERSION ?= 1.4.3
+STACKGRES_CRD_URL ?= https://gitlab.com/ongresinc/stackgres/-/raw/${STACKGRES_VERSION}/stackgres-k8s/src/common/src/main/resources/crds
+
 ## BUILD:go
 go_bin ?= $(PWD)/.work/bin
 $(go_bin):
@@ -60,10 +64,10 @@ help: ## Display this help.
 
 .PHONY: generate
 generate: export PATH := $(go_bin):$(PATH)
-generate: $(protoc_bin) ## Generate code with controller-gen and protobuf.
+generate: $(protoc_bin) generate-stackgres-crds ## Generate code with controller-gen and protobuf.
 	go version
 	rm -rf apis/generated
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths=./apis/... object crd:crdVersions=v1 output:artifacts:config=./apis/generated
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths=./apis/... object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
 	go generate ./...
 	# Because yaml is such a fun and easy specification, we need to hack some things here.
 	# Depending on the yaml parser implementation the equal sign (=) has special meaning, or not...
@@ -79,6 +83,24 @@ generate: $(protoc_bin) ## Generate code with controller-gen and protobuf.
         --proto-import=./.work/kubernetes/vendor/ && \
     	mv ./.work/tmp/github.com/vshn/appcat/apis/appcat/v1/generated.pb.go ./apis/appcat/v1/ && \
     	rm -rf ./.work/tmp
+
+.PHONY: generate-stackgres-crds
+generate-stackgres-crds:
+
+	curl ${STACKGRES_CRD_URL}/SGDbOps.yaml?inline=false -o apis/stackgres/v1/sgdbops_crd.yaml
+	yq -i e apis/stackgres/v1/sgdbops.yaml --expression ".components.schemas.SGDbOpsSpec=load(\"apis/stackgres/v1/sgdbops_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	yq -i e apis/stackgres/v1/sgdbops.yaml --expression ".components.schemas.SGDbOpsStatus=load(\"apis/stackgres/v1/sgdbops_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.status"
+	go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sgdbops.gen.go apis/stackgres/v1/sgdbops.yaml
+	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgdbops.gen.go
+
+	curl ${STACKGRES_CRD_URL}/SGCluster.yaml?inline=false -o apis/stackgres/v1/sgcluster_crd.yaml
+	yq -i e apis/stackgres/v1/sgcluster.yaml --expression ".components.schemas.SGClusterSpec=load(\"apis/stackgres/v1/sgcluster_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	yq -i e apis/stackgres/v1/sgcluster.yaml --expression ".components.schemas.SGClusterStatus=load(\"apis/stackgres/v1/sgcluster_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.status"
+	go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sgcluster.gen.go apis/stackgres/v1/sgcluster.yaml
+	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgcluster.gen.go
+
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1/...
+	rm apis/stackgres/v1/*_crd.yaml
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

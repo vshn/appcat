@@ -3,11 +3,11 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"math/rand"
 	"time"
 
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 )
 
 var (

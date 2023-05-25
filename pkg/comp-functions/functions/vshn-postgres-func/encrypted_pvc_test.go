@@ -2,16 +2,26 @@ package vshnpostgres
 
 import (
 	"context"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	sgv1 "github.com/vshn/appcat/apis/stackgres/v1"
+	stackgresv1 "github.com/vshn/appcat/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/yaml"
 )
+
+func init() {
+	err := runtime.AddToScheme(sgv1.SchemeBuilder.SchemeBuilder)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestNoEncryptedPVC(t *testing.T) {
 	ctx := context.Background()
@@ -66,15 +76,6 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("GivenEncryptionEnabledNoInstanceNamespace_ThenExpectWarningOutput", func(t *testing.T) {
-
-		iof := loadRuntimeFromFile(t, "enc_pvc/03-GivenEncryptionParamsNoInstanceNamespace.yaml")
-
-		r := AddPvcSecret(ctx, iof)
-
-		assert.Equal(t, runtime.NewWarning(ctx, "Composite is missing instance namespace, skipping transformation"), r)
-	})
-
 	t.Run("GivenEncryptionEnabled_ThenExpectOutput", func(t *testing.T) {
 
 		iof := loadRuntimeFromFile(t, "enc_pvc/03-GivenEncryptionParams.yaml")
@@ -87,15 +88,17 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 		assert.NoError(t, iof.Observed.GetComposite(ctx, comp))
 
-		resName := comp.Name + "-luks-key"
+		resName := comp.Name + "-luks-key-0"
 		kubeObject := &xkube.Object{}
 		assert.NoError(t, iof.Desired.Get(ctx, kubeObject, resName))
 
-		//resName := inComp.Name + "-luks-key"
-		//assert.NoError(t, iof.Desired.GetManagedResource(resName, kubeObject))
 		s := &v1.Secret{}
 		assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
 		assert.NotEmpty(t, s.Data["luksKey"])
+
+		cluster := &stackgresv1.SGCluster{}
+		assert.NoError(t, iof.Desired.GetFromObject(ctx, cluster, "cluster"))
+		assert.Equal(t, pointer.String("ssd-encrypted"), cluster.Spec.Pods.PersistentVolume.StorageClass)
 	})
 
 	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
@@ -110,12 +113,10 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 		assert.NoError(t, iof.Observed.GetComposite(ctx, comp))
 
-		resName := comp.Name + "-luks-key"
+		resName := comp.Name + "-luks-key-0"
 		kubeObject := &xkube.Object{}
 		assert.NoError(t, iof.Desired.Get(ctx, kubeObject, resName))
 
-		//resName := inComp.Name + "-luks-key"
-		//assert.NoError(t, iof.Desired.GetManagedResource(resName, kubeObject))
 		s := &v1.Secret{}
 		assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
 		assert.NotEmpty(t, s.Data["luksKey"])

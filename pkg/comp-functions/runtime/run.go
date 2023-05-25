@@ -23,7 +23,7 @@ func Exec(ctx context.Context, log logr.Logger, runtime *Runtime, transform Tran
 
 	runtime.io.Desired.Resources = make([]xfnv1alpha1.DesiredResource, len(runtime.Desired.resources))
 	for i, r := range runtime.Desired.resources {
-		runtime.io.Desired.Resources[i] = xfnv1alpha1.DesiredResource(r.(desiredResource))
+		runtime.io.Desired.Resources[i] = r.GetDesiredResource()
 	}
 
 	return nil

@@ -32,6 +32,12 @@ type Resource interface {
 	GetName() string
 	GetRaw() []byte
 	SetRaw([]byte)
+	// Returns this resource as a DesiredResource.
+	// Depending on the concrete underlying type, not all fields are populated.
+	GetDesiredResource() xfnv1alpha1.DesiredResource
+	// Returns this resource as an ObservedResource.
+	// Depending on the concrete underlying type, not all fields are populated.
+	GetObservedResource() xfnv1alpha1.ObservedResource
 }
 
 // KeyFuncIO is the key to the context value where the functionIO pointer is stored
@@ -112,7 +118,8 @@ func desiredResources(dr []xfnv1alpha1.DesiredResource) *[]Resource {
 	resources := make([]Resource, len(dr))
 
 	for i := range dr {
-		resources[i] = desiredResource(dr[i])
+		r := desiredResource{DesiredResource: dr[i]}
+		resources[i] = &r
 	}
 
 	return &resources
@@ -122,7 +129,7 @@ func observedResources(or []xfnv1alpha1.ObservedResource) *[]Resource {
 	resources := make([]Resource, len(or))
 
 	for i := range or {
-		resources[i] = observedResource(or[i])
+		resources[i] = observedResource{ObservedResource: or[i]}
 	}
 
 	return &resources

@@ -235,7 +235,7 @@ if You want to run gRPC server in local kind cluster, please use:
 	  --wait
 	  @touch $@   
       ```
-2. [component-appcat](https://github.com/vshn/component-appcat) please append [file](https://github.com/vshn/component-appcat/blob/master/tests/golden/vshn/appcat/appcat/21_composition_vshn_postgres.yaml) with:
+2. [component-appcat](https://github.com/vshn/component-appcat) please append [file](https://github.com/vshn/appcat/blob/master/tests/golden/vshn/appcat/appcat/21_composition_vshn_postgres.yaml) with:
     1.
     ```
         compositeTypeRef:

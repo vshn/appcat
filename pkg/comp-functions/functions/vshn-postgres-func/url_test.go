@@ -2,8 +2,9 @@ package vshnpostgres
 
 import (
 	"context"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"testing"
+
+	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"

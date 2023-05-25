@@ -2,7 +2,6 @@ package vshnpostgres
 
 import (
 	"context"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,6 +9,7 @@ import (
 	"unsafe"
 
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
+	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 
 	"github.com/stretchr/testify/assert"
 )

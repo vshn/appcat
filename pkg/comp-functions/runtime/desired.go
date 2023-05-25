@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -185,30 +186,45 @@ func (d *DesiredResources) put(ctx context.Context, obj client.Object, resName s
 		}
 	}
 
-	log.V(1).Info("No desired kube object found, adding new one with resource", "object", obj, "kube object name", resName)
-	d.resources = append(d.resources, desiredResource(
-		xfnv1alpha1.DesiredResource{
+	dr := desiredResource{
+		DesiredResource: xfnv1alpha1.DesiredResource{
 			Name: resName,
 			Resource: runtime.RawExtension{
 				Raw: rawData,
 			},
 		},
-	))
+	}
+
+	log.V(1).Info("No desired kube object found, adding new one with resource", "object", obj, "kube object name", resName)
+	d.resources = append(d.resources, &dr)
 	return nil
 }
 
 // desiredResource is a wrapper around xfnv1alpha1.DesiredResource
 // so we can satisfy the Resource interface.
-type desiredResource xfnv1alpha1.DesiredResource
+type desiredResource struct {
+	xfnv1alpha1.DesiredResource
+}
 
-func (d desiredResource) GetName() string {
+func (d *desiredResource) GetName() string {
 	return d.Name
 }
 
-func (d desiredResource) GetRaw() []byte {
+func (d *desiredResource) GetRaw() []byte {
 	return d.Resource.Raw
 }
 
-func (d desiredResource) SetRaw(raw []byte) {
+func (d *desiredResource) SetRaw(raw []byte) {
 	d.Resource.Raw = raw
+}
+
+func (d *desiredResource) GetDesiredResource() xfnv1alpha1.DesiredResource {
+	return d.DesiredResource
+}
+
+func (d *desiredResource) GetObservedResource() xfnv1alpha1.ObservedResource {
+	return xfnv1alpha1.ObservedResource{
+		Name:     d.Name,
+		Resource: d.Resource,
+	}
 }

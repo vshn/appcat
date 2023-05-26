@@ -1,10 +1,11 @@
 package v1
 
 import (
+	"testing"
+
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func TestNewAppCatFromComposition(t *testing.T) {
@@ -56,9 +57,72 @@ func TestNewAppCatFromComposition(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "comp-1",
 				},
-				Spec: map[string]string{
+
+				Details: map[string]string{
 					"zone": "rma1",
 				},
+
+				Status: AppCatStatus{
+					CompositionName: "comp-1",
+				},
+			},
+		},
+		"GivenWithPlans_ThenReturnAppCatWithPlans": {
+			composition: &crossplanev1.Composition{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						OfferedKey: OfferedValue,
+					},
+					Annotations: map[string]string{
+						PrefixAppCatKey + "/plans": `{"standard-4": { "note": "test", "size": { "cpu": "900m", "disk": "40Gi", "enabled": true, "memory": "3776Mi" } } }`,
+					},
+					Name: "comp-1",
+				},
+			},
+			appCat: &AppCat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "comp-1",
+				},
+				Details: Details{},
+				Plans: map[string]VSHNPlan{
+					"standard-4": {
+						Note: "test",
+						JSize: VSHNSize{
+							CPU:    "900m",
+							Disk:   "40Gi",
+							Memory: "3776Mi",
+						},
+					},
+				},
+
+				Status: AppCatStatus{
+					CompositionName: "comp-1",
+				},
+			},
+		},
+		"GivenInvalidPlans_ThenReturnAppCatWithMessage": {
+			composition: &crossplanev1.Composition{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						OfferedKey: OfferedValue,
+					},
+					Annotations: map[string]string{
+						PrefixAppCatKey + "/plans": "imnotajson",
+					},
+					Name: "comp-1",
+				},
+			},
+			appCat: &AppCat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "comp-1",
+				},
+
+				Details: Details{},
+
+				Plans: map[string]VSHNPlan{
+					"Plans are currently not available": {},
+				},
+
 				Status: AppCatStatus{
 					CompositionName: "comp-1",
 				},

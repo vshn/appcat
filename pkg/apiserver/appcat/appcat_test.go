@@ -1,11 +1,12 @@
 package appcat
 
 import (
+	"testing"
+
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	v1 "github.com/vshn/appcat/apis/appcat/v1"
 	"github.com/vshn/appcat/test/mocks"
 	"k8s.io/apiserver/pkg/registry/rest"
-	"testing"
 
 	"github.com/golang/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,11 +28,13 @@ var (
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "one",
 		},
-		Spec: map[string]string{
+
+		Details: map[string]string{
 			"zone":        "rma1",
 			"displayname": "one",
 			"docs":        "https://docs.com",
 		},
+
 		Status: v1.AppCatStatus{
 			CompositionName: "one",
 		},
@@ -53,12 +56,14 @@ var (
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "two",
 		},
-		Spec: map[string]string{
+
+		Details: map[string]string{
 			"zone":               "lpg",
 			"displayname":        "two",
 			"docs":               "https://docs.com",
 			"productDescription": "product desc",
 		},
+
 		Status: v1.AppCatStatus{
 			CompositionName: "two",
 		},

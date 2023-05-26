@@ -23,13 +23,13 @@ This repository has k8s tools to manage AppCat services.
 |   ├── grpc.go
 │   └── sliexporter.go
 ├── config // kubernetes resources
-|   ├── apiserver 
+|   ├── apiserver
 │   ├── controller
 │   └── sliexporter // uses kustomize
 ├── crds // VSHN exposed resources from apis
 ├── docs
 ├── pkg // go code for each AppCat tool
-|   ├── apiserver 
+|   ├── apiserver
 |   ├── controller
 |   ├── grpc
 │   └── sliexporter
@@ -79,7 +79,7 @@ The AppCat API Server facilitates work with AppCat services.
 The API Server is able to manage the following:
 
 | RESOURCE           | DESCRIPTION                                             |
-|--------------------|---------------------------------------------------------|
+| ------------------ | ------------------------------------------------------- |
 | `AppCat`           | Shows active AppCat services in a cluster               |
 | `PotsgreSQLBackup` | Shows available backups of an AppCat PostgreSQL service |
 
@@ -100,7 +100,7 @@ HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks
 # HOSTIP=host.docker.internal # On some docker distributions
 # HOSTIP=host.lima.internal # On lima distributions
 
-kind get kubeconfig --name kindev  > ~/.kube/config 
+kind get kubeconfig --name kindev  > ~/.kube/config
 
 cat <<EOF | sed -e "s/172.21.0.1/$HOSTIP/g" | kubectl apply -f -
 apiVersion: apiregistration.k8s.io/v1
@@ -138,7 +138,7 @@ EOF
 
 After the above steps just run the API server via IDE with the following arguments.
 ```
-apiserver --secure-port=9443 --kubeconfig=<your-home-path>/.kube/config --authentication-kubeconfig=<your-home-path>/.kube/config --authorization-kubeconfig=<your-home-path>/.kube/config
+apiserver --secure-port=9443 --kubeconfig=<your-home-path>/.kube/config --authentication-kubeconfig=<your-home-path>/.kube/config --authorization-kubeconfig=<your-home-path>/.kube/config --feature-gates=APIPriorityAndFairness=false
 ```
 
 ### Protobuf installation
@@ -148,14 +148,14 @@ need to implement protobuf interface. The implementation of the interface is don
 
 
 ## Controller
-The AppCat Controller resolves certain issues that cannot be achieved with crossplane. 
+The AppCat Controller resolves certain issues that cannot be achieved with crossplane.
 
 ### Capabilities
 
 The controller manages and achieves the following:
 
 | RESOURCE          | GOAL                        | DESCRIPTION                                  |
-|-------------------|-----------------------------|----------------------------------------------|
+| ----------------- | --------------------------- | -------------------------------------------- |
 | `XVSHNPostgreSQL` | Deletion Protection Support | Manages finalizers before and after deletion |
 
 ## SLI Exporter
@@ -233,7 +233,7 @@ if You want to run gRPC server in local kind cluster, please use:
 	  --set "xfn.image.repository=ghcr.io/vshn/appcat-comp-functions" \
 	  --set "xfn.image.tag=latest" \
 	  --wait
-	  @touch $@   
+	  @touch $@
       ```
 2. [component-appcat](https://github.com/vshn/component-appcat) please append [file](https://github.com/vshn/appcat/blob/master/tests/golden/vshn/appcat/appcat/21_composition_vshn_postgres.yaml) with:
     1.

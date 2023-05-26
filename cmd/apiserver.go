@@ -1,14 +1,15 @@
 package cmd
 
 import (
+	"log"
+	"os"
+	"strconv"
+
 	"github.com/spf13/cobra"
 	appcatv1 "github.com/vshn/appcat/apis/appcat/v1"
 	"github.com/vshn/appcat/pkg/apiserver/appcat"
 	"github.com/vshn/appcat/pkg/apiserver/vshn/postgres"
-	"log"
-	"os"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
-	"strconv"
 )
 
 var apiServerCMDStr = "apiserver"
@@ -57,7 +58,7 @@ func parseEnvVariables() (bool, bool) {
 	}
 	vshnBackupsEnabled, err := strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
 	if err != nil {
-		log.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
+		log.Fatal("Can't parse VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variable")
 	}
 
 	if !appcatEnabled && !vshnBackupsEnabled {

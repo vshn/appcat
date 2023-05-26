@@ -27,6 +27,7 @@ type Runtime struct {
 	io       xfnv1alpha1.FunctionIO
 	Observed ObservedResources
 	Desired  DesiredResources
+	Config   *corev1.ConfigMap
 }
 
 type Resource interface {
@@ -71,7 +72,9 @@ func NewRuntime(ctx context.Context, input []byte) (*Runtime, error) {
 		composite: r.io.Desired.Composite,
 	}
 
-	return &r, nil
+	r.Config, err = parseCompFuncConfig(&r)
+
+	return &r, err
 }
 
 func getKubeObjectFrom(ctx context.Context, resources *[]Resource, kon string) (*xkube.Object, error) {
@@ -154,4 +157,11 @@ func updateKubeObject(obj client.Object, ko *xkube.Object) error {
 // AddToScheme adds given SchemeBuilder to the Scheme.
 func AddToScheme(obj runtime.SchemeBuilder) error {
 	return obj.AddToScheme(s)
+}
+
+func parseCompFuncConfig(iof *Runtime) (*corev1.ConfigMap, error) {
+
+	cm := &corev1.ConfigMap{}
+
+	return cm, yaml.Unmarshal(iof.io.Config.Raw, cm)
 }

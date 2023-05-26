@@ -186,7 +186,7 @@ func createMaintenanceJob(ctx context.Context, instanceNamespace, compositeName,
 							Containers: []corev1.Container{
 								{
 									Name:  "maintenancejob",
-									Image: "ghcr.io/vshn/appcat:v4.1.0",
+									Image: "ghcr.io/vshn/appcat:" + imageTag,
 									Env: []corev1.EnvVar{
 										{
 											Name:  "INSTANCE_NAMESPACE",

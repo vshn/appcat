@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-version"
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	stackgresv1 "github.com/vshn/appcat/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
@@ -30,9 +29,9 @@ type PostgreSQL struct {
 	ctx               context.Context
 	apiUserName       string
 	apiPassword       string
-	sgNamespace       string
 	claimNamespace    string
 	claimName         string
+	SgURL             string
 }
 
 type loginRequest struct {
@@ -51,17 +50,17 @@ type pgVersions struct {
 }
 
 // DoMaintenance will run postgresql's maintenance script.
-func (p *PostgreSQL) DoMaintenance(cmd *cobra.Command) error {
+func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
 	if err := p.configure(); err != nil {
 		return err
 	}
 
-	p.log = logr.FromContextOrDiscard(cmd.Context()).WithValues("instanceNamespace", p.instanceNamespace)
+	p.ctx = ctx
+
+	p.log = logr.FromContextOrDiscard(p.ctx).WithValues("instanceNamespace", p.instanceNamespace)
 
 	p.log.Info("Starting maintenance on postgresql instance")
-
-	p.ctx = cmd.Context()
 
 	sgclusters, err := p.listClustersInNamespace()
 	if err != nil {
@@ -75,7 +74,7 @@ func (p *PostgreSQL) DoMaintenance(cmd *cobra.Command) error {
 	clusterName := sgclusters.Items[0].GetName()
 	currentVersion := sgclusters.Items[0].Spec.Postgres.Version
 
-	versionList, err := p.fetchVersionList()
+	versionList, err := p.fetchVersionList(p.SgURL)
 	if err != nil {
 		p.log.Error(err, "StackGres API error")
 		p.log.Info("Can't get latest minor version, proceeding with security maintenance")
@@ -143,14 +142,14 @@ func (p *PostgreSQL) getLatestMinorversion(vers string, versionList *pgVersions)
 
 	sort.Sort(sort.Reverse(version.Collection(validVersions)))
 
-	if current.LessThan(validVersions[0]) {
+	if len(validVersions) != 0 && current.LessThan(validVersions[0]) {
 		return validVersions[0].Original(), nil
 	}
 
 	return current.Original(), nil
 }
 
-func (p *PostgreSQL) fetchVersionList() (*pgVersions, error) {
+func (p *PostgreSQL) fetchVersionList(url string) (*pgVersions, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	httpClient := &http.Client{Transport: transport}
@@ -163,10 +162,8 @@ func (p *PostgreSQL) fetchVersionList() (*pgVersions, error) {
 		return nil, fmt.Errorf("cannot marshal login json: %w", err)
 	}
 
-	sgURL := "https://stackgres-restapi." + p.sgNamespace + ".svc"
-
 	p.log.V(1).Info("Logging into stackgres")
-	resp, err := httpClient.Post(sgURL+"/stackgres/auth/login", "application/json", bytes.NewBuffer(byteAuth))
+	resp, err := httpClient.Post(url+"/stackgres/auth/login", "application/json", bytes.NewBuffer(byteAuth))
 	if err != nil {
 		return nil, fmt.Errorf("cannot login: %w", err)
 	}
@@ -178,7 +175,7 @@ func (p *PostgreSQL) fetchVersionList() (*pgVersions, error) {
 	}
 
 	p.log.V(1).Info("Getting list of versions")
-	req, err := http.NewRequest("GET", sgURL+"/stackgres/version/postgresql", nil)
+	req, err := http.NewRequest("GET", url+"/stackgres/version/postgresql", nil)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get list of versions: %w", err)
 	}
@@ -255,11 +252,6 @@ func (p *PostgreSQL) configure() error {
 	p.apiUserName = viper.GetString("API_USERNAME")
 	if p.apiUserName == "" {
 		return fmt.Errorf(errString, "API_USERNAME")
-	}
-
-	p.sgNamespace = viper.GetString("SG_NAMESPACE")
-	if p.sgNamespace == "" {
-		return fmt.Errorf(errString, "SG_NAMESPACE")
 	}
 
 	p.claimName = viper.GetString("CLAIM_NAME")

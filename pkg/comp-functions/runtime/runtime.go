@@ -163,5 +163,9 @@ func parseCompFuncConfig(iof *Runtime) (*corev1.ConfigMap, error) {
 
 	cm := &corev1.ConfigMap{}
 
-	return cm, yaml.Unmarshal(iof.io.Config.Raw, cm)
+	if iof.io.Config != nil {
+		return cm, yaml.Unmarshal(iof.io.Config.Raw, cm)
+	}
+
+	return cm, nil
 }

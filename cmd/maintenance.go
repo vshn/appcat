@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/thediveo/enumflag/v2"
 	"github.com/vshn/appcat/pkg"
 	"github.com/vshn/appcat/pkg/maintenance"
@@ -60,10 +63,17 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 
 	switch serviceName {
 	case postgresql:
+
+		sgNamespace := viper.GetString("SG_NAMESPACE")
+		if sgNamespace == "" {
+			return fmt.Errorf("missing environment variable: %s", "SG_NAMESPACE")
+		}
+
 		pg := maintenance.PostgreSQL{
 			Client: kubeClient,
+			SgURL:  "https://stackgres-restapi." + sgNamespace + ".svc",
 		}
-		return pg.DoMaintenance(cmd)
+		return pg.DoMaintenance(cmd.Context())
 	}
 
 	return nil

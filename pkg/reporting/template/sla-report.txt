@@ -1,0 +1,23 @@
+= SLA Report
+
+image::vshn.png[VSHN Logo,100,54,id=vshn_logo]
+
+*Version of the document: May 2023* +
+
+---
+
+[big]#Customer: *{{.Customer}}* +
+Month: *{{.Month}}* +
+Cluster: *{{.Cluster}}*#
+
+---
+
+[cols="Namespace, Instance, SLA Target, SLA Outcome"]
+|===
+| Namespace| Instance| SLA Target| SLA Outcome
+{{range .SI}}
+|{{.Namespace}}|{{.Instance}}|{{.TargetSLA}}%|*{{.OutcomeSLA}}%*
+{{end}}
+|===
+
+NOTE: [small]#The list of exceptions which are excluded from outcome can be viewed  {{.ExceptionLink}}[at].#

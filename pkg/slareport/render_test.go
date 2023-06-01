@@ -1,8 +1,9 @@
-package reporting
+package slareport
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSLARenderer_RenderAsciidoc(t *testing.T) {
@@ -14,7 +15,6 @@ func TestSLARenderer_RenderAsciidoc(t *testing.T) {
 		"WhenSLARender_ThenOutput": {
 			renderer: SLARenderer{
 				Customer:      "TestCustomer",
-				Cluster:       "TestCluster",
 				ExceptionLink: "https://vshn.ch",
 				Month:         2,
 				SI: []ServiceInstance{
@@ -23,14 +23,15 @@ func TestSLARenderer_RenderAsciidoc(t *testing.T) {
 						Instance:   "postgres-dev",
 						TargetSLA:  99.9,
 						OutcomeSLA: 99.1,
+						Color:      "red",
 					},
 				},
 			},
-			expectedAsciidoc: "= SLA Report\n\nimage::vshn.png[VSHN Logo,100,54,id=vshn_logo]\n\n*Version of the document" +
-				": May 2023* +\n\n---\n\n[big]#Customer: *TestCustomer* +\nMonth: *February* +\nCluster: *TestCluster*#\n" +
-				"\n---\n\n[cols=\"Namespace, Instance, SLA Target, SLA Outcome\"]\n|===\n| Namespace| Instance| SLA Target|" +
-				" SLA Outcome\n\n|dev-namespace|postgres-dev|99.9%|*99.1%*\n\n|===\n\nNOTE: [small]#The list of exceptions " +
-				"which are excluded from outcome can be viewed  https://vshn.ch[at].#\n",
+			expectedAsciidoc: "= SLA Report\n\nimage::vshn.png[VSHN Logo,100,54,id=vshn_logo]\n\n---\n\n[big]#Customer: *TestCustomer* +\nMonth: *February* +\n" +
+				"Year: *0*#\n\n---\n\n[cols=\"Namespace, Instance, SLA Target, SLA Outcome\"]\n|===\n|Cluster| " +
+				"Service | Namespace| Instance| SLA Target| SLA Outcome\n\n|||dev-namespace|postgres-dev|99.9%|*99." +
+				"10%*\n\n|===\n\nNOTE: [small]#The list of exceptions which are excluded from outcome can be viewed  " +
+				"https://vshn.ch[at].#\n\n",
 			err: nil,
 		},
 	}
@@ -60,7 +61,6 @@ func TestSLARenderer_PrepareJSONPayload(t *testing.T) {
 		"WhenSLARender_ThenOutputPayload": {
 			renderer: SLARenderer{
 				Customer:      "TestCustomer",
-				Cluster:       "TestCluster",
 				ExceptionLink: "https://vshn.ch",
 				Month:         2,
 				SI: []ServiceInstance{
@@ -69,15 +69,16 @@ func TestSLARenderer_PrepareJSONPayload(t *testing.T) {
 						Instance:   "postgres-dev",
 						TargetSLA:  99.9,
 						OutcomeSLA: 99.1,
+						Color:      "red",
 					},
 				},
 			},
-			expectedPayload: "{\"asciidoc\":\"= SLA Report\\n\\nimage::vshn.png[VSHN Logo,100,54,id=vshn_logo]\\n\\n*" +
-				"Version of the document: May 2023* +\\n\\n---\\n\\n[big]#Customer: *TestCustomer* +\\nMonth: *February*" +
-				" +\\nCluster: *TestCluster*#\\n\\n---\\n\\n[cols=\\\"Namespace, Instance, SLA Target, SLA Outcome\\\"]" +
-				"\\n|===\\n| Namespace| Instance| SLA Target| SLA Outcome\\n\\n|dev-namespace|postgres-dev|99.9%|*99.1%*" +
-				"\\n\\n|===\\n\\nNOTE: [small]#The list of exceptions which are excluded from outcome can be viewed  " +
-				"https://vshn.ch[at].#\\n\",\"vshn_docgen_id\":\"appcat-sla-report\"}",
+			expectedPayload: `{"asciidoc":"= SLA Report\n\nimage::vshn.png[VSHN Logo,100,54,id=vshn_logo]\n` +
+				`\n---\n\n[big]#Customer: *TestCustomer* +\nMonth: ` +
+				`*February* +\nYear: *0*#\n\n---\n\n[cols=\"Namespace, Instance, SLA Target, SLA Outcome\"]\n` +
+				`|===\n|Cluster| Service | Namespace| Instance| SLA Target| SLA Outcome\n\n|||dev-namespace|postgres-dev` +
+				`|99.9%|*99.10%*\n\n|===\n\nNOTE: [small]#The list of exceptions which are excluded from outcome ` +
+				`can be viewed  https://vshn.ch[at].#\n\n","vshn_docgen_id":"appcat-sla-report"}`,
 			err: nil,
 		},
 	}
@@ -93,7 +94,7 @@ func TestSLARenderer_PrepareJSONPayload(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			assert.Equal(t, []byte(tc.expectedPayload), payload)
+			assert.Equal(t, tc.expectedPayload, string(payload))
 		})
 	}
 }

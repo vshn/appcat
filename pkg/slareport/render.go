@@ -1,10 +1,12 @@
-package reporting
+package slareport
 
 import (
 	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"text/template"
 	"time"
 )
@@ -27,15 +29,18 @@ var appcatSLAReport = "appcat-sla-report"
 type ServiceInstance struct {
 	Namespace  string
 	Instance   string
-	TargetSLA  float32
-	OutcomeSLA float32
+	TargetSLA  float64
+	OutcomeSLA float64
+	Cluster    string
+	Service    string
+	Color      string
 }
 
 type SLARenderer struct {
 	Customer      string
-	Cluster       string
 	ExceptionLink string
 	Month         time.Month
+	Year          int
 	SI            []ServiceInstance
 }
 
@@ -74,4 +79,30 @@ func (s *SLARenderer) PrepareJSONPayload() ([]byte, error) {
 	}
 
 	return payload, nil
+}
+
+// GeneratePDF sends a request to docgen an returns the rendered PDF.
+func (s *SLARenderer) GeneratePDF() (io.ReadCloser, error) {
+
+	reqJson, err := s.PrepareJSONPayload()
+	if err != nil {
+		return nil, err
+	}
+
+	reader := bytes.NewReader(reqJson)
+
+	req, err := http.NewRequest("POST", "https://docgen.vshn.net/api/pdf", reader)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	client := http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Body, nil
 }

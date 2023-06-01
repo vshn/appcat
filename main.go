@@ -15,7 +15,8 @@ func init() {
 		cmd.APIServerCMD,
 		cmd.SLIProberCMD,
 		cmd.GrpcCMD,
-		cmd.MaintenanceCMD)
+		cmd.MaintenanceCMD,
+		cmd.SlareportCMD)
 }
 
 func main() {

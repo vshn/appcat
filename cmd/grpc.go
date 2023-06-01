@@ -8,6 +8,7 @@ import (
 	pb "github.com/crossplane/crossplane/apis/apiextensions/fn/proto/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/miniodev"
 	vpf "github.com/vshn/appcat/pkg/comp-functions/functions/vshn-postgres-func"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"google.golang.org/grpc"
@@ -85,6 +86,12 @@ var images = map[string][]runtime.Transform{
 		{
 			Name:          "maintenance-job",
 			TransformFunc: vpf.AddMaintenanceJob,
+		},
+	},
+	"miniodev": {
+		{
+			Name:          "miniodevbucket",
+			TransformFunc: miniodev.ProvisionMiniobucket,
 		},
 	},
 }

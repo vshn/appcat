@@ -82,6 +82,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "encrypted-pvc-secret",
 			TransformFunc: vpf.AddPvcSecret,
 		},
+		{
+			Name:          "maintenance-job",
+			TransformFunc: vpf.AddMaintenanceJob,
+		},
 	},
 }
 

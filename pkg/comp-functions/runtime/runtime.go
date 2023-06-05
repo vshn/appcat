@@ -9,6 +9,7 @@ import (
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	"github.com/vshn/appcat/pkg"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,7 +18,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var s = runtime.NewScheme()
+var s = pkg.SetupScheme()
 
 type contextKey int
 
@@ -26,6 +27,7 @@ type Runtime struct {
 	io       xfnv1alpha1.FunctionIO
 	Observed ObservedResources
 	Desired  DesiredResources
+	Config   *corev1.ConfigMap
 }
 
 type Resource interface {
@@ -70,7 +72,9 @@ func NewRuntime(ctx context.Context, input []byte) (*Runtime, error) {
 		composite: r.io.Desired.Composite,
 	}
 
-	return &r, nil
+	r.Config, err = parseCompFuncConfig(&r)
+
+	return &r, err
 }
 
 func getKubeObjectFrom(ctx context.Context, resources *[]Resource, kon string) (*xkube.Object, error) {
@@ -153,4 +157,15 @@ func updateKubeObject(obj client.Object, ko *xkube.Object) error {
 // AddToScheme adds given SchemeBuilder to the Scheme.
 func AddToScheme(obj runtime.SchemeBuilder) error {
 	return obj.AddToScheme(s)
+}
+
+func parseCompFuncConfig(iof *Runtime) (*corev1.ConfigMap, error) {
+
+	cm := &corev1.ConfigMap{}
+
+	if iof.io.Config != nil {
+		return cm, yaml.Unmarshal(iof.io.Config.Raw, cm)
+	}
+
+	return cm, nil
 }

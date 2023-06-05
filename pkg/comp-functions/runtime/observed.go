@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
@@ -56,7 +55,7 @@ func (o *ObservedResources) GetCompositeConnectionDetails(_ context.Context) *[]
 // and the status field will not be changed with multiple transformation functions
 func (o *ObservedResources) fromKubeObject(ctx context.Context, kobj *xkube.Object, obj client.Object) error {
 	log := controllerruntime.LoggerFrom(ctx)
-	log.V(1).Info("Unmarshalling resource from observed kube object", "kube object", kobj, reflect.TypeOf(obj).Kind())
+	log.V(1).Info("Unmarshalling resource from observed kube object", "kube object", kobj)
 	if kobj.Status.AtProvider.Manifest.Raw == nil {
 		return ErrNotFound
 	}

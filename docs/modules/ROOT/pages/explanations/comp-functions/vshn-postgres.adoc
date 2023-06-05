@@ -6,5 +6,29 @@ The set of transformation go functions applied to a VSHN Postgres composition.
 
 The function URL-CONNECTION-DETAILS adds a new `POSTGRES_URL` entry in  the connection detail of the composite. The value is defined as `postgres://user:password@host:port/db`. Once it is executed the client has access to the URL of its database via connection secret.
 
+== Maintenance
 
+The maintenance for PostgreSQL leverages StackGres' built in operations CRDs.
+They can do various operations against a database.
+As soon as one is created StackGres will initiate the operation.
 
+=== AppCat Implementation
+
+In AppCat there's a cronjob deployed for each instance that is provisioned.
+This cronjob will create a `SGDbOps` when run.
+What kind of operation it creates depends on following factors:
+
+* If the instance is on a current minor version, then do a security update
+* If the instance is on an older minor version, then do a minor upgrade
+* If the StackGres API is not available do a security update
+
+The StackGres operator API is used to query what versions are currently supported.
+If a new StackGres release supports newer minor versions of PostgreSQL, then all instances of that major version will do an update during their next maintenance window.
+
+The actual logic for this is in the maintenance CMD.
+It serves as the entrypoint for the container that the cronjob starts.
+This can be enhanced with maintenance routines for future services.
+Adding new `SGDbOps` objects to the job should also be trivial, if the need arises.
+
+To query the StackGres API the composition function copies StackGres' credential secret into the instance namespace.
+For the maintenance to properly work the `clearPassword` field in the credential secret has to exist, as otherwise the job would not be able to read it.

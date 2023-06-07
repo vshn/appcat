@@ -11,7 +11,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ProvisionMiniobucket will create a bucket in the
+// ProvisionMiniobucket will create a bucket in a pre-deployed minio instance.
+// This function is for dev purposes only! There are no hardcoded passwords and assumptions
+// that will only work together with kindev.
 func ProvisionMiniobucket(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	claim := &appcatv1.ObjectBucket{}
 

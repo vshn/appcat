@@ -29,7 +29,7 @@ func TestSLARenderer_RenderAsciidoc(t *testing.T) {
 			},
 			expectedAsciidoc: "= SLA Report\n\nimage::vshn.png[VSHN Logo,100,54,id=vshn_logo]\n\n---\n\n[big]#Customer: *TestCustomer* +\nMonth: *February* +\n" +
 				"Year: *0*#\n\n---\n\n[cols=\"Namespace, Instance, SLA Target, SLA Outcome\"]\n|===\n|Cluster| " +
-				"Service | Namespace| Instance| SLA Target| SLA Outcome\n\n|||dev-namespace|postgres-dev|99.9%|*99." +
+				"Service | Namespace| Instance| SLA Target| SLA Outcome\n\n|||dev-namespace|postgres-dev|99.9%|[red]*99." +
 				"10%*\n\n|===\n\nNOTE: [small]#The list of exceptions which are excluded from outcome can be viewed  " +
 				"https://vshn.ch[at].#\n\n",
 			err: nil,
@@ -77,7 +77,7 @@ func TestSLARenderer_PrepareJSONPayload(t *testing.T) {
 				`\n---\n\n[big]#Customer: *TestCustomer* +\nMonth: ` +
 				`*February* +\nYear: *0*#\n\n---\n\n[cols=\"Namespace, Instance, SLA Target, SLA Outcome\"]\n` +
 				`|===\n|Cluster| Service | Namespace| Instance| SLA Target| SLA Outcome\n\n|||dev-namespace|postgres-dev` +
-				`|99.9%|*99.10%*\n\n|===\n\nNOTE: [small]#The list of exceptions which are excluded from outcome ` +
+				`|99.9%|[red]*99.10%*\n\n|===\n\nNOTE: [small]#The list of exceptions which are excluded from outcome ` +
 				`can be viewed  https://vshn.ch[at].#\n\n","vshn_docgen_id":"appcat-sla-report"}`,
 			err: nil,
 		},

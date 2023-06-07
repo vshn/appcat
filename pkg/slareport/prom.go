@@ -19,21 +19,24 @@ var (
 (1 - max without(prometheus_replica) (sum_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
 / ignoring (sloth_window) count_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
 ) >= 0) * 100`
-	slaQuery = `slo:objective:ratio{sloth_id="{{SLOTHID}}"}`
+	slaQuery         = `slo:objective:ratio{sloth_id="{{SLOTHID}}"}`
+	promClientFunc   = getPrometheusAPIClient
+	getMetricsFunc   = getSLAMetrics
+	getTargetSLAFunc = getTargetSLA
 )
 
-func newPrometheusAPIClient(promURL string, thanosAllowPartialResponses bool, orgId string) (apiv1.API, error) {
+func getPrometheusAPIClient(promURL string, thanosAllowPartialResponses bool, orgID string) (apiv1.API, error) {
 	rt := api.DefaultRoundTripper
 	rt = &thanos.PartialResponseRoundTripper{
 		RoundTripper: rt,
 		Allow:        thanosAllowPartialResponses,
 	}
 
-	if orgId != "" {
+	if orgID != "" {
 		rt = &thanos.AdditionalHeadersRoundTripper{
 			RoundTripper: rt,
 			Headers: map[string][]string{
-				"X-Scope-OrgID": {orgId},
+				"X-Scope-OrgID": {orgID},
 			},
 		}
 	}
@@ -52,7 +55,7 @@ func RunQuery(ctx context.Context, promURL, timeRange, date string) (map[string]
 
 	l.Info("Starting SLA queries", "date", date, "range", timeRange)
 
-	client, err := newPrometheusAPIClient(promURL, false, "")
+	client, err := promClientFunc(promURL, false, "")
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +67,7 @@ func RunQuery(ctx context.Context, promURL, timeRange, date string) (map[string]
 	}
 
 	l.V(1).Info("Querying prometheus", "promURL", promURL)
-	samples, err := getSLAMetrics(ctx, startDate, endDate, timeRange, client)
+	samples, err := getMetricsFunc(ctx, startDate, endDate, timeRange, client)
 	if err != nil {
 		return nil, fmt.Errorf("error during metrics prometheus query: %w", err)
 	}
@@ -82,9 +85,13 @@ func RunQuery(ctx context.Context, promURL, timeRange, date string) (map[string]
 
 		slothID := string(sample.Metric["sloth_id"])
 
-		targetSLA, err := getTargetSLA(ctx, slothID, client, endDate)
+		targetSLA, err := getTargetSLAFunc(ctx, slothID, client, endDate)
 		if err != nil {
 			return nil, fmt.Errorf("error during SLA target query: %w", err)
+		}
+
+		if len(sample.Values) == 0 {
+			return slaMetrics, errors.New("no values available for instance " + string(sample.Metric["name"]))
 		}
 
 		outcomeSLA := float64(sample.Values[len(sample.Values)-1].Value)

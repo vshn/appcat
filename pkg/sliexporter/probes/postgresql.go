@@ -16,9 +16,10 @@ var _ Prober = PostgreSQL{}
 type PostgreSQL struct {
 	db *pgxpool.Pool
 
-	Service   string
-	Instance  string
-	Namespace string
+	Service      string
+	Instance     string
+	Namespace    string
+	Organization string
 }
 
 // Close closes open connections to the PostgreSQL server.
@@ -32,9 +33,10 @@ func (p PostgreSQL) Close() error {
 // GetInfo returns the prober infos
 func (p PostgreSQL) GetInfo() ProbeInfo {
 	return ProbeInfo{
-		Service:   p.Service,
-		Name:      p.Instance,
-		Namespace: p.Namespace,
+		Service:      p.Service,
+		Name:         p.Instance,
+		Namespace:    p.Namespace,
+		Organization: p.Organization,
 	}
 }
 
@@ -49,7 +51,7 @@ func (p PostgreSQL) Probe(ctx context.Context) error {
 }
 
 // NewPostgreSQL connects to the provided dsn and returns a prober
-func NewPostgreSQL(service, name, namespace, dsn string, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
+func NewPostgreSQL(service, name, namespace, dsn, organization string, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
 	conf, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, err
@@ -70,10 +72,11 @@ func NewPostgreSQL(service, name, namespace, dsn string, ops ...func(*pgxpool.Co
 	}
 
 	return &PostgreSQL{
-		db:        db,
-		Service:   service,
-		Instance:  name,
-		Namespace: namespace,
+		db:           db,
+		Service:      service,
+		Instance:     name,
+		Namespace:    namespace,
+		Organization: organization,
 	}, nil
 }
 

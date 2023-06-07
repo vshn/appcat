@@ -19,8 +19,9 @@ package sliexporter
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat/pkg/sliexporter/probes"
 	"time"
+
+	"github.com/vshn/appcat/pkg/sliexporter/probes"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	corev1 "k8s.io/api/core/v1"
@@ -43,7 +44,7 @@ type VSHNPostgreSQLReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	PostgreDialer      func(service, name, namespace, dsn string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
+	PostgreDialer      func(service, name, namespace, dsn, organization string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
 }
 
 type probeManager interface {
@@ -120,6 +121,14 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 		return nil, err
 	}
 
+	ns := &corev1.Namespace{}
+	err = r.Get(ctx, types.NamespacedName{Name: inst.Namespace}, ns)
+	if err != nil {
+		return nil, err
+	}
+
+	org := ns.GetLabels()["appuio.io/organization"]
+
 	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.Name, inst.Namespace,
 		fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=verify-ca",
@@ -128,7 +137,8 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 			credSecret.Data["POSTGRESQL_HOST"],
 			credSecret.Data["POSTGRESQL_PORT"],
 			credSecret.Data["POSTGRESQL_DB"],
-		), probes.PGWithCA(credSecret.Data["ca.crt"]))
+		), org,
+		probes.PGWithCA(credSecret.Data["ca.crt"]))
 	if err != nil {
 		return nil, err
 	}

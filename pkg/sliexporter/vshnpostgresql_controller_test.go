@@ -2,9 +2,10 @@ package sliexporter
 
 import (
 	"context"
-	"github.com/vshn/appcat/pkg/sliexporter/probes"
 	"testing"
 	"time"
+
+	"github.com/vshn/appcat/pkg/sliexporter/probes"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
@@ -199,15 +200,24 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 	r, manager, client := setupVSHNPostgreTest(t,
 		db,
 		cred,
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				Labels: map[string]string{
+					"ogranization": "bar",
+				},
+			},
+		},
 	)
-	r.PostgreDialer = func(service, name, namespace, dsn string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+	r.PostgreDialer = func(service, name, namespace, dsn, organization string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 
 		assert.Equal(t, "VSHNPostgreSQL", service)
 		assert.Equal(t, "foo", name)
 		assert.Equal(t, "bar", namespace)
 		assert.Equal(t, "postgresql://userfoo:password@foo.bar:5433/pg?sslmode=verify-ca", dsn)
+		assert.Equal(t, "bar", organization)
 
-		return fakePostgreDialer(service, name, namespace, dsn, ops...)
+		return fakePostgreDialer(service, name, namespace, dsn, organization, ops...)
 	}
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
@@ -231,11 +241,12 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 	assert.False(t, manager.probers[pi])
 }
 
-func fakePostgreDialer(service string, name string, namespace string, dsn string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+func fakePostgreDialer(service string, name string, namespace string, dsn string, organization string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 	p := &probes.PostgreSQL{
-		Service:   service,
-		Instance:  name,
-		Namespace: namespace,
+		Service:      service,
+		Instance:     name,
+		Namespace:    namespace,
+		Organization: organization,
 	}
 	return p, nil
 }

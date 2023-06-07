@@ -96,11 +96,11 @@ func TestRunQuery(t *testing.T) {
 			metrics: model.Matrix{
 				{
 					Metric: model.Metric{
-						"name":                         "test",
-						"namespace":                    "myns",
-						"service":                      "postgresql",
-						"cluster_id":                   "mycluster",
-						"label_appuio_io_organization": "mycustomer",
+						"name":         "test",
+						"namespace":    "myns",
+						"service":      "postgresql",
+						"cluster_id":   "mycluster",
+						"organization": "mycustomer",
 					},
 					Values: []model.SamplePair{
 						{
@@ -133,11 +133,11 @@ func TestRunQuery(t *testing.T) {
 			metrics: model.Matrix{
 				{
 					Metric: model.Metric{
-						"name":                         "test",
-						"namespace":                    "myns",
-						"service":                      "postgresql",
-						"cluster_id":                   "mycluster",
-						"label_appuio_io_organization": "mycustomer",
+						"name":         "test",
+						"namespace":    "myns",
+						"service":      "postgresql",
+						"cluster_id":   "mycluster",
+						"organization": "mycustomer",
 					},
 					Values: []model.SamplePair{
 						{
@@ -163,11 +163,11 @@ func TestRunQuery(t *testing.T) {
 			metrics: model.Matrix{
 				{
 					Metric: model.Metric{
-						"name":                         "test",
-						"namespace":                    "myns",
-						"service":                      "postgresql",
-						"cluster_id":                   "mycluster",
-						"label_appuio_io_organization": "mycustomer",
+						"name":         "test",
+						"namespace":    "myns",
+						"service":      "postgresql",
+						"cluster_id":   "mycluster",
+						"organization": "mycustomer",
 					},
 				},
 			},
@@ -183,7 +183,7 @@ func TestRunQuery(t *testing.T) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := RunQuery(context.TODO(), "dummy", "30d", "2023-06-07T09:00:00Z")
+			got, err := RunQuery(context.TODO(), "dummy", "30d", "2023-06-07T09:00:00Z", "")
 			if tt.wantErr {
 				assert.Error(t, err)
 			}

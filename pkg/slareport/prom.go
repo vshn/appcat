@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	metricQuery = `kube_namespace_labels{label_appuio_io_organization=~".+"} * on (namespace) group_right(label_appuio_io_organization)
-(1 - max without(prometheus_replica) (sum_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
+	metricQuery = `(1 - max without(prometheus_replica) (sum_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
 / ignoring (sloth_window) count_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
 ) >= 0) * 100`
 	slaQuery         = `slo:objective:ratio{sloth_id="{{SLOTHID}}"}`
@@ -49,13 +48,13 @@ func getPrometheusAPIClient(promURL string, thanosAllowPartialResponses bool, or
 	return apiv1.NewAPI(client), err
 }
 
-func RunQuery(ctx context.Context, promURL, timeRange, date string) (map[string][]ServiceInstance, error) {
+func RunQuery(ctx context.Context, promURL, timeRange, date, mimirOrg string) (map[string][]ServiceInstance, error) {
 
 	l := log.FromContext(ctx)
 
 	l.Info("Starting SLA queries", "date", date, "range", timeRange)
 
-	client, err := promClientFunc(promURL, false, "")
+	client, err := promClientFunc(promURL, true, mimirOrg)
 	if err != nil {
 		return nil, err
 	}

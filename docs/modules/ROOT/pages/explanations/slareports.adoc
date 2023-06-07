@@ -1,0 +1,16 @@
+= SLA Reports
+
+== How do they work?
+
+This is a simple SLA reporting tool.
+It connects to a Prometheus/Thanos/Mimir instance and queries them to gather the SLA information.
+
+It currently requires the information provided by the AppCat SLI exporter, as well as the `appuio.io/organization` label by joining the namespace information.
+It also requires the `cluster_id` label, which is currently available on the `SLO Mimir` endpoint.
+
+It then creates an ASCIIdoc template and sends it to VSHN's docgen.
+There it will be converted to a PDF and sent back to the slareporter.
+The slareporter will then upload the PDFs to the configured S3 bucket.
+
+By default the slareporter will take the current time and a range of 30 days to query and calculate the SLA reports.
+This can be adjusted, please consult the commands help for more information.

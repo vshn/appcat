@@ -8,6 +8,7 @@ import (
 	pb "github.com/crossplane/crossplane/apis/apiextensions/fn/proto/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/miniodev"
 	vpf "github.com/vshn/appcat/pkg/comp-functions/functions/vshn-postgres-func"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"google.golang.org/grpc"
@@ -19,11 +20,13 @@ import (
 func init() {
 	GrpcCMD.Flags().StringVar(&Network, "network", "unix", "network type")
 	GrpcCMD.Flags().StringVar(&AddressFlag, "socket", "@crossplane/fn/default.sock", "set where socket should be located")
+	GrpcCMD.Flags().BoolVar(&DevMode, "devmode", false, "enable dev composition functions")
 }
 
 var (
 	Network     = "unix"
 	AddressFlag = "@crossplane/fn/default.sock"
+	DevMode     = false
 )
 
 var GrpcCMD = &cobra.Command{
@@ -96,6 +99,7 @@ type server struct {
 
 func (s *server) RunFunction(ctx context.Context, in *pb.RunFunctionRequest) (*pb.RunFunctionResponse, error) {
 	ctx = logr.NewContext(ctx, s.logger)
+	enableDevMode(DevMode)
 	fnio, err := runtime.RunCommand(ctx, in.Input, images[in.Image])
 	if err != nil {
 		err = status.Errorf(codes.Aborted, "Can't process request for PostgreSQL")
@@ -111,4 +115,15 @@ func cleanStart(socketName string) error {
 	}
 
 	return nil
+}
+
+func enableDevMode(enable bool) {
+	if enable {
+		images["miniodev"] = []runtime.Transform{
+			{
+				Name:          "miniodevbucket",
+				TransformFunc: miniodev.ProvisionMiniobucket,
+			},
+		}
+	}
 }

@@ -5,6 +5,7 @@ go 1.20
 replace github.com/deepmap/oapi-codegen => github.com/sljeff/oapi-codegen v1.5.1-0.20211207091501-bc20f55d338a
 
 require (
+	github.com/appuio/appuio-cloud-reporting v0.15.0
 	github.com/crossplane-contrib/provider-kubernetes v0.7.0
 	github.com/crossplane/crossplane v1.11.2
 	github.com/crossplane/crossplane-runtime v0.19.2
@@ -26,7 +27,6 @@ require (
 	github.com/thediveo/enumflag/v2 v2.0.2
 	github.com/urfave/cli/v2 v2.25.3
 	github.com/vektra/mockery/v2 v2.26.1
-	github.com/vshn/appcat-apiserver v0.2.3
 	go.uber.org/zap v1.24.0
 	golang.org/x/text v0.9.0
 	google.golang.org/grpc v1.52.0
@@ -119,7 +119,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
-	github.com/prometheus/common v0.37.0 // indirect
+	github.com/prometheus/common v0.40.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -152,7 +152,7 @@ require (
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
-	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
+	golang.org/x/oauth2 v0.3.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/term v0.7.0 // indirect

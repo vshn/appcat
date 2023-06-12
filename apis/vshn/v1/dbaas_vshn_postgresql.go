@@ -214,6 +214,9 @@ type VSHNPostgreSQLMonitoring struct {
 	// AlertmanagerConfigSpecTemplate takes an AlertmanagerConfigSpec object.
 	// This takes precedence over the AlertmanagerConfigRef.
 	AlertmanagerConfigSpecTemplate *alertmanagerv1alpha1.AlertmanagerConfigSpec `json:"alertmanagerConfigTemplate,omitempty"`
+
+	// Email necessary to send alerts via email
+	Email string `json:"email,omitempty"`
 }
 
 // VSHNPostgreSQLEncryption contains storage encryption specific parameters

@@ -131,7 +131,7 @@ test: ## Run tests
 docker-build:
 	env CGO_ENABLED=0 GOOS=$(DOCKER_IMAGE_GOOS) GOARCH=$(DOCKER_IMAGE_GOARCH) \
 		go build -o ${BIN_FILENAME}
-	docker build -t ${GHCR_IMG} .
+	docker build --platform $(DOCKER_IMAGE_GOOS)/$(DOCKER_IMAGE_GOARCH) -t ${GHCR_IMG} .
 
 .PHONY: docker-push
 docker-push: docker-build ## Push docker image with the manager.

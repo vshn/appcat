@@ -190,6 +190,8 @@ func TestRunQuery(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+
+	resetGlobalFunctions()
 }
 
 func getDummyPromClient(promURL string, thanosAllowPartialResponses bool, orgID string) (apiv1.API, error) {
@@ -200,4 +202,10 @@ func getDummyPromClient(promURL string, thanosAllowPartialResponses bool, orgID 
 
 func getDummySLA(ctx context.Context, slothID string, client apiv1.API, endDate *time.Time) (float64, error) {
 	return 99.9, nil
+}
+
+func resetGlobalFunctions() {
+	promClientFunc = getPrometheusAPIClient
+	getMetricsFunc = getSLAMetrics
+	getTargetSLAFunc = getTargetSLA
 }

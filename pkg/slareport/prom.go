@@ -18,7 +18,7 @@ var (
 	metricQuery = `(1 - max without(prometheus_replica) (sum_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
 / ignoring (sloth_window) count_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
 ) >= 0) * 100`
-	slaQuery         = `slo:objective:ratio{sloth_id="{{SLOTHID}}"}`
+	slaQuery         = `100*slo:objective:ratio{sloth_id="{{SLOTHID}}"}`
 	promClientFunc   = getPrometheusAPIClient
 	getMetricsFunc   = getSLAMetrics
 	getTargetSLAFunc = getTargetSLA
@@ -147,7 +147,8 @@ func getSLAMetrics(ctx context.Context, startDate, endDate *time.Time, timeRange
 	}
 
 	if len(warnings) != 0 {
-		fmt.Println(warnings)
+		warns := strings.Join(warnings, ",")
+		log.FromContext(ctx).Info("There were warnings during the prom query", "warnings", warns)
 	}
 
 	samples, ok := value.(model.Matrix)
@@ -161,13 +162,14 @@ func getSLAMetrics(ctx context.Context, startDate, endDate *time.Time, timeRange
 func getTargetSLA(ctx context.Context, slothID string, client apiv1.API, endDate *time.Time) (float64, error) {
 	query := strings.Replace(slaQuery, "{{SLOTHID}}", slothID, 1)
 
-	res, warns, err := client.Query(ctx, query, *endDate)
+	res, warnings, err := client.Query(ctx, query, *endDate)
 	if err != nil {
 		return 0, err
 	}
 
-	if len(warns) != 0 {
-		fmt.Println(warns)
+	if len(warnings) != 0 {
+		warns := strings.Join(warnings, ",")
+		log.FromContext(ctx).Info("There were warnings during the prom query", "warnings", warns)
 	}
 
 	samples, ok := res.(model.Vector)
@@ -179,5 +181,5 @@ func getTargetSLA(ctx context.Context, slothID string, client apiv1.API, endDate
 		return 0, errors.New("no target SLA found in prometheus")
 	}
 
-	return float64(samples[len(samples)-1].Value) * 100, nil
+	return float64(samples[len(samples)-1].Value), nil
 }

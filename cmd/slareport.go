@@ -69,8 +69,7 @@ func (c *controller) runReport(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	uploader := slareport.PDFUploader{}
-	err = uploader.Login(cmd.Context(),
+	uploader, err := slareport.NewPDFUploader(cmd.Context(),
 		endpointURL,
 		bucket,
 		awsaccesskeyid,
@@ -80,17 +79,18 @@ func (c *controller) runReport(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	for customer, metrics := range metrics {
+	parsedDate, err := time.Parse(time.RFC3339, date)
+	if err != nil {
+		return err
+	}
+
+	for customer, instanceMetrics := range metrics {
 
 		l.Info("Rendering PDF for customer", "customer", customer)
-		parsedDate, err := time.Parse(time.RFC3339, date)
-		if err != nil {
-			return err
-		}
 
 		renderer := slareport.SLARenderer{
 			Customer:      customer,
-			SI:            metrics,
+			SI:            instanceMetrics,
 			Month:         parsedDate.Month(),
 			Year:          parsedDate.Year(),
 			ExceptionLink: "https://products.vshn.ch/service_levels.html#_exceptions_to_availability_guarantee",
@@ -102,7 +102,7 @@ func (c *controller) runReport(cmd *cobra.Command, _ []string) error {
 		}
 
 		l.Info("Uploading PDF", "customer", customer, "endpoint", endpointURL, "bucket", bucket)
-		err = uploader.Upload(slareport.PDF{
+		err = uploader.Upload(cmd.Context(), slareport.PDF{
 			Customer: customer,
 			Date:     parsedDate,
 			PDFData:  pdf,

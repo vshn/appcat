@@ -17,7 +17,6 @@ import (
 type PDFUploader struct {
 	client *minio.Client
 	bucket string
-	ctx    context.Context
 }
 
 // PDF is contains all metainformation to upload a PDF to S3.
@@ -27,14 +26,16 @@ type PDF struct {
 	PDFData  io.ReadCloser
 }
 
-// Login initializes an S3 client.
-func (p *PDFUploader) Login(ctx context.Context, endpoint, bucket, keyID, secretKey string) error {
+// NewPDFUploader initializes an S3 client.
+func NewPDFUploader(ctx context.Context, endpoint, bucket, keyID, secretKey string) (PDFUploader, error) {
 
 	log.FromContext(ctx).V(1).Info("Logging into S3 endpoint", "endpointurl", endpoint)
 
+	p := PDFUploader{}
+
 	url, err := url.Parse(endpoint)
 	if err != nil {
-		return err
+		return p, nil
 	}
 
 	S3Client, err := minio.New(url.Host, &minio.Options{
@@ -42,22 +43,21 @@ func (p *PDFUploader) Login(ctx context.Context, endpoint, bucket, keyID, secret
 		Secure: url.Scheme == "https",
 	})
 	if err != nil {
-		return err
+		return p, err
 	}
 
 	p.client = S3Client
 	p.bucket = bucket
-	p.ctx = ctx
-	return nil
+	return p, nil
 }
 
 // Upload uploads the given PDF to the logged in S3 enspoint.
 // It will create an object with the pattern `year/month/customer.pdf`.
-func (p *PDFUploader) Upload(pdf PDF) error {
+func (p *PDFUploader) Upload(ctx context.Context, pdf PDF) error {
 
 	obj := fmt.Sprintf("%d/%s/%s.pdf", pdf.Date.Year(), pdf.Date.Month(), pdf.Customer)
 
-	log.FromContext(p.ctx).V(1).Info("Uploading PDF", "object", obj)
+	log.FromContext(ctx).V(1).Info("Uploading PDF", "object", obj)
 
 	buf := &bytes.Buffer{}
 	size, err := io.Copy(buf, pdf.PDFData)
@@ -65,6 +65,6 @@ func (p *PDFUploader) Upload(pdf PDF) error {
 		return err
 	}
 
-	_, err = p.client.PutObject(p.ctx, p.bucket, obj, buf, size, minio.PutObjectOptions{})
+	_, err = p.client.PutObject(ctx, p.bucket, obj, buf, size, minio.PutObjectOptions{})
 	return err
 }

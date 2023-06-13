@@ -19,3 +19,12 @@ rules:
   - vshnpostgresqls/status
   verbs:
   - get
+- apiGroups:
+    - ""
+  resources:
+  - namespaces
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch

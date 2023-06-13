@@ -14,3 +14,4 @@
 * xref:explanations/apiserver/boostrap.adoc[Boostrap]
 * xref:explanations/comp-functions/runtime.adoc[Runtime Library]
 * xref:explanations/comp-functions/vshn-postgres.adoc[VSHN Postgres Functions]
+* xref:explanations/slareports.adoc[]

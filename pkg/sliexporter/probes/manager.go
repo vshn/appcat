@@ -27,9 +27,10 @@ type Prober interface {
 
 // ProbeInfo uniquely identifies a prober and in turn an AppCat service instance
 type ProbeInfo struct {
-	Service   string
-	Name      string
-	Namespace string
+	Service      string
+	Name         string
+	Namespace    string
+	Organization string
 }
 
 var ErrTimeout = errors.New("probe timed out")
@@ -39,7 +40,7 @@ func NewManager(l logr.Logger) Manager {
 		Name:    "appcat_probes_seconds",
 		Help:    "Latency of probes to appact services",
 		Buckets: []float64{0.001, 0.002, 0.003, 0.004, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1, .5, 1},
-	}, []string{"service", "namespace", "name", "reason"})
+	}, []string{"service", "namespace", "name", "reason", "organization"})
 
 	return Manager{
 		probers:   map[ProbeInfo]context.CancelFunc{},
@@ -97,9 +98,10 @@ func (m Manager) runProbe(ctx context.Context, p Prober) {
 func (m Manager) sendProbe(ctx context.Context, p Prober) {
 	pi := p.GetInfo()
 	o, err := m.hist.CurryWith(prometheus.Labels{
-		"service":   pi.Service,
-		"namespace": pi.Namespace,
-		"name":      pi.Name,
+		"service":      pi.Service,
+		"namespace":    pi.Namespace,
+		"name":         pi.Name,
+		"organization": pi.Organization,
 	})
 	if err != nil {
 		return

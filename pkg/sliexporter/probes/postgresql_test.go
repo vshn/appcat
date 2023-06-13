@@ -40,6 +40,7 @@ func TestPostgreSQL_Probe(t *testing.T) {
 				res.GetPort("5432/tcp"),
 				db,
 			),
+			"test",
 		)
 		return err == nil
 	}, 2*time.Second, 500*time.Millisecond)

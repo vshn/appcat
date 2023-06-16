@@ -1,7 +1,10 @@
 package pkg
 
 import (
+	xhelm "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
+
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	stackgresv1 "github.com/vshn/appcat/apis/stackgres/v1"
 	appcatv1 "github.com/vshn/appcat/apis/v1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
@@ -20,5 +23,7 @@ func SetupScheme() *runtime.Scheme {
 	_ = rbacv1.SchemeBuilder.AddToScheme(s)
 	_ = appcatv1.SchemeBuilder.AddToScheme(s)
 	_ = batchv1.SchemeBuilder.AddToScheme(s)
+	_ = k8upv1.SchemeBuilder.AddToScheme(s)
+	_ = xhelm.SchemeBuilder.AddToScheme(s)
 	return s
 }

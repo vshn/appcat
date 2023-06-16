@@ -21,5 +21,5 @@ var (
 )
 
 func init() {
-	SchemeBuilder.Register(&ObjectBucket{})
+	SchemeBuilder.Register(&ObjectBucket{}, &XObjectBucket{})
 }

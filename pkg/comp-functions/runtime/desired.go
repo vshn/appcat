@@ -40,6 +40,12 @@ func (d *DesiredResources) Put(ctx context.Context, obj client.Object) error {
 	return d.put(ctx, obj, obj.GetName())
 }
 
+// PutWithResourceName allows you to put the resource with a custom name into the desire array.
+// This is useful to put back a resource that's already defined in the P+T composition.
+func (d *DesiredResources) PutWithResourceName(ctx context.Context, obj client.Object, resName string) error {
+	return d.put(ctx, obj, resName)
+}
+
 // Remove removes a resource by name from the managed resources
 // expect an error if resource not found
 func (d *DesiredResources) Remove(ctx context.Context, name string) error {

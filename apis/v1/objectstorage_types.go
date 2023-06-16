@@ -49,3 +49,29 @@ type ObjectBucketStatus struct {
 	// BucketConditions contains a copy of the claim's underlying bucket conditions.
 	BucketConditions []Condition `json:"bucketConditions,omitempty"`
 }
+
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+
+// XObjectBucket represents the internal composite of this claim
+type XObjectBucket struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   XObjectBucketSpec  `json:"spec"`
+	Status ObjectBucketStatus `json:"status,omitempty"`
+}
+
+// XObjectBucketSpec defines the desired state of a ObjectBucket.
+type XObjectBucketSpec struct {
+	Parameters ObjectBucketParameters `json:"parameters,omitempty"`
+
+	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
+	WriteConnectionSecretToRef NamespacedName `json:"writeConnectionSecretToRef,omitempty"`
+}
+
+// NamespacedName describes an object reference by its name and namespace
+type NamespacedName struct {
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
+}

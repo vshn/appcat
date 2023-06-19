@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 
 	xhelm "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
@@ -29,40 +30,6 @@ const (
 	backupScriptCMName   = "backup-script"
 )
 
-type backupResFunc func(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error
-
-type backupCompStep struct {
-	Name    string
-	ResFunc backupResFunc
-}
-
-var backupResources = []backupCompStep{
-	{
-		Name:    "objectbucket",
-		ResFunc: createObjectBucket,
-	},
-	{
-		Name:    "credential observer",
-		ResFunc: createObjectBucketCredentialObserver,
-	},
-	{
-		Name:    "repository password",
-		ResFunc: createRepositoryPassword,
-	},
-	{
-		Name:    "k8up schedule",
-		ResFunc: createK8upSchedule,
-	},
-	{
-		Name:    "backup cm",
-		ResFunc: createScriptCM,
-	},
-	{
-		Name:    "adjust helm values",
-		ResFunc: adjustHelmValues,
-	},
-}
-
 //go:embed script/backup.sh
 var redisBackupScript string
 
@@ -84,17 +51,40 @@ func AddBackup(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 		return runtime.NewFatalErr(ctx, "failed to set composite", err)
 	}
 
-	for _, res := range backupResources {
-		l.Info("running backup step", "name", res.Name)
-		err := res.ResFunc(ctx, comp, iof)
-		if err != nil {
-			return runtime.NewFatalErr(ctx, "error during backup step: "+res.Name, err)
-		}
+	l.Info("Creating backup bucket")
+	err = createObjectBucket(ctx, comp, iof)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "cannot create backup bucket", err)
 	}
 
+	l.Info("Creating credential observer")
+	err = createObjectBucketCredentialObserver(ctx, comp, iof)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "cannot create credential observer", err)
+	}
+
+	l.Info("Creating repository password")
+	err = createRepositoryPassword(ctx, comp, iof)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "cannot create repository password", err)
+	}
+
+	l.Info("Creating backup schedule")
+	err = createK8upSchedule(ctx, comp, iof)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "cannot create backup schedule", err)
+	}
+
+	l.Info("Creating backup config map")
 	err = createScriptCM(ctx, comp, iof)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot add backup cm", err)
+		return runtime.NewFatalErr(ctx, "cannot create backup config map", err)
+	}
+
+	l.Info("Adjusting helm values")
+	err = adjustHelmValues(ctx, comp, iof)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "cannot adjust helm values", err)
 	}
 
 	return runtime.NewNormal()
@@ -284,9 +274,20 @@ func adjustHelmValues(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.
 		return err
 	}
 
-	valueMap = addPVCAnnotation(valueMap)
-	valueMap = addPodAnnotation(valueMap)
-	valueMap = addBackupCM(valueMap)
+	valueMap, err = addPVCAnnotation(valueMap)
+	if err != nil {
+		return fmt.Errorf("cannot add pvc annotations for backup: %w", err)
+	}
+
+	valueMap, err = addPodAnnotation(valueMap)
+	if err != nil {
+		return fmt.Errorf("cannot add pod annotations for backup: %w", err)
+	}
+
+	valueMap, err = addBackupCM(valueMap)
+	if err != nil {
+		return fmt.Errorf("cannot add configmap for backup: %w", err)
+	}
 
 	l.V(1).Info("Final value map", "map", valueMap)
 
@@ -300,19 +301,29 @@ func adjustHelmValues(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.
 	return iof.Desired.PutWithResourceName(ctx, release, "release")
 }
 
-func addPVCAnnotation(valueMap map[string]any) map[string]any {
-	persistenceMap := valueMap["master"].(map[string]any)["persistence"].(map[string]any)
+func addPVCAnnotation(valueMap map[string]any) (map[string]any, error) {
+	tmpMap, ok := valueMap["master"].(map[string]any)
+	if !ok {
+		return valueMap, fmt.Errorf("cannot parse the helm values for key: master")
+	}
+	persistenceMap, ok := tmpMap["persistence"].(map[string]any)
+	if !ok {
+		return valueMap, fmt.Errorf("cannot parse the helm values for key: master.persistence")
+	}
 
 	persistenceMap["annotations"] = map[string]string{
 		"k8up.io/backup": "false",
 	}
 
 	valueMap["master"].(map[string]any)["persistence"] = persistenceMap
-	return valueMap
+	return valueMap, nil
 }
 
-func addPodAnnotation(valueMap map[string]any) map[string]any {
-	masterMap := valueMap["master"].(map[string]any)
+func addPodAnnotation(valueMap map[string]any) (map[string]any, error) {
+	masterMap, ok := valueMap["master"].(map[string]any)
+	if !ok {
+		return valueMap, fmt.Errorf("cannot parse the helm values for key: master")
+	}
 
 	masterMap["podAnnotations"] = map[string]string{
 		"k8up.io/backupcommand":  "/scripts/backup.sh",
@@ -320,13 +331,16 @@ func addPodAnnotation(valueMap map[string]any) map[string]any {
 	}
 
 	valueMap["master"] = masterMap
-	return valueMap
+	return valueMap, nil
 
 }
 
-func addBackupCM(valueMap map[string]any) map[string]any {
+func addBackupCM(valueMap map[string]any) (map[string]any, error) {
 
-	masterMap := valueMap["master"].(map[string]any)
+	masterMap, ok := valueMap["master"].(map[string]any)
+	if !ok {
+		return valueMap, fmt.Errorf("cannot parse the helm values for key: master")
+	}
 
 	volumes := []corev1.Volume{
 		{
@@ -355,7 +369,7 @@ func addBackupCM(valueMap map[string]any) map[string]any {
 
 	valueMap["master"] = masterMap
 
-	return valueMap
+	return valueMap, nil
 }
 
 func createScriptCM(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {

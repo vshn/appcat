@@ -5,7 +5,7 @@
 # it will also backup that one.
 
 redis_cmd() {
-  redis-cli -a "${REDIS_PASSWORD}" --cacert "${REDIS_TLS_CA_FILE}" --cert "${REDIS_TLS_CERT_FILE}" --key "${REDIS_TLS_KEY_FILE}" --tls $@
+  redis-cli -a "${REDIS_PASSWORD}" --cacert "${REDIS_TLS_CA_FILE}" --cert "${REDIS_TLS_CERT_FILE}" --key "${REDIS_TLS_KEY_FILE}" --tls "$@"
 }
 
 rewrite_percentage=$(redis_cmd --raw CONFIG GET auto-aof-rewrite-percentage | tail -n 1) 1>&2

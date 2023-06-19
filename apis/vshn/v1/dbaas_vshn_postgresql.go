@@ -113,21 +113,6 @@ type VSHNDBaaSSchedulingSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
-// VSHNDBaaSMaintenanceScheduleSpec contains settings to control the maintenance of an instance.
-type VSHNDBaaSMaintenanceScheduleSpec struct {
-	// +kubebuilder:validation:Enum=monday;tuesday;wednesday;thursday;friday;saturday;sunday
-
-	// DayOfWeek specifies at which weekday the maintenance is held place.
-	// Allowed values are [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
-	DayOfWeek string `json:"dayOfWeek,omitempty"`
-
-	// +kubebuilder:validation:Pattern="^([0-1]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$"
-
-	// TimeOfDay for installing updates in UTC.
-	// Format: "hh:mm:ss".
-	TimeOfDay string `json:"timeOfDay,omitempty"`
-}
-
 // VSHNDBaaSSizeSpec contains settings to control the sizing of a service.
 type VSHNDBaaSSizeSpec struct {
 	// CPU defines the amount of Kubernetes CPUs for an instance.
@@ -183,6 +168,16 @@ type VSHNPostgreSQLBackup struct {
 	// The default is keeping it one week.
 	// +kubebuilder:default=7
 	DeletionRetention int `json:"deletionRetention,omitempty"`
+}
+
+// GetBackupSchedule gets the currently set schedule
+func (p *VSHNPostgreSQLBackup) GetBackupSchedule() string {
+	return p.Schedule
+}
+
+// SetBackupSchedule sets the schedule to the given value
+func (p *VSHNPostgreSQLBackup) SetBackupSchedule(schedule string) {
+	p.Schedule = schedule
 }
 
 // VSHNPostgreSQLRestore contains restore specific parameters.

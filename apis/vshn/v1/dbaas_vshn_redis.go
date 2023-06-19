@@ -11,6 +11,7 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnredis.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnredis.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnredis.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnredis.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 
 // +kubebuilder:object:root=true
 
@@ -48,6 +49,12 @@ type VSHNRedisParameters struct {
 
 	// TLS contains settings to control tls traffic of a service.
 	TLS VSHNRedisTLSSpec `json:"tls,omitempty"`
+
+	// Backup contains settings to control how the instance should get backed up.
+	Backup K8upBackupSpec `json:"backup,omitempty"`
+
+	// Maintenance contains settings to control the maintenance of an instance.
+	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
 }
 
 // VSHNRedisServiceSpec contains Redis DBaaS specific properties

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vshn/appcat/pkg/comp-functions/functions/miniodev"
 	vpf "github.com/vshn/appcat/pkg/comp-functions/functions/vshn-postgres-func"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/vshnredis"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -92,6 +93,12 @@ var images = map[string][]runtime.Transform{
 		{
 			Name:          "mailgun-alerting",
 			TransformFunc: vpf.MailgunAlerting,
+		},
+	},
+	"redis": {
+		{
+			Name:          "backup",
+			TransformFunc: vshnredis.AddBackup,
 		},
 	},
 }

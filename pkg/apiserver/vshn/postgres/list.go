@@ -3,7 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat/apis/appcat/v1"
+
+	v1 "github.com/vshn/appcat/apis/appcat/v1"
 	"github.com/vshn/appcat/pkg/apiserver"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -62,7 +63,7 @@ func (v *vshnPostgresBackupStorage) Watch(ctx context.Context, options *metainte
 		return nil, fmt.Errorf("cannot list VSHNPostgreSQL instances")
 	}
 
-	mw := NewEmptyMultiWatch()
+	mw := apiserver.NewEmptyMultiWatch()
 	for _, value := range instances.Items {
 		backupWatcher, err := v.sgbackups.WatchSGBackup(ctx, value.Status.InstanceNamespace, options)
 		if err != nil {

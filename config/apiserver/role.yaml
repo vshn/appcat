@@ -66,6 +66,15 @@ rules:
   - vshn.appcat.vshn.io
   resources:
   - xvshnpostgresqls
+  - vshnredis
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - k8up.io
+  resources:
+  - snapshots
   verbs:
   - get
   - list

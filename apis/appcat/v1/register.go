@@ -29,6 +29,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&AppCatList{},
 		&VSHNPostgresBackup{},
 		&VSHNPostgresBackupList{},
+		&VSHNRedisBackup{},
+		&VSHNRedisBackupList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

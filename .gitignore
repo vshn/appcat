@@ -4,6 +4,8 @@ dist/
 
 # Binaries for programs and plugins
 appcat
+# But don't ignore the appcat APIS!
+!apis/appcat
 
 # temp file, editor and IDE paraphernalia
 .idea
@@ -14,6 +16,7 @@ appcat
 
 # debug
 apiserver.local.config
+__debug_bin
 
 # Kubebuilder
 /apis/generated/

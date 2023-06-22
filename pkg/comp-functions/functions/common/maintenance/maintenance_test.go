@@ -1,16 +1,19 @@
-package vshnpostgres
+package maintenance
 
 import (
 	"context"
-	"reflect"
-	"testing"
-
+	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
+	"reflect"
+	"testing"
 )
 
 func Test_parseCron(t *testing.T) {
@@ -51,7 +54,10 @@ func Test_parseCron(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseCron(tt.comp)
+			m := Maintenance{
+				schedule: tt.comp.Spec.Parameters.Maintenance,
+			}
+			got, err := m.parseCron()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseCron() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -82,12 +88,12 @@ func TestAddMaintenanceJob(t *testing.T) {
 			wantedBinding: true,
 			wantedSecret:  true,
 			wantedJob:     true,
-			fileName:      "maintenance/01-GivenSchedule.yaml",
+			fileName:      "vshn-postgres/maintenance/01-GivenSchedule.yaml",
 		},
 		{
 			name:     "GivenNoSchedule_ThenExpectNoObjects",
 			want:     runtime.NewNormal(),
-			fileName: "maintenance/02-GivenNoSchedule.yaml",
+			fileName: "vshn-postgres/maintenance/02-GivenNoSchedule.yaml",
 		},
 	}
 	for _, tt := range tests {
@@ -97,15 +103,23 @@ func TestAddMaintenanceJob(t *testing.T) {
 
 			ctx := context.TODO()
 
-			iof := loadRuntimeFromFile(t, tt.fileName)
+			iof := commontest.LoadRuntimeFromFile(t, tt.fileName)
 
-			if got := AddMaintenanceJob(context.TODO(), iof); !reflect.DeepEqual(got, tt.want) {
+			comp := &vshnv1.VSHNPostgreSQL{}
+			err := iof.Observed.GetComposite(ctx, comp)
+			assert.NoError(t, err)
+
+			in := "vshn-postgresql-" + comp.GetName()
+			m := New(comp, iof, comp.Spec.Parameters.Maintenance, []rbacv1.PolicyRule{}, in, "crossplane:appcat:job:postgres:maintenance", "postgresql").
+				WithExtraResources(createMaintenanceSecretTest(in, iof.Config.Data["sgNamespace"], comp.GetName()+"-maintenance-secret"))
+
+			if got := m.Run(ctx); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("AddMaintenanceJob() = %v, want %v", got, tt.want)
 			}
 
 			sa := &corev1.ServiceAccount{}
 
-			err := iof.Desired.GetFromObject(ctx, sa, namePrefix+"maintenance-serviceaccount")
+			err = iof.Desired.GetFromObject(ctx, sa, namePrefix+"maintenance-serviceaccount")
 
 			if tt.wantedSa {
 				assert.NoError(t, err)
@@ -154,5 +168,37 @@ func TestAddMaintenanceJob(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func createMaintenanceSecretTest(instanceNamespace, sgNamespace, resourceName string) ExtraResource {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test secret",
+			Namespace: instanceNamespace,
+		},
+		StringData: map[string]string{
+			"SG_NAMESPACE": sgNamespace,
+		},
+	}
+
+	ref := xkubev1.Reference{
+		PatchesFrom: &xkubev1.PatchesFrom{
+			DependsOn: xkubev1.DependsOn{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Name:       "stackgres-restapi",
+				Namespace:  sgNamespace,
+			},
+			FieldPath: pointer.String("data"),
+		},
+		ToFieldPath: pointer.String("data"),
+	}
+	return ExtraResource{
+		Name:     resourceName,
+		Resource: secret,
+		Refs: []xkubev1.Reference{
+			ref,
+		},
 	}
 }

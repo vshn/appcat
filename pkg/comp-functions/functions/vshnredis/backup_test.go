@@ -2,6 +2,7 @@ package vshnredis
 
 import (
 	"context"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
 	"testing"
 
 	xhelm "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
@@ -69,7 +70,7 @@ func TestHelmValueUpdate(t *testing.T) {
 }
 
 func getRedisBackupComp(t *testing.T) (*runtime.Runtime, *vshnv1.VSHNRedis) {
-	iof := loadRuntimeFromFile(t, "backup/01_default.yaml")
+	iof := commontest.LoadRuntimeFromFile(t, "vshnredis/backup/01_default.yaml")
 
 	comp := &vshnv1.VSHNRedis{}
 	err := iof.Desired.GetComposite(context.TODO(), comp)

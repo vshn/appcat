@@ -2,6 +2,7 @@ package vshnpostgres
 
 import (
 	"context"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
@@ -38,8 +39,8 @@ func TestNoEncryptedPVC(t *testing.T) {
 		{
 			name: "GivenNoEncryptionParams_ThenExpectNoOutput",
 			args: args{
-				expectedFuncIO: "enc_pvc/01-ThenExpectNoOutput.yaml",
-				inputFuncIO:    "enc_pvc/01-GivenNoEncryptionParams.yaml",
+				expectedFuncIO: "vshn-postgres/enc_pvc/01-ThenExpectNoOutput.yaml",
+				inputFuncIO:    "vshn-postgres/enc_pvc/01-GivenNoEncryptionParams.yaml",
 			},
 			expResult: xfnv1alpha1.Result{
 				Severity: xfnv1alpha1.SeverityNormal,
@@ -49,8 +50,8 @@ func TestNoEncryptedPVC(t *testing.T) {
 		{
 			name: "GivenEncryptionParamsToFalse_ThenExpectFalseOutput",
 			args: args{
-				expectedFuncIO: "enc_pvc/02-ThenExpectFalseOutput.yaml",
-				inputFuncIO:    "enc_pvc/02-GivenEncryptionParamsFalse.yaml",
+				expectedFuncIO: "vshn-postgres/enc_pvc/02-ThenExpectFalseOutput.yaml",
+				inputFuncIO:    "vshn-postgres/enc_pvc/02-GivenEncryptionParamsFalse.yaml",
 			},
 			expResult: xfnv1alpha1.Result{
 				Severity: xfnv1alpha1.SeverityNormal,
@@ -61,13 +62,13 @@ func TestNoEncryptedPVC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			iof := loadRuntimeFromFile(t, tt.args.inputFuncIO)
-			expIof := loadRuntimeFromFile(t, tt.args.expectedFuncIO)
+			iof := commontest.LoadRuntimeFromFile(t, tt.args.inputFuncIO)
+			expIof := commontest.LoadRuntimeFromFile(t, tt.args.expectedFuncIO)
 
 			r := AddPvcSecret(ctx, iof)
 
 			assert.Equal(t, tt.expResult, r.Resolve())
-			assert.Equal(t, getFunctionIo(expIof), getFunctionIo(iof))
+			assert.Equal(t, commontest.GetFunctionIo(expIof), commontest.GetFunctionIo(iof))
 		})
 	}
 }
@@ -78,7 +79,7 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 	t.Run("GivenEncryptionEnabled_ThenExpectOutput", func(t *testing.T) {
 
-		iof := loadRuntimeFromFile(t, "enc_pvc/03-GivenEncryptionParams.yaml")
+		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParams.yaml")
 
 		r := AddPvcSecret(ctx, iof)
 
@@ -103,7 +104,7 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
 
-		iof := loadRuntimeFromFile(t, "enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
+		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
 
 		r := AddPvcSecret(ctx, iof)
 

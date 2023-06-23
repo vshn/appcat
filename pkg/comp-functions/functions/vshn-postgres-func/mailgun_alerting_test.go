@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	"github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
@@ -37,8 +38,6 @@ func TestMailgunAlerting(t *testing.T) {
 
 	result = MailgunAlerting(ctx, inputFnio)
 	assert.Equal(t, runtime.NewNormal(), result)
-	t.Setenv("MAILGUN_SECRET_NAME", "mailgun-secret")
-	t.Setenv("MAILGUN_SECRET_NAMESPACE", "default")
 
 	comp := &vshnv1.VSHNPostgreSQL{}
 	assert.NoError(t, inputFnio.Observed.GetComposite(ctx, comp))
@@ -62,6 +61,20 @@ func TestMailgunAlerting(t *testing.T) {
 
 	// email is provided but empty, so return Normal and no new resources in Desired
 	inputFnio = loadRuntimeFromFile(t, "alerting/08-GivenEmptyEmail.yaml")
+
+	result = MailgunAlerting(ctx, inputFnio)
+
+	assert.Equal(t, runtime.NewNormal(), result)
+	assert.Empty(t, inputFnio.Desired.List(ctx))
+
+	inputFnio = loadRuntimeFromFile(t, "alerting/09-GivenEmailAlertingDisabled.yaml")
+
+	result = MailgunAlerting(ctx, inputFnio)
+
+	assert.Equal(t, v1alpha1.SeverityWarning, result.Resolve().Severity)
+	assert.Empty(t, inputFnio.Desired.List(ctx))
+
+	inputFnio = loadRuntimeFromFile(t, "alerting/10-GivenNoEmailAlertingDisabled.yaml")
 
 	result = MailgunAlerting(ctx, inputFnio)
 

@@ -2,11 +2,13 @@ package vshnpostgres
 
 import (
 	"context"
+	"strconv"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	runtime "github.com/vshn/appcat/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -21,6 +23,13 @@ func MailgunAlerting(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	err := iof.Observed.GetComposite(ctx, comp)
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "Cannot get composite from function io", err)
+	}
+
+	if !mailAlertingEnabled(iof.Config) {
+		if comp.Spec.Parameters.Monitoring.Email == "" {
+			return runtime.NewNormal()
+		}
+		return runtime.NewWarning(ctx, "Email Alerting is not enabled")
 	}
 	// Wait for the next reconciliation in case instance namespace is missing
 	if comp.Status.InstanceNamespace == "" {
@@ -123,4 +132,16 @@ func deployAlertmanagerConfig(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, 
 	}
 
 	return iof.Desired.PutIntoObject(ctx, ac, alertManagerConfigName, xRef)
+}
+
+func mailAlertingEnabled(config *corev1.ConfigMap) bool {
+	en, ok := config.Data["emailAlertingEnabled"]
+	if !ok {
+		return false
+	}
+	enabled, err := strconv.ParseBool(en)
+	if err != nil {
+		return false
+	}
+	return enabled
 }

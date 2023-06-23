@@ -9,7 +9,7 @@ config:
     name: xfn-config
   apiVersion: v1
   data:
-    emailAlertingEnabled: true
+    emailAlertingEnabled: false
     emailAlertingSmtpFromAddress: foo@example.com
     emailAlertingSmtpUsername:  foo@example.com
     emailAlertingSmtpHost: mail.example.com:465
@@ -43,9 +43,7 @@ observed:
         compositionRevisionRef:
           name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
-        parameters:
-          monitoring:
-            email: ""
+        parameters: {}
       status:
         instanceNamespace: my-psql
 desired:

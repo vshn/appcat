@@ -2,13 +2,14 @@ package postgres
 
 import (
 	"context"
+
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	claimNamespaceLabel = "crossplane.io/claim-namespace"
-	claimNameLabel      = "crossplane.io/claim"
+	claimNameLabel      = "crossplane.io/claim-name"
 )
 
 // vshnPostgresqlProvider is an abstraction to interact with the K8s API

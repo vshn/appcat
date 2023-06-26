@@ -1,5 +1,18 @@
 apiVersion: apiextensions.crossplane.io/v1alpha1
 kind: FunctionIO
+config:
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  apiVersion: v1
+  data:
+    emailAlertingEnabled: true
+    emailAlertingSmtpFromAddress: foo@example.com
+    emailAlertingSmtpUsername:  foo@example.com
+    emailAlertingSmtpHost: mail.example.com:465
 observed:
   composite:
     resource:

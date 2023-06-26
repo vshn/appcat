@@ -9,7 +9,7 @@ config:
     name: xfn-config
   apiVersion: v1
   data:
-    emailAlertingEnabled: true
+    emailAlertingEnabled: false
     emailAlertingSmtpFromAddress: foo@example.com
     emailAlertingSmtpUsername:  foo@example.com
     emailAlertingSmtpHost: mail.example.com:465
@@ -45,7 +45,7 @@ observed:
         compositionUpdatePolicy: Automatic
         parameters:
           monitoring:
-            email: ""
+            email: "no-reply@example.com"
       status:
         instanceNamespace: my-psql
 desired:

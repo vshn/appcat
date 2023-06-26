@@ -16,6 +16,11 @@ import (
 
 func SetupScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
+	AddToScheme(s)
+	return s
+}
+
+func AddToScheme(s *runtime.Scheme) {
 	_ = corev1.SchemeBuilder.AddToScheme(s)
 	_ = xkube.SchemeBuilder.AddToScheme(s)
 	_ = vshnv1.SchemeBuilder.SchemeBuilder.AddToScheme(s)
@@ -25,5 +30,4 @@ func SetupScheme() *runtime.Scheme {
 	_ = batchv1.SchemeBuilder.AddToScheme(s)
 	_ = k8upv1.SchemeBuilder.AddToScheme(s)
 	_ = xhelm.SchemeBuilder.AddToScheme(s)
-	return s
 }

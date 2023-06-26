@@ -21,5 +21,12 @@ var (
 )
 
 func init() {
-	SchemeBuilder.Register(&VSHNPostgreSQL{}, &VSHNPostgreSQLList{}, &XVSHNPostgreSQL{}, &XVSHNPostgreSQLList{})
+	SchemeBuilder.Register(
+		&VSHNPostgreSQL{},
+		&VSHNPostgreSQLList{},
+		&XVSHNPostgreSQL{},
+		&XVSHNPostgreSQLList{},
+		&VSHNRedis{},
+		&VSHNRedisList{},
+	)
 }

@@ -3,12 +3,13 @@ package cmd
 import (
 	"log"
 	"os"
-	"strconv"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	appcatv1 "github.com/vshn/appcat/apis/appcat/v1"
 	"github.com/vshn/appcat/pkg/apiserver/appcat"
 	"github.com/vshn/appcat/pkg/apiserver/vshn/postgres"
+	"github.com/vshn/appcat/pkg/apiserver/vshn/redis"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
 )
 
@@ -17,14 +18,22 @@ var apiServerCMDStr = "apiserver"
 var APIServerCMD = newAPIServerCMD()
 
 func newAPIServerCMD() *cobra.Command {
-	var appcatEnabled, vshnBackupsEnabled bool
+
+	viper.AutomaticEnv()
+
+	var appcatEnabled, vshnPGBackupsEnabled, vshnRedisBackupsEnabled bool
 
 	if len(os.Args) < 2 {
 		return &cobra.Command{}
 	}
 
 	if os.Args[1] == apiServerCMDStr {
-		appcatEnabled, vshnBackupsEnabled = parseEnvVariables()
+		appcatEnabled = viper.GetBool("APPCAT_HANDLER_ENABLED")
+		vshnPGBackupsEnabled = viper.GetBool("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED")
+		vshnRedisBackupsEnabled = viper.GetBool("VSHN_REDIS_BACKUP_HANDLER_ENABLED")
+		if !appcatEnabled && !vshnPGBackupsEnabled && !vshnRedisBackupsEnabled {
+			log.Fatal("Handlers are not enabled, please set at least one of APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED | VSHN_REDIS_BACKUP_HANDLER_ENABLED env variables to True")
+		}
 	}
 
 	b := builder.APIServer
@@ -33,8 +42,12 @@ func newAPIServerCMD() *cobra.Command {
 		b.WithResourceAndHandler(&appcatv1.AppCat{}, appcat.New())
 	}
 
-	if vshnBackupsEnabled {
+	if vshnPGBackupsEnabled {
 		b.WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, postgres.New())
+	}
+
+	if vshnRedisBackupsEnabled {
+		b.WithResourceAndHandler(&appcatv1.VSHNRedisBackup{}, redis.New())
 	}
 
 	b.WithoutEtcd().
@@ -49,20 +62,4 @@ func newAPIServerCMD() *cobra.Command {
 		log.Fatal(err, "Unable to load build API Server")
 	}
 	return cmd
-}
-
-func parseEnvVariables() (bool, bool) {
-	appcatEnabled, err := strconv.ParseBool(os.Getenv("APPCAT_HANDLER_ENABLED"))
-	if err != nil {
-		log.Fatal("Can't parse APPCAT_HANDLER_ENABLED env variable")
-	}
-	vshnBackupsEnabled, err := strconv.ParseBool(os.Getenv("VSHN_POSTGRES_BACKUP_HANDLER_ENABLED"))
-	if err != nil {
-		log.Fatal("Can't parse VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variable")
-	}
-
-	if !appcatEnabled && !vshnBackupsEnabled {
-		log.Fatal("Handlers are not enabled, please set at least one of APPCAT_HANDLER_ENABLED | VSHN_POSTGRES_BACKUP_HANDLER_ENABLED env variables to True")
-	}
-	return appcatEnabled, vshnBackupsEnabled
 }

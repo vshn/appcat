@@ -27,6 +27,15 @@ type VSHNRedis struct {
 	Status VSHNRedisStatus `json:"status,omitempty"`
 }
 
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+type VSHNRedisList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []VSHNRedis `json:"items,omitempty"`
+}
+
 // VSHNRedisSpec defines the desired state of a VSHNRedis.
 type VSHNRedisSpec struct {
 	// Parameters are the configurable fields of a VSHNRedis.

@@ -16,6 +16,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
+	github.com/google/go-containerregistry v0.9.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/k8up-io/k8up/v2 v2.7.1
@@ -34,6 +35,7 @@ require (
 	go.uber.org/zap v1.24.0
 	golang.org/x/text v0.9.0
 	google.golang.org/grpc v1.52.0
+	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3
@@ -176,7 +178,6 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 	helm.sh/helm/v3 v3.10.2 // indirect
 	k8s.io/apiextensions-apiserver v0.26.3 // indirect

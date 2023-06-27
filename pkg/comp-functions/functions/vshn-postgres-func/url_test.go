@@ -2,6 +2,7 @@ package vshnpostgres
 
 import (
 	"context"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
 	"testing"
 
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
@@ -12,13 +13,13 @@ import (
 
 func TestTransform_NoInstanceNamespace(t *testing.T) {
 	ctx := context.Background()
-	expectIo := loadRuntimeFromFile(t, "url/01_expected_no-instance-namespace.yaml")
+	expectIo := commontest.LoadRuntimeFromFile(t, "vshn-postgres/url/01_expected_no-instance-namespace.yaml")
 	expectResult := runtime.NewWarning(ctx, "Composite is missing instance namespace, skipping transformation")
 
 	t.Run("WhenNoInstance_ThenNoErrorAndNoChanges", func(t *testing.T) {
 
 		//Given
-		io := loadRuntimeFromFile(t, "url/01_input_no-instance-namespace.yaml")
+		io := commontest.LoadRuntimeFromFile(t, "vshn-postgres/url/01_input_no-instance-namespace.yaml")
 
 		// When
 		result := AddUrlToConnectionDetails(ctx, io)
@@ -38,7 +39,7 @@ func TestTransform(t *testing.T) {
 	t.Run("WhenNormalIO_ThenAddPostgreSQLUrl", func(t *testing.T) {
 
 		//Given
-		r := loadRuntimeFromFile(t, "url/02_input_function-io.yaml")
+		r := commontest.LoadRuntimeFromFile(t, "vshn-postgres/url/02_input_function-io.yaml")
 
 		// When
 		result := AddUrlToConnectionDetails(ctx, r)

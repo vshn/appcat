@@ -2,6 +2,7 @@ package vshnpostgres
 
 import (
 	"context"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 )
 
 func TestTransformRestart_NoopNoPending(t *testing.T) {
-	iof := loadRuntimeFromFile(t, "restart/01-NoPendingReboot.yaml")
+	iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/restart/01-NoPendingReboot.yaml")
 	require.NoError(t, runtime.AddToScheme(sgv1.SchemeBuilder.SchemeBuilder))
 
 	res := TransformRestart(context.TODO(), iof)
@@ -28,7 +29,7 @@ func TestTransformRestart_NoopNoPending(t *testing.T) {
 	assert.Len(t, iof.Desired.List(context.TODO()), 0)
 }
 func TestTransformRestart_NoopPendingOnRestart(t *testing.T) {
-	iof := loadRuntimeFromFile(t, "restart/02-PendingRebootNoRestart.yaml")
+	iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/restart/02-PendingRebootNoRestart.yaml")
 	require.NoError(t, runtime.AddToScheme(sgv1.SchemeBuilder.SchemeBuilder))
 
 	res := TransformRestart(context.TODO(), iof)
@@ -42,7 +43,7 @@ func TestTransformRestart_NoopPendingOnRestart(t *testing.T) {
 }
 
 func TestTransformRestart_RestartPending(t *testing.T) {
-	iof := loadRuntimeFromFile(t, "restart/02-PendingReboot.yaml")
+	iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/restart/02-PendingReboot.yaml")
 	require.NoError(t, runtime.AddToScheme(sgv1.SchemeBuilder.SchemeBuilder))
 
 	res := TransformRestart(context.TODO(), iof)
@@ -72,7 +73,7 @@ func TestTransformRestart_RestartPending(t *testing.T) {
 }
 
 func TestTransformRestart_KeepRecentReboots(t *testing.T) {
-	iof := loadRuntimeFromFile(t, "restart/03-KeepRecentReboots.yaml")
+	iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/restart/03-KeepRecentReboots.yaml")
 	require.NoError(t, runtime.AddToScheme(sgv1.SchemeBuilder.SchemeBuilder))
 
 	now := func() time.Time {

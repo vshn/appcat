@@ -2,6 +2,7 @@ package vshnpostgres
 
 import (
 	"context"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
@@ -21,7 +22,7 @@ func TestAddUserAlerting_NoInstanceNamespace(t *testing.T) {
 	t.Run("WhenNoInstance_ThenNoErrorAndNoChanges", func(t *testing.T) {
 
 		//Given
-		io := loadRuntimeFromFile(t, "alerting/05-GivenNoStatusInstanceNamespace.yaml")
+		io := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/05-GivenNoStatusInstanceNamespace.yaml")
 
 		// When
 		result := AddUserAlerting(ctx, io)
@@ -46,8 +47,8 @@ func TestAddUserAlerting(t *testing.T) {
 		{
 			name: "GivenNoMonitoringParams_ThenExpectNoOutput",
 			args: args{
-				expectedFuncIO: "alerting/01-ThenExpectNoOutput.yaml",
-				inputFuncIO:    "alerting/01-GivenNoMonitoringParams.yaml",
+				expectedFuncIO: "vshn-postgres/alerting/01-ThenExpectNoOutput.yaml",
+				inputFuncIO:    "vshn-postgres/alerting/01-GivenNoMonitoringParams.yaml",
 			},
 			expResult: xfnv1alpha1.Result{
 				Severity: xfnv1alpha1.SeverityNormal,
@@ -58,21 +59,21 @@ func TestAddUserAlerting(t *testing.T) {
 			name:      "GivenConfigRefNoSecretRef_ThenExpectError",
 			expResult: runtime.NewFatal(ctx, "Found AlertmanagerConfigRef but no AlertmanagerConfigSecretRef, please specify as well").Resolve(),
 			args: args{
-				expectedFuncIO: "alerting/02-ThenExpectError.yaml",
-				inputFuncIO:    "alerting/02-GivenConfigRefNoSecretRef.yaml",
+				expectedFuncIO: "vshn-postgres/alerting/02-ThenExpectError.yaml",
+				inputFuncIO:    "vshn-postgres/alerting/02-GivenConfigRefNoSecretRef.yaml",
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			iof := loadRuntimeFromFile(t, tt.args.inputFuncIO)
-			expIof := loadRuntimeFromFile(t, tt.args.expectedFuncIO)
+			iof := commontest.LoadRuntimeFromFile(t, tt.args.inputFuncIO)
+			expIof := commontest.LoadRuntimeFromFile(t, tt.args.expectedFuncIO)
 
 			r := AddUserAlerting(ctx, iof)
 
 			assert.Equal(t, tt.expResult, r.Resolve())
-			assert.Equal(t, getFunctionIo(expIof), getFunctionIo(iof))
+			assert.Equal(t, commontest.GetFunctionIo(expIof), commontest.GetFunctionIo(iof))
 		})
 	}
 }
@@ -83,7 +84,7 @@ func TestGivenConfigRefAndSecretThenExpectOutput(t *testing.T) {
 
 	t.Run("GivenConfigRefAndSecret_ThenExpectOutput", func(t *testing.T) {
 
-		iof := loadRuntimeFromFile(t, "alerting/03-GivenConfigRefAndSecret.yaml")
+		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/03-GivenConfigRefAndSecret.yaml")
 
 		r := AddUserAlerting(ctx, iof)
 		assert.Equal(t, runtime.NewNormal(), r)
@@ -114,7 +115,7 @@ func TestGivenConfigTemplateAndSecretThenExpectOutput(t *testing.T) {
 
 	t.Run("GivenConfigTemplateAndSecret_ThenExpectOutput", func(t *testing.T) {
 
-		iof := loadRuntimeFromFile(t, "alerting/04-GivenConfigTemplateAndSecret.yaml")
+		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/04-GivenConfigTemplateAndSecret.yaml")
 
 		r := AddUserAlerting(ctx, iof)
 		assert.Equal(t, runtime.NewNormal(), r)

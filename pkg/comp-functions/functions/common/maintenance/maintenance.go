@@ -1,0 +1,246 @@
+package maintenance
+
+import (
+	"context"
+	"fmt"
+	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
+	"regexp"
+	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// Maintenance contains data for maintenance k8s resource generation
+type Maintenance struct {
+	// instanceNamespace is the namespace where the service pod is running
+	instanceNamespace string
+	// mainRole is maintenance role name
+	mainRole string
+	// service is the service for which this maintenance is supposed to run. Ex:. postgresql
+	service string
+	// resource object of this service
+	resource client.Object
+	// iof is Crossplane IO function
+	iof *runtime.Runtime
+	// schedule is the schedule spec of the resource
+	schedule vshnv1.VSHNDBaaSMaintenanceScheduleSpec
+	// policyRules are the permissions to be give to the maintenance role
+	policyRules []rbacv1.PolicyRule
+	// extraEnvs are extra environment variables to be added to the Cronjob
+	extraEnvs []corev1.EnvVar
+	// extraResources are extra resources to be added to the default list of resources created by this maintenance
+	extraResources []ExtraResource
+}
+
+// ExtraResource is an extra resource to be added to the desired state of a Crossplane Function IO
+type ExtraResource struct {
+	Name     string
+	Resource client.Object
+	Refs     []xkubev1.Reference
+}
+
+var (
+	maintServiceAccountName = "maintenanceserviceaccount"
+	dayOfWeekMap            = map[string]int{
+		"monday":    1,
+		"tuesday":   2,
+		"wednesday": 3,
+		"thursday":  4,
+		"friday":    5,
+		"saturday":  6,
+		"sunday":    0,
+	}
+)
+
+// New creates a Maintenance object with required attributes
+func New(r client.Object, iof *runtime.Runtime, sc vshnv1.VSHNDBaaSMaintenanceScheduleSpec, pr []rbacv1.PolicyRule, in, mr, s string) *Maintenance {
+	return &Maintenance{
+		instanceNamespace: in,
+		mainRole:          mr,
+		service:           s,
+		resource:          r,
+		iof:               iof,
+		schedule:          sc,
+		policyRules:       pr,
+	}
+}
+
+// WithExtraEnvs adds extra environment variables to the cron job
+func (m *Maintenance) WithExtraEnvs(extraEnvs ...corev1.EnvVar) *Maintenance {
+	m.extraEnvs = extraEnvs
+	return m
+}
+
+// WithExtraResources adds extra resources to the desired composition function
+func (m *Maintenance) WithExtraResources(extraResources ...ExtraResource) *Maintenance {
+	m.extraResources = extraResources
+	return m
+}
+
+// Run generates k8s resources for maintenance
+func (m *Maintenance) Run(ctx context.Context) runtime.Result {
+	log := controllerruntime.LoggerFrom(ctx)
+
+	log.Info("Adding maintenance cronjobs to the instance")
+	cron, err := m.parseCron()
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "can't parse maintenance to cron", err)
+	}
+	if cron == "" {
+		log.Info("Maintenance schedule not yet populated")
+		return runtime.NewNormal()
+	}
+
+	err = m.createMaintenanceServiceAccount(ctx)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "can't create maintenance serviceaccount", err)
+	}
+
+	err = m.createMaintenanceRole(ctx)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "can't create maintenance role", err)
+	}
+
+	err = m.createMaintenanceRolebinding(ctx)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "can't create maintenance rolebinding", err)
+	}
+
+	for _, extraR := range m.extraResources {
+		err = m.iof.Desired.PutIntoObject(ctx, extraR.Resource, extraR.Name, extraR.Refs...)
+		if err != nil {
+			return runtime.NewFatalErr(ctx, "can't create resource", err)
+		}
+	}
+
+	err = m.createMaintenanceJob(ctx, cron)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "can't create maintenance job", err)
+	}
+	return runtime.NewNormal()
+}
+
+func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule string) error {
+	imageTag := m.iof.Config.Data["imageTag"]
+	if imageTag == "" {
+		return fmt.Errorf("no imageTag field in composition function configuration")
+	}
+	envVars := []corev1.EnvVar{
+		{
+			Name:  "INSTANCE_NAMESPACE",
+			Value: m.instanceNamespace,
+		},
+		{
+			Name:  "CLAIM_NAME",
+			Value: m.resource.GetLabels()["crossplane.io/claim-name"],
+		},
+		{
+			Name:  "CLAIM_NAMESPACE",
+			Value: m.resource.GetLabels()["crossplane.io/claim-namespace"],
+		},
+	}
+
+	job := &batchv1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "maintenancejob",
+			Namespace: m.instanceNamespace,
+		},
+		Spec: batchv1.CronJobSpec{
+			Schedule:                   cronSchedule,
+			SuccessfulJobsHistoryLimit: pointer.Int32(0),
+			JobTemplate: batchv1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							ServiceAccountName: maintServiceAccountName,
+							RestartPolicy:      corev1.RestartPolicyNever,
+							Containers: []corev1.Container{
+								{
+									Name:  "maintenancejob",
+									Image: "ghcr.io/vshn/appcat:" + imageTag,
+									Env:   append(envVars, m.extraEnvs...),
+									Args: []string{
+										"maintenance",
+										"--service",
+										m.service,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return m.iof.Desired.PutIntoObject(ctx, job, m.resource.GetName()+"-maintenancejob")
+}
+
+func (m *Maintenance) createMaintenanceRolebinding(ctx context.Context) error {
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      m.mainRole,
+			Namespace: m.instanceNamespace,
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     m.mainRole,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind: "ServiceAccount",
+				Name: maintServiceAccountName,
+			},
+		},
+	}
+
+	return m.iof.Desired.PutIntoObject(ctx, roleBinding, m.resource.GetName()+"-maintenance-rolebinding")
+}
+
+func (m *Maintenance) createMaintenanceRole(ctx context.Context) error {
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      m.mainRole,
+			Namespace: m.instanceNamespace,
+		},
+		Rules: m.policyRules,
+	}
+
+	return m.iof.Desired.PutIntoObject(ctx, role, m.resource.GetName()+"-maintenance-role")
+}
+
+func (m *Maintenance) createMaintenanceServiceAccount(ctx context.Context) error {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      maintServiceAccountName,
+			Namespace: m.instanceNamespace,
+		},
+	}
+
+	return m.iof.Desired.PutIntoObject(ctx, sa, m.resource.GetName()+"-maintenance-serviceaccount")
+}
+
+func (m *Maintenance) parseCron() (string, error) {
+
+	if m.schedule.DayOfWeek == "" || m.schedule.TimeOfDay == "" {
+		return "", nil
+	}
+
+	cronDayOfWeek := dayOfWeekMap[m.schedule.DayOfWeek]
+
+	r := regexp.MustCompile(`(\d+):(\d+):.*`)
+	timeSlice := r.FindStringSubmatch(m.schedule.TimeOfDay)
+
+	if len(timeSlice) == 0 {
+		return "", fmt.Errorf("not a valid time string %s", m.schedule.TimeOfDay)
+	}
+
+	return fmt.Sprintf("%s %s * * %d", timeSlice[2], timeSlice[1], cronDayOfWeek), nil
+}

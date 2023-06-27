@@ -1,4 +1,4 @@
-package vshnpostgres
+package commontest
 
 import (
 	"context"
@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func loadRuntimeFromFile(t assert.TestingT, file string) *runtime.Runtime {
+func LoadRuntimeFromFile(t assert.TestingT, file string) *runtime.Runtime {
 	p, _ := filepath.Abs(".")
 	before, _, _ := strings.Cut(p, "pkg")
-	f, err := os.Open(before + "/test/transforms/vshn-postgres/" + file)
+	f, err := os.Open(before + "test/transforms/" + file)
 	assert.NoError(t, err)
 	b1, err := os.ReadFile(f.Name())
 	if err != nil {
@@ -29,7 +29,7 @@ func loadRuntimeFromFile(t assert.TestingT, file string) *runtime.Runtime {
 	return funcIO
 }
 
-func getFunctionIo(funcIO *runtime.Runtime) xfnv1alpha1.FunctionIO {
+func GetFunctionIo(funcIO *runtime.Runtime) xfnv1alpha1.FunctionIO {
 	field := reflect.ValueOf(funcIO).Elem().FieldByName("io")
 	return reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Interface().(xfnv1alpha1.FunctionIO)
 }

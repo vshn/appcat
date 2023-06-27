@@ -100,6 +100,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "backup",
 			TransformFunc: vshnredis.AddBackup,
 		},
+		{
+			Name:          "maintenance",
+			TransformFunc: vshnredis.AddMaintenanceJob,
+		},
 	},
 }
 

@@ -3,6 +3,7 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
 	"strconv"
 	"strings"
 	"testing"
@@ -18,7 +19,7 @@ func TestTransformSchedule_SetRandomSchedule(t *testing.T) {
 
 	for i := 0; i < 50; i++ {
 		t.Run(fmt.Sprintf("Round %d", i), func(t *testing.T) {
-			iof := loadRuntimeFromFile(t, "base.yaml")
+			iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
 			res := TransformSchedule(context.TODO(), iof)
 			assert.Equal(t, fnv1aplha1.SeverityNormal, res.Resolve().Severity)
@@ -41,7 +42,7 @@ func TestTransformSchedule_SetRandomSchedule(t *testing.T) {
 }
 
 func TestTransformSchedule_DontOverwriteBackup(t *testing.T) {
-	iof := loadRuntimeFromFile(t, "base.yaml")
+	iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
 	comp := &vshnv1.VSHNPostgreSQL{}
 	err := iof.Desired.GetComposite(context.TODO(), comp)
@@ -60,8 +61,8 @@ func TestTransformSchedule_DontOverwriteBackup(t *testing.T) {
 	_ = parseAndValidateMaitenance(t, comp)
 }
 
-func TestTransformSchedule_DontOverwriteMaitenance(t *testing.T) {
-	iof := loadRuntimeFromFile(t, "base.yaml")
+func TestTransformSchedule_DontOverwriteMaintenance(t *testing.T) {
+	iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
 	comp := &vshnv1.VSHNPostgreSQL{}
 	err := iof.Desired.GetComposite(context.TODO(), comp)
@@ -83,7 +84,7 @@ func TestTransformSchedule_DontOverwriteMaitenance(t *testing.T) {
 }
 
 func TestTransformSchedule_DontOverwriteBackupOrMaintenance(t *testing.T) {
-	iof := loadRuntimeFromFile(t, "base.yaml")
+	iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
 	comp := &vshnv1.VSHNPostgreSQL{}
 	err := iof.Desired.GetComposite(context.TODO(), comp)

@@ -55,6 +55,14 @@ rules:
   - update
   - watch
 - apiGroups:
+  - k8up.io
+  resources:
+  - snapshots
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - stackgres.io
   resources:
   - sgbackups
@@ -65,16 +73,8 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
-  - xvshnpostgresqls
   - vshnredis
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - k8up.io
-  resources:
-  - snapshots
+  - xvshnpostgresqls
   verbs:
   - get
   - list

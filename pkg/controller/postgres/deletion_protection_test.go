@@ -253,7 +253,7 @@ func getPatch(op jsonOp) client.Patch {
 	if op == opAdd {
 		strIndex = "-"
 	}
-	patchOps := []jsonpatch{
+	patchOps := []Jsonpatch{
 		{
 			Op:    op,
 			Path:  "/metadata/finalizers/" + strIndex,

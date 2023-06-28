@@ -97,6 +97,10 @@ var images = map[string][]runtime.Transform{
 	},
 	"redis": {
 		{
+			Name:          "manage-release",
+			TransformFunc: vshnredis.ManageRelease,
+		},
+		{
 			Name:          "backup",
 			TransformFunc: vshnredis.AddBackup,
 		},

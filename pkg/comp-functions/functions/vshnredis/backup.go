@@ -3,10 +3,6 @@ package vshnredis
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
-	"fmt"
-
-	xhelm "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
@@ -15,7 +11,6 @@ import (
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	"github.com/vshn/appcat/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
-	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -79,12 +74,6 @@ func AddBackup(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	err = createScriptCM(ctx, comp, iof)
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "cannot create backup config map", err)
-	}
-
-	l.Info("Adjusting helm values")
-	err = adjustHelmValues(ctx, comp, iof)
-	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot adjust helm values", err)
 	}
 
 	return runtime.NewNormal()
@@ -254,122 +243,6 @@ func createK8upSchedule(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtim
 	}
 
 	return iof.Desired.PutIntoObject(ctx, schedule, comp.Name+"-backup-schedule")
-}
-
-func adjustHelmValues(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
-
-	l := controllerruntime.LoggerFrom(ctx)
-
-	release := &xhelm.Release{}
-
-	err := iof.Desired.Get(ctx, release, "release")
-	if err != nil {
-		return err
-	}
-
-	valueMap := map[string]any{}
-
-	err = yaml.Unmarshal(release.Spec.ForProvider.Values.Raw, &valueMap)
-	if err != nil {
-		return err
-	}
-
-	valueMap, err = addPVCAnnotation(valueMap)
-	if err != nil {
-		return fmt.Errorf("cannot add pvc annotations for backup: %w", err)
-	}
-
-	valueMap, err = addPodAnnotation(valueMap)
-	if err != nil {
-		return fmt.Errorf("cannot add pod annotations for backup: %w", err)
-	}
-
-	valueMap, err = addBackupCM(valueMap)
-	if err != nil {
-		return fmt.Errorf("cannot add configmap for backup: %w", err)
-	}
-
-	l.V(1).Info("Final value map", "map", valueMap)
-
-	valueRaw, err := json.Marshal(valueMap)
-	if err != nil {
-		return err
-	}
-
-	release.Spec.ForProvider.Values.Raw = valueRaw
-
-	return iof.Desired.PutWithResourceName(ctx, release, "release")
-}
-
-func addPVCAnnotation(valueMap map[string]any) (map[string]any, error) {
-	tmpMap, ok := valueMap["master"].(map[string]any)
-	if !ok {
-		return valueMap, fmt.Errorf("cannot parse the helm values for key: master")
-	}
-	persistenceMap, ok := tmpMap["persistence"].(map[string]any)
-	if !ok {
-		return valueMap, fmt.Errorf("cannot parse the helm values for key: master.persistence")
-	}
-
-	persistenceMap["annotations"] = map[string]string{
-		"k8up.io/backup": "false",
-	}
-
-	valueMap["master"].(map[string]any)["persistence"] = persistenceMap
-	return valueMap, nil
-}
-
-func addPodAnnotation(valueMap map[string]any) (map[string]any, error) {
-	masterMap, ok := valueMap["master"].(map[string]any)
-	if !ok {
-		return valueMap, fmt.Errorf("cannot parse the helm values for key: master")
-	}
-
-	masterMap["podAnnotations"] = map[string]string{
-		"k8up.io/backupcommand":  "/scripts/backup.sh",
-		"k8up.io/file-extension": ".tar",
-	}
-
-	valueMap["master"] = masterMap
-	return valueMap, nil
-
-}
-
-func addBackupCM(valueMap map[string]any) (map[string]any, error) {
-
-	masterMap, ok := valueMap["master"].(map[string]any)
-	if !ok {
-		return valueMap, fmt.Errorf("cannot parse the helm values for key: master")
-	}
-
-	volumes := []corev1.Volume{
-		{
-			Name: backupScriptCMName,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: backupScriptCMName,
-					},
-					DefaultMode: pointer.Int32(0774),
-				},
-			},
-		},
-	}
-
-	masterMap["extraVolumes"] = volumes
-
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      backupScriptCMName,
-			MountPath: "/scripts",
-		},
-	}
-
-	masterMap["extraVolumeMounts"] = volumeMounts
-
-	valueMap["master"] = masterMap
-
-	return valueMap, nil
 }
 
 func createScriptCM(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {

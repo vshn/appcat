@@ -34,11 +34,10 @@ func TestHelmValueUpdate(t *testing.T) {
 
 	imageMap := valueMap["image"].(map[string]any)
 
-	assert.Equal(t, imageMap["tag"], "7.0")
+	assert.Equal(t, "7.0", imageMap["tag"])
 
 	masterMap := valueMap["master"].(map[string]any)
 
-	assert.NotEmpty(t, masterMap["podAnnotations"])
 	assert.NotEmpty(t, masterMap["podAnnotations"])
 	assert.NotEmpty(t, masterMap["extraVolumes"])
 	assert.NotEmpty(t, masterMap["extraVolumeMounts"])

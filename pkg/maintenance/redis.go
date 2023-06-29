@@ -49,24 +49,36 @@ func (r *Redis) DoMaintenance(ctx context.Context) error {
 		return fmt.Errorf("cannot configure job to run: %v", err)
 	}
 
+	r.log = logr.FromContextOrDiscard(ctx).WithValues("instanceNamespace", r.instanceNamespace)
+
+	r.log.Info("Starting maintenance on redis instance")
+
+	r.log.Info("Getting current redis versions")
 	results, err := r.getVersions(redisURL)
 	if err != nil {
 		return fmt.Errorf("cannot get versions from Docker Hub: %v", err)
 	}
 
+	r.log.Info("Getting release")
 	release, err := r.getRelease(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get release from namespace %s: %v", r.instanceNamespace, err)
 	}
 
+	r.log.Info("Found release " + release.Name)
+
+	r.log.Info("Getting latest redis version")
 	version, isNewer, err := r.getNewVersion(release, results)
 	if err != nil {
 		return fmt.Errorf("cannot parse new version from release %s: %v", release.Name, err)
 	}
+
 	if !isNewer {
+		r.log.Info("Redis release has already the latest version, skipping maintenance")
 		return nil
 	}
 
+	r.log.Info("Patching redis release with version " + version.String())
 	err = r.patchRelease(ctx, *version, release)
 	if err != nil {
 		return fmt.Errorf("cannot patch release %s: %v", release.Name, err)

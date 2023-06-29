@@ -26,8 +26,7 @@ func ManageRelease(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 		return runtime.NewFatalErr(ctx, "can't get composite", err)
 	}
 
-	r := &v1beta1.Release{}
-	err = iof.Observed.Get(ctx, r, redisRelease)
+	r, err := getRelease(ctx, iof)
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "cannot get redis release from iof", err)
 	}
@@ -52,12 +51,31 @@ func ManageRelease(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	}
 
 	r.Spec.ForProvider.Values.Raw = byteValues
-	err = iof.Desired.PutWithResourceName(ctx, r, "release")
+	err = iof.Desired.PutWithResourceName(ctx, r, redisRelease)
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "cannot update release "+r.Name, err)
 	}
 
 	return runtime.NewNormal()
+}
+
+// During the very first reconcile the release is missing from the observed state therefore the release is taken one
+// time from Desired. Subsequently, the release has to be taken from observed state as to make sure that updates
+// from other jobs, such as maintenance, are reflected in the release.
+func getRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
+	r := &v1beta1.Release{}
+	err := iof.Observed.Get(ctx, r, redisRelease)
+	if err != nil && err != runtime.ErrNotFound {
+		return nil, fmt.Errorf("cannot get redis release from observed iof: %v", err)
+	}
+
+	if err == runtime.ErrNotFound {
+		err := iof.Desired.Get(ctx, r, redisRelease)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
+		}
+	}
+	return r, nil
 }
 
 func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, releaseName string, values map[string]interface{}) error {
@@ -162,12 +180,12 @@ func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
 // setReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
 func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}) error {
 
-	_, found, err := unstructured.NestedString(values, "image", "tag")
+	tag, _, err := unstructured.NestedString(values, "image", "tag")
 	if err != nil {
 		return fmt.Errorf("cannot get image tag from values in release: %v", err)
 	}
 	// In case the tag is set then let the maintenance manage it
-	if found {
+	if tag != "" {
 		return nil
 	}
 

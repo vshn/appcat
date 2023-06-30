@@ -10,6 +10,8 @@ redis_cmd() {
 
 rewrite_percentage=$(redis_cmd --raw CONFIG GET auto-aof-rewrite-percentage | tail -n 1) 1>&2
 
+redis_cmd CONFIG SET auto-aof-rewrite-percentage 0 1>&2
+
 redis_cmd SAVE 1>&2
 
 until redis_cmd INFO persistence | grep aof_rewrite_in_progress:0 > /dev/null

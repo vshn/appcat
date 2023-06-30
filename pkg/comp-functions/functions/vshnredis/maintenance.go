@@ -5,31 +5,9 @@ import (
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	"github.com/vshn/appcat/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
-	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-var (
-	service         = "redis"
-	maintRolename   = "crossplane:appcat:job:redis:maintenance"
-	maintSecretName = "maintenancesecret"
-
-	policyRules = []rbacv1.PolicyRule{
-		{
-			APIGroups: []string{
-				"helm.crossplane.io",
-			},
-			Resources: []string{
-				"releases",
-			},
-			Verbs: []string{
-				"update",
-				"get",
-				"list",
-				"watch",
-			},
-		},
-	}
-)
+var service = "redis"
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, iof *runtime.Runtime) runtime.Result {
@@ -43,6 +21,7 @@ func AddMaintenanceJob(ctx context.Context, iof *runtime.Runtime) runtime.Result
 	instanceNamespace := getInstanceNamespace(comp)
 	schedule := comp.Spec.Parameters.Maintenance
 
-	return maintenance.New(comp, iof, schedule, policyRules, instanceNamespace, maintRolename, service).
+	return maintenance.New(comp, iof, schedule, instanceNamespace, service).
+		WithHelmBasedService().
 		Run(ctx)
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -14,8 +15,7 @@ import (
 
 // MaintenanceCMD specifies the cobra command for triggering the maintenance.
 var (
-	MaintenanceCMD    = newMaintenanceCMD()
-	instanceNamespace string
+	MaintenanceCMD = newMaintenanceCMD()
 )
 
 type service enumflag.Flag
@@ -23,10 +23,12 @@ type service enumflag.Flag
 const (
 	noDefault service = iota
 	postgresql
+	redis
 )
 
 var maintenanceServices = map[service][]string{
 	postgresql: {"postgresql"},
+	redis:      {"redis"},
 }
 
 var serviceName service
@@ -74,6 +76,12 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 			SgURL:  "https://stackgres-restapi." + sgNamespace + ".svc",
 		}
 		return pg.DoMaintenance(cmd.Context())
+	case redis:
+		r := maintenance.Redis{
+			K8sClient:  kubeClient,
+			HttpClient: http.DefaultClient,
+		}
+		return r.DoMaintenance(cmd.Context())
 	}
 
 	return nil

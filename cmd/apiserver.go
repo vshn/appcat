@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/viper"
 	appcatv1 "github.com/vshn/appcat/apis/appcat/v1"
 	"github.com/vshn/appcat/pkg/apiserver/appcat"
-	"github.com/vshn/appcat/pkg/apiserver/vshn/postgres"
-	"github.com/vshn/appcat/pkg/apiserver/vshn/redis"
+	vshnpostgres "github.com/vshn/appcat/pkg/apiserver/vshn/postgres"
+	vshnredis "github.com/vshn/appcat/pkg/apiserver/vshn/redis"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
 )
 
@@ -43,11 +43,11 @@ func newAPIServerCMD() *cobra.Command {
 	}
 
 	if vshnPGBackupsEnabled {
-		b.WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, postgres.New())
+		b.WithResourceAndHandler(&appcatv1.VSHNPostgresBackup{}, vshnpostgres.New())
 	}
 
 	if vshnRedisBackupsEnabled {
-		b.WithResourceAndHandler(&appcatv1.VSHNRedisBackup{}, redis.New())
+		b.WithResourceAndHandler(&appcatv1.VSHNRedisBackup{}, vshnredis.New())
 	}
 
 	b.WithoutEtcd().

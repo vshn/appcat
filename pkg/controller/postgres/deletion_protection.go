@@ -32,7 +32,7 @@ const (
 	opReplace jsonOp = "replace"
 )
 
-type jsonpatch struct {
+type Jsonpatch struct {
 	Op    jsonOp `json:"op,omitempty"`
 	Path  string `json:"path,omitempty"`
 	Value string `json:"value,omitempty"`
@@ -117,7 +117,7 @@ func getPatchObjectFinalizer(log logr.Logger, inst client.Object, op jsonOp) (cl
 		strIndex = "-"
 	}
 
-	patchOps := []jsonpatch{
+	patchOps := []Jsonpatch{
 		{
 			Op:    op,
 			Path:  "/metadata/finalizers/" + strIndex,

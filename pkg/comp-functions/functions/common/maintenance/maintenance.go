@@ -24,6 +24,8 @@ type Maintenance struct {
 	mainRole string
 	// service is the service for which this maintenance is supposed to run. Ex:. postgresql
 	service string
+	// helmBasedService whether the maintenance is for a helm based service
+	helmBasedService bool
 	// resource object of this service
 	resource client.Object
 	// iof is Crossplane IO function
@@ -59,16 +61,26 @@ var (
 )
 
 // New creates a Maintenance object with required attributes
-func New(r client.Object, iof *runtime.Runtime, sc vshnv1.VSHNDBaaSMaintenanceScheduleSpec, pr []rbacv1.PolicyRule, in, mr, s string) *Maintenance {
+func New(r client.Object, iof *runtime.Runtime, schedule vshnv1.VSHNDBaaSMaintenanceScheduleSpec, instanceNamespace, service string) *Maintenance {
 	return &Maintenance{
-		instanceNamespace: in,
-		mainRole:          mr,
-		service:           s,
+		instanceNamespace: instanceNamespace,
+		service:           service,
 		resource:          r,
 		iof:               iof,
-		schedule:          sc,
-		policyRules:       pr,
+		schedule:          schedule,
 	}
+}
+
+// WithPolicyRules sets the policy rules for the role
+func (m *Maintenance) WithPolicyRules(policyRules []rbacv1.PolicyRule) *Maintenance {
+	m.policyRules = policyRules
+	return m
+}
+
+// WithHelmBasedService adds extra environment variables to the cron job
+func (m *Maintenance) WithHelmBasedService() *Maintenance {
+	m.helmBasedService = true
+	return m
 }
 
 // WithExtraEnvs adds extra environment variables to the cron job
@@ -83,11 +95,17 @@ func (m *Maintenance) WithExtraResources(extraResources ...ExtraResource) *Maint
 	return m
 }
 
+// WithRole adds namespaced RBAC rules
+func (m *Maintenance) WithRole(role string) *Maintenance {
+	m.mainRole = role
+	return m
+}
+
 // Run generates k8s resources for maintenance
 func (m *Maintenance) Run(ctx context.Context) runtime.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 
-	log.Info("Adding maintenance cronjobs to the instance")
+	log.Info("Adding maintenance cronjob to the instance")
 	cron, err := m.parseCron()
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "can't parse maintenance to cron", err)
@@ -97,19 +115,13 @@ func (m *Maintenance) Run(ctx context.Context) runtime.Result {
 		return runtime.NewNormal()
 	}
 
-	err = m.createMaintenanceServiceAccount(ctx)
-	if err != nil {
-		return runtime.NewFatalErr(ctx, "can't create maintenance serviceaccount", err)
-	}
-
-	err = m.createMaintenanceRole(ctx)
-	if err != nil {
-		return runtime.NewFatalErr(ctx, "can't create maintenance role", err)
-	}
-
-	err = m.createMaintenanceRolebinding(ctx)
-	if err != nil {
-		return runtime.NewFatalErr(ctx, "can't create maintenance rolebinding", err)
+	// Helm based services are having maintenance done in a control namespace therefore rbac rules are created
+	// once in the component
+	if !m.helmBasedService && m.mainRole != "" {
+		err = m.createRBAC(ctx)
+		if err != nil {
+			return runtime.NewFatalErr(ctx, "can't create rbac for maintenance", err)
+		}
 	}
 
 	for _, extraR := range m.extraResources {
@@ -126,11 +138,47 @@ func (m *Maintenance) Run(ctx context.Context) runtime.Result {
 	return runtime.NewNormal()
 }
 
+func (m *Maintenance) createRBAC(ctx context.Context) error {
+	err := m.createMaintenanceServiceAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("can't create maintenance serviceaccount: %v", err)
+	}
+
+	err = m.createMaintenanceRole(ctx)
+	if err != nil {
+		return fmt.Errorf("can't create maintenance role: %v", err)
+	}
+
+	err = m.createMaintenanceRolebinding(ctx)
+	if err != nil {
+		return fmt.Errorf("can't create maintenance rolebinding: %v", err)
+	}
+	return nil
+}
+
 func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule string) error {
 	imageTag := m.iof.Config.Data["imageTag"]
 	if imageTag == "" {
 		return fmt.Errorf("no imageTag field in composition function configuration")
 	}
+
+	sa := maintServiceAccountName
+	jobNamespace := m.instanceNamespace
+	jobName := "maintenancejob"
+
+	// For helm based services create the job in the control namespace
+	if m.helmBasedService {
+		jobName = m.resource.GetName() + "-maintenancejob"
+		jobNamespace = m.iof.Config.Data["controlNamespace"]
+		if jobNamespace == "" {
+			return fmt.Errorf("no controlNamespace field in composition function configuration")
+		}
+		sa = m.iof.Config.Data["maintenanceSA"]
+		if sa == "" {
+			return fmt.Errorf("no maintenanceSA field in composition function configuration")
+		}
+	}
+
 	envVars := []corev1.EnvVar{
 		{
 			Name:  "INSTANCE_NAMESPACE",
@@ -148,8 +196,8 @@ func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule str
 
 	job := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "maintenancejob",
-			Namespace: m.instanceNamespace,
+			Name:      jobName,
+			Namespace: jobNamespace,
 		},
 		Spec: batchv1.CronJobSpec{
 			Schedule:                   cronSchedule,
@@ -158,7 +206,7 @@ func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule str
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
-							ServiceAccountName: maintServiceAccountName,
+							ServiceAccountName: sa,
 							RestartPolicy:      corev1.RestartPolicyNever,
 							Containers: []corev1.Container{
 								{

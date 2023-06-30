@@ -103,7 +103,9 @@ func AddMaintenanceJob(ctx context.Context, iof *runtime.Runtime) runtime.Result
 	sgNamespace := iof.Config.Data["sgNamespace"]
 	schedule := comp.Spec.Parameters.Maintenance
 
-	return maintenance.New(comp, iof, schedule, policyRules, instanceNamespace, maintRolename, service).
+	return maintenance.New(comp, iof, schedule, instanceNamespace, service).
+		WithRole(maintRolename).
+		WithPolicyRules(policyRules).
 		WithExtraEnvs(extraEnvVars...).
 		WithExtraResources(createMaintenanceSecret(instanceNamespace, sgNamespace, comp.GetName()+"-maintenance-secret")).
 		Run(ctx)

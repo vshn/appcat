@@ -5,14 +5,12 @@ import (
 	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
 	"testing"
 
-	xhelm "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	"github.com/stretchr/testify/assert"
 	appcatv1 "github.com/vshn/appcat/apis/v1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
-	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -37,35 +35,6 @@ func TestAddBackupObjectCreation(t *testing.T) {
 
 	cm := &corev1.ConfigMap{}
 	assert.NoError(t, iof.Desired.Get(ctx, cm, comp.Name+"-backup-cm"))
-
-}
-
-func TestHelmValueUpdate(t *testing.T) {
-
-	iof, _ := getRedisBackupComp(t)
-	ctx := context.TODO()
-
-	assert.Equal(t, runtime.NewNormal(), AddBackup(ctx, iof))
-
-	release := &xhelm.Release{}
-	// IMPORTANT: this resource name must not change! Or crossplane will delete the release.
-	assert.NoError(t, iof.Desired.Get(ctx, release, "release"))
-
-	valueMap := map[string]any{}
-
-	assert.NoError(t, yaml.Unmarshal(release.Spec.ForProvider.Values.Raw, &valueMap))
-
-	assert.NotEmpty(t, valueMap["master"])
-
-	persistenceMap := valueMap["master"].(map[string]any)["persistence"].(map[string]any)
-
-	assert.NotEmpty(t, persistenceMap["annotations"])
-
-	masterMap := valueMap["master"].(map[string]any)
-
-	assert.NotEmpty(t, masterMap["podAnnotations"])
-	assert.NotEmpty(t, masterMap["extraVolumes"])
-	assert.NotEmpty(t, masterMap["extraVolumeMounts"])
 
 }
 

@@ -110,7 +110,9 @@ func TestAddMaintenanceJob(t *testing.T) {
 			assert.NoError(t, err)
 
 			in := "vshn-postgresql-" + comp.GetName()
-			m := New(comp, iof, comp.Spec.Parameters.Maintenance, []rbacv1.PolicyRule{}, in, "crossplane:appcat:job:postgres:maintenance", "postgresql").
+			m := New(comp, iof, comp.Spec.Parameters.Maintenance, in, "postgresql").
+				WithPolicyRules([]rbacv1.PolicyRule{}).
+				WithRole("crossplane:appcat:job:postgres:maintenance").
 				WithExtraResources(createMaintenanceSecretTest(in, iof.Config.Data["sgNamespace"], comp.GetName()+"-maintenance-secret"))
 
 			if got := m.Run(ctx); !reflect.DeepEqual(got, tt.want) {

@@ -30,6 +30,17 @@ type K8upRetentionPolicy struct {
 	KeepYearly  int `json:"keepYearly,omitempty"`
 }
 
+// K8upRestoreSpec contains restore specific parameters.
+type K8upRestoreSpec struct {
+
+	// ClaimName specifies the name of the instance you want to restore from.
+	// The claim has to be in the same namespace as this new instance.
+	ClaimName string `json:"claimName,omitempty"`
+
+	// BackupName is the name of the specific backup you want to restore.
+	BackupName string `json:"backupName,omitempty"`
+}
+
 // VSHNDBaaSMaintenanceScheduleSpec contains settings to control the maintenance of an instance.
 type VSHNDBaaSMaintenanceScheduleSpec struct {
 	// +kubebuilder:validation:Enum=monday;tuesday;wednesday;thursday;friday;saturday;sunday

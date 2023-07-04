@@ -62,6 +62,9 @@ type VSHNRedisParameters struct {
 	// Backup contains settings to control how the instance should get backed up.
 	Backup K8upBackupSpec `json:"backup,omitempty"`
 
+	// Restore contains settings to control the restore of an instance.
+	Restore K8upRestoreSpec `json:"restore,omitempty"`
+
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
 }

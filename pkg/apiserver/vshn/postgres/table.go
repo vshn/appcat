@@ -43,7 +43,7 @@ func (v *vshnPostgresBackupStorage) ConvertToTable(_ context.Context, obj runtim
 		table.ColumnDefinitions = []metav1.TableColumnDefinition{
 			{Name: "Backup Name", Type: "string", Format: "name", Description: desc["name"]},
 			{Name: "Database Instance", Type: "string", Description: "The database instance"},
-			{Name: "Stored Time", Type: "string", Description: "When backup is stored"},
+			{Name: "Finished On", Type: "string", Description: "The data is available up to this time"},
 			{Name: "Status", Type: "string", Description: "The state of this backup"},
 			{Name: "Age", Type: "date", Description: desc["creationTimestamp"]},
 		}
@@ -56,18 +56,18 @@ func backupToTableRow(backup *v1.VSHNPostgresBackup) metav1.TableRow {
 		Cells: []interface{}{
 			backup.GetName(),
 			backup.Status.DatabaseInstance,
-			getStoredTime(backup.Status.Process),
+			getEndTime(backup.Status.Process),
 			getProcessStatus(backup.Status.Process),
 			duration.HumanDuration(time.Since(backup.GetCreationTimestamp().Time))},
 		Object: runtime.RawExtension{Object: backup},
 	}
 }
 
-func getStoredTime(process *runtime.RawExtension) string {
+func getEndTime(process *runtime.RawExtension) string {
 	if process != nil && process.Object != nil {
 		if v, err := runtime.DefaultUnstructuredConverter.ToUnstructured(process.Object); err == nil {
-			if storedTime, exists, _ := unstructured.NestedString(v, v1.Timing, v1.Stored); exists {
-				return storedTime
+			if endTime, exists, _ := unstructured.NestedString(v, v1.Timing, v1.End); exists {
+				return endTime
 			}
 		}
 	}

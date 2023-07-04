@@ -21,8 +21,8 @@ var (
 	BackupInformation = "backupInformation"
 	// Timing holds field path name timing
 	Timing = "timing"
-	// Stored holds field path name stored
-	Stored = "stored"
+	// End holds field path name end
+	End = "end"
 )
 
 // VSHNPostgreSQLName represents the name of a VSHNPostgreSQL

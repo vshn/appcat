@@ -73,10 +73,11 @@ func Test_parseRange(t *testing.T) {
 
 func TestRunQuery(t *testing.T) {
 	tests := []struct {
-		name    string
-		metrics model.Matrix
-		want    map[string][]ServiceInstance
-		wantErr bool
+		name        string
+		metrics     model.Matrix
+		serviceSLAs map[string]float64
+		want        map[string][]ServiceInstance
+		wantErr     bool
 	}{
 		{
 			name: "GivenAvailableMetrics_ThenExpectOutput",
@@ -86,6 +87,46 @@ func TestRunQuery(t *testing.T) {
 						Namespace:  "myns",
 						Instance:   "test",
 						TargetSLA:  99.9,
+						OutcomeSLA: 99.99,
+						Cluster:    "mycluster",
+						Service:    "postgresql",
+						Color:      "green",
+					},
+				},
+			},
+			metrics: model.Matrix{
+				{
+					Metric: model.Metric{
+						"name":         "test",
+						"namespace":    "myns",
+						"service":      "postgresql",
+						"cluster_id":   "mycluster",
+						"organization": "mycustomer",
+					},
+					Values: []model.SamplePair{
+						{
+							Timestamp: model.Time(time.Now().UnixMilli()),
+							Value:     model.SampleValue(99.99),
+						},
+						{
+							Timestamp: model.Time(time.Now().UnixMilli()),
+							Value:     model.SampleValue(99.99),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "GivenAvailableMetricsAndServiceSLAs_ThenExpectOutput",
+			serviceSLAs: map[string]float64{
+				"postgresql": 99.25,
+			},
+			want: map[string][]ServiceInstance{
+				"mycustomer": {
+					{
+						Namespace:  "myns",
+						Instance:   "test",
+						TargetSLA:  99.25,
 						OutcomeSLA: 99.99,
 						Cluster:    "mycluster",
 						Service:    "postgresql",
@@ -183,7 +224,7 @@ func TestRunQuery(t *testing.T) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := RunQuery(context.TODO(), "dummy", "30d", "2023-06-07T09:00:00Z", "")
+			got, err := RunQuery(context.TODO(), "dummy", "30d", "2023-06-07T09:00:00Z", "", tt.serviceSLAs)
 			if tt.wantErr {
 				assert.Error(t, err)
 			}

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -21,6 +23,7 @@ var (
 	endpointURL        string
 	bucket             string
 	mimirOrg           string
+	serviceSlas        map[string]string
 	previousMonth      bool
 )
 
@@ -53,6 +56,7 @@ upload them to an S3 bucket.`,
 	command.Flags().StringVar(&endpointURL, "endpointurl", viper.GetString("ENDPOINT_URL"), "S3 endpoint url for uploading the reports. ENV: ENDPOINT_URL")
 	command.Flags().StringVar(&bucket, "bucket", viper.GetString("BUCKET_NAME"), "S3 bucketname for uploading the reports. ENV: BUCKET_NAME")
 	command.Flags().StringVar(&mimirOrg, "mimirorg", "", "Set the X-Scope-OrgID header for mimir queries")
+	command.Flags().StringToStringVar(&serviceSlas, "sla", nil, "Set SLA for each service comma separated. Ex. 's1=sla1,s2=sla2'. Available services: vshnpostgresql")
 	command.Flags().BoolVar(&previousMonth, "previousmonth", false, "Run the report for the previous month. Sets the date to the last day of the previous month and range to 30d. This takes precedence over date and range.")
 
 	return command
@@ -62,9 +66,14 @@ func (c *controller) runReport(cmd *cobra.Command, _ []string) error {
 
 	l := log.FromContext(cmd.Context())
 
+	slas, err := parseServiceSLA(serviceSlas)
+	if err != nil {
+		return err
+	}
+
 	setPreviousMonth()
 
-	metrics, err := slareport.RunQuery(cmd.Context(), promURL, timeRange, date, mimirOrg)
+	metrics, err := slareport.RunQuery(cmd.Context(), promURL, timeRange, date, mimirOrg, slas)
 	if err != nil {
 		return err
 	}
@@ -115,6 +124,18 @@ func (c *controller) runReport(cmd *cobra.Command, _ []string) error {
 	}
 
 	return err
+}
+
+func parseServiceSLA(slas map[string]string) (map[string]float64, error) {
+	m := map[string]float64{}
+	for k, sv := range slas {
+		fv, err := strconv.ParseFloat(sv, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse float value %s", sv)
+		}
+		m[k] = fv
+	}
+	return m, nil
 }
 
 func setPreviousMonth() {

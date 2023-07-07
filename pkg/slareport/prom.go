@@ -18,7 +18,7 @@ var (
 	metricQuery = `(1 - max without(prometheus_replica) (sum_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
 / ignoring (sloth_window) count_over_time(slo:sli_error:ratio_rate5m{sloth_service=~"appcat-.+"}[{{DURATION}}])
 ) >= 0) * 100`
-	slaQuery         = `100*slo:objective:ratio{sloth_id="{{SLOTHID}}"}`
+	slaQuery         = `sla:objective:ratio{service="{{SERVICE}}"}`
 	promClientFunc   = getPrometheusAPIClient
 	getMetricsFunc   = getSLAMetrics
 	getTargetSLAFunc = getTargetSLA
@@ -48,7 +48,7 @@ func getPrometheusAPIClient(promURL string, thanosAllowPartialResponses bool, or
 	return apiv1.NewAPI(client), err
 }
 
-func RunQuery(ctx context.Context, promURL, timeRange, date, mimirOrg string) (map[string][]ServiceInstance, error) {
+func RunQuery(ctx context.Context, promURL, timeRange, date, mimirOrg string, serviceSla map[string]float64) (map[string][]ServiceInstance, error) {
 
 	l := log.FromContext(ctx)
 
@@ -82,11 +82,14 @@ func RunQuery(ctx context.Context, promURL, timeRange, date, mimirOrg string) (m
 
 		l.V(1).Info("Parsing metrics", "org", org)
 
-		slothID := string(sample.Metric["sloth_id"])
+		service := string(sample.Metric["service"])
 
-		targetSLA, err := getTargetSLAFunc(ctx, slothID, client, endDate)
-		if err != nil {
-			return nil, fmt.Errorf("error during SLA target query: %w", err)
+		targetSLA, ok := serviceSla[strings.ToLower(string(sample.Metric["service"]))]
+		if !ok {
+			targetSLA, err = getTargetSLAFunc(ctx, service, client, endDate)
+			if err != nil {
+				return nil, fmt.Errorf("error during SLA target query: %w", err)
+			}
 		}
 
 		if len(sample.Values) == 0 {
@@ -159,8 +162,8 @@ func getSLAMetrics(ctx context.Context, startDate, endDate *time.Time, timeRange
 	return samples, nil
 }
 
-func getTargetSLA(ctx context.Context, slothID string, client apiv1.API, endDate *time.Time) (float64, error) {
-	query := strings.Replace(slaQuery, "{{SLOTHID}}", slothID, 1)
+func getTargetSLA(ctx context.Context, service string, client apiv1.API, endDate *time.Time) (float64, error) {
+	query := strings.Replace(slaQuery, "{{SERVICE}}", service, 1)
 
 	res, warnings, err := client.Query(ctx, query, *endDate)
 	if err != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -173,7 +172,7 @@ func (d *DesiredResources) RemoveCompositeConnectionDetail(ctx context.Context, 
 // when there might be multiple transformation functions in the pipeline
 func (d *DesiredResources) fromKubeObject(ctx context.Context, kobj *xkube.Object, obj client.Object) error {
 	log := controllerruntime.LoggerFrom(ctx)
-	log.V(1).Info("Unmarshalling resource from desired kube object", "kube object", kobj, reflect.TypeOf(obj).Kind())
+	log.V(1).Info("Unmarshalling resource from desired kube object", "kube object", kobj)
 	if kobj.Spec.ForProvider.Manifest.Raw == nil {
 		return ErrNotFound
 	}

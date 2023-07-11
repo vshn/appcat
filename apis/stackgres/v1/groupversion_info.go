@@ -21,5 +21,12 @@ var (
 )
 
 func init() {
-	SchemeBuilder.Register(&SGDbOps{}, &SGDbOpsList{}, &SGCluster{}, &SGClusterList{})
+	SchemeBuilder.Register(
+		&SGDbOps{},
+		&SGDbOpsList{},
+		&SGCluster{},
+		&SGClusterList{},
+		&SGPostgresConfig{},
+		&SGPostgesConfigList{},
+	)
 }

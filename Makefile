@@ -133,6 +133,16 @@ docker-build:
 		go build -o ${BIN_FILENAME}
 	docker build --platform $(DOCKER_IMAGE_GOOS)/$(DOCKER_IMAGE_GOARCH) -t ${GHCR_IMG} .
 
+.PHONY: docker-build-branchtag
+docker-build-branchtag: docker-build ## Build docker image with current branch name
+	tag=$$(git rev-parse --abbrev-ref HEAD) && \
+	docker tag ${GHCR_IMG} ghcr.io/vshn/appcat:"$${tag////_}"
+
+.PHONY: kind-load-branch-tag
+kind-load-branch-tag: ## load docker image with current branch tag into kind
+	tag=$$(git rev-parse --abbrev-ref HEAD) && \
+	kind load docker-image --name kindev ghcr.io/vshn/appcat:"$${tag////_}"
+
 .PHONY: docker-push
 docker-push: docker-build ## Push docker image with the manager.
 	docker push ${GHCR_IMG}

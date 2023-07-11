@@ -60,7 +60,7 @@ var (
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: service + maintSecretName,
+						Name: maintSecretName,
 					},
 					Key: "SG_NAMESPACE",
 				},
@@ -71,7 +71,7 @@ var (
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: service + maintSecretName,
+						Name: maintSecretName,
 					},
 					Key: "k8sUsername",
 				},
@@ -82,7 +82,7 @@ var (
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: service + maintSecretName,
+						Name: maintSecretName,
 					},
 					Key: "clearPassword",
 				},

@@ -35,10 +35,12 @@ var (
 			},
 			Resources: []string{
 				"sgclusters",
+				"sgdbops",
 			},
 			Verbs: []string{
 				"list",
 				"get",
+				"watch",
 			},
 		},
 		{

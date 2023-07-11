@@ -6,8 +6,10 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/watch"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-version"
@@ -21,10 +23,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// OpName is the type of operation for SGDbOps resource
+type OpName string
+
+var (
+	su  OpName = "securityUpgrade"
+	mvu OpName = "minorVersionUpgrade"
+	r   OpName = "repack"
+)
+
 // PostgreSQL handles the maintenance of postgresql services
 type PostgreSQL struct {
-	Client            client.Client
+	Client            client.WithWatch
 	log               logr.Logger
+	MaintTimeout      time.Duration
 	instanceNamespace string
 	ctx               context.Context
 	apiUserName       string
@@ -74,6 +86,30 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	clusterName := sgclusters.Items[0].GetName()
 	currentVersion := sgclusters.Items[0].Spec.Postgres.Version
 
+	p.log.Info("Checking for upgrades...")
+	err = p.upgradeVersion(currentVersion, clusterName)
+	if err != nil {
+		return err
+	}
+
+	p.log.Info("Waiting for upgrades to finish before doing repack on databases")
+	err = p.waitForUpgrade(ctx)
+	if apierrors.IsTimeout(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("cannot watch for maintenance sgdbops resources: %v", err)
+	}
+
+	err = p.createRepack(clusterName)
+	if err != nil {
+		return fmt.Errorf("cannot create repack: %v", err)
+	}
+
+	return nil
+}
+
+func (p *PostgreSQL) upgradeVersion(currentVersion string, clusterName string) error {
 	versionList, err := p.fetchVersionList(p.SgURL)
 	if err != nil {
 		p.log.Error(err, "StackGres API error")
@@ -95,7 +131,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
 	p.log.Info("Checking for EOL")
 	if versionList != nil && p.isEOL(currentVersion, *versionList) {
-		err := p.setEOLStatus()
+		err = p.setEOLStatus()
 		if err != nil {
 			return fmt.Errorf("cannot set EOL status on claim: %w", err)
 		}
@@ -103,6 +139,49 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
 	p.log.Info("Doing a security maintenance")
 	return p.createSecurityUpgrade(clusterName)
+}
+
+func (p *PostgreSQL) waitForUpgrade(ctx context.Context) error {
+	ls := &stackgresv1.SGDbOpsList{}
+	watcher, err := p.Client.Watch(ctx, ls, client.InNamespace(p.instanceNamespace))
+	if err != nil {
+		return fmt.Errorf("watch error:%v for sgdbops resources in %s", err, p.instanceNamespace)
+	}
+	defer watcher.Stop()
+	rc := watcher.ResultChan()
+	timer := time.NewTimer(p.MaintTimeout)
+	for {
+		select {
+
+		// Timout in case the job runs too long
+		case <-timer.C:
+			p.log.Info("Timeout waiting for upgrade to finish")
+			return apierrors.NewTimeoutError("job timeout", -1)
+
+		// Read updates for SGDbOps resources
+		case event, ok := <-rc:
+			if !ok {
+				return fmt.Errorf("sgdbops resource watch channel had been closed")
+			}
+
+			switch event.Type {
+			case watch.Modified:
+				ops, _ := event.Object.(*stackgresv1.SGDbOps)
+				for _, c := range *ops.Status.Conditions {
+					// When operation is completed then return, regardless if it failed or not
+					if isUpgradeFinished(ops.Spec.Op, c) {
+						return nil
+					}
+				}
+			case watch.Error:
+				return fmt.Errorf("wait for maintenance received watch error: %v", event)
+			}
+		}
+	}
+}
+
+func isUpgradeFinished(op string, v stackgresv1.SGDbOpsStatusConditionsItem) bool {
+	return op != string(r) && *v.Reason == "OperationCompleted" && *v.Status == "True"
 }
 
 func (p *PostgreSQL) listClustersInNamespace() (*stackgresv1.SGClusterList, error) {
@@ -194,8 +273,13 @@ func (p *PostgreSQL) fetchVersionList(url string) (*pgVersions, error) {
 	return versionList, nil
 }
 
+func (p *PostgreSQL) createRepack(clusterName string) error {
+	repack := p.getDbOpsObject(clusterName, "databasesrepack", r)
+	return p.applyDbOps(repack)
+}
+
 func (p *PostgreSQL) createMinorUpgrade(clusterName, minorVersion string) error {
-	minorMaint := p.getDbOpsObject(clusterName, "minorupgrade", "minorVersionUpgrade")
+	minorMaint := p.getDbOpsObject(clusterName, "minorupgrade", mvu)
 	minorMaint.Spec.MinorVersionUpgrade = &stackgresv1.SGDbOpsSpecMinorVersionUpgrade{
 		Method:          pointer.String("InPlace"),
 		PostgresVersion: &minorVersion,
@@ -204,14 +288,14 @@ func (p *PostgreSQL) createMinorUpgrade(clusterName, minorVersion string) error 
 }
 
 func (p *PostgreSQL) createSecurityUpgrade(clusterName string) error {
-	secMaint := p.getDbOpsObject(clusterName, "securitymaintenance", "securityUpgrade")
+	secMaint := p.getDbOpsObject(clusterName, "securitymaintenance", su)
 	secMaint.Spec.SecurityUpgrade = &stackgresv1.SGDbOpsSpecSecurityUpgrade{
 		Method: pointer.String("InPlace"),
 	}
 	return p.applyDbOps(secMaint)
 }
 
-func (p *PostgreSQL) getDbOpsObject(clusterName, objectName, opName string) *stackgresv1.SGDbOps {
+func (p *PostgreSQL) getDbOpsObject(clusterName, objectName string, op OpName) *stackgresv1.SGDbOps {
 	return &stackgresv1.SGDbOps{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      objectName,
@@ -219,7 +303,7 @@ func (p *PostgreSQL) getDbOpsObject(clusterName, objectName, opName string) *sta
 		},
 		Spec: stackgresv1.SGDbOpsSpec{
 			SgCluster:  clusterName,
-			Op:         opName,
+			Op:         string(op),
 			MaxRetries: pointer.Int(1),
 		},
 	}

@@ -5,6 +5,7 @@ import (
 )
 
 const SGDbOpsOpRestart = "restart"
+const SGDbOpsOpRepack = "repack"
 
 const SGDbOpsRestartMethodInPlace = "InPlace"
 

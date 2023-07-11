@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -56,7 +57,7 @@ func newMaintenanceCMD() *cobra.Command {
 
 func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 
-	kubeClient, err := client.New(ctrl.GetConfigOrDie(), client.Options{
+	kubeClient, err := client.NewWithWatch(ctrl.GetConfigOrDie(), client.Options{
 		Scheme: pkg.SetupScheme(),
 	})
 	if err != nil {
@@ -72,8 +73,9 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		}
 
 		pg := maintenance.PostgreSQL{
-			Client: kubeClient,
-			SgURL:  "https://stackgres-restapi." + sgNamespace + ".svc",
+			Client:       kubeClient,
+			SgURL:        "https://stackgres-restapi." + sgNamespace + ".svc",
+			MaintTimeout: time.Hour,
 		}
 		return pg.DoMaintenance(cmd.Context())
 	case redis:

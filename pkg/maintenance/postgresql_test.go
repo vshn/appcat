@@ -3,12 +3,7 @@ package maintenance
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"reflect"
-	"strings"
-	"testing"
-
+	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -17,8 +12,15 @@ import (
 	"github.com/vshn/appcat/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+	"math/rand"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"strings"
+	"testing"
+	"time"
 )
 
 func TestPostgreSQL_getLatestMinorversion(t *testing.T) {
@@ -197,15 +199,17 @@ func getBrokenHTTPServer(t *testing.T) *httptest.Server {
 
 func TestPostgreSQL_DoMaintenance(t *testing.T) {
 	tests := []struct {
-		name        string
-		wantErr     bool
-		objs        []client.Object
-		wantedClaim *vshnv1.VSHNPostgreSQL
-		wantedOps   *stackgresv1.SGDbOps
-		server      *httptest.Server
+		name         string
+		wantErr      bool
+		objs         []client.Object
+		maintTimeout time.Duration
+		wantedClaim  *vshnv1.VSHNPostgreSQL
+		wantedOps    *stackgresv1.SGDbOps
+		server       *httptest.Server
 	}{
 		{
-			name: "GivenEOLVersion_ThenExpectEOLStatus",
+			name:         "GivenEOLVersion_ThenExpectEOLStatus",
+			maintTimeout: time.Hour,
 			objs: []client.Object{
 				&stackgresv1.SGCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -237,7 +241,8 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 			server: getVersionTestHTTPServer(t),
 		},
 		{
-			name: "GivenOlderMinorVersion_ThenExpectMinorUpdate",
+			name:         "GivenOlderMinorVersion_ThenExpectMinorUpdate",
+			maintTimeout: time.Hour,
 			objs: []client.Object{
 				&stackgresv1.SGCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -269,7 +274,8 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 			server: getVersionTestHTTPServer(t),
 		},
 		{
-			name: "GivenSameMinorVersion_ThenExpectSecurityMaintenance",
+			name:         "GivenSameMinorVersion_ThenExpectSecurityMaintenance",
+			maintTimeout: time.Hour,
 			objs: []client.Object{
 				&stackgresv1.SGCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -300,7 +306,8 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 			server: getVersionTestHTTPServer(t),
 		},
 		{
-			name: "GivenUnavailableStackGresAPI_ThenExpectSecurityMaintenance",
+			name:         "GivenUnavailableStackGresAPI_ThenExpectSecurityMaintenance",
+			maintTimeout: time.Hour,
 			objs: []client.Object{
 				&stackgresv1.SGCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -330,6 +337,24 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 			},
 			server: getBrokenHTTPServer(t),
 		},
+		{
+			name:         "GivenMaintenanceTooLong_ThenExpectNoRepack",
+			maintTimeout: time.Second,
+			objs: []client.Object{
+				&stackgresv1.SGCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster",
+						Namespace: "default",
+					},
+					Spec: stackgresv1.SGClusterSpec{
+						Postgres: stackgresv1.SGClusterSpecPostgres{
+							Version: "15.0",
+						},
+					},
+				},
+			},
+			server: getVersionTestHTTPServer(t),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -342,13 +367,19 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 				Build()
 
 			defer tt.server.Close()
+			ctx := context.TODO()
+			err := concurrentSGDbOpsUpdate(fclient)
+			if err != nil {
+				assert.NoError(t, err)
+			}
 
 			p := &PostgreSQL{
-				Client: fclient,
-				log:    logr.Discard(),
-				SgURL:  tt.server.URL,
+				Client:       fclient,
+				log:          logr.Discard(),
+				SgURL:        tt.server.URL,
+				MaintTimeout: tt.maintTimeout,
 			}
-			if err := p.DoMaintenance(context.TODO()); (err != nil) != tt.wantErr {
+			if err := p.DoMaintenance(ctx); (err != nil) != tt.wantErr {
 				t.Errorf("PostgreSQL.DoMaintenance() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -356,7 +387,7 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 
 				claim := &vshnv1.VSHNPostgreSQL{}
 
-				assert.NoError(t, fclient.Get(context.TODO(), client.ObjectKeyFromObject(tt.wantedClaim), claim))
+				assert.NoError(t, fclient.Get(ctx, client.ObjectKeyFromObject(tt.wantedClaim), claim))
 
 				assert.Equal(t, tt.wantedClaim.Status.IsEOL, claim.Status.IsEOL)
 			}
@@ -364,13 +395,57 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 			if tt.wantedOps != nil {
 				ops := &stackgresv1.SGDbOps{}
 
-				assert.NoError(t, fclient.Get(context.TODO(), client.ObjectKeyFromObject(tt.wantedOps), ops))
+				assert.NoError(t, fclient.Get(ctx, client.ObjectKeyFromObject(tt.wantedOps), ops))
 
 				assert.Equal(t, tt.wantedOps.Spec, ops.Spec)
 			}
 
+			repack := &stackgresv1.SGDbOps{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "databasesrepack",
+					Namespace: "default",
+				},
+			}
+			if tt.maintTimeout == time.Hour {
+				assert.NoError(t, fclient.Get(ctx, client.ObjectKeyFromObject(repack), repack))
+				assert.Equal(t, "repack", repack.Spec.Op)
+			} else {
+				assert.Error(t, fclient.Get(ctx, client.ObjectKeyFromObject(repack), repack))
+			}
 		})
 	}
+}
+
+func concurrentSGDbOpsUpdate(fakeClient client.WithWatch) error {
+	var err error
+	go func() error {
+		ctx := context.Background()
+		sl := &stackgresv1.SGDbOpsList{}
+		for len(sl.Items) == 0 {
+			err := fakeClient.List(ctx, sl)
+			if err != nil {
+
+				return fmt.Errorf("cannot get sgdbops resources")
+			}
+		}
+		for {
+			s := sl.Items[rand.Intn(len(sl.Items))]
+			s.Status.Conditions = &[]stackgresv1.SGDbOpsStatusConditionsItem{
+				{
+					Message: pointer.String("all good"),
+					Reason:  pointer.String("OperationCompleted"),
+					Status:  pointer.String("True"),
+					Type:    pointer.String("Completed"),
+				},
+			}
+			time.Sleep(time.Second)
+			err := fakeClient.Status().Update(ctx, &s)
+			if err != nil {
+				return fmt.Errorf("cannot update status of sgdbops resource")
+			}
+		}
+	}()
+	return err
 }
 
 func setupEnvVars(t *testing.T) {

@@ -22,6 +22,8 @@ What kind of operation it creates depends on following factors:
 * If the instance is on an older minor version, then do a minor upgrade
 * If the StackGres API is not available do a security update
 
+After instance update/upgrade completion, a `pg_repack` operation will be performed on all databases.
+
 The StackGres operator API is used to query what versions are currently supported.
 If a new StackGres release supports newer minor versions of PostgreSQL, then all instances of that major version will do an update during their next maintenance window.
 

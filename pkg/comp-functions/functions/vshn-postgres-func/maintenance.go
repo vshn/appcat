@@ -27,6 +27,9 @@ var (
 			Verbs: []string{
 				"delete",
 				"create",
+				"get",
+				"list",
+				"watch",
 			},
 		},
 		{
@@ -35,12 +38,10 @@ var (
 			},
 			Resources: []string{
 				"sgclusters",
-				"sgdbops",
 			},
 			Verbs: []string{
 				"list",
 				"get",
-				"watch",
 			},
 		},
 		{

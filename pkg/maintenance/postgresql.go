@@ -101,6 +101,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 		return fmt.Errorf("cannot watch for maintenance sgdbops resources: %v", err)
 	}
 
+	p.log.Info("Repacking databases...")
 	err = p.createRepack(clusterName)
 	if err != nil {
 		return fmt.Errorf("cannot create repack: %v", err)

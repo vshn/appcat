@@ -74,6 +74,16 @@ func (d *DesiredResources) GetFromObject(ctx context.Context, o client.Object, k
 func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, kon string, refs ...xkube.Reference) error {
 	log := controllerruntime.LoggerFrom(ctx)
 
+	// Crossplane uses apply to create and update objects.
+	// If we pass an object that already has a populated "kubectl.kubernetes.io/last-applied-configuration"
+	// annotation, then it will keep growing with each reconcile.
+	// So we reset it here to make sure this doesn't happen.
+	annotations := o.GetAnnotations()
+	if annotations != nil {
+		annotations["kubectl.kubernetes.io/last-applied-configuration"] = ""
+		o.SetAnnotations(annotations)
+	}
+
 	ko := &xkube.Object{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       xkube.ObjectKind,

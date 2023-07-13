@@ -160,29 +160,6 @@ func removeMetadata(res *k8sruntime.RawExtension) error {
 	return err
 }
 
-func createOrUpdateObject(ctx context.Context, configMap *corev1.ConfigMap, kubeClient client.Client) error {
-
-	tmpMap := &corev1.ConfigMap{}
-
-	err := kubeClient.Get(ctx, client.ObjectKeyFromObject(configMap), tmpMap)
-	if err != nil && apierrors.IsNotFound(err) {
-		err := kubeClient.Create(ctx, configMap)
-		if err != nil {
-			return err
-		}
-		return nil
-	} else if err != nil {
-		return nil
-	}
-
-	err = kubeClient.Update(ctx, configMap)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func diffFuncIOs(ctx context.Context, currentIndex int64, currentMap *corev1.ConfigMap, kubeClient client.Client, funcName string) error {
 
 	prevIndex := 0

@@ -8,6 +8,8 @@ import (
 	pb "github.com/crossplane/crossplane/apis/apiextensions/fn/proto/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	"github.com/vshn/appcat/pkg"
+	"github.com/vshn/appcat/pkg/comp-functions/functions/helper"
 	"github.com/vshn/appcat/pkg/comp-functions/functions/miniodev"
 	vpf "github.com/vshn/appcat/pkg/comp-functions/functions/vshn-postgres-func"
 	"github.com/vshn/appcat/pkg/comp-functions/functions/vshnredis"
@@ -16,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -122,7 +125,10 @@ type server struct {
 
 func (s *server) RunFunction(ctx context.Context, in *pb.RunFunctionRequest) (*pb.RunFunctionResponse, error) {
 	ctx = logr.NewContext(ctx, s.logger)
-	enableDevMode(DevMode)
+	err := enableDevMode(DevMode)
+	if err != nil {
+		return nil, status.Errorf(codes.Aborted, "cannot enable devMode: %s", err)
+	}
 	fnio, err := runtime.RunCommand(ctx, in.Input, images[in.Image])
 	if err != nil {
 		err = status.Errorf(codes.Aborted, "Can't process request for PostgreSQL")
@@ -140,7 +146,15 @@ func cleanStart(socketName string) error {
 	return nil
 }
 
-func enableDevMode(enable bool) {
+func enableDevMode(enable bool) error {
+
+	kubeClient, err := client.New(ctrl.GetConfigOrDie(), client.Options{
+		Scheme: pkg.SetupScheme(),
+	})
+	if err != nil {
+		return err
+	}
+
 	if enable {
 		images["miniodev"] = []runtime.Transform{
 			{
@@ -148,5 +162,21 @@ func enableDevMode(enable bool) {
 				TransformFunc: miniodev.ProvisionMiniobucket,
 			},
 		}
+		for key := range images {
+			found := false
+			for _, transform := range images[key] {
+				if transform.Name == "saveFunctionIO" {
+					found = true
+					break
+				}
+			}
+			if !found {
+				images[key] = append(images[key], runtime.Transform{
+					Name:          "saveFunctionIO",
+					TransformFunc: helper.SaveFuncIOToConfigMap(key, kubeClient),
+				})
+			}
+		}
 	}
+	return nil
 }

@@ -105,7 +105,7 @@ func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, k
 		return err
 	}
 
-	log.V(1).Info("Preparing to put object into desired kube object", "object", o, "kube object name", kon)
+	log.V(1).Info("Preparing to put object into desired kube object", "kube object name", kon)
 	err = updateKubeObject(o, ko)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (d *DesiredResources) PutCompositeConnectionDetail(ctx context.Context, cd 
 	log := controllerruntime.LoggerFrom(ctx)
 	for i, c := range d.composite.ConnectionDetails {
 		if cd.Name == c.Name {
-			log.V(1).Info("Updating existing desired composite connection detail", "cd", cd)
+			log.V(1).Info("Updating existing desired composite connection detail", "name", cd.Name)
 			d.composite.ConnectionDetails[i] = cd
 			return
 		}
@@ -172,7 +172,7 @@ func (d *DesiredResources) RemoveCompositeConnectionDetail(ctx context.Context, 
 // when there might be multiple transformation functions in the pipeline
 func (d *DesiredResources) fromKubeObject(ctx context.Context, kobj *xkube.Object, obj client.Object) error {
 	log := controllerruntime.LoggerFrom(ctx)
-	log.V(1).Info("Unmarshalling resource from desired kube object", "kube object", kobj)
+	log.V(1).Info("Unmarshalling resource from desired kube object")
 	if kobj.Spec.ForProvider.Manifest.Raw == nil {
 		return ErrNotFound
 	}
@@ -181,7 +181,7 @@ func (d *DesiredResources) fromKubeObject(ctx context.Context, kobj *xkube.Objec
 
 func (d *DesiredResources) put(ctx context.Context, obj client.Object, resName string) error {
 	log := controllerruntime.LoggerFrom(ctx)
-	log.V(1).Info("Putting object into desired kube object", "object", obj, "kube object name", resName)
+	log.V(1).Info("Putting object into desired kube object", "kube object name", resName)
 	kind, _, err := s.ObjectKinds(obj)
 	if err != nil {
 		return fmt.Errorf("cannot get object kinds from %s: %v", obj.GetName(), err)
@@ -195,7 +195,7 @@ func (d *DesiredResources) put(ctx context.Context, obj client.Object, resName s
 
 	for _, res := range d.resources {
 		if res.GetName() == resName {
-			log.V(1).Info("Updating existing desired kube object with resource", "object", obj, "kube object name", resName)
+			log.V(1).Info("Updating existing desired kube object with resource", "kube object name", resName)
 			res.SetRaw(rawData)
 			return nil
 		}
@@ -210,7 +210,7 @@ func (d *DesiredResources) put(ctx context.Context, obj client.Object, resName s
 		},
 	}
 
-	log.V(1).Info("No desired kube object found, adding new one with resource", "object", obj, "kube object name", resName)
+	log.V(1).Info("No desired kube object found, adding new one with resource", "kube object name", resName)
 	d.resources = append(d.resources, &dr)
 	return nil
 }

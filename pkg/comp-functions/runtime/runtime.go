@@ -169,3 +169,7 @@ func parseCompFuncConfig(iof *Runtime) (*corev1.ConfigMap, error) {
 
 	return cm, nil
 }
+
+func (r *Runtime) GetRawFuncIO() *xfnv1alpha1.FunctionIO {
+	return &r.io
+}

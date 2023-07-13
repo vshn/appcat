@@ -16,3 +16,4 @@
 * xref:explanations/comp-functions/vshn-postgres.adoc[VSHN Postgres Functions]
 * xref:explanations/slareports.adoc[]
 * xref:explanations/dev-notes.adoc[]
+* xref:explanations/debug.adoc[]

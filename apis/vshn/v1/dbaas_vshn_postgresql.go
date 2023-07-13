@@ -105,6 +105,16 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// PGSettings contains additional PostgreSQL settings.
 	PostgreSQLSettings runtime.RawExtension `json:"pgSettings,omitempty"`
+
+	// Extensions allow to enable/disable any of the supported
+	Extensions []VSHNDBaaSPostgresExtension `json:"extensions,omitempty"`
+}
+
+// VSHNDBaaSPostgresExtension contains the name of a single extension.
+type VSHNDBaaSPostgresExtension struct {
+	// Name is the name of the extension to enable.
+	// For an extensive list, please consult https://stackgres.io/doc/latest/intro/extensions/
+	Name string `json:"name,omitempty"`
 }
 
 // VSHNDBaaSSchedulingSpec contains settings to control the scheduling of an instance.

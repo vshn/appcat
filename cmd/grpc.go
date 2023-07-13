@@ -94,6 +94,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "mailgun-alerting",
 			TransformFunc: vpf.MailgunAlerting,
 		},
+		{
+			Name:          "extensions",
+			TransformFunc: vpf.AddExtensions,
+		},
 	},
 	"redis": {
 		{

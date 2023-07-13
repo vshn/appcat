@@ -3519,6 +3519,16 @@ spec:
                     service:
                       description: Service contains PostgreSQL DBaaS specific properties
                       properties:
+                        extensions:
+                          description: Extensions allow to enable/disable any of the supported
+                          items:
+                            description: VSHNDBaaSPostgresExtension contains the name of a single extension.
+                            properties:
+                              name:
+                                description: Name is the name of the extension to enable. For an extensive list, please consult https://stackgres.io/doc/latest/intro/extensions/
+                                type: string
+                            type: object
+                          type: array
                         majorVersion:
                           default: "15"
                           description: MajorVersion contains supported version of PostgreSQL. Multiple versions are supported. The latest version "15" is the default version.

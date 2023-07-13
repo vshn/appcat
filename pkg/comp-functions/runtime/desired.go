@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -73,6 +72,16 @@ func (d *DesiredResources) GetFromObject(ctx context.Context, o client.Object, k
 // PutIntoObject adds or updates the desired resource into its kube object
 func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, kon string, refs ...xkube.Reference) error {
 	log := controllerruntime.LoggerFrom(ctx)
+
+	// Crossplane uses apply to create and update objects.
+	// If we pass an object that already has a populated "kubectl.kubernetes.io/last-applied-configuration"
+	// annotation, then it will keep growing with each reconcile.
+	// So we reset it here to make sure this doesn't happen.
+	annotations := o.GetAnnotations()
+	if annotations != nil {
+		annotations["kubectl.kubernetes.io/last-applied-configuration"] = ""
+		o.SetAnnotations(annotations)
+	}
 
 	ko := &xkube.Object{
 		TypeMeta: metav1.TypeMeta{
@@ -163,7 +172,7 @@ func (d *DesiredResources) RemoveCompositeConnectionDetail(ctx context.Context, 
 // when there might be multiple transformation functions in the pipeline
 func (d *DesiredResources) fromKubeObject(ctx context.Context, kobj *xkube.Object, obj client.Object) error {
 	log := controllerruntime.LoggerFrom(ctx)
-	log.V(1).Info("Unmarshalling resource from desired kube object", "kube object", kobj, reflect.TypeOf(obj).Kind())
+	log.V(1).Info("Unmarshalling resource from desired kube object", "kube object", kobj)
 	if kobj.Spec.ForProvider.Manifest.Raw == nil {
 		return ErrNotFound
 	}

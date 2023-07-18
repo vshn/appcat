@@ -339,7 +339,7 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 		},
 		{
 			name:         "GivenMaintenanceTooLong_ThenExpectNoRepack",
-			maintTimeout: time.Second,
+			maintTimeout: time.Millisecond,
 			objs: []client.Object{
 				&stackgresv1.SGCluster{
 					ObjectMeta: metav1.ObjectMeta{

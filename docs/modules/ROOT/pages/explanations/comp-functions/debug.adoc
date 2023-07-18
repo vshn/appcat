@@ -1,0 +1,7 @@
+= Debugging
+
+If the GRPC server is in devmode, it will save the funcIOs of each function to configMaps in the default namespace. It will always keep two configMaps per composite and function. One contains the previous and one the current state. For example for VSHNPostgreSQL this could result in up to four configMaps; two for the postgresql function and two for the miniodev function (which provides the local S3 bucket).
+
+These configMaps can be used to see the state of the whole FuncIO and should help with local debugging. Additionally, the GRPC server now prints a diff of those configMaps on each reconcile.
+
+The configMaps and the diffs will only rotate on `.spec` changes on the claim/composite, it uses the generation to track current and previous states. This way we can track the "logical" diff of a change, even if it needs multiple reconcile loops to be applied fully.

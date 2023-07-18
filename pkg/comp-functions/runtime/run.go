@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/yaml"
 )
 
 // Exec reads FunctionIO from stdin and return the desired state via transform function
-func Exec(ctx context.Context, log logr.Logger, runtime *Runtime, transform Transform) error {
+func Exec(ctx context.Context, runtime *Runtime, transform Transform) error {
 
-	log.V(1).Info("Executing transformation function")
 	res := transform.TransformFunc(ctx, runtime).Resolve()
 	res.Message = fmt.Sprintf("Function %s result: %s", transform.Name, res.Message)
 
@@ -49,13 +49,38 @@ func RunCommand(ctx context.Context, input []byte, transforms []Transform) ([]by
 		return []byte{}, err
 	}
 
+	ctx, log, err = prepareFuncLogger(ctx, log, funcIO)
+	if err != nil {
+		return []byte{}, err
+	}
+
 	for _, function := range transforms {
 		log.Info("Starting function", "name", function.Name)
-		err = Exec(ctx, log, funcIO, function)
+		err = Exec(ctx, funcIO, function)
 		if err != nil {
 			return []byte{}, err
 		}
 	}
 
 	return printFunctionIO(&funcIO.io, log)
+}
+
+// prepareFuncLogger reads some metadata from the funcIO and uses it to add it to the logger.
+func prepareFuncLogger(ctx context.Context, log logr.Logger, iof *Runtime) (context.Context, logr.Logger, error) {
+
+	// missusing the xkube object a bit here...
+	// I'm only interested in the metadata
+	meta := &xkube.Object{}
+	if err := iof.Desired.GetComposite(ctx, meta); err != nil {
+		return ctx, log, err
+	}
+
+	log = log.WithValues(
+		"compositeName",
+		meta.GetName(),
+	)
+
+	ctx = logr.NewContext(ctx, log)
+
+	return ctx, log, nil
 }

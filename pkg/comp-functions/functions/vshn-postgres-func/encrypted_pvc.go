@@ -30,7 +30,7 @@ func AddPvcSecret(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	}
 	log.Info("Check if encrypted storage is enabled")
 
-	log.V(1).Info("Transforming", "obj", iof)
+	log.V(1).Info("Transforming")
 
 	encryptionSpec := comp.Spec.Parameters.Encryption
 

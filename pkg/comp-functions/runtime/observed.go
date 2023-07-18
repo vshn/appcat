@@ -55,7 +55,7 @@ func (o *ObservedResources) GetCompositeConnectionDetails(_ context.Context) *[]
 // and the status field will not be changed with multiple transformation functions
 func (o *ObservedResources) fromKubeObject(ctx context.Context, kobj *xkube.Object, obj client.Object) error {
 	log := controllerruntime.LoggerFrom(ctx)
-	log.V(1).Info("Unmarshalling resource from observed kube object", "kube object", kobj)
+	log.V(1).Info("Unmarshalling resource from observed kube object", "name", kobj.GetName())
 	if kobj.Status.AtProvider.Manifest.Raw == nil {
 		return ErrNotFound
 	}

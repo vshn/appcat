@@ -4,6 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -12,15 +19,8 @@ import (
 	"github.com/vshn/appcat/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	"math/rand"
-	"net/http"
-	"net/http/httptest"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestPostgreSQL_getLatestMinorversion(t *testing.T) {
@@ -199,13 +199,15 @@ func getBrokenHTTPServer(t *testing.T) *httptest.Server {
 
 func TestPostgreSQL_DoMaintenance(t *testing.T) {
 	tests := []struct {
-		name         string
-		wantErr      bool
-		objs         []client.Object
-		maintTimeout time.Duration
-		wantedClaim  *vshnv1.VSHNPostgreSQL
-		wantedOps    *stackgresv1.SGDbOps
-		server       *httptest.Server
+		name             string
+		wantErr          bool
+		objs             []client.Object
+		maintTimeout     time.Duration
+		wantedClaim      *vshnv1.VSHNPostgreSQL
+		wantedOps        *stackgresv1.SGDbOps
+		server           *httptest.Server
+		updatedOps       string
+		shouldSkipRepack bool
 	}{
 		{
 			name:         "GivenEOLVersion_ThenExpectEOLStatus",
@@ -339,7 +341,7 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 		},
 		{
 			name:         "GivenMaintenanceTooLong_ThenExpectNoRepack",
-			maintTimeout: time.Second,
+			maintTimeout: 500 * time.Millisecond,
 			objs: []client.Object{
 				&stackgresv1.SGCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -353,7 +355,42 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 					},
 				},
 			},
-			server: getVersionTestHTTPServer(t),
+			server:           getVersionTestHTTPServer(t),
+			shouldSkipRepack: true,
+		},
+		{
+			name:         "GivenMaintenanceTooLong_WithUnrelatedSecupdate_ThenExpectNoRepack",
+			maintTimeout: 2 * time.Second,
+			objs: []client.Object{
+				&stackgresv1.SGCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster",
+						Namespace: "default",
+					},
+					Spec: stackgresv1.SGClusterSpec{
+						Postgres: stackgresv1.SGClusterSpecPostgres{
+							Version: "15.0",
+						},
+					},
+				},
+				&stackgresv1.SGDbOps{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "unrelated-securitymaintenance",
+						Namespace: "default",
+					},
+					Spec: stackgresv1.SGDbOpsSpec{
+						Op:         "securityUpgrade",
+						SgCluster:  "cluster",
+						MaxRetries: pointer.Int(1),
+						SecurityUpgrade: &stackgresv1.SGDbOpsSpecSecurityUpgrade{
+							Method: pointer.String("InPlace"),
+						},
+					},
+				},
+			},
+			server:           getVersionTestHTTPServer(t),
+			updatedOps:       "securityUpgrade",
+			shouldSkipRepack: true,
 		},
 	}
 	for _, tt := range tests {
@@ -368,7 +405,7 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 
 			defer tt.server.Close()
 			ctx := context.TODO()
-			err := concurrentSGDbOpsUpdate(fclient)
+			err := concurrentSGDbOpsUpdate(fclient, tt.updatedOps)
 			if err != nil {
 				assert.NoError(t, err)
 			}
@@ -379,9 +416,11 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 				SgURL:        tt.server.URL,
 				MaintTimeout: tt.maintTimeout,
 			}
-			if err := p.DoMaintenance(ctx); (err != nil) != tt.wantErr {
-				t.Errorf("PostgreSQL.DoMaintenance() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			assert.NotPanics(t, func() {
+				if err := p.DoMaintenance(ctx); (err != nil) != tt.wantErr {
+					t.Errorf("PostgreSQL.DoMaintenance() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			})
 
 			if tt.wantedClaim != nil {
 
@@ -406,7 +445,7 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 					Namespace: "default",
 				},
 			}
-			if tt.maintTimeout == time.Hour {
+			if !tt.shouldSkipRepack {
 				assert.NoError(t, fclient.Get(ctx, client.ObjectKeyFromObject(repack), repack))
 				assert.Equal(t, "repack", repack.Spec.Op)
 			} else {
@@ -416,7 +455,7 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 	}
 }
 
-func concurrentSGDbOpsUpdate(fakeClient client.WithWatch) error {
+func concurrentSGDbOpsUpdate(fakeClient client.WithWatch, op string) error {
 	var err error
 	go func() error {
 		ctx := context.Background()
@@ -424,24 +463,61 @@ func concurrentSGDbOpsUpdate(fakeClient client.WithWatch) error {
 		for len(sl.Items) == 0 {
 			err := fakeClient.List(ctx, sl)
 			if err != nil {
-
 				return fmt.Errorf("cannot get sgdbops resources")
 			}
 		}
-		for {
-			s := sl.Items[rand.Intn(len(sl.Items))]
-			s.Status.Conditions = &[]stackgresv1.SGDbOpsStatusConditionsItem{
-				{
-					Message: pointer.String("all good"),
-					Reason:  pointer.String("OperationCompleted"),
-					Status:  pointer.String("True"),
-					Type:    pointer.String("Completed"),
-				},
-			}
-			time.Sleep(time.Second)
+		// Check that we can handle nils
+		for _, s := range sl.Items {
+			s.Status.Conditions = nil
 			err := fakeClient.Status().Update(ctx, &s)
 			if err != nil {
 				return fmt.Errorf("cannot update status of sgdbops resource")
+			}
+		}
+
+		// Check that we can handle not completes
+		err := fakeClient.List(ctx, sl)
+		if err != nil {
+			return fmt.Errorf("cannot get sgdbops resources")
+		}
+		for _, s := range sl.Items {
+			s.Status.Conditions = &[]stackgresv1.SGDbOpsStatusConditionsItem{
+				{
+					Message: pointer.String("not yet"),
+					Reason:  pointer.String("OperationnNotCompleted"),
+					Status:  pointer.String("False"),
+					Type:    pointer.String("Completed"),
+				},
+			}
+			err := fakeClient.Status().Update(ctx, &s)
+			if err != nil {
+				return fmt.Errorf("cannot update status of sgdbops resource")
+			}
+		}
+
+		// Complete only the configured sgdbop
+		for {
+			time.Sleep(time.Second)
+			err := fakeClient.List(ctx, sl)
+			if err != nil {
+				return fmt.Errorf("cannot get sgdbops resources")
+			}
+			for _, s := range sl.Items {
+				if op != "" && s.Spec.Op != op {
+					continue
+				}
+				s.Status.Conditions = &[]stackgresv1.SGDbOpsStatusConditionsItem{
+					{
+						Message: pointer.String("all good"),
+						Reason:  pointer.String("OperationCompleted"),
+						Status:  pointer.String("True"),
+						Type:    pointer.String("Completed"),
+					},
+				}
+				err := fakeClient.Status().Update(ctx, &s)
+				if err != nil {
+					return fmt.Errorf("cannot update status of sgdbops resource")
+				}
 			}
 		}
 	}()

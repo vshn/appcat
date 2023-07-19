@@ -87,13 +87,13 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	currentVersion := sgclusters.Items[0].Spec.Postgres.Version
 
 	p.log.Info("Checking for upgrades...")
-	err = p.upgradeVersion(currentVersion, clusterName)
+	op, err := p.upgradeVersion(currentVersion, clusterName)
 	if err != nil {
 		return err
 	}
 
 	p.log.Info("Waiting for upgrades to finish before doing repack on databases")
-	err = p.waitForUpgrade(ctx)
+	err = p.waitForUpgrade(ctx, op)
 	if apierrors.IsTimeout(err) {
 		return nil
 	}
@@ -110,7 +110,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	return nil
 }
 
-func (p *PostgreSQL) upgradeVersion(currentVersion string, clusterName string) error {
+func (p *PostgreSQL) upgradeVersion(currentVersion string, clusterName string) (OpName, error) {
 	versionList, err := p.fetchVersionList(p.SgURL)
 	if err != nil {
 		p.log.Error(err, "StackGres API error")
@@ -127,22 +127,22 @@ func (p *PostgreSQL) upgradeVersion(currentVersion string, clusterName string) e
 	p.log.Info("Found versions", "current", currentVersion, "latest", latestMinor)
 	if currentVersion != latestMinor {
 		p.log.Info("Doing a minor upgrade")
-		return p.createMinorUpgrade(clusterName, latestMinor)
+		return mvu, p.createMinorUpgrade(clusterName, latestMinor)
 	}
 
 	p.log.Info("Checking for EOL")
 	if versionList != nil && p.isEOL(currentVersion, *versionList) {
 		err = p.setEOLStatus()
 		if err != nil {
-			return fmt.Errorf("cannot set EOL status on claim: %w", err)
+			return "", fmt.Errorf("cannot set EOL status on claim: %w", err)
 		}
 	}
 
 	p.log.Info("Doing a security maintenance")
-	return p.createSecurityUpgrade(clusterName)
+	return su, p.createSecurityUpgrade(clusterName)
 }
 
-func (p *PostgreSQL) waitForUpgrade(ctx context.Context) error {
+func (p *PostgreSQL) waitForUpgrade(ctx context.Context, op OpName) error {
 	ls := &stackgresv1.SGDbOpsList{}
 	watcher, err := p.Client.Watch(ctx, ls, client.InNamespace(p.instanceNamespace))
 	if err != nil {
@@ -168,9 +168,12 @@ func (p *PostgreSQL) waitForUpgrade(ctx context.Context) error {
 			switch event.Type {
 			case watch.Modified:
 				ops, _ := event.Object.(*stackgresv1.SGDbOps)
+				if ops.Status.Conditions == nil || ops.Spec.Op != string(op) {
+					continue
+				}
 				for _, c := range *ops.Status.Conditions {
 					// When operation is completed then return, regardless if it failed or not
-					if isUpgradeFinished(ops.Spec.Op, c) {
+					if isUpgradeFinished(c) {
 						return nil
 					}
 				}
@@ -181,8 +184,8 @@ func (p *PostgreSQL) waitForUpgrade(ctx context.Context) error {
 	}
 }
 
-func isUpgradeFinished(op string, v stackgresv1.SGDbOpsStatusConditionsItem) bool {
-	return op != string(r) && *v.Reason == "OperationCompleted" && *v.Status == "True"
+func isUpgradeFinished(v stackgresv1.SGDbOpsStatusConditionsItem) bool {
+	return *v.Reason == "OperationCompleted" && *v.Status == "True"
 }
 
 func (p *PostgreSQL) listClustersInNamespace() (*stackgresv1.SGClusterList, error) {

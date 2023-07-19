@@ -77,6 +77,40 @@ type VSHNPostgreSQLParameters struct {
 
 	// UpdateStrategy indicates when updates to the instance spec will be applied.
 	UpdateStrategy VSHNPostgreSQLUpdateStrategy `json:"updateStrategy,omitempty"`
+
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=3
+
+	// Instances configures the number of PostgreSQL instances for the cluster.
+	// Each instance contains one Postgres server.
+	// Out of all of the Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
+	Instances int `json:"instances,omitempty"`
+
+	// This section allows to configure Postgres replication mode and HA roles groups.
+	//
+	// The main replication group is implicit and contains the total number of instances less the sum of all instances in other replication groups.
+	Replication VSHNPostgreSQLReplicationStrategy `json:"replication,omitempty"`
+}
+
+type VSHNPostgreSQLReplicationStrategy struct {
+	// +kubebuilder:validation:Enum="async";"sync";"strict-sync"
+
+	// Mode defines the replication mode applied to the whole cluster. Possible values are: "async"(default), "sync", and "strict-sync"
+	//
+	// "async": When in asynchronous mode the cluster is allowed to lose some committed transactions.
+	// When the primary server fails or becomes unavailable for any other reason a sufficiently healthy standby will automatically be promoted to primary.
+	// Any transactions that have not been replicated to that standby remain in a “forked timeline” on the primary, and are effectively unrecoverable
+	//
+	// "sync": When in synchronous mode a standby will not be promoted unless it is certain that the standby contains all transactions that may have returned a successful commit status to client.
+	//  This means that the system may be unavailable for writes even though some servers are available.
+	//
+	// "strict-sync": When it is absolutely necessary to guarantee that each write is stored durably on at least two nodes, use the strict synchronous mode.
+	// This mode prevents synchronous replication to be switched off on the primary when no synchronous standby candidates are available.
+	// As a downside, the primary will not be available for writes, blocking all client write requests until at least one synchronous replica comes up.
+	//
+	// NOTE: We recommend to always use three intances when setting the mode to "strict-sync".
+	Mode string `json:"mode,omitempty"`
 }
 
 const VSHNPostgreSQLUpdateStrategyTypeImmediate = "Immediate"

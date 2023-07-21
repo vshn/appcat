@@ -1,0 +1,15 @@
+= VSHN Redis Function-io
+
+The set of transformation go functions applied to a VSHN Redis composition.
+
+== Maintenance
+
+Redis maintenances supports only patch upgrades.
+There's no plan to add automatic minor or major upgrades due to possible breaking changes in newer Redis versions.
+
+=== AppCat Implementation
+
+In AppCat there's a cronjob deployed for each instance that is provisioned.
+This cronjob will trigger a Patch update `Job`.
+The latest patch version is being looked up in the official https://hub.docker.com/_/redis[docker repository].
+If a newer patch version is available, then Redis will be updated.

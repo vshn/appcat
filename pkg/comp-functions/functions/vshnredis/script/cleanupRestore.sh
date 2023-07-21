@@ -5,10 +5,10 @@ set -euo pipefail
 echo "Wait for restore to complete"
 
 counter=0
-until [ $counter -eq 300 ] || [ "$(kubectl -n "${TARGET_NAMESPACE}" get job "${RESTORE_JOB_NAME}" -o jsonpath='{.status.succeeded}')" -eq 1 ];
+until [ $counter -eq 300 ] || [[ $(kubectl -n "${TARGET_NAMESPACE}" get job "${RESTORE_JOB_NAME}" -o jsonpath='{.status.succeeded}' 2> /dev/null) -eq 1 ]];
 do
+  (( counter+=1 ))
   sleep 1
-  ((counter++))
 done
 
 echo "scaling up redis"

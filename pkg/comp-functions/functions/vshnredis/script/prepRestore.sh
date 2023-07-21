@@ -17,9 +17,9 @@ kubectl -n "${TARGET_NAMESPACE}" create secret generic "restore-credentials-${BA
 kubectl create secret generic "statefulset-replicas-${CLAIM_NAME}-${BACKUP_NAME}" --from-literal NUM_REPLICAS="${num_replicas}"
 echo "scaling down redis"
 
-until kubectl -n "${TARGET_NAMESPACE}" get statefulset redis-master
+until kubectl -n "${TARGET_NAMESPACE}" get statefulset redis-master > /dev/null 2>&1
 do
   sleep 1
 done
 
-kubectl -n "${TARGET_NAMESPACE}" scale statefulset redis-master --replicas 0
+kubectl -n "${TARGET_NAMESPACE}" scale statefulset redis-master --replicas 0 

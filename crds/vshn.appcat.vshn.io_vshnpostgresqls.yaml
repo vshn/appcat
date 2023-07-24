@@ -3498,6 +3498,13 @@ spec:
                           items:
                             type: string
                           type: array
+                        serviceType:
+                          default: ClusterIP
+                          description: 'ServiceType defines the type of the service. Possible enum values: - `"ClusterIP"` indicates that the service is only reachable from within the cluster. - `"LoadBalancer"` indicates that the service is reachable from the public internet via dedicated Ipv4 address.'
+                          enum:
+                            - ClusterIP
+                            - LoadBalancer
+                          type: string
                       type: object
                     replication:
                       description: "This section allows to configure Postgres replication mode and HA roles groups. \n The main replication group is implicit and contains the total number of instances less the sum of all instances in other replication groups."

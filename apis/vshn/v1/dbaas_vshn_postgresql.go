@@ -192,6 +192,14 @@ type VSHNDBaaSNetworkSpec struct {
 	// If no IP Filter is set, you may not be able to reach the service.
 	// A value of `0.0.0.0/0` will open the service to all addresses on the public internet.
 	IPFilter []string `json:"ipFilter,omitempty"`
+
+	// ServiceType defines the type of the service.
+	// Possible enum values:
+	//   - `"ClusterIP"` indicates that the service is only reachable from within the cluster.
+	//   - `"LoadBalancer"` indicates that the service is reachable from the public internet via dedicated Ipv4 address.
+	// +kubebuilder:default="ClusterIP"
+	// +kubebuilder:validation:Enum="ClusterIP";"LoadBalancer"
+	ServiceType string `json:"serviceType,omitempty"`
 }
 
 type VSHNPostgreSQLBackup struct {

@@ -101,6 +101,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "extensions",
 			TransformFunc: vpf.AddExtensions,
 		},
+		{
+			Name:          "replication",
+			TransformFunc: vpf.ConfigureReplication,
+		},
 	},
 	"redis": {
 		{

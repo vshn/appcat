@@ -65,6 +65,12 @@ spec:
                           description: Enabled specifies if the instance should use encrypted storage for the instance.
                           type: boolean
                       type: object
+                    instances:
+                      default: 1
+                      description: Instances configures the number of PostgreSQL instances for the cluster. Each instance contains one Postgres server. Out of all of the Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
+                      maximum: 3
+                      minimum: 1
+                      type: integer
                     maintenance:
                       description: Maintenance contains settings to control the maintenance of an instance.
                       properties:
@@ -3492,6 +3498,17 @@ spec:
                           items:
                             type: string
                           type: array
+                      type: object
+                    replication:
+                      description: "This section allows to configure Postgres replication mode and HA roles groups. \n The main replication group is implicit and contains the total number of instances less the sum of all instances in other replication groups."
+                      properties:
+                        mode:
+                          description: "Mode defines the replication mode applied to the whole cluster. Possible values are: \"async\"(default), \"sync\", and \"strict-sync\" \n \"async\": When in asynchronous mode the cluster is allowed to lose some committed transactions. When the primary server fails or becomes unavailable for any other reason a sufficiently healthy standby will automatically be promoted to primary. Any transactions that have not been replicated to that standby remain in a “forked timeline” on the primary, and are effectively unrecoverable \n \"sync\": When in synchronous mode a standby will not be promoted unless it is certain that the standby contains all transactions that may have returned a successful commit status to client. This means that the system may be unavailable for writes even though some servers are available. \n \"strict-sync\": When it is absolutely necessary to guarantee that each write is stored durably on at least two nodes, use the strict synchronous mode. This mode prevents synchronous replication to be switched off on the primary when no synchronous standby candidates are available. As a downside, the primary will not be available for writes, blocking all client write requests until at least one synchronous replica comes up. \n NOTE: We recommend to always use three intances when setting the mode to \"strict-sync\"."
+                          enum:
+                            - async
+                            - sync
+                            - strict-sync
+                          type: string
                       type: object
                     restore:
                       description: Restore contains settings to control the restore of an instance.

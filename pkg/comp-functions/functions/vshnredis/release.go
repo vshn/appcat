@@ -201,7 +201,7 @@ func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}, ob
 		return fmt.Errorf("cannot get image tag from values in release: %v", err)
 	}
 	if tag != "" {
-		// In case the tag is set, keep the desired
+		// In case the tag is set, keep the observed version
 		err = unstructured.SetNestedField(values, tag, "image", "tag")
 	} else {
 		// In case the tag is not set then this is a new Release therefore we need to set the version from the claim

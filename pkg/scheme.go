@@ -8,6 +8,7 @@ import (
 	stackgresv1 "github.com/vshn/appcat/apis/stackgres/v1"
 	appcatv1 "github.com/vshn/appcat/apis/v1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -30,4 +31,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = batchv1.SchemeBuilder.AddToScheme(s)
 	_ = k8upv1.SchemeBuilder.AddToScheme(s)
 	_ = xhelm.SchemeBuilder.AddToScheme(s)
+	_ = appsv1.SchemeBuilder.AddToScheme(s)
 }

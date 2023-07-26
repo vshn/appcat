@@ -127,6 +127,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "maintenance",
 			TransformFunc: vshnredis.AddMaintenanceJob,
 		},
+		{
+			Name:          "resizePVC",
+			TransformFunc: vshnredis.ResizePVCs,
+		},
 	},
 }
 

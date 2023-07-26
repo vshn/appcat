@@ -3,7 +3,9 @@ package vshnredis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+
 	"github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
@@ -26,85 +28,96 @@ func ManageRelease(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 		return runtime.NewFatalErr(ctx, "can't get composite", err)
 	}
 
-	r, err := getRelease(ctx, iof)
+	desiredRelease, err := getRelease(ctx, iof)
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "cannot get redis release from iof", err)
 	}
-
-	l.Info("Getting helm values")
-	values, err := getReleaseValues(r)
+	observedRelease, err := getObservedRelease(ctx, iof)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot get values from redis release for composite "+comp.Name, err)
+		return runtime.NewFatalErr(ctx, "cannot get observed release", err)
 	}
 
+	releaseName := desiredRelease.Name
+
 	l.Info("Updating helm values")
-	err = updateRelease(ctx, comp, r.Name, values)
+	desiredRelease, err = updateRelease(ctx, comp, desiredRelease, observedRelease)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot update redis release "+r.Name, err)
+		return runtime.NewFatalErr(ctx, fmt.Sprintf("cannot update redis release %q: %q", releaseName, err.Error()), err)
+	}
+
+	err = iof.Desired.PutWithResourceName(ctx, desiredRelease, redisRelease)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, fmt.Sprintf("cannot update release %q", releaseName), err)
+	}
+
+	return runtime.NewNormal()
+}
+
+func getRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
+	r := &v1beta1.Release{}
+	err := iof.Desired.Get(ctx, r, redisRelease)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
+	}
+	return r, nil
+}
+
+func getObservedRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
+	r := &v1beta1.Release{}
+	err := iof.Observed.Get(ctx, r, redisRelease)
+	if errors.Is(err, runtime.ErrNotFound) {
+		return r, nil
+	}
+	return r, err
+}
+
+func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, desired *v1beta1.Release, observed *v1beta1.Release) (*v1beta1.Release, error) {
+	l := controllerruntime.LoggerFrom(ctx)
+	l.Info("Getting helm values")
+	releaseName := desired.Name
+
+	values, err := getReleaseValues(desired)
+	if err != nil {
+		return nil, err
+	}
+	observedValues, err := getReleaseValues(observed)
+	if err != nil {
+		return nil, err
+	}
+
+	l.V(1).Info("Setting release version")
+	err = setReleaseVersion(comp, values, observedValues)
+	if err != nil {
+		return nil, fmt.Errorf("cannot set redis version for release %s: %v", releaseName, err)
+	}
+
+	l.V(1).Info("Adding PVC annotations")
+	err = addPVCAnnotation(values)
+	if err != nil {
+		return nil, fmt.Errorf("cannot add pvc annotations for release %s: %v", releaseName, err)
+	}
+
+	l.V(1).Info("Adding pod annotations")
+	err = addPodAnnotation(values)
+	if err != nil {
+		return nil, fmt.Errorf("cannot add pod annotations for release %s: %v", releaseName, err)
+	}
+
+	l.V(1).Info("Adding backup config map")
+	err = addBackupCM(values)
+	if err != nil {
+		return nil, fmt.Errorf("cannot add configmap for release %s: %v", releaseName, err)
 	}
 
 	l.V(1).Info("Final value map", "map", values)
 
 	byteValues, err := json.Marshal(values)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot marshal helm values for release "+r.Name, err)
+		return nil, err
 	}
+	desired.Spec.ForProvider.Values.Raw = byteValues
 
-	r.Spec.ForProvider.Values.Raw = byteValues
-	err = iof.Desired.PutWithResourceName(ctx, r, redisRelease)
-	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot update release "+r.Name, err)
-	}
-
-	return runtime.NewNormal()
-}
-
-// During the very first reconcile the release is missing from the observed state therefore the release is taken one
-// time from Desired. Subsequently, the release has to be taken from observed state as to make sure that updates
-// from other jobs, such as maintenance, are reflected in the release.
-func getRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
-	r := &v1beta1.Release{}
-	err := iof.Observed.Get(ctx, r, redisRelease)
-	if err != nil && err != runtime.ErrNotFound {
-		return nil, fmt.Errorf("cannot get redis release from observed iof: %v", err)
-	}
-
-	if err == runtime.ErrNotFound {
-		err := iof.Desired.Get(ctx, r, redisRelease)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
-		}
-	}
-	return r, nil
-}
-
-func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, releaseName string, values map[string]interface{}) error {
-	l := controllerruntime.LoggerFrom(ctx)
-
-	l.V(1).Info("Setting release version")
-	err := setReleaseVersion(comp, values)
-	if err != nil {
-		return fmt.Errorf("cannot set redis version for release %s: %v", releaseName, err)
-	}
-
-	l.V(1).Info("Adding PVC annotations")
-	err = addPVCAnnotation(values)
-	if err != nil {
-		return fmt.Errorf("cannot add pvc annotations for release %s: %v", releaseName, err)
-	}
-
-	l.V(1).Info("Adding pod annotations")
-	err = addPodAnnotation(values)
-	if err != nil {
-		return fmt.Errorf("cannot add pod annotations for release %s: %v", releaseName, err)
-	}
-
-	l.V(1).Info("Adding backup config map")
-	err = addBackupCM(values)
-	if err != nil {
-		return fmt.Errorf("cannot add configmap for release %s: %v", releaseName, err)
-	}
-	return nil
+	return desired, nil
 }
 
 func addPVCAnnotation(valueMap map[string]any) error {
@@ -170,6 +183,9 @@ func addBackupCM(valueMap map[string]any) error {
 
 func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
 	values := map[string]interface{}{}
+	if r.Spec.ForProvider.Values.Raw == nil {
+		return values, nil
+	}
 	err := json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal values from release: %v", err)
@@ -178,22 +194,18 @@ func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
 }
 
 // setReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
-func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}) error {
-
-	tag, _, err := unstructured.NestedString(values, "image", "tag")
+func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}, observed map[string]interface{}) error {
+	var err error
+	tag, _, err := unstructured.NestedString(observed, "image", "tag")
 	if err != nil {
 		return fmt.Errorf("cannot get image tag from values in release: %v", err)
 	}
-	// In case the tag is set then let the maintenance manage it
 	if tag != "" {
-		return nil
+		// In case the tag is set, keep the observed version
+		err = unstructured.SetNestedField(values, tag, "image", "tag")
+	} else {
+		// In case the tag is not set then this is a new Release therefore we need to set the version from the claim
+		err = unstructured.SetNestedField(values, comp.Spec.Parameters.Service.Version, "image", "tag")
 	}
-
-	// In case the tag is not set then this is a new Release therefore we need to set the version from the claim
-	err = unstructured.SetNestedField(values, comp.Spec.Parameters.Service.Version, "image", "tag")
-	if err != nil {
-		return fmt.Errorf("cannot set image tag from composite into release values: %v", err)
-	}
-
-	return nil
+	return err
 }

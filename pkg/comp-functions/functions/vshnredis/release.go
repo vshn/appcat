@@ -28,47 +28,31 @@ func ManageRelease(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 		return runtime.NewFatalErr(ctx, "can't get composite", err)
 	}
 
-	r, err := getRelease(ctx, iof)
+	desiredRelease, err := getRelease(ctx, iof)
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "cannot get redis release from iof", err)
 	}
-
-	l.Info("Getting helm values")
-	values, err := getReleaseValues(r)
+	observedRelease, err := getObservedRelease(ctx, iof)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot get values from redis release for composite "+comp.Name, err)
+		return runtime.NewFatalErr(ctx, "cannot get observed release", err)
 	}
 
-	currentVersion, err := getCurrentReleaseVersion(ctx, iof)
-	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot get current redis version", err)
-	}
+	releaseName := desiredRelease.Name
 
 	l.Info("Updating helm values")
-	err = updateRelease(ctx, comp, r.Name, values, currentVersion)
+	desiredRelease, err = updateRelease(ctx, comp, desiredRelease, observedRelease)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot update redis release "+r.Name, err)
+		return runtime.NewFatalErr(ctx, fmt.Sprintf("cannot update redis release %q: %q", releaseName, err.Error()), err)
 	}
 
-	l.V(1).Info("Final value map", "map", values)
-
-	byteValues, err := json.Marshal(values)
+	err = iof.Desired.PutWithResourceName(ctx, desiredRelease, redisRelease)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot marshal helm values for release "+r.Name, err)
-	}
-
-	r.Spec.ForProvider.Values.Raw = byteValues
-	err = iof.Desired.PutWithResourceName(ctx, r, redisRelease)
-	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot update release "+r.Name, err)
+		return runtime.NewFatalErr(ctx, fmt.Sprintf("cannot update release %q", releaseName), err)
 	}
 
 	return runtime.NewNormal()
 }
 
-// During the very first reconcile the release is missing from the observed state therefore the release is taken one
-// time from Desired. Subsequently, the release has to be taken from observed state as to make sure that updates
-// from other jobs, such as maintenance, are reflected in the release.
 func getRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
 	r := &v1beta1.Release{}
 	err := iof.Desired.Get(ctx, r, redisRelease)
@@ -78,33 +62,62 @@ func getRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, er
 	return r, nil
 }
 
-func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, releaseName string, values map[string]interface{}, currentVersion string) error {
+func getObservedRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
+	r := &v1beta1.Release{}
+	err := iof.Observed.Get(ctx, r, redisRelease)
+	if errors.Is(err, runtime.ErrNotFound) {
+		return r, nil
+	}
+	return r, err
+}
+
+func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, desired *v1beta1.Release, observed *v1beta1.Release) (*v1beta1.Release, error) {
 	l := controllerruntime.LoggerFrom(ctx)
+	l.Info("Getting helm values")
+	releaseName := desired.Name
+
+	values, err := getReleaseValues(desired)
+	if err != nil {
+		return nil, err
+	}
+	observedValues, err := getReleaseValues(observed)
+	if err != nil {
+		return nil, err
+	}
 
 	l.V(1).Info("Setting release version")
-	err := setReleaseVersion(comp, values, currentVersion)
+	err = setReleaseVersion(comp, values, observedValues)
 	if err != nil {
-		return fmt.Errorf("cannot set redis version for release %s: %v", releaseName, err)
+		return nil, fmt.Errorf("cannot set redis version for release %s: %v", releaseName, err)
 	}
 
 	l.V(1).Info("Adding PVC annotations")
 	err = addPVCAnnotation(values)
 	if err != nil {
-		return fmt.Errorf("cannot add pvc annotations for release %s: %v", releaseName, err)
+		return nil, fmt.Errorf("cannot add pvc annotations for release %s: %v", releaseName, err)
 	}
 
 	l.V(1).Info("Adding pod annotations")
 	err = addPodAnnotation(values)
 	if err != nil {
-		return fmt.Errorf("cannot add pod annotations for release %s: %v", releaseName, err)
+		return nil, fmt.Errorf("cannot add pod annotations for release %s: %v", releaseName, err)
 	}
 
 	l.V(1).Info("Adding backup config map")
 	err = addBackupCM(values)
 	if err != nil {
-		return fmt.Errorf("cannot add configmap for release %s: %v", releaseName, err)
+		return nil, fmt.Errorf("cannot add configmap for release %s: %v", releaseName, err)
 	}
-	return nil
+
+	l.V(1).Info("Final value map", "map", values)
+
+	byteValues, err := json.Marshal(values)
+	if err != nil {
+		return nil, err
+	}
+	desired.Spec.ForProvider.Values.Raw = byteValues
+
+	return desired, nil
 }
 
 func addPVCAnnotation(valueMap map[string]any) error {
@@ -170,6 +183,9 @@ func addBackupCM(valueMap map[string]any) error {
 
 func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
 	values := map[string]interface{}{}
+	if r.Spec.ForProvider.Values.Raw == nil {
+		return values, nil
+	}
 	err := json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal values from release: %v", err)
@@ -178,8 +194,12 @@ func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
 }
 
 // setReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
-func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}, tag string) error {
+func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}, observed map[string]interface{}) error {
 	var err error
+	tag, _, err := unstructured.NestedString(observed, "image", "tag")
+	if err != nil {
+		return fmt.Errorf("cannot get image tag from values in release: %v", err)
+	}
 	if tag != "" {
 		// In case the tag is set, keep the desired
 		err = unstructured.SetNestedField(values, tag, "image", "tag")
@@ -188,27 +208,4 @@ func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}, ta
 		err = unstructured.SetNestedField(values, comp.Spec.Parameters.Service.Version, "image", "tag")
 	}
 	return err
-}
-
-func getCurrentReleaseVersion(ctx context.Context, iof *runtime.Runtime) (string, error) {
-	r := &v1beta1.Release{}
-	err := iof.Observed.Get(ctx, r, redisRelease)
-	if errors.Is(err, runtime.ErrNotFound) {
-		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("cannot get redis release from observed iof: %v", err)
-	}
-
-	values, err := getReleaseValues(r)
-	if err != nil {
-		return "", fmt.Errorf("cannot get redis release values from observed iof: %v", err)
-	}
-
-	tag, _, err := unstructured.NestedString(values, "image", "tag")
-	if err != nil {
-		return "", fmt.Errorf("cannot get image tag from values in release: %v", err)
-	}
-
-	return tag, nil
 }

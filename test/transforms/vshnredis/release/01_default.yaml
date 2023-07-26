@@ -117,7 +117,7 @@ desired:
               repository: https://charts.bitnami.com/bitnami
             values:
               architecture: standalone
-              commonConfiguration: 'dummy'
+              commonConfiguration: 'updated' # check that desired is applied
               fullnameOverride: redis
               global:
                 imageRegistry: 'dummy'
@@ -149,7 +149,7 @@ desired:
                 certCAFilename: ca.crt
                 certFilename: tls.crt
                 certKeyFilename: tls.key
-                enabled: true
+                enabled: true 
                 existingSecret: tls-server-certificate
           providerConfigRef:
             name: helm

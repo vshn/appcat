@@ -3,7 +3,9 @@ package vshnredis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+
 	"github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
 	"github.com/vshn/appcat/pkg/comp-functions/runtime"
@@ -37,8 +39,13 @@ func ManageRelease(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 		return runtime.NewFatalErr(ctx, "cannot get values from redis release for composite "+comp.Name, err)
 	}
 
+	currentVersion, err := getCurrentReleaseVersion(ctx, iof)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "cannot get current redis version", err)
+	}
+
 	l.Info("Updating helm values")
-	err = updateRelease(ctx, comp, r.Name, values)
+	err = updateRelease(ctx, comp, r.Name, values, currentVersion)
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "cannot update redis release "+r.Name, err)
 	}
@@ -64,25 +71,18 @@ func ManageRelease(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 // from other jobs, such as maintenance, are reflected in the release.
 func getRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
 	r := &v1beta1.Release{}
-	err := iof.Observed.Get(ctx, r, redisRelease)
-	if err != nil && err != runtime.ErrNotFound {
-		return nil, fmt.Errorf("cannot get redis release from observed iof: %v", err)
-	}
-
-	if err == runtime.ErrNotFound {
-		err := iof.Desired.Get(ctx, r, redisRelease)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
-		}
+	err := iof.Desired.Get(ctx, r, redisRelease)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
 	}
 	return r, nil
 }
 
-func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, releaseName string, values map[string]interface{}) error {
+func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, releaseName string, values map[string]interface{}, currentVersion string) error {
 	l := controllerruntime.LoggerFrom(ctx)
 
 	l.V(1).Info("Setting release version")
-	err := setReleaseVersion(comp, values)
+	err := setReleaseVersion(comp, values, currentVersion)
 	if err != nil {
 		return fmt.Errorf("cannot set redis version for release %s: %v", releaseName, err)
 	}
@@ -178,22 +178,37 @@ func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
 }
 
 // setReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
-func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}) error {
+func setReleaseVersion(comp *vshnv1.VSHNRedis, values map[string]interface{}, tag string) error {
+	var err error
+	if tag != "" {
+		// In case the tag is set, keep the desired
+		err = unstructured.SetNestedField(values, tag, "image", "tag")
+	} else {
+		// In case the tag is not set then this is a new Release therefore we need to set the version from the claim
+		err = unstructured.SetNestedField(values, comp.Spec.Parameters.Service.Version, "image", "tag")
+	}
+	return err
+}
+
+func getCurrentReleaseVersion(ctx context.Context, iof *runtime.Runtime) (string, error) {
+	r := &v1beta1.Release{}
+	err := iof.Observed.Get(ctx, r, redisRelease)
+	if errors.Is(err, runtime.ErrNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("cannot get redis release from observed iof: %v", err)
+	}
+
+	values, err := getReleaseValues(r)
+	if err != nil {
+		return "", fmt.Errorf("cannot get redis release values from observed iof: %v", err)
+	}
 
 	tag, _, err := unstructured.NestedString(values, "image", "tag")
 	if err != nil {
-		return fmt.Errorf("cannot get image tag from values in release: %v", err)
-	}
-	// In case the tag is set then let the maintenance manage it
-	if tag != "" {
-		return nil
+		return "", fmt.Errorf("cannot get image tag from values in release: %v", err)
 	}
 
-	// In case the tag is not set then this is a new Release therefore we need to set the version from the claim
-	err = unstructured.SetNestedField(values, comp.Spec.Parameters.Service.Version, "image", "tag")
-	if err != nil {
-		return fmt.Errorf("cannot set image tag from composite into release values: %v", err)
-	}
-
-	return nil
+	return tag, nil
 }

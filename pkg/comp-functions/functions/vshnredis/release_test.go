@@ -41,6 +41,8 @@ func TestHelmValueUpdate(t *testing.T) {
 	assert.NotEmpty(t, masterMap["podAnnotations"])
 	assert.NotEmpty(t, masterMap["extraVolumes"])
 	assert.NotEmpty(t, masterMap["extraVolumeMounts"])
+
+  assert.Equal(t, "updated", valueMap["commonConfiguration"])
 }
 
 func getRedisReleaseComp(t *testing.T) (*runtime.Runtime, *vshnv1.VSHNRedis) {

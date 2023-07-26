@@ -204,10 +204,19 @@ To add a new function to PostgreSQL by VSHN:
 
 entrypoint to start working with gRPC server is to run:
 ```
-go run main.go start grpc --socket default.sock
+go run main.go --log-level 1 start grpc --network tcp --socket ':9547' --devmode
 ```
 
-it will create a socket file in Your local directory which is easier for development - no need to set permissions and directory structure.
+This will start the GRPC server listening on a TCP port. Afterward you can configure the composition to use this connection:
+
+```yaml
+functions:
+  - container:
+      image: redis
+      imagePullPolicy: IfNotPresent
+      runner:
+        endpoint: host.docker.internal:9547 # HERE
+```
 
 It's also possible to trigger fake request to gRPC server by client (to imitate Crossplane):
 ```

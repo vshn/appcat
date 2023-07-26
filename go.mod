@@ -6,6 +6,7 @@ replace github.com/deepmap/oapi-codegen => github.com/sljeff/oapi-codegen v1.5.1
 
 require (
 	github.com/appuio/appuio-cloud-reporting v0.15.0
+	github.com/blang/semver/v4 v4.0.0
 	github.com/crossplane-contrib/provider-helm v0.15.0
 	github.com/crossplane-contrib/provider-kubernetes v0.7.0
 	github.com/crossplane/crossplane v1.11.2
@@ -16,12 +17,12 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
-	github.com/google/go-containerregistry v0.9.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/k8up-io/k8up/v2 v2.7.1
 	github.com/minio/minio-go/v7 v7.0.56
 	github.com/ory/dockertest v3.3.5+incompatible
+	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.63.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.40.0
@@ -30,12 +31,10 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
 	github.com/thediveo/enumflag/v2 v2.0.2
-	github.com/urfave/cli/v2 v2.25.3
 	github.com/vektra/mockery/v2 v2.26.1
 	go.uber.org/zap v1.24.0
 	golang.org/x/text v0.9.0
 	google.golang.org/grpc v1.52.0
-	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3
@@ -60,7 +59,6 @@ require (
 	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -68,7 +66,6 @@ require (
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.3-0.20220203105225-a9a7ef127534 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -129,12 +126,10 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.2 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
@@ -144,7 +139,6 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.6 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.6 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.6 // indirect
@@ -178,6 +172,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 	helm.sh/helm/v3 v3.10.2 // indirect
 	k8s.io/apiextensions-apiserver v0.26.3 // indirect

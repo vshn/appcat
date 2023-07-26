@@ -105,6 +105,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "replication",
 			TransformFunc: vpf.ConfigureReplication,
 		},
+		{
+			Name:          "loadBalancer",
+			TransformFunc: vpf.AddLoadBalancerIPToConnectionDetails,
+		},
 	},
 	"redis": {
 		{

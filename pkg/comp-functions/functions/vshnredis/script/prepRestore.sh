@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-source_namespace=$(kubectl -n "${CLAIM_NAMESPACE}" get vshnredis "${CLAIM_NAME}" -ojson | jq -r '.status.instanceNamespace')
+source_namespace=$(kubectl -n "${CLAIM_NAMESPACE}" get vshnredis "${SOURCE_CLAIM_NAME}" -ojson | jq -r '.status.instanceNamespace')
 
 echo "copy secret"
 
@@ -14,7 +14,7 @@ backup_path=$(kubectl -n "${source_namespace}" get snapshots.k8up.io "${BACKUP_N
 backup_name=$(kubectl -n "${source_namespace}" get snapshots.k8up.io "${BACKUP_NAME}" -o jsonpath='{.spec.id}')
 num_replicas=$(kubectl -n "${TARGET_NAMESPACE}" get statefulset redis-master -o jsonpath='{.spec.replicas}')
 kubectl -n "${TARGET_NAMESPACE}" create secret generic "restore-credentials-${BACKUP_NAME}" --from-literal AWS_ACCESS_KEY_ID="${access_key}" --from-literal AWS_SECRET_ACCESS_KEY="${secret_key}" --from-literal RESTIC_PASSWORD="${restic_password}" --from-literal RESTIC_REPOSITORY="${restic_repository}" --from-literal BACKUP_PATH="${backup_path}" --from-literal BACKUP_NAME="${backup_name}"
-kubectl create secret generic "statefulset-replicas-${CLAIM_NAME}-${BACKUP_NAME}" --from-literal NUM_REPLICAS="${num_replicas}"
+kubectl create secret generic "statefulset-replicas-${SOURCE_CLAIM_NAME}-${BACKUP_NAME}" --from-literal NUM_REPLICAS="${num_replicas}"
 echo "scaling down redis"
 
 until kubectl -n "${TARGET_NAMESPACE}" get statefulset redis-master > /dev/null 2>&1

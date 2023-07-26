@@ -105,7 +105,7 @@ func addPrepareRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runt
 									Value: comp.ObjectMeta.Labels[claimNamespaceLabel],
 								},
 								{
-									Name:  "CLAIM_NAME",
+									Name:  "SOURCE_CLAIM_NAME",
 									Value: comp.Spec.Parameters.Restore.ClaimName,
 								},
 								{
@@ -247,6 +247,8 @@ func addCleanUpJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Run
 	cleanupRestoreJobName := truncateObjectName(comp.Name + "-" + comp.Spec.Parameters.Restore.BackupName + "-cleanup-job")
 	restoreJobName := truncateObjectName(comp.Name + "-" + comp.Spec.Parameters.Restore.BackupName + "-restore-job")
 	restoreSecret := "statefulset-replicas-" + comp.Spec.Parameters.Restore.ClaimName + "-" + comp.Spec.Parameters.Restore.BackupName
+	claimNamespaceLabel := "crossplane.io/claim-namespace"
+	claimNameLabel := "crossplane.io/claim-name"
 
 	prepJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -269,8 +271,16 @@ func addCleanUpJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Run
 							Args: []string{cleanupRestoreScript},
 							Env: []corev1.EnvVar{
 								{
-									Name:  "CLAIM_NAME",
+									Name:  "CLAIM_NAMESPACE",
+									Value: comp.ObjectMeta.Labels[claimNamespaceLabel],
+								},
+								{
+									Name:  "SOURCE_CLAIM_NAME",
 									Value: comp.Spec.Parameters.Restore.ClaimName,
+								},
+								{
+									Name:  "DEST_CLAIM_NAME",
+									Value: comp.ObjectMeta.Labels[claimNameLabel],
 								},
 								{
 									Name:  "RESTORE_JOB_NAME",

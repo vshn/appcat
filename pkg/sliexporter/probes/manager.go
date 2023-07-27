@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -12,9 +13,11 @@ import (
 
 // Manager manages a collection of Probers the check connectivity to AppCat services.
 type Manager struct {
+	hist prometheus.ObserverVec
+	log  logr.Logger
+
+	mu      *sync.Mutex
 	probers map[key]context.CancelFunc
-	hist    prometheus.ObserverVec
-	log     logr.Logger
 
 	newTicker func() (<-chan time.Time, func())
 }
@@ -51,9 +54,10 @@ func NewManager(l logr.Logger) Manager {
 	}, []string{"service", "namespace", "name", "reason", "organization"})
 
 	return Manager{
-		probers:   map[key]context.CancelFunc{},
 		hist:      hist,
 		log:       l,
+		mu:        &sync.Mutex{},
+		probers:   map[key]context.CancelFunc{},
 		newTicker: newTickerChan,
 	}
 }
@@ -66,6 +70,9 @@ func (m Manager) Collector() prometheus.Collector {
 // StartProbe will send a probe once every second using the provided prober.
 // If a prober with the same ProbeInfo already runs, it will stop the running prober.
 func (m Manager) StartProbe(p Prober) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	l := m.log.WithValues("namespace", p.GetInfo().Namespace, "name", p.GetInfo().Name)
 	probeKey := getKey(p.GetInfo())
 	cancel, ok := m.probers[probeKey]
@@ -83,6 +90,9 @@ func (m Manager) StartProbe(p Prober) {
 // StopProbe will stop the prober with the provided ProbeInfo.
 // Is a Noop if none is running.
 func (m Manager) StopProbe(pi ProbeInfo) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	probeKey := getKey(pi)
 	cancel, ok := m.probers[probeKey]
 	if ok {

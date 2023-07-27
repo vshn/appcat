@@ -3,6 +3,7 @@ package probes
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -11,7 +12,7 @@ import (
 
 // Manager manages a collection of Probers the check connectivity to AppCat services.
 type Manager struct {
-	probers map[ProbeInfo]context.CancelFunc
+	probers map[key]context.CancelFunc
 	hist    prometheus.ObserverVec
 	log     logr.Logger
 
@@ -25,12 +26,19 @@ type Prober interface {
 	Close() error
 }
 
-// ProbeInfo uniquely identifies a prober and in turn an AppCat service instance
+// ProbeInfo contains meta information on a prober and in turn an AppCat service
 type ProbeInfo struct {
 	Service      string
 	Name         string
 	Namespace    string
 	Organization string
+}
+
+// key uniquely identifies a prober
+type key string
+
+func getKey(pi ProbeInfo) key {
+	return key(fmt.Sprintf("%s; %s; %s", pi.Service, pi.Namespace, pi.Name))
 }
 
 var ErrTimeout = errors.New("probe timed out")
@@ -43,7 +51,7 @@ func NewManager(l logr.Logger) Manager {
 	}, []string{"service", "namespace", "name", "reason", "organization"})
 
 	return Manager{
-		probers:   map[ProbeInfo]context.CancelFunc{},
+		probers:   map[key]context.CancelFunc{},
 		hist:      hist,
 		log:       l,
 		newTicker: newTickerChan,
@@ -59,14 +67,15 @@ func (m Manager) Collector() prometheus.Collector {
 // If a prober with the same ProbeInfo already runs, it will stop the running prober.
 func (m Manager) StartProbe(p Prober) {
 	l := m.log.WithValues("namespace", p.GetInfo().Namespace, "name", p.GetInfo().Name)
-	cancel, ok := m.probers[p.GetInfo()]
+	probeKey := getKey(p.GetInfo())
+	cancel, ok := m.probers[probeKey]
 	if ok {
 		l.Info("Cancel Probe")
 		cancel()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	m.probers[p.GetInfo()] = cancel
+	m.probers[probeKey] = cancel
 	l.Info("Start Probe")
 	go m.runProbe(ctx, p)
 }
@@ -74,7 +83,8 @@ func (m Manager) StartProbe(p Prober) {
 // StopProbe will stop the prober with the provided ProbeInfo.
 // Is a Noop if none is running.
 func (m Manager) StopProbe(pi ProbeInfo) {
-	cancel, ok := m.probers[pi]
+	probeKey := getKey(pi)
+	cancel, ok := m.probers[probeKey]
 	if ok {
 		cancel()
 	}

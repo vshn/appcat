@@ -94,7 +94,11 @@ func TestManger_Multi(t *testing.T) {
 		return pa.getCount() == 9
 	}, time.Second, 10*time.Millisecond)
 	assert.EqualValues(t, 9, pa.getCount())
-	m.StopProbe(pa.GetInfo())
+	m.StopProbe(ProbeInfo{
+		Service:   "fake",
+		Namespace: "foo",
+		Name:      "alice",
+	})
 
 	pb.tick(nil)
 	pb.tick(nil)
@@ -119,9 +123,10 @@ func TestManger_Multi(t *testing.T) {
 func newFakeProbe(service, namespace, name string) *fakeProbe {
 	return &fakeProbe{
 		info: ProbeInfo{
-			Service:   service,
-			Name:      name,
-			Namespace: namespace,
+			Service:      service,
+			Name:         name,
+			Namespace:    namespace,
+			Organization: "foo",
 		},
 		results: make(chan error, 10),
 		ticker:  make(chan time.Time, 10),

@@ -100,6 +100,11 @@ func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, k
 			References: refs,
 		},
 	}
+
+	if annotations["appcat.io/observe-only"] == "true" {
+		ko.Spec.ManagementPolicy = "Observe"
+	}
+
 	err := getFrom(ctx, &d.resources, ko, kon)
 	if err != nil && err != ErrNotFound {
 		return err

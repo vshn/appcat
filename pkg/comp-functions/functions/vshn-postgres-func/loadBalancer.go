@@ -65,6 +65,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runt
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "Cannot add loadbalancer observer", err)
 	}
+
 	// get the service observer object
 	err = iof.Observed.GetFromObject(ctx, serviceToApply, fmt.Sprintf("%s-%s", comp.GetName(), serviceObserverName))
 	if err != nil {

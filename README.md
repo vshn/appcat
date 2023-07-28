@@ -220,7 +220,7 @@ functions:
         endpoint: host.docker.internal:9547 # HERE in component-appcat or k edit compositions.apiextensions.crossplane.io vshnpostgres.vshn.appcat.vshn.io
         
 ### Linux:
-### use default gateway for docker0 interface, `ip -4 addr show dev docker0 | grep inet`, in my case it was 172.17.0.1
+### use default gateway for docker0 interface, `ip -4 addr show dev docker0 | grep inet`, the default should be 172.17.0.1
 ```
 
 It's also possible to trigger fake request to gRPC server by client (to imitate Crossplane):

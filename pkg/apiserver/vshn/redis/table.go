@@ -32,8 +32,8 @@ func (v *vshnRedisBackupStorage) ConvertToTable(_ context.Context, obj runtime.O
 		backups = append(backups, *backup)
 	}
 
-	for _, backup := range backups {
-		table.Rows = append(table.Rows, backupToTableRow(&backup))
+	for i := range backups {
+		table.Rows = append(table.Rows, backupToTableRow(&backups[i]))
 	}
 
 	if opt, ok := tableOptions.(*metav1.TableOptions); !ok || !opt.NoHeaders {

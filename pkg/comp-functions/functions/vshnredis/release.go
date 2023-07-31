@@ -206,8 +206,7 @@ func setReleaseVersion(ctx context.Context, comp *vshnv1.VSHNRedis, values map[s
 	desiredVersion, err := semver.ParseTolerant(comp.Spec.Parameters.Service.Version)
 	if err != nil {
 		l.Info("failed to parse desired redis version", "version", comp.Spec.Parameters.Service.Version)
-		// If the desired version is not parsable, just keep the observed one
-		return unstructured.SetNestedField(values, tag, "image", "tag")
+		return fmt.Errorf("invalid redis version %q", comp.Spec.Parameters.Service.Version)
 	}
 
 	observedVersion, err := semver.ParseTolerant(tag)

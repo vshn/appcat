@@ -11,6 +11,7 @@ import (
 	"text/template"
 
 	xhelm "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
+	crossfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
@@ -101,6 +102,7 @@ func TestAllowVersionUpgrade(t *testing.T) {
 		CompositeVersion string
 		ObservedVersion  string
 		Desired          string
+		Fail             bool
 	}{
 		"newMinor": {
 			CompositeVersion: "6.2",
@@ -141,11 +143,13 @@ func TestAllowVersionUpgrade(t *testing.T) {
 			CompositeVersion: "randomTag",
 			ObservedVersion:  "7.0.3",
 			Desired:          "7.0.3",
+			Fail:             true,
 		},
 		"allInvalid": {
 			CompositeVersion: "randomTag",
 			ObservedVersion:  "weirdTag",
 			Desired:          "weirdTag",
+			Fail:             true,
 		},
 	}
 	for name, tc := range tcs {
@@ -153,7 +157,14 @@ func TestAllowVersionUpgrade(t *testing.T) {
 
 			ctx := context.TODO()
 			iof := loadRuntimeFromTemplate(t, fmt.Sprintf("vshnredis/release/03_version_update.yaml.tmpl"), tc)
-			assert.Equal(t, runtime.NewNormal(), ManageRelease(ctx, iof))
+
+			res := ManageRelease(ctx, iof)
+			if tc.Fail {
+				assert.Equal(t, crossfnv1alpha1.SeverityFatal, res.Resolve().Severity)
+				return
+			}
+			assert.Equal(t, runtime.NewNormal(), res)
+
 			release := &xhelm.Release{}
 			assert.NoError(t, iof.Desired.Get(ctx, release, "release"))
 

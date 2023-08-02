@@ -102,7 +102,7 @@ func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, k
 	}
 
 	if annotations["appcat.io/observe-only"] == "true" {
-		ko.Spec.ManagementPolicy = "Observe"
+		ko.Spec.ManagementPolicy = xkube.Observe
 	}
 
 	err := getFrom(ctx, &d.resources, ko, kon)

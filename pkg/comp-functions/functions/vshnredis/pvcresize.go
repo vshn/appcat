@@ -49,7 +49,7 @@ func ResizePVCs(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 		return runtime.NewFatalErr(ctx, "cannot observe sts", err)
 	}
 
-	patch, result := needReleasePatch(ctx, comp, iof, values)
+	patch, result := needReleasePatch(ctx, comp, values)
 	if result != nil {
 		return result
 	}
@@ -113,7 +113,7 @@ func ResizePVCs(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	return runtime.NewNormal()
 }
 
-func needReleasePatch(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime, values map[string]interface{}) (bool, runtime.Result) {
+func needReleasePatch(ctx context.Context, comp *vshnv1.VSHNRedis, values map[string]interface{}) (bool, runtime.Result) {
 	releaseSizeValue, found, err := unstructured.NestedString(values, "master", "persistence", "size")
 	if !found {
 		return false, runtime.NewFatalErr(ctx, "could not find disk size in release", fmt.Errorf("disk size not found in release"))

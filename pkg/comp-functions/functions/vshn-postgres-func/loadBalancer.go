@@ -171,9 +171,6 @@ func createServiceForLoadBalancer(comp *vshnv1.VSHNPostgreSQL) (*v1.Service, err
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
 			Namespace: getInstanceNamespace(comp),
-			Annotations: map[string]string{
-				"appcat.io/observe-only": "true",
-			},
 		},
 	}
 
@@ -181,7 +178,7 @@ func createServiceForLoadBalancer(comp *vshnv1.VSHNPostgreSQL) (*v1.Service, err
 }
 
 func addServiceObserverToDesiredState(ctx context.Context, iof *runtime.Runtime, service *v1.Service) error {
-	return iof.Desired.PutIntoObject(ctx, service, fmt.Sprintf("%s-%s", service.Name, serviceObserverName))
+	return iof.Desired.PutIntoObserveOnlyObject(ctx, service, fmt.Sprintf("%s-%s", service.Name, serviceObserverName))
 }
 
 func getObservedService(ctx context.Context, iof *runtime.Runtime, service *v1.Service) (*v1.Service, error) {

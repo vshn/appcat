@@ -69,8 +69,16 @@ func (d *DesiredResources) GetFromObject(ctx context.Context, o client.Object, k
 	return d.fromKubeObject(ctx, ko, o)
 }
 
-// PutIntoObject adds or updates the desired resource into its kube object
 func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, kon string, refs ...xkube.Reference) error {
+	return d.putIntoObject(ctx, false, o, kon, refs...)
+}
+
+func (d *DesiredResources) PutIntoObserveOnlyObject(ctx context.Context, o client.Object, kon string, refs ...xkube.Reference) error {
+	return d.putIntoObject(ctx, true, o, kon, refs...)
+}
+
+// _putIntoObject adds or updates the desired resource into its kube object
+func (d *DesiredResources) putIntoObject(ctx context.Context, observeOnly bool, o client.Object, kon string, refs ...xkube.Reference) error {
 	log := controllerruntime.LoggerFrom(ctx)
 
 	// Crossplane uses apply to create and update objects.
@@ -101,7 +109,7 @@ func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, k
 		},
 	}
 
-	if annotations["appcat.io/observe-only"] == "true" {
+	if observeOnly {
 		ko.Spec.ManagementPolicy = xkube.Observe
 	}
 

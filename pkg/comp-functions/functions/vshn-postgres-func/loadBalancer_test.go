@@ -16,10 +16,11 @@ func TestNothingToDo(t *testing.T) {
 	t.Run("NothingToDo", func(t *testing.T) {
 
 		//Given
-		io := commontest.LoadRuntimeFromFile(t, "vshn-postgres/maintenance/01-GivenSchedule.yaml")
+		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/maintenance/01-GivenSchedule.yaml")
+		iof.Config.Data["externalDatabaseConnectionsEnabled"] = "true"
 
 		// When
-		result := AddLoadBalancerIPToConnectionDetails(ctx, io)
+		result := AddLoadBalancerIPToConnectionDetails(ctx, iof)
 
 		// Then
 		assert.Equal(t, expectResult, result)
@@ -35,6 +36,7 @@ func TestLoadBalancerParameterSet(t *testing.T) {
 
 		//Given
 		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/loadbalancer/01-LoadBalancerSet.yaml")
+		iof.Config.Data["externalDatabaseConnectionsEnabled"] = "true"
 
 		// When
 		result := AddLoadBalancerIPToConnectionDetails(ctx, iof)
@@ -53,6 +55,28 @@ func TestLoadBalancerServiceObserverCreated(t *testing.T) {
 
 		//Given
 		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/loadbalancer/02-ServiceObserverPresent.yaml")
+		iof.Config.Data["externalDatabaseConnectionsEnabled"] = "true"
+
+		// When
+		result := AddLoadBalancerIPToConnectionDetails(ctx, iof)
+
+		// Then
+		assert.Equal(t, expectResult, result)
+	})
+}
+
+// this test normally should return Warning because it's copy of TestLoadBalancerParameterSet()
+// but due to disabled LoadBalancer in config it returns Normal
+func TestLoadBalancerNotEnabled(t *testing.T) {
+	ctx := context.Background()
+	// it need another reconciliation to get the service observer object
+	expectResult := runtime.NewNormal()
+
+	t.Run("Verify composition", func(t *testing.T) {
+
+		//Given
+		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/loadbalancer/01-LoadBalancerSet.yaml")
+		iof.Config.Data["externalDatabaseConnectionsEnabled"] = "false"
 
 		// When
 		result := AddLoadBalancerIPToConnectionDetails(ctx, iof)

@@ -16,9 +16,13 @@ import (
 var serviceObserverName = "loadbalancer-observer"
 
 func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runtime) runtime.Result {
-	//log := controllerruntime.LoggerFrom(ctx)
+
+	if !iof.GetBoolFromConfigMap("externalDatabaseConnectionsEnabled") {
+		return runtime.NewNormal()
+	}
 
 	comp, err := getVSHNPostgreSQL(ctx, iof)
+
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "Cannot get composite from function io", err)
 	}

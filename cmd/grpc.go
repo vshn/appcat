@@ -25,14 +25,12 @@ func init() {
 	GrpcCMD.Flags().StringVar(&Network, "network", "unix", "network type")
 	GrpcCMD.Flags().StringVar(&AddressFlag, "socket", "@crossplane/fn/default.sock", "set where socket should be located")
 	GrpcCMD.Flags().BoolVar(&DevMode, "devmode", false, "enable dev composition functions")
-	GrpcCMD.Flags().BoolVar(&ExternalConnectionEnabled, "externalconnections", false, "enable support for LoadBalancer to make PostgreSQL accessible from outside the cluster")
 }
 
 var (
-	Network                   = "unix"
-	AddressFlag               = "@crossplane/fn/default.sock"
-	DevMode                   = false
-	ExternalConnectionEnabled = false
+	Network     = "unix"
+	AddressFlag = "@crossplane/fn/default.sock"
+	DevMode     = false
 )
 
 var GrpcCMD = &cobra.Command{
@@ -107,6 +105,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "replication",
 			TransformFunc: vpf.ConfigureReplication,
 		},
+		{
+			Name:          "loadbalancer",
+			TransformFunc: vpf.AddLoadBalancerIPToConnectionDetails,
+		},
 	},
 	"redis": {
 		{
@@ -139,12 +141,7 @@ func (s *server) RunFunction(ctx context.Context, in *pb.RunFunctionRequest) (*p
 	if err != nil {
 		return nil, status.Errorf(codes.Aborted, "cannot enable devMode: %s", err)
 	}
-	if ExternalConnectionEnabled {
-		images["postgresql"] = append(images["postgresql"], runtime.Transform{
-			Name:          "loadBalancer",
-			TransformFunc: vpf.AddLoadBalancerIPToConnectionDetails,
-		})
-	}
+
 	fnio, err := runtime.RunCommand(ctx, in.Input, images[in.Image])
 	if err != nil {
 		err = status.Errorf(codes.Aborted, "Can't process request for PostgreSQL")

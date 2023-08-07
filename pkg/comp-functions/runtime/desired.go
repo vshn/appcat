@@ -75,6 +75,7 @@ func (d *DesiredResources) GetFromObject(ctx context.Context, o client.Object, k
 func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, kon string, refs ...xkube.Reference) error {
 	return d.putIntoObject(ctx, false, o, kon, refs...)
 }
+
 // PutIntoObserveOnlyObject adds or updates the desired resource into its OBSERVE-ONLY kube object, from docs:
 // PutIntoObject adds or updates the desired resource into its OBSERVE-ONLY kube object, from docs:
 //

@@ -217,10 +217,13 @@ functions:
       image: redis
       imagePullPolicy: IfNotPresent
       runner:
-        endpoint: host.docker.internal:9547 # HERE in component-appcat or k edit compositions.apiextensions.crossplane.io vshnpostgres.vshn.appcat.vshn.io
-        
-### Linux:
-### use default gateway for docker0 interface, `ip -4 addr show dev docker0 | grep inet`, the default should be 172.17.0.1
+        # HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway') # On kind MacOS/Windows
+        # HOSTIP=host.docker.internal # On Docker Desktop distributions
+        # HOSTIP=host.lima.internal # On Lima backed Docker distributions
+        # For Linux users: `ip -4 addr show dev docker0 | grep inet | awk -F' ' '{print $2}' | awk -F'/' '{print $1}'`
+        endpoint: $HOSTIP:9547  # edit in component-appcat or directly using 
+                                # `k edit compositions.apiextensions.crossplane.io vshnpostgres.vshn.appcat.vshn.io`
+
 ```
 
 It's also possible to trigger fake request to gRPC server by client (to imitate Crossplane):

@@ -1,0 +1,12 @@
+= Redis PVC resize
+
+This process requires the `bitnami/kubectl` image.
+So if AppCat is deployed to an air gapped cluster, please keep this in mind.
+
+Resizing the PVCs for Redis is a mutlistage process:
+
+. A job that crosschecks if the sts PVC template size is equal to the size in the request
+. If they don't match the current sts will be deleted with the `--cascade=orphan` option. This is because the sts can't be adjusted once it's created. The cascade option leaves the pods running.
+. Then the helm release will be updated to trigger the re-creation of the sts
+. Once the sts is re-created it will add an annotation so it's picked up by the statefulset-resize-controller
+. The statefulset-resize-controller then actually handles the resize of the PVCs

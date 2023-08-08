@@ -16,7 +16,7 @@ appcat
 
 # debug
 apiserver.local.config
-__debug_bin
+__debug_bin*
 
 # Kubebuilder
 /apis/generated/

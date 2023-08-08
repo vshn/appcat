@@ -175,8 +175,8 @@ func (r *Runtime) GetRawFuncIO() *xfnv1alpha1.FunctionIO {
 	return &r.io
 }
 
-// GetBoolFromConfigMap is a small function to help us retrieve bool values from configMap
-func (r *Runtime) GetBoolFromConfigMap(key string) bool {
+// GetBootFromCompositionConfig is a small function to help us retrieve bool values from configMap
+func (r *Runtime) GetBootFromCompositionConfig(key string) bool {
 	en, ok := r.Config.Data[key]
 	if !ok {
 		return false

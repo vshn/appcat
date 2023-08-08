@@ -17,7 +17,7 @@ var serviceObserverName = "loadbalancer-observer"
 
 func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 
-	if !iof.GetBoolFromConfigMap("externalDatabaseConnectionsEnabled") {
+	if !iof.GetBootFromCompositionConfig("externalDatabaseConnectionsEnabled") {
 		return runtime.NewNormal()
 	}
 

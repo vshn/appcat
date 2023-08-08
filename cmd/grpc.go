@@ -105,6 +105,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "replication",
 			TransformFunc: vpf.ConfigureReplication,
 		},
+		{
+			Name:          "loadbalancer",
+			TransformFunc: vpf.AddLoadBalancerIPToConnectionDetails,
+		},
 	},
 	"redis": {
 		{
@@ -137,6 +141,7 @@ func (s *server) RunFunction(ctx context.Context, in *pb.RunFunctionRequest) (*p
 	if err != nil {
 		return nil, status.Errorf(codes.Aborted, "cannot enable devMode: %s", err)
 	}
+
 	fnio, err := runtime.RunCommand(ctx, in.Input, images[in.Image])
 	if err != nil {
 		err = status.Errorf(codes.Aborted, "Can't process request for PostgreSQL")

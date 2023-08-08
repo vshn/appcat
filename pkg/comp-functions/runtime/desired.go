@@ -69,8 +69,25 @@ func (d *DesiredResources) GetFromObject(ctx context.Context, o client.Object, k
 	return d.fromKubeObject(ctx, ko, o)
 }
 
-// PutIntoObject adds or updates the desired resource into its kube object
+// PutIntoObject adds or updates the desired resource into its kube object, from docs:
+//
+// The provider can fully manage the resource.
 func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, kon string, refs ...xkube.Reference) error {
+	return d.putIntoObject(ctx, false, o, kon, refs...)
+}
+
+// PutIntoObserveOnlyObject adds or updates the desired resource into its OBSERVE-ONLY kube object, from docs:
+// PutIntoObject adds or updates the desired resource into its OBSERVE-ONLY kube object, from docs:
+//
+//	The provider can only observe the resource. This maps to the read-only scenario where
+//	the resource is fully controlled by third party application. The provider reads the
+//	resource manifest and stores in Object at status.atProvider.
+func (d *DesiredResources) PutIntoObserveOnlyObject(ctx context.Context, o client.Object, kon string, refs ...xkube.Reference) error {
+	return d.putIntoObject(ctx, true, o, kon, refs...)
+}
+
+// putIntoObject adds or updates the desired resource into its kube object
+func (d *DesiredResources) putIntoObject(ctx context.Context, observeOnly bool, o client.Object, kon string, refs ...xkube.Reference) error {
 	log := controllerruntime.LoggerFrom(ctx)
 
 	// Crossplane uses apply to create and update objects.
@@ -100,6 +117,11 @@ func (d *DesiredResources) PutIntoObject(ctx context.Context, o client.Object, k
 			References: refs,
 		},
 	}
+
+	if observeOnly {
+		ko.Spec.ManagementPolicy = xkube.Observe
+	}
+
 	err := getFrom(ctx, &d.resources, ko, kon)
 	if err != nil && err != ErrNotFound {
 		return err

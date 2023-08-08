@@ -205,17 +205,25 @@ To add a new function to PostgreSQL by VSHN:
 entrypoint to start working with gRPC server is to run:
 ```
 go run main.go --log-level 1 start grpc --network tcp --socket ':9547' --devmode
+
 ```
 
 This will start the GRPC server listening on a TCP port. Afterward you can configure the composition to use this connection:
 
 ```yaml
+### Macos:
 functions:
   - container:
       image: redis
       imagePullPolicy: IfNotPresent
       runner:
-        endpoint: host.docker.internal:9547 # HERE
+        # HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway') # On kind MacOS/Windows
+        # HOSTIP=host.docker.internal # On Docker Desktop distributions
+        # HOSTIP=host.lima.internal # On Lima backed Docker distributions
+        # For Linux users: `ip -4 addr show dev docker0 | grep inet | awk -F' ' '{print $2}' | awk -F'/' '{print $1}'`
+        endpoint: $HOSTIP:9547  # edit in component-appcat or directly using 
+                                # `k edit compositions.apiextensions.crossplane.io vshnpostgres.vshn.appcat.vshn.io`
+
 ```
 
 It's also possible to trigger fake request to gRPC server by client (to imitate Crossplane):

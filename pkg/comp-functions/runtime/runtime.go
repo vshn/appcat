@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
@@ -172,4 +173,17 @@ func parseCompFuncConfig(iof *Runtime) (*corev1.ConfigMap, error) {
 
 func (r *Runtime) GetRawFuncIO() *xfnv1alpha1.FunctionIO {
 	return &r.io
+}
+
+// GetBootFromCompositionConfig is a small function to help us retrieve bool values from configMap
+func (r *Runtime) GetBootFromCompositionConfig(key string) bool {
+	en, ok := r.Config.Data[key]
+	if !ok {
+		return false
+	}
+	enabled, err := strconv.ParseBool(en)
+	if err != nil {
+		return false
+	}
+	return enabled
 }

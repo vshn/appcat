@@ -20,6 +20,7 @@ type PostgreSQL struct {
 	Instance     string
 	Namespace    string
 	Organization string
+	ServiceLevel string
 }
 
 // Close closes open connections to the PostgreSQL server.
@@ -37,6 +38,7 @@ func (p PostgreSQL) GetInfo() ProbeInfo {
 		Name:         p.Instance,
 		Namespace:    p.Namespace,
 		Organization: p.Organization,
+		ServiceLevel: p.ServiceLevel,
 	}
 }
 
@@ -51,7 +53,7 @@ func (p PostgreSQL) Probe(ctx context.Context) error {
 }
 
 // NewPostgreSQL connects to the provided dsn and returns a prober
-func NewPostgreSQL(service, name, namespace, dsn, organization string, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
+func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
 	conf, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, err
@@ -77,6 +79,7 @@ func NewPostgreSQL(service, name, namespace, dsn, organization string, ops ...fu
 		Instance:     name,
 		Namespace:    namespace,
 		Organization: organization,
+		ServiceLevel: sla,
 	}, nil
 }
 

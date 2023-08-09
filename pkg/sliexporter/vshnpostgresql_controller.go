@@ -44,7 +44,7 @@ type VSHNPostgreSQLReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	PostgreDialer      func(service, name, namespace, dsn, organization string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
+	PostgreDialer      func(service, name, namespace, dsn, organization, serviceLevel string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
 }
 
 type probeManager interface {
@@ -128,6 +128,10 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 	}
 
 	org := ns.GetLabels()["appuio.io/organization"]
+	sla := inst.Spec.Parameters.Service.ServiceLevel
+	if sla == "" {
+		sla = vshnv1.BestEffort
+	}
 
 	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.Name, inst.Namespace,
 		fmt.Sprintf(
@@ -137,7 +141,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 			credSecret.Data["POSTGRESQL_HOST"],
 			credSecret.Data["POSTGRESQL_PORT"],
 			credSecret.Data["POSTGRESQL_DB"],
-		), org,
+		), org, string(sla),
 		probes.PGWithCA(credSecret.Data["ca.crt"]))
 	if err != nil {
 		return nil, err

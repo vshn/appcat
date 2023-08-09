@@ -35,6 +35,7 @@ type ProbeInfo struct {
 	Name         string
 	Namespace    string
 	Organization string
+	ServiceLevel string
 }
 
 // key uniquely identifies a prober
@@ -51,7 +52,7 @@ func NewManager(l logr.Logger) Manager {
 		Name:    "appcat_probes_seconds",
 		Help:    "Latency of probes to appact services",
 		Buckets: []float64{0.001, 0.002, 0.003, 0.004, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1, .5, 1},
-	}, []string{"service", "namespace", "name", "reason", "organization"})
+	}, []string{"service", "namespace", "name", "reason", "organization", "sla"})
 
 	return Manager{
 		hist:      hist,
@@ -122,6 +123,7 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 		"namespace":    pi.Namespace,
 		"name":         pi.Name,
 		"organization": pi.Organization,
+		"sla":          pi.ServiceLevel,
 	})
 	if err != nil {
 		return

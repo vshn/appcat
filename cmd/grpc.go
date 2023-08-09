@@ -106,7 +106,7 @@ var images = map[string][]runtime.Transform{
 			TransformFunc: vpf.ConfigureReplication,
 		},
 		{
-			Name:          "loadbalancer",
+			Name:          "load-balancer",
 			TransformFunc: vpf.AddLoadBalancerIPToConnectionDetails,
 		},
 	},

@@ -15,7 +15,11 @@ foundsize=$(echo -En "$found" | jq -r '.spec.volumeClaimTemplates[] | select(.me
 
 if [[ $foundsize != "$size" ]]; then
   echo "PVC sizes don't match, deleting sts"
-  kubectl -n "$namespace" delete sts "$name" --cascade=orphan --ignore-not-found --wait=true
+  # We try to delete the sts and wait for 5s. On APPUiO it can happen that the
+  # deletion with orphan doesn't go through and the sts is stuck with an orphan finalizer.
+  # So if the delete hasn't returned after 5s we forcefully patch away the finalizer.
+  kubectl -n "$namespace" delete sts "$name" --cascade=orphan --ignore-not-found --wait=true --timeout 5s || true
+  kubectl -n "$namespace" patch sts redis-master -p '{"metadata":{"finalizers":null}}' || true
   # Poke the release so it tries again to create the sts
   # We first set it to garbage to ensure that the release is in an invalid state, we use an invalid state so it doesn't
   # actually deploy anything.
@@ -30,7 +34,7 @@ if [[ $foundsize != "$size" ]]; then
     count=$count+1
     sleep 1
   done
-  [[ count -lt 300 ]] || (echo "Waited for 5 minutes for sts to re-appear"; exit 1)
+  [[ $count -lt 300 ]] || (echo "Waited for 5 minutes for sts to re-appear"; exit 1)
   echo "Set label on sts to trigger the statefulset-resize-controller"
   kubectl -n "$namespace" label sts "$name" --overwrite "sts-resize.vshn.net/resize-inplace=true"
 else

@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/vshn/appcat/cmd"
+	"github.com/vshn/appcat/v4/cmd"
 )
 
 func init() {

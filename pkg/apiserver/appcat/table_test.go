@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	v1 "github.com/vshn/appcat/apis/appcat/v1"
+	v1 "github.com/vshn/appcat/v4/apis/appcat/v1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

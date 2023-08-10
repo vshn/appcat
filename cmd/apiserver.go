@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	appcatv1 "github.com/vshn/appcat/apis/appcat/v1"
-	"github.com/vshn/appcat/pkg/apiserver/appcat"
-	vshnpostgres "github.com/vshn/appcat/pkg/apiserver/vshn/postgres"
-	vshnredis "github.com/vshn/appcat/pkg/apiserver/vshn/redis"
+	appcatv1 "github.com/vshn/appcat/v4/apis/appcat/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver/appcat"
+	vshnpostgres "github.com/vshn/appcat/v4/pkg/apiserver/vshn/postgres"
+	vshnredis "github.com/vshn/appcat/v4/pkg/apiserver/vshn/redis"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder"
 )
 

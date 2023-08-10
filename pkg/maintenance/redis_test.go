@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"github.com/vshn/appcat/pkg"
+	"github.com/vshn/appcat/v4/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"

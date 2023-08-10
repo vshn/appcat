@@ -7,7 +7,7 @@ package v1
 
 import (
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	apisv1 "github.com/vshn/appcat/apis/v1"
+	apisv1 "github.com/vshn/appcat/v4/apis/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

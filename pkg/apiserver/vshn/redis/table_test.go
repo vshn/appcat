@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	vshnv1 "github.com/vshn/appcat/apis/appcat/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/appcat/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )

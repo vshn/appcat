@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	stackgresv1 "github.com/vshn/appcat/apis/stackgres/v1"
-	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
 func Test_enableTimescaleDB(t *testing.T) {

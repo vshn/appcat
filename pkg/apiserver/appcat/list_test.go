@@ -2,7 +2,7 @@ package appcat
 
 import (
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
-	v1 "github.com/vshn/appcat/apis/appcat/v1"
+	v1 "github.com/vshn/appcat/v4/apis/appcat/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"

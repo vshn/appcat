@@ -8,7 +8,7 @@ import (
 	"github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
-	"github.com/vshn/appcat/pkg/controller/postgres"
+	"github.com/vshn/appcat/v4/pkg/controller/postgres"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"net/http"

@@ -3,9 +3,9 @@ package vshnpostgres
 import (
 	"context"
 
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
-	"github.com/vshn/appcat/pkg/comp-functions/functions/common"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
 // TransformSchedule initializes the backup and maintenance schedules  if the user did not explicitly provide a schedule.

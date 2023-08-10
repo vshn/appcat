@@ -2,7 +2,7 @@ package appcat
 
 import (
 	"context"
-	v1 "github.com/vshn/appcat/apis/appcat/v1"
+	v1 "github.com/vshn/appcat/v4/apis/appcat/v1"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

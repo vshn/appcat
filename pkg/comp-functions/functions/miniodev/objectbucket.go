@@ -4,8 +4,8 @@ import (
 	"context"
 
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
-	appcatv1 "github.com/vshn/appcat/apis/v1"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

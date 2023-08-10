@@ -2,10 +2,10 @@ package vshnpostgres
 
 import (
 	"context"
-	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"testing"
 
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"

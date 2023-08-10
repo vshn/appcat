@@ -10,7 +10,7 @@ import (
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

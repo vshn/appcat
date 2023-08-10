@@ -7,8 +7,8 @@ import (
 
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	"github.com/stretchr/testify/assert"
-	appcatv1 "github.com/vshn/appcat/apis/appcat/v1"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	appcatv1 "github.com/vshn/appcat/v4/apis/appcat/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/request"

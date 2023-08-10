@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vshn/appcat/pkg/sliexporter/probes"
+	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
 var vshnpostgresqlsServiceKey = "VSHNPostgreSQL"

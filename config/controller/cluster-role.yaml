@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: postgres-deletion-protection-manager
+  name: appcat-controller
 rules:
   - apiGroups:
       - vshn.appcat.vshn.io
@@ -24,6 +24,7 @@ rules:
       - ""
     resources:
       - namespaces
+      - configmaps
     verbs:
       - get
       - update

@@ -18,3 +18,4 @@
 * xref:explanations/dev-notes.adoc[]
 * xref:explanations/comp-functions/debug.adoc[]
 * xref:explanations/comp-functions/redis-pvc-resize.adoc[]
+* xref:explanations/webhooks.adoc[]

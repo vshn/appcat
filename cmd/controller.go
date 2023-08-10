@@ -1,19 +1,27 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/controller/postgres"
+	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 type controller struct {
 	scheme                  *runtime.Scheme
 	metricsAddr, healthAddr string
 	leaderElect             bool
+	enableWebhooks          bool
+	enableQuotas            bool
+	certDir                 string
 }
 
 var c = controller{
@@ -32,6 +40,13 @@ func init() {
 	ControllerCMD.Flags().StringVar(&c.healthAddr, "health-addr", ":8081", "The address the probe endpoint binds to.")
 	ControllerCMD.Flags().BoolVar(&c.leaderElect, "leader-elect", false, "Enable leader election for controller manager. "+
 		"Enabling this will ensure there is only one active controller manager.")
+	ControllerCMD.Flags().BoolVar(&c.enableWebhooks, "webhooks", true, "Disable the validation webhooks.")
+	ControllerCMD.Flags().StringVar(&c.certDir, "certdir", "/etc/webhook/certs", "Set the webhook certificate directory")
+	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
+	viper.AutomaticEnv()
+	if !viper.IsSet("PLANS_NAMESPACE") {
+		viper.Set("PLANS_NAMESPACE", "syn-appcat")
+	}
 }
 
 // Run will run the controller mode of the composition function runner.
@@ -45,6 +60,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		HealthProbeBindAddress: c.healthAddr,
 		LeaderElection:         c.leaderElect,
 		LeaderElectionID:       "35t6u158.appcat.vshn.io",
+		CertDir:                c.certDir,
 	})
 	if err != nil {
 		return err
@@ -60,6 +76,18 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	if c.enableWebhooks {
+
+		if !viper.IsSet("PLANS_NAMESPACE") && c.enableQuotas {
+			return fmt.Errorf("PLANS_NAMEPSACE env variable needs to be set for quota support")
+		}
+
+		err := setupWebhooks(mgr, c.enableQuotas)
+		if err != nil {
+			return err
+		}
+	}
+
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		return err
 	}
@@ -68,4 +96,16 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	}
 
 	return mgr.Start(ctrl.SetupSignalHandler())
+}
+
+func setupWebhooks(mgr manager.Manager, withQuota bool) error {
+	err := webhooks.SetupPostgreSQLWebhookHandlerWithManager(mgr, withQuota)
+	if err != nil {
+		return err
+	}
+	err = webhooks.SetupRedisWebhookHandlerWithManager(mgr, withQuota)
+	if err != nil {
+		return err
+	}
+	return nil
 }

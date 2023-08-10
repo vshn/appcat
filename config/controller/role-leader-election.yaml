@@ -3,7 +3,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: postgres-deletion-protection-manager-leader-election-role
+  name: appcat-controller-leader-election-role
   namespace: appcat-controllers
 rules:
   - apiGroups:

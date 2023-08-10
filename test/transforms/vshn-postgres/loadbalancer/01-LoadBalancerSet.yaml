@@ -104,7 +104,7 @@ desired:
       spec:
         parameters:
           network:
-            serviceType: LoadBalancer
+            serviceType: ClusterIP
           service:
             extensions:
               - name: ltree

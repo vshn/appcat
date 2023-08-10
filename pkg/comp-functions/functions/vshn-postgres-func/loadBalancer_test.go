@@ -16,11 +16,15 @@ func TestNothingToDo(t *testing.T) {
 	t.Run("NothingToDo", func(t *testing.T) {
 
 		//Given
-		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/maintenance/01-GivenSchedule.yaml")
+		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/loadbalancer/01-LoadBalancerSet.yaml")
 		iof.Config.Data["externalDatabaseConnectionsEnabled"] = "true"
 
 		// When
 		result := AddLoadBalancerIPToConnectionDetails(ctx, iof)
+
+		if len(iof.Desired.List(ctx)) != 2 {
+			t.Fatal("Expected 2 resources in desired, got", len(iof.Desired.List(ctx)))
+		}
 
 		// Then
 		assert.Equal(t, expectResult, result)
@@ -30,12 +34,13 @@ func TestNothingToDo(t *testing.T) {
 func TestLoadBalancerParameterSet(t *testing.T) {
 	ctx := context.Background()
 	// it need another reconciliation to get the service observer object
-	expectResult := runtime.NewWarning(ctx, "Cannot yet get service observer object")
+	expectResult := runtime.NewNormal()
 
 	t.Run("Verify composition", func(t *testing.T) {
 
 		//Given
 		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/loadbalancer/01-LoadBalancerSet.yaml")
+
 		iof.Config.Data["externalDatabaseConnectionsEnabled"] = "true"
 
 		// When

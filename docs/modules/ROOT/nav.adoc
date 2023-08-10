@@ -5,7 +5,7 @@
 //* xref:tutorials/example.adoc[Dev]
 
 .How To
-//* xref:how-tos/example.adoc[Example How-To]
+* xref:how-tos/vscode.adoc[]
 
 .Technical reference
 * xref:references/apiserver/env-variables.adoc[Env variables]

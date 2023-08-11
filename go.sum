@@ -117,7 +117,7 @@ github.com/crossplane-contrib/provider-helm v0.15.0 h1:m7RI4CvM5bX9deR9JfRR0l1eG
 github.com/crossplane-contrib/provider-helm v0.15.0/go.mod h1:SzgJDgZfU9s2mXkC+WMrWkxj+KBRwkRZnZNca3ELLl0=
 github.com/crossplane-contrib/provider-kubernetes v0.7.0 h1:0IfhEpkcn4TeiGfRRI57pcXefSZ9ejW/MWLFQrS6n+M=
 github.com/crossplane-contrib/provider-kubernetes v0.7.0/go.mod h1:c8dh/JGcvFn160qVKVqRyiReDhEIFEz7qYK+TEbYAlw=
-github.com/crossplane/crossplane v1.11.5 h1:HwVTL6G6L1Z0tT2ejURv/9ujFzI7iC6P1Ezo09/IsBU=
+github.com/crossplane/crossplane v1.11.5 h1:It/kq9VeO2dLy9kU95RJDJup9N0WEqiATmVMqcOci6Y=
 github.com/crossplane/crossplane v1.11.5/go.mod h1:HhJ/EVMdbbZD5NuwJ32F1TSjaaiD6jPveP/qNghZiyk=
 github.com/crossplane/crossplane-runtime v0.19.2 h1:9qBnhpqKN4x6apF2siaQ6PvgxqBXbGcKmgeD8mSIDO8=
 github.com/crossplane/crossplane-runtime v0.19.2/go.mod h1:OJQ1NxtQK2ZTRmvtnQPoy8LsXsARTnVydRVDQEgIuz4=

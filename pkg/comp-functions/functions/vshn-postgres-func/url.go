@@ -51,7 +51,7 @@ func AddUrlToConnectionDetails(ctx context.Context, iof *runtime.Runtime) runtim
 
 	err = iof.Observed.GetFromObject(ctx, s, connectionSecretResourceName)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "Cannot get connection secret object", err)
+		return runtime.NewWarning(ctx, "Cannot get connection secret object")
 	}
 
 	log.Info("Setting POSTRESQL_URL env variable into connection secret")

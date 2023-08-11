@@ -2,6 +2,7 @@ package vshnpostgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
@@ -54,7 +55,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runt
 		k8sservice.Spec.Type = v1.ServiceTypeClusterIP
 	}
 
-	if err := iof.Desired.PutIntoObject(ctx, k8sservice, serviceName); err != nil {
+	if err := iof.Desired.PutIntoObject(ctx, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), serviceName)); err != nil {
 		return runtime.NewFatalErr(ctx, "Cannot put service into function io", err)
 	}
 
@@ -62,7 +63,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runt
 		return runtime.NewNormal()
 	}
 
-	k8sservice, err = getObservedService(ctx, iof, k8sservice)
+	k8sservice, err = getObservedService(ctx, iof, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), serviceName))
 	if err != nil {
 		return runtime.NewWarning(ctx, "Cannot yet get service object")
 	}
@@ -84,8 +85,8 @@ func getVSHNPostgreSQL(ctx context.Context, iof *runtime.Runtime) (*vshnv1.VSHNP
 	return comp, err
 }
 
-func getObservedService(ctx context.Context, iof *runtime.Runtime, service *v1.Service) (*v1.Service, error) {
-	err := iof.Observed.GetFromObject(ctx, service, service.Name)
+func getObservedService(ctx context.Context, iof *runtime.Runtime, service *v1.Service, objectName string) (*v1.Service, error) {
+	err := iof.Observed.GetFromObject(ctx, service, objectName)
 	return service, err
 }
 

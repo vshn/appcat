@@ -183,7 +183,7 @@ observed:
             name: postgresql-prod-n97jr-connection
           - apiVersion: kubernetes.crossplane.io/v1alpha1
             kind: Object
-            name: postgresql-prod-n97jr-service
+            name: postgresql-prod-n97jr-primary-service
           - apiVersion: kubernetes.crossplane.io/v1alpha1
             kind: Object
             name: postgresql-prod-n97jr-localca
@@ -222,7 +222,7 @@ observed:
             name: postgresql-prod-n97jr-prometheusrule
           - apiVersion: kubernetes.crossplane.io/v1alpha1
             kind: Object
-            name: postgresql-prod-n97jr-service-rolebinding
+            name: postgresql-prod-n97jr-primary-service-rolebinding
           - apiVersion: kubernetes.crossplane.io/v1alpha1
             kind: Object
             name: vshn-postgresql-postgresql-prod-n97jr
@@ -780,16 +780,16 @@ observed:
               status: "True"
               type: Synced
       connectionDetails: []
-    - name: postgresql-prod-n97jr-service
+    - name: postgresql-prod-n97jr-primary-service
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha1
         kind: Object
         metadata:
           annotations:
-            crossplane.io/composition-resource-name: postgresql-prod-n97jr-service
+            crossplane.io/composition-resource-name: postgresql-prod-n97jr-primary-service
             crossplane.io/external-create-pending: 2023-07-28T09:05:56Z
             crossplane.io/external-create-succeeded: 2023-07-28T09:05:57Z
-            crossplane.io/external-name: postgresql-prod-n97jr-service
+            crossplane.io/external-name: postgresql-prod-n97jr-primary-service
           creationTimestamp: 2023-07-28T09:05:55Z
           finalizers:
             - finalizer.managedresource.crossplane.io
@@ -907,7 +907,7 @@ observed:
               operation: Update
               subresource: status
               time: 2023-07-28T09:06:03Z
-          name: postgresql-prod-n97jr-service
+          name: postgresql-prod-n97jr-primary-service
           ownerReferences:
             - apiVersion: vshn.appcat.vshn.io/v1
               blockOwnerDeletion: true
@@ -3764,7 +3764,7 @@ observed:
             crossplane.io/composition-resource-name: namespace-permissions
             crossplane.io/external-create-pending: 2023-07-28T09:05:58Z
             crossplane.io/external-create-succeeded: 2023-07-28T09:05:58Z
-            crossplane.io/external-name: postgresql-prod-n97jr-service-rolebinding
+            crossplane.io/external-name: postgresql-prod-n97jr-primary-service-rolebinding
           creationTimestamp: 2023-07-28T09:05:56Z
           finalizers:
             - finalizer.managedresource.crossplane.io
@@ -3864,7 +3864,7 @@ observed:
               operation: Update
               subresource: status
               time: 2023-07-28T09:06:00Z
-          name: postgresql-prod-n97jr-service-rolebinding
+          name: postgresql-prod-n97jr-primary-service-rolebinding
           ownerReferences:
             - apiVersion: vshn.appcat.vshn.io/v1
               blockOwnerDeletion: true
@@ -6287,7 +6287,7 @@ desired:
             crossplane.io/claim-name: postgresql-prod
             crossplane.io/claim-namespace: app1-prod
             crossplane.io/composite: postgresql-prod-n97jr
-          name: postgresql-prod-n97jr-service-rolebinding
+          name: postgresql-prod-n97jr-primary-service-rolebinding
           ownerReferences:
             - apiVersion: vshn.appcat.vshn.io/v1
               blockOwnerDeletion: true

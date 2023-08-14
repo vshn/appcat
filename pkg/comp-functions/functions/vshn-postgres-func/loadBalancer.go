@@ -55,7 +55,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runt
 		k8sservice.Spec.Type = v1.ServiceTypeClusterIP
 	}
 
-	if err := iof.Desired.PutIntoObject(ctx, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), "service")); err != nil {
+	if err := iof.Desired.PutIntoObject(ctx, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), "primary-service")); err != nil {
 		return runtime.NewFatalErr(ctx, "Cannot put service into function io", err)
 	}
 
@@ -63,7 +63,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runt
 		return runtime.NewNormal()
 	}
 
-	k8sservice, err = getObservedService(ctx, iof, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), "service"))
+	k8sservice, err = getObservedService(ctx, iof, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), "primary-service"))
 	if err != nil {
 		return runtime.NewWarning(ctx, "Cannot yet get service object")
 	}

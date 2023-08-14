@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var serviceName = "postgresql-master"
+var serviceName = "primary-service"
 
 func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 
@@ -55,7 +55,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runt
 		k8sservice.Spec.Type = v1.ServiceTypeClusterIP
 	}
 
-	if err := iof.Desired.PutIntoObject(ctx, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), "primary-service")); err != nil {
+	if err := iof.Desired.PutIntoObject(ctx, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), serviceName)); err != nil {
 		return runtime.NewFatalErr(ctx, "Cannot put service into function io", err)
 	}
 
@@ -63,7 +63,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runt
 		return runtime.NewNormal()
 	}
 
-	k8sservice, err = getObservedService(ctx, iof, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), "primary-service"))
+	k8sservice, err = getObservedService(ctx, iof, k8sservice, fmt.Sprintf("%s-%s", comp.GetName(), serviceName))
 	if err != nil {
 		return runtime.NewWarning(ctx, "Cannot yet get service object")
 	}

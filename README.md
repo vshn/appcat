@@ -161,11 +161,12 @@ The controller manages and achieves the following:
 ## SLI Exporter
 ### Metrics
 
-The exporter exposes a histogram `appcat_probes_seconds` with four labels
+The exporter exposes a histogram `appcat_probes_seconds` with five labels
 
 * `service`, the service type that was probed (e.g. `VSHNPostgreSQL`)
 * `namespace`, the namespace of the claim that was monitored
 * `name`, the name of the claim that was monitored
+* `sla`, the service level. Can either be `besteffort` or `guaranteed`
 * `reason`, if the probe was successful. Can either be `success`, `fail-timeout`, or `fail-unkown`
 
 #### Adding a Prober

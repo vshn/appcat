@@ -84,7 +84,7 @@ type VSHNPostgreSQLParameters struct {
 
 	// Instances configures the number of PostgreSQL instances for the cluster.
 	// Each instance contains one Postgres server.
-	// Out of all of the Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
+	// Out of all Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
 	Instances int `json:"instances,omitempty"`
 
 	// This section allows to configure Postgres replication mode and HA roles groups.
@@ -142,6 +142,12 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// Extensions allow to enable/disable any of the supported
 	Extensions []VSHNDBaaSPostgresExtension `json:"extensions,omitempty"`
+
+	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
+	// +kubebuilder:default="besteffort"
+
+	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
+	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 }
 
 // VSHNDBaaSPostgresExtension contains the name of a single extension.

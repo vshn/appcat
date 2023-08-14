@@ -67,7 +67,7 @@ spec:
                       type: object
                     instances:
                       default: 1
-                      description: Instances configures the number of PostgreSQL instances for the cluster. Each instance contains one Postgres server. Out of all of the Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
+                      description: Instances configures the number of PostgreSQL instances for the cluster. Each instance contains one Postgres server. Out of all Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
                       maximum: 3
                       minimum: 1
                       type: integer
@@ -3566,6 +3566,13 @@ spec:
                           description: PGSettings contains additional PostgreSQL settings.
                           type: object
                           x-kubernetes-preserve-unknown-fields: true
+                        serviceLevel:
+                          default: besteffort
+                          description: ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
+                          enum:
+                            - besteffort
+                            - guaranteed
+                          type: string
                       type: object
                       default: {}
                     size:

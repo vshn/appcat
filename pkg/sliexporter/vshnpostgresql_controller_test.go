@@ -2,6 +2,7 @@ package sliexporter
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -44,12 +45,12 @@ func TestVSHNPostgreSQL_StartStop(t *testing.T) {
 
 	_, err := r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.True(t, manager.probers[pi])
+	assert.True(t, manager.probers[getFakeKey(pi)])
 
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.False(t, manager.probers[pi])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNPostgreSQL_StartStop_WithFializer(t *testing.T) {
@@ -74,12 +75,12 @@ func TestVSHNPostgreSQL_StartStop_WithFializer(t *testing.T) {
 
 	_, err := r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.True(t, manager.probers[pi])
+	assert.True(t, manager.probers[getFakeKey(pi)])
 
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.False(t, manager.probers[pi])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNPostgreSQL_Multi(t *testing.T) {
@@ -116,9 +117,9 @@ func TestVSHNPostgreSQL_Multi(t *testing.T) {
 	_, err = r.Reconcile(context.TODO(), recReq("bar", "fooer"))
 	assert.NoError(t, err)
 
-	assert.True(t, manager.probers[barPi])
-	assert.True(t, manager.probers[barerPi])
-	assert.False(t, manager.probers[buzzPi])
+	assert.True(t, manager.probers[getFakeKey(barPi)])
+	assert.True(t, manager.probers[getFakeKey(barerPi)])
+	assert.False(t, manager.probers[getFakeKey(buzzPi)])
 
 	require.NoError(t, c.Delete(context.TODO(), dbBar))
 	_, err = r.Reconcile(context.TODO(), recReq("bar", "foo"))
@@ -126,9 +127,9 @@ func TestVSHNPostgreSQL_Multi(t *testing.T) {
 	_, err = r.Reconcile(context.TODO(), recReq("buzz", "foo"))
 	assert.NoError(t, err)
 
-	assert.False(t, manager.probers[barPi])
-	assert.True(t, manager.probers[barerPi])
-	assert.True(t, manager.probers[buzzPi])
+	assert.False(t, manager.probers[getFakeKey(barPi)])
+	assert.True(t, manager.probers[getFakeKey(barerPi)])
+	assert.True(t, manager.probers[getFakeKey(buzzPi)])
 }
 
 func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
@@ -147,7 +148,7 @@ func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Greater(t, res.RequeueAfter.Microseconds(), int64(0))
 
-	assert.False(t, manager.probers[pi])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
@@ -164,7 +165,7 @@ func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
 
 	_, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
 	assert.NoError(t, err)
-	assert.False(t, manager.probers[pi])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNPostgreSQL_Started_NoCreds_Probe_Failure(t *testing.T) {
@@ -183,7 +184,7 @@ func TestVSHNPostgreSQL_Started_NoCreds_Probe_Failure(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Greater(t, res.RequeueAfter.Microseconds(), int64(0))
 
-	assert.True(t, manager.probers[pi])
+	assert.True(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
@@ -202,22 +203,24 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 		cred,
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "foo",
+				Name: "bar",
 				Labels: map[string]string{
-					"ogranization": "bar",
+					"appuio.io/organization": "bar",
+					"appcat.vshn.io/sla":     "besteffort",
 				},
 			},
 		},
 	)
-	r.PostgreDialer = func(service, name, namespace, dsn, organization string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+	r.PostgreDialer = func(service, name, namespace, dsn, organization, sla string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 
 		assert.Equal(t, "VSHNPostgreSQL", service)
 		assert.Equal(t, "foo", name)
 		assert.Equal(t, "bar", namespace)
 		assert.Equal(t, "postgresql://userfoo:password@foo.bar:5433/pg?sslmode=verify-ca", dsn)
 		assert.Equal(t, "bar", organization)
+		assert.Equal(t, "besteffort", sla)
 
-		return fakePostgreDialer(service, name, namespace, dsn, organization, ops...)
+		return fakePostgreDialer(service, name, namespace, dsn, organization, sla, ops...)
 	}
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
@@ -233,20 +236,21 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 
 	_, err := r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.True(t, manager.probers[pi])
+	assert.True(t, manager.probers[getFakeKey(pi)])
 
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.False(t, manager.probers[pi])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
-func fakePostgreDialer(service string, name string, namespace string, dsn string, organization string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+func fakePostgreDialer(service string, name string, namespace string, dsn string, organization string, sla string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 	p := &probes.PostgreSQL{
 		Service:      service,
 		Instance:     name,
 		Namespace:    namespace,
 		Organization: organization,
+		ServiceLevel: sla,
 	}
 	return p, nil
 }
@@ -254,23 +258,29 @@ func fakePostgreDialer(service string, name string, namespace string, dsn string
 var _ probeManager = &fakeProbeManager{}
 
 type fakeProbeManager struct {
-	probers map[probes.ProbeInfo]bool
+	probers map[key]bool
 }
 
 func newFakeProbeManager() *fakeProbeManager {
 	return &fakeProbeManager{
-		probers: map[probes.ProbeInfo]bool{},
+		probers: map[key]bool{},
 	}
 }
 
+type key string
+
 // StartProbe implements probeManager
 func (m *fakeProbeManager) StartProbe(p probes.Prober) {
-	m.probers[p.GetInfo()] = true
+	m.probers[getFakeKey(p.GetInfo())] = true
 }
 
 // StopProbe implements probeManager
 func (m *fakeProbeManager) StopProbe(p probes.ProbeInfo) {
-	m.probers[p] = false
+	m.probers[getFakeKey(p)] = false
+}
+
+func getFakeKey(pi probes.ProbeInfo) key {
+	return key(fmt.Sprintf("%s; %s; %s", pi.Service, pi.Namespace, pi.Name))
 }
 
 func setupVSHNPostgreTest(t *testing.T, objs ...client.Object) (VSHNPostgreSQLReconciler, *fakeProbeManager, client.Client) {

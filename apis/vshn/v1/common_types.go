@@ -41,6 +41,13 @@ type K8upRestoreSpec struct {
 	BackupName string `json:"backupName,omitempty"`
 }
 
+type VSHNDBaaSServiceLevel string
+
+const (
+	BestEffort VSHNDBaaSServiceLevel = "besteffort"
+	Guaranteed VSHNDBaaSServiceLevel = "guaranteed"
+)
+
 // VSHNDBaaSMaintenanceScheduleSpec contains settings to control the maintenance of an instance.
 type VSHNDBaaSMaintenanceScheduleSpec struct {
 	// +kubebuilder:validation:Enum=monday;tuesday;wednesday;thursday;friday;saturday;sunday

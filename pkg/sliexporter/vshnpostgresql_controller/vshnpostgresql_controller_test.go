@@ -1,4 +1,4 @@
-package sliexporter
+package vshnpostgresqlcontroller
 
 import (
 	"context"
@@ -53,7 +53,7 @@ func TestVSHNPostgreSQL_StartStop(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
-func TestVSHNPostgreSQL_StartStop_WithFializer(t *testing.T) {
+func TestVSHNPostgreSQL_StartStop_WithFinalizer(t *testing.T) {
 	db := newTestVSHNPostgre("bar", "foo", "creds")
 	db.SetFinalizers([]string{"foobar.vshn.io"})
 	r, manager, client := setupVSHNPostgreTest(t,

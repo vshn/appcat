@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sliexporter
+package vshnpostgresqlcontroller
 
 import (
 	"context"
@@ -54,6 +54,9 @@ type probeManager interface {
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=vshnpostgresqls,verbs=get;list;watch
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=vshnpostgresqls/status,verbs=get
+
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 
 // Reconcile start or stops a prober for a VSHNPostgreSQL instance.
 // Will only probe an instance once it is ready or after the StartupGracePeriod.

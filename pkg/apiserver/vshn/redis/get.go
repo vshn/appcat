@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	appcatv1 "github.com/vshn/appcat/apis/appcat/v1"
+	appcatv1 "github.com/vshn/appcat/v4/apis/appcat/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

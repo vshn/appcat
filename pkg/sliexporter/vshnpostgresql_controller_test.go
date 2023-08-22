@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vshn/appcat/pkg/sliexporter/probes"
+	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
@@ -20,8 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	v1 "github.com/vshn/appcat/apis/v1"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	v1 "github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
 func TestVSHNPostgreSQL_StartStop(t *testing.T) {

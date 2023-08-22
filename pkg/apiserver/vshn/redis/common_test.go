@@ -4,8 +4,8 @@ import (
 	"context"
 
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
-	"github.com/vshn/appcat/pkg/apiserver/vshn/k8up"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/k8up"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/watch"
 )

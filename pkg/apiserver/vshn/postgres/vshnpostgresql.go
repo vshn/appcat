@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

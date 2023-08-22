@@ -2,9 +2,9 @@ package vshnredis
 
 import (
 	"context"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
-	"github.com/vshn/appcat/pkg/comp-functions/functions/common/maintenance"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
 var service = "redis"

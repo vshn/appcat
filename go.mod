@@ -1,4 +1,4 @@
-module github.com/vshn/appcat
+module github.com/vshn/appcat/v4
 
 go 1.20
 

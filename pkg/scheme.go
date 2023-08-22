@@ -5,9 +5,9 @@ import (
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
-	stackgresv1 "github.com/vshn/appcat/apis/stackgres/v1"
-	appcatv1 "github.com/vshn/appcat/apis/v1"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"

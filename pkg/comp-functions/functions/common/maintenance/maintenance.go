@@ -6,8 +6,8 @@ import (
 	"regexp"
 
 	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"

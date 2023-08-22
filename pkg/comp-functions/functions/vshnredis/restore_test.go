@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
-	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	"sigs.k8s.io/yaml"
 

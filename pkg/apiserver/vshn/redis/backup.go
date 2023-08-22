@@ -1,9 +1,9 @@
 package redis
 
 import (
-	appcatv1 "github.com/vshn/appcat/apis/appcat/v1"
-	"github.com/vshn/appcat/pkg"
-	"github.com/vshn/appcat/pkg/apiserver/vshn/k8up"
+	appcatv1 "github.com/vshn/appcat/v4/apis/appcat/v1"
+	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/k8up"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"

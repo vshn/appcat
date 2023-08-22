@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	crossplanev1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
-	v1 "github.com/vshn/appcat/apis/appcat/v1"
-	"github.com/vshn/appcat/test/mocks"
+	v1 "github.com/vshn/appcat/v4/apis/appcat/v1"
+	"github.com/vshn/appcat/v4/test/mocks"
 	"k8s.io/apiserver/pkg/registry/rest"
 
 	"github.com/golang/mock/gomock"

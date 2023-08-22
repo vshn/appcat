@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/thediveo/enumflag/v2"
-	"github.com/vshn/appcat/pkg"
-	"github.com/vshn/appcat/pkg/maintenance"
+	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/maintenance"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

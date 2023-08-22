@@ -14,9 +14,9 @@ import (
 	crossfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
-	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"sigs.k8s.io/yaml"
 )
 

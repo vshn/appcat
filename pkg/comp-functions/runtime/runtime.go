@@ -9,8 +9,8 @@ import (
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
-	"github.com/vshn/appcat/pkg"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

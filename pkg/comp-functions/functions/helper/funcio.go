@@ -10,7 +10,7 @@ import (
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/pmezard/go-difflib/difflib"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

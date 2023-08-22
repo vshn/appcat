@@ -2,15 +2,15 @@ package vshnredis
 
 import (
 	"context"
-	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	"github.com/stretchr/testify/assert"
-	appcatv1 "github.com/vshn/appcat/apis/v1"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 )
 

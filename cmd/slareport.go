@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/vshn/appcat/pkg/slareport"
+	"github.com/vshn/appcat/v4/pkg/slareport"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 

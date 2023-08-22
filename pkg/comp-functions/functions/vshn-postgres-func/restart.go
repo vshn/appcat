@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	sgv1 "github.com/vshn/appcat/apis/stackgres/v1"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
-	"github.com/vshn/appcat/pkg/comp-functions/runtime"
+	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	controllerruntime "sigs.k8s.io/controller-runtime"

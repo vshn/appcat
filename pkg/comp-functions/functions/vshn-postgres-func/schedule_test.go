@@ -3,14 +3,14 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat/pkg/comp-functions/functions/commontest"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	vshnv1 "github.com/vshn/appcat/apis/vshn/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 
 	fnv1aplha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 )

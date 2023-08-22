@@ -2,7 +2,7 @@ package postgres
 
 import (
 	"context"
-	"github.com/vshn/appcat/apis/appcat/v1"
+	"github.com/vshn/appcat/v4/apis/appcat/v1"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

@@ -6,10 +6,11 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/watch"
 	"net/http"
 	"sort"
 	"time"
+
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-version"
@@ -83,11 +84,27 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 		p.log.Info("No sgcluster found in namespace, skipping maintenance")
 	}
 
-	clusterName := sgclusters.Items[0].GetName()
+	sgCluster := sgclusters.Items[0]
 	currentVersion := sgclusters.Items[0].Spec.Postgres.Version
 
+	p.log.Info("Checking for pending upgrades...")
+	upgradeRequired := p.checkRequiredUpgrade(sgCluster)
+
+	if upgradeRequired {
+		p.log.Info("Doing a security maintenance")
+		p.createSecurityUpgrade(sgCluster.GetName())
+		p.log.Info("Waiting for security maintenance to finish before checking for minor upgrades")
+		err = p.waitForUpgrade(ctx, su)
+		if apierrors.IsTimeout(err) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("cannot watch for maintenance sgdbops resources: %v", err)
+		}
+	}
+
 	p.log.Info("Checking for upgrades...")
-	op, err := p.upgradeVersion(currentVersion, clusterName)
+	op, err := p.upgradeVersion(currentVersion, sgCluster.GetName())
 	if err != nil {
 		return err
 	}
@@ -102,7 +119,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	}
 
 	p.log.Info("Repacking databases...")
-	err = p.createRepack(clusterName)
+	err = p.createRepack(sgCluster.GetName())
 	if err != nil {
 		return fmt.Errorf("cannot create repack: %v", err)
 	}
@@ -110,7 +127,21 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	return nil
 }
 
-func (p *PostgreSQL) upgradeVersion(currentVersion string, clusterName string) (OpName, error) {
+func (p *PostgreSQL) checkRequiredUpgrade(sgCluster stackgresv1.SGCluster) bool {
+	if sgCluster.Status.Conditions == nil {
+		return false
+	}
+	sgClusterConditions := *sgCluster.Status.Conditions
+	for _, condition := range sgClusterConditions {
+		if *condition.Reason == "ClusterRequiresUpgrade" && *condition.Status == "True" {
+			p.log.Info("Restart required ...")
+			return true
+		}
+	}
+	return false
+}
+
+func (p *PostgreSQL) upgradeVersion(currentVersion string, sgClusterName string) (OpName, error) {
 	versionList, err := p.fetchVersionList(p.SgURL)
 	if err != nil {
 		p.log.Error(err, "StackGres API error")
@@ -127,7 +158,7 @@ func (p *PostgreSQL) upgradeVersion(currentVersion string, clusterName string) (
 	p.log.Info("Found versions", "current", currentVersion, "latest", latestMinor)
 	if currentVersion != latestMinor {
 		p.log.Info("Doing a minor upgrade")
-		return mvu, p.createMinorUpgrade(clusterName, latestMinor)
+		return mvu, p.createMinorUpgrade(sgClusterName, latestMinor)
 	}
 
 	p.log.Info("Checking for EOL")
@@ -139,7 +170,7 @@ func (p *PostgreSQL) upgradeVersion(currentVersion string, clusterName string) (
 	}
 
 	p.log.Info("Doing a security maintenance")
-	return su, p.createSecurityUpgrade(clusterName)
+	return su, p.createSecurityUpgrade(sgClusterName)
 }
 
 func (p *PostgreSQL) waitForUpgrade(ctx context.Context, op OpName) error {

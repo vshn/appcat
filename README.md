@@ -154,9 +154,35 @@ The AppCat Controller resolves certain issues that cannot be achieved with cross
 
 The controller manages and achieves the following:
 
-| RESOURCE          | GOAL                        | DESCRIPTION                                  |
-| ----------------- | --------------------------- | -------------------------------------------- |
-| `XVSHNPostgreSQL` | Deletion Protection Support | Manages finalizers before and after deletion |
+| RESOURCE              | GOAL                                            | DESCRIPTION                                  |
+| --------------------- | ----------------------------------------------- | -------------------------------------------- |
+| `XVSHNPostgreSQL`     | Deletion Protection Support                     | Manages finalizers before and after deletion |
+| `validation webhooks` | Provide validation webhooks for AppCat services | See Goal                                     |
+
+### Local Webhook debugging
+
+**This assumes that you've already applied the vshn golden test in component-appcat!**
+
+Also you might need to set the right host ip:
+```bash
+HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway') # On kind MacOS/Windows
+HOSTIP=host.docker.internal # On Docker Desktop distributions
+HOSTIP=host.lima.internal # On Lima backed Docker distributions
+For Linux users: `ip -4 addr show dev docker0 | grep inet | awk -F' ' '{print $2}' | awk -F'/' '{print $1}'`
+```
+
+Then you can apply the webhook registration changes:
+```bash
+export KUBECONFIG=...
+make webhook-debug -e webhook_service_name=$HOSTIP
+```
+
+Then run the controller with the correct certdir flag:
+```
+go run . controller --certdir .work/webhook
+```
+
+Creating a PostgreSQL or Redis instance will now go through the Webhook instance.
 
 ## SLI Exporter
 ### Metrics
@@ -222,7 +248,7 @@ functions:
         # HOSTIP=host.docker.internal # On Docker Desktop distributions
         # HOSTIP=host.lima.internal # On Lima backed Docker distributions
         # For Linux users: `ip -4 addr show dev docker0 | grep inet | awk -F' ' '{print $2}' | awk -F'/' '{print $1}'`
-        endpoint: $HOSTIP:9547  # edit in component-appcat or directly using 
+        endpoint: $HOSTIP:9547  # edit in component-appcat or directly using
                                 # `k edit compositions.apiextensions.crossplane.io vshnpostgres.vshn.appcat.vshn.io`
 
 ```

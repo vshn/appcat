@@ -148,6 +148,49 @@ kind-load-branch-tag: ## load docker image with current branch tag into kind
 docker-push: docker-build ## Push docker image with the manager.
 	docker push ${GHCR_IMG}
 
+# Generate webhook certificates.
+# This is only relevant when debugging.
+# Component-appcat installs a proper certificate for this.
+.PHONY: webhook-cert
+webhook_key = .work/webhook/tls.key
+webhook_cert = .work/webhook/tls.crt
+webhook-cert: $(webhook_cert) ## Generate webhook certificates for out-of-cluster debugging in an IDE
+
+$(webhook_key):
+	mkdir .work/webhook
+	ipsan="" && \
+	if [[ $(webhook_service_name) =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$$ ]]; then \
+		ipsan=", IP:$(webhook_service_name)"; \
+	fi; \
+	openssl req -x509 -newkey rsa:4096 -nodes -keyout $@ --noout -days 3650 -subj "/CN=$(webhook_service_name)" -addext "subjectAltName = DNS:$(webhook_service_name)$$ipsan"
+
+$(webhook_cert): $(webhook_key)
+	ipsan="" && \
+	if [[ $(webhook_service_name) =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$$ ]]; then \
+		ipsan=", IP:$(webhook_service_name)"; \
+	fi; \
+	openssl req -x509 -key $(webhook_key) -nodes -out $@ -days 3650 -subj "/CN=$(webhook_service_name)" -addext "subjectAltName = DNS:$(webhook_service_name)$$ipsan"
+
+
+.PHONY: webhook-debug
+webhook_service_name = host.docker.internal
+
+webhook-debug: $(webhook_cert) ## Creates certificates, patches the webhook registrations and applies everything to the given kube cluster
+webhook-debug:
+	kubectl -n syn-appcat scale deployment appcat-controller --replicas 0
+	cabundle=$$(cat .work/webhook/tls.crt | base64) && \
+	HOSTIP=$(webhook_service_name) && \
+	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-pg-validation cert-manager.io/inject-ca-from- && \
+	kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io appcat-pg-validation -oyaml | \
+	yq e "del(.webhooks[0].clientConfig.service) | .webhooks[0].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[0].clientConfig.url |= \"https://$$HOSTIP:9443/validate-vshn-appcat-vshn-io-v1-vshnpostgresql\"" - | \
+	kubectl apply -f - && \
+	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-redis-validation cert-manager.io/inject-ca-from- && \
+	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-pg-validation kubectl.kubernetes.io/last-applied-configuration- && \
+	kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io appcat-redis-validation -oyaml | \
+	yq e "del(.webhooks[0].clientConfig.service) | .webhooks[0].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[0].clientConfig.url |= \"https://$$HOSTIP:9443/validate-vshn-appcat-vshn-io-v1-vshnredis\"" - | \
+	kubectl apply -f - && \
+	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-redis-validation kubectl.kubernetes.io/last-applied-configuration-
+
 .PHONY: clean
 clean:
 	rm -rf bin/ appcat .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated default.sock

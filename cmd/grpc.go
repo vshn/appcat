@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/helper"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/miniodev"
 	vpf "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshn-postgres-func"
@@ -109,6 +110,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "load-balancer",
 			TransformFunc: vpf.AddLoadBalancerIPToConnectionDetails,
 		},
+		{
+			Name:          "namespaceQuotas",
+			TransformFunc: common.AddInitialNamespaceQuotas("namespace-conditions"),
+		},
 	},
 	"redis": {
 		{
@@ -130,6 +135,10 @@ var images = map[string][]runtime.Transform{
 		{
 			Name:          "resizePVC",
 			TransformFunc: vshnredis.ResizePVCs,
+		},
+		{
+			Name:          "namespaceQuotas",
+			TransformFunc: common.AddInitialNamespaceQuotas("namespace-conditions"),
 		},
 	},
 }

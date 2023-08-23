@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres-deletion-protection-manager
+  name: appcat-controller
   namespace: appcat-controllers
   labels:
-    appcat-controller: postgres-deletion-protection
+    appcat-controller: appcat-controller
 spec:
   selector:
     matchLabels:
-      appcat-controller: postgres-deletion-protection
+      appcat-controller: appcat-controller
   replicas: 1
   template:
     metadata:
       labels:
-        appcat-controller: postgres-deletion-protection
+        appcat-controller: appcat-controller
     spec:
       securityContext:
         runAsNonRoot: true
@@ -42,5 +42,5 @@ spec:
             requests:
               cpu: 100m
               memory: 20Mi
-      serviceAccountName: postgres-deletion-protection-manager
+      serviceAccountName: appcat-controller
       terminationGracePeriodSeconds: 10

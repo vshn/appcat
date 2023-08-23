@@ -1,13 +1,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: postgres-deletion-protection-manager-leader-election-rolebinding
+  name: appcat-controller-leader-election-rolebinding
   namespace: appcat-controllers
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: postgres-deletion-protection-manager-leader-election-role
+  name: appcat-controller-leader-election-role
 subjects:
   - kind: ServiceAccount
-    name: postgres-deletion-protection-manager
+    name: appcat-controller
     namespace: appcat-controllers

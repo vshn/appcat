@@ -16,7 +16,7 @@ var serviceName = "primary-service"
 
 func AddLoadBalancerIPToConnectionDetails(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 
-	if !iof.GetBootFromCompositionConfig("externalDatabaseConnectionsEnabled") {
+	if !iof.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled") {
 		return runtime.NewNormal()
 	}
 

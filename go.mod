@@ -49,6 +49,8 @@ require (
 	sigs.k8s.io/yaml v1.3.0
 )
 
+require github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
@@ -128,6 +130,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
+	github.com/redis/go-redis/v9 v9.0.5
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/sirupsen/logrus v1.9.2 // indirect

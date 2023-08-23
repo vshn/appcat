@@ -1,24 +1,26 @@
 package cmd
 
 import (
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/vshn/appcat/v4/pkg"
-	"github.com/vshn/appcat/v4/pkg/sliexporter"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
+	vshnpostgresqlcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnpostgresql_controller"
+	vshnrediscontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnredis_controller"
 	"k8s.io/apimachinery/pkg/runtime"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
-	"strconv"
-	"time"
 )
 
 type sliProber struct {
-	scheme                            *runtime.Scheme
-	metricsAddr, probeAddr            string
-	leaderElect, enableVSHNPostgreSQL bool
+	scheme                                             *runtime.Scheme
+	metricsAddr, probeAddr                             string
+	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis bool
 }
 
 var s = sliProber{
@@ -39,6 +41,8 @@ func init() {
 		"Enabling this will ensure there is only one active controller manager.")
 	SLIProberCMD.Flags().BoolVar(&s.enableVSHNPostgreSQL, "vshn-postgresql", getEnvBool("APPCAT_SLI_VSHNPOSTGRESQL"),
 		"Enable probing of VSHNPostgreSQL instances")
+	SLIProberCMD.Flags().BoolVar(&s.enableVSHNRedis, "vshn-redis", getEnvBool("APPCAT_SLI_VSHNREDIS"),
+		"Enable probing of VSHNRedis instances")
 }
 
 func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
@@ -66,7 +70,7 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 	}
 
 	if s.enableVSHNPostgreSQL {
-		if err = (&sliexporter.VSHNPostgreSQLReconciler{
+		if err = (&vshnpostgresqlcontroller.VSHNPostgreSQLReconciler{
 			Client:             mgr.GetClient(),
 			Scheme:             mgr.GetScheme(),
 			ProbeManager:       &probeManager,
@@ -74,6 +78,19 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 			PostgreDialer:      probes.NewPostgreSQL,
 		}).SetupWithManager(mgr); err != nil {
 			log.Error(err, "unable to create controller", "controller", "VSHNPostgreSQL")
+			return err
+		}
+	}
+	if s.enableVSHNRedis {
+		log.Info("Enabling VSHNRedis controller")
+		if err = (&vshnrediscontroller.VSHNRedisReconciler{
+			Client:             mgr.GetClient(),
+			Scheme:             mgr.GetScheme(),
+			ProbeManager:       &probeManager,
+			StartupGracePeriod: 10 * time.Minute,
+			RedisDialer:        probes.NewRedis,
+		}).SetupWithManager(mgr); err != nil {
+			log.Error(err, "unable to create controller", "controller", "VSHNRedis")
 			return err
 		}
 	}

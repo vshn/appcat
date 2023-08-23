@@ -71,6 +71,7 @@ func (m Manager) Collector() prometheus.Collector {
 // StartProbe will send a probe once every second using the provided prober.
 // If a prober with the same ProbeInfo already runs, it will stop the running prober.
 func (m Manager) StartProbe(p Prober) {
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -79,6 +80,7 @@ func (m Manager) StartProbe(p Prober) {
 	cancel, ok := m.probers[probeKey]
 	if ok {
 		l.Info("Cancel Probe")
+
 		cancel()
 	}
 
@@ -103,20 +105,24 @@ func (m Manager) StopProbe(pi ProbeInfo) {
 
 func (m Manager) runProbe(ctx context.Context, p Prober) {
 	ticker, stop := m.newTicker()
+
 	defer stop()
 	defer p.Close()
 
 	for {
 		select {
 		case <-ctx.Done():
+
 			return
 		case <-ticker:
+
 			go m.sendProbe(ctx, p)
 		}
 	}
 }
 
 func (m Manager) sendProbe(ctx context.Context, p Prober) {
+
 	pi := p.GetInfo()
 	o, err := m.hist.CurryWith(prometheus.Labels{
 		"service":      pi.Service,
@@ -126,6 +132,7 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 		"sla":          pi.ServiceLevel,
 	})
 	if err != nil {
+
 		return
 	}
 	l := m.log.WithValues("service", pi.Service, "namespace", pi.Namespace, "name", pi.Name)
@@ -149,7 +156,7 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 	case errors.Is(ctx.Err(), context.Canceled):
 		l.V(0).Info("Probe Canceled")
 	default:
-		l.V(0).Info("Probe Failure", "error", err)
+		l.V(0).Error(err, "Probe Failure")
 		o.With(
 			prometheus.Labels{"reason": "fail-unknown"},
 		).Observe(latency.Seconds())

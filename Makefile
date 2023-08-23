@@ -75,6 +75,7 @@ generate: $(protoc_bin) generate-stackgres-crds ## Generate code with controller
 	$(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' apis/generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml
 	rm -rf crds && cp -r apis/generated crds
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat paths="{./apis/...,./pkg/apiserver/...}" output:artifacts:config=config/apiserver
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-sli-exporter paths="{./pkg/sliexporter/...}" output:artifacts:config=config/sliexporter/rbac
 	go run k8s.io/code-generator/cmd/go-to-protobuf \
 		--packages=github.com/vshn/appcat/v4/apis/appcat/v1 \
 		--output-base=./.work/tmp \

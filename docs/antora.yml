@@ -1,4 +1,4 @@
-name: AppCat
+name: appcat
 title: Application Catalog
 version: master
 start_page: ROOT:index.adoc

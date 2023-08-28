@@ -1,11 +1,12 @@
-// TODO: Edit start page
-
 = {page-component-name}
 
 [discrete]
 == Introduction
 
-Go Bootstrap is a template repository that helps bootstrapping new Go applications quickly with a standardized setup.
+The Application Catalog is a suite of applications offered by https://www.vshn.ch[VSHN].
+
+Here you’ll find all the technical documentation.
+Use the search field at the top of this page, navigate through topics with the tree on the left or see the links below.
 
 [discrete]
 == Documentation

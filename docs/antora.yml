@@ -1,6 +1,5 @@
-# TODO: Adjust project meta
-name: go-bootstrap
-title: Go Bootstrap
+name: AppCat
+title: Application Catalog
 version: master
 start_page: ROOT:index.adoc
 nav:

@@ -69,6 +69,7 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v3
+        ref: fix-docs-workflow
         with:
           fetch-depth: 0
 

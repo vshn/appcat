@@ -1,5 +1,5 @@
 * xref:index.adoc[Introduction]
-* https://github.com/vshn/go-bootstrap/releases[Changelog,window=_blank] 🔗
+* https://github.com/vshn/appcat/releases[Changelog,window=_blank] 🔗
 
 .Tutorials
 //* xref:tutorials/example.adoc[Dev]

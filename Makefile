@@ -157,7 +157,7 @@ webhook_cert = .work/webhook/tls.crt
 webhook-cert: $(webhook_cert) ## Generate webhook certificates for out-of-cluster debugging in an IDE
 
 $(webhook_key):
-	mkdir .work/webhook
+	mkdir -p .work/webhook
 	ipsan="" && \
 	if [[ $(webhook_service_name) =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$$ ]]; then \
 		ipsan=", IP:$(webhook_service_name)"; \
@@ -173,7 +173,7 @@ $(webhook_cert): $(webhook_key)
 
 
 .PHONY: webhook-debug
-webhook_service_name = host.docker.internal
+webhook_service_name = host.docker.internal ## For Linux users: instead of rewriting below logic to adapt to your setup, just add a line to your /etc/hosts file, for example: 172.17.0.1 host.docker.internal
 
 webhook-debug: $(webhook_cert) ## Creates certificates, patches the webhook registrations and applies everything to the given kube cluster
 webhook-debug:

@@ -56,17 +56,33 @@ func SetupPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) 
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) error {
-
+	allErrs := field.ErrorList{}
 	pg, ok := obj.(*vshnv1.VSHNPostgreSQL)
 	if !ok {
-		return fmt.Errorf("Provided manifest is not a valid VSHNPostgreSQL object")
+		return fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
 	if p.withQuota {
-		err := p.checkPostgreSQLQuotas(ctx, pg, true)
+		err := p.checkPostgreSQLQuotas(ctx, pg, false, &allErrs)
 		if err != nil {
-			return err
+			allErrs = append(allErrs, &field.Error{
+				Field: "quota",
+				Detail: fmt.Sprintf("quota check failed: %s",
+					err.Error()),
+				BadValue: "*your namespace quota*",
+				Type:     field.ErrorTypeForbidden,
+			})
 		}
+	}
+
+	p.checkGuaranteedAvailability(ctx, pg, &allErrs)
+
+	if len(allErrs) != 0 {
+		return apierrors.NewInvalid(
+			pgGK,
+			pg.GetName(),
+			allErrs,
+		)
 	}
 
 	return nil
@@ -74,17 +90,35 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
 func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
-
+	allErrs := field.ErrorList{}
 	pg, ok := newObj.(*vshnv1.VSHNPostgreSQL)
 	if !ok {
-		return fmt.Errorf("Provided manifest is not a valid VSHNPostgreSQL object")
+		return fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
 	if p.withQuota {
-		err := p.checkPostgreSQLQuotas(ctx, pg, false)
+		err := p.checkPostgreSQLQuotas(ctx, pg, false, &allErrs)
 		if err != nil {
-			return err
+			allErrs = append(allErrs, &field.Error{
+				Field: "quota",
+				Detail: fmt.Sprintf("quota check failed: %s",
+					err.Error()),
+				BadValue: "*your namespace quota*",
+				Type:     field.ErrorTypeForbidden,
+			})
 		}
+	}
+	p.checkGuaranteedAvailability(ctx, pg, &allErrs)
+
+	// We aggregate and return all errors at the same time.
+	// So the user is aware of all broken parameters.
+	// But at the same time, if any of these fail we cannot do proper quota checks anymore.
+	if len(allErrs) != 0 {
+		return apierrors.NewInvalid(
+			pgGK,
+			pg.GetName(),
+			allErrs,
+		)
 	}
 
 	return nil
@@ -97,10 +131,9 @@ func (p *PostgreSQLWebhookHandler) ValidateDelete(ctx context.Context, obj runti
 }
 
 // checkPostgreSQLQuotas will read the plan if it's set and then check if any other size parameters are overwriten
-func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg *vshnv1.VSHNPostgreSQL, checkNamespaceQuota bool) *apierrors.StatusError {
+func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg *vshnv1.VSHNPostgreSQL, checkNamespaceQuota bool, allErrs *field.ErrorList) *apierrors.StatusError {
 
 	var fieldErr *field.Error
-	allErrs := field.ErrorList{}
 	instances := int64(pg.Spec.Parameters.Instances)
 	resources := quotas.Resources{}
 
@@ -117,47 +150,36 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 	if pg.Spec.Parameters.Size.CPU != "" {
 		resources.CPULimits, fieldErr = parseResource(resources.CPULimitsPath, pg.Spec.Parameters.Size.CPU, "not a valid cpu size")
 		if fieldErr != nil {
-			allErrs = append(allErrs, fieldErr)
+			*allErrs = append(*allErrs, fieldErr)
 		}
 	}
 
 	if pg.Spec.Parameters.Size.Requests.CPU != "" {
 		resources.CPURequests, fieldErr = parseResource(resources.CPURequestsPath, pg.Spec.Parameters.Size.Requests.CPU, "not a valid cpu size")
 		if fieldErr != nil {
-			allErrs = append(allErrs, fieldErr)
+			*allErrs = append(*allErrs, fieldErr)
 		}
 	}
 
 	if pg.Spec.Parameters.Size.Memory != "" {
 		resources.MemoryLimits, fieldErr = parseResource(resources.MemoryLimitsPath, pg.Spec.Parameters.Size.Memory, "not a valid memory size")
 		if fieldErr != nil {
-			allErrs = append(allErrs, fieldErr)
+			*allErrs = append(*allErrs, fieldErr)
 		}
 	}
 
 	if pg.Spec.Parameters.Size.Requests.Memory != "" {
 		resources.MemoryRequests, fieldErr = parseResource(resources.MemoryRequestsPath, pg.Spec.Parameters.Size.Requests.Memory, "not a valid memory size")
 		if fieldErr != nil {
-			allErrs = append(allErrs, fieldErr)
+			*allErrs = append(*allErrs, fieldErr)
 		}
 	}
 
 	if pg.Spec.Parameters.Size.Disk != "" {
 		resources.Disk, fieldErr = parseResource(resources.DiskPath, pg.Spec.Parameters.Size.Disk, "not a valid cpu size")
 		if fieldErr != nil {
-			allErrs = append(allErrs, fieldErr)
+			*allErrs = append(*allErrs, fieldErr)
 		}
-	}
-
-	// We aggregate and return all errors at the same time.
-	// So the user is aware of all broken parameters.
-	// But at the same time, if any of these fail we cannot do proper quota checks anymore.
-	if len(allErrs) != 0 {
-		return apierrors.NewInvalid(
-			pgGK,
-			pg.GetName(),
-			allErrs,
-		)
 	}
 
 	resources.MultiplyBy(instances)
@@ -192,4 +214,16 @@ func (p *PostgreSQLWebhookHandler) addPathsToResources(r *quotas.Resources) {
 	r.MemoryLimitsPath = basePath.Child("memory")
 	r.MemoryRequestsPath = basePath.Child("requests", "memory")
 	r.DiskPath = basePath.Child("disk")
+}
+
+func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Context, pg *vshnv1.VSHNPostgreSQL, allErrs *field.ErrorList) {
+	// service level and instances are verified in the CRD validation, therefore I skip checking them
+	if pg.Spec.Parameters.Service.ServiceLevel == "guaranteed" && pg.Spec.Parameters.Instances < 2 {
+		*allErrs = append(*allErrs, &field.Error{
+			Field:    "spec.parameters.instances",
+			Detail:   "guaranteed PostgreSQL instances must be at least 2. Please set .spec.parameters.instances: [2,3]. Additional cost will apply, please refer to: https://products.vshn.ch/appcat/pricing.html",
+			Type:     field.ErrorTypeInvalid,
+			BadValue: pg.Spec.Parameters.Instances,
+		})
+	}
 }

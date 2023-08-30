@@ -63,7 +63,7 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 	}
 
 	if p.withQuota {
-		err := p.checkPostgreSQLQuotas(ctx, pg, false, &allErrs)
+		err := p.checkPostgreSQLQuotas(ctx, pg, true, &allErrs)
 		if err != nil {
 			allErrs = append(allErrs, &field.Error{
 				Field: "quota",

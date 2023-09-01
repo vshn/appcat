@@ -109,4 +109,10 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Disk = "foo"
 	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
+
+	//Instances
+	pgInvalid = pgOrig.DeepCopy()
+	pgInvalid.Spec.Parameters.Instances = 1
+	pgInvalid.Spec.Parameters.Service.ServiceLevel = "guaranteed"
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 }

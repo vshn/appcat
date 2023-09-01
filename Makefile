@@ -157,7 +157,7 @@ webhook_cert = .work/webhook/tls.crt
 webhook-cert: $(webhook_cert) ## Generate webhook certificates for out-of-cluster debugging in an IDE
 
 $(webhook_key):
-	mkdir .work/webhook
+	mkdir -p .work/webhook
 	ipsan="" && \
 	if [[ $(webhook_service_name) =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$$ ]]; then \
 		ipsan=", IP:$(webhook_service_name)"; \

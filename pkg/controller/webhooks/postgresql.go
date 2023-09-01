@@ -63,19 +63,22 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 	}
 
 	if p.withQuota {
-		err := p.checkPostgreSQLQuotas(ctx, pg, true, &allErrs)
-		if err != nil {
+		quotaErrs, fieldErrs := p.checkPostgreSQLQuotas(ctx, pg, true)
+		if quotaErrs != nil {
 			allErrs = append(allErrs, &field.Error{
 				Field: "quota",
 				Detail: fmt.Sprintf("quota check failed: %s",
-					err.Error()),
+					quotaErrs.Error()),
 				BadValue: "*your namespace quota*",
 				Type:     field.ErrorTypeForbidden,
 			})
 		}
+		allErrs = append(allErrs, fieldErrs...)
 	}
 
-	p.checkGuaranteedAvailability(ctx, pg, &allErrs)
+	instancesError := p.checkGuaranteedAvailability(ctx, pg)
+
+	allErrs = append(allErrs, instancesError...)
 
 	if len(allErrs) != 0 {
 		return apierrors.NewInvalid(
@@ -90,6 +93,7 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
 func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+
 	allErrs := field.ErrorList{}
 	pg, ok := newObj.(*vshnv1.VSHNPostgreSQL)
 	if !ok {
@@ -97,18 +101,21 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 	}
 
 	if p.withQuota {
-		err := p.checkPostgreSQLQuotas(ctx, pg, false, &allErrs)
-		if err != nil {
+		quotaErrs, fieldErrs := p.checkPostgreSQLQuotas(ctx, pg, false)
+		if quotaErrs != nil {
 			allErrs = append(allErrs, &field.Error{
 				Field: "quota",
 				Detail: fmt.Sprintf("quota check failed: %s",
-					err.Error()),
+					quotaErrs.Error()),
 				BadValue: "*your namespace quota*",
 				Type:     field.ErrorTypeForbidden,
 			})
 		}
+		allErrs = append(allErrs, fieldErrs...)
 	}
-	p.checkGuaranteedAvailability(ctx, pg, &allErrs)
+	instancesError := p.checkGuaranteedAvailability(ctx, pg)
+
+	allErrs = append(allErrs, instancesError...)
 
 	// We aggregate and return all errors at the same time.
 	// So the user is aware of all broken parameters.
@@ -131,8 +138,7 @@ func (p *PostgreSQLWebhookHandler) ValidateDelete(ctx context.Context, obj runti
 }
 
 // checkPostgreSQLQuotas will read the plan if it's set and then check if any other size parameters are overwriten
-func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg *vshnv1.VSHNPostgreSQL, checkNamespaceQuota bool, allErrs *field.ErrorList) *apierrors.StatusError {
-
+func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg *vshnv1.VSHNPostgreSQL, checkNamespaceQuota bool) (quotaErrs *apierrors.StatusError, fieldErrs field.ErrorList) {
 	var fieldErr *field.Error
 	instances := int64(pg.Spec.Parameters.Instances)
 	resources := quotas.Resources{}
@@ -141,7 +147,7 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 		var err error
 		resources, err = quotas.FetchPlansFromCluster(ctx, p.client, "vshnpostgresqlplans", pg.Spec.Parameters.Size.Plan)
 		if err != nil {
-			return apierrors.NewInternalError(err)
+			return apierrors.NewInternalError(err), fieldErrs
 		}
 	}
 
@@ -150,35 +156,35 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 	if pg.Spec.Parameters.Size.CPU != "" {
 		resources.CPULimits, fieldErr = parseResource(resources.CPULimitsPath, pg.Spec.Parameters.Size.CPU, "not a valid cpu size")
 		if fieldErr != nil {
-			*allErrs = append(*allErrs, fieldErr)
+			fieldErrs = append(fieldErrs, fieldErr)
 		}
 	}
 
 	if pg.Spec.Parameters.Size.Requests.CPU != "" {
 		resources.CPURequests, fieldErr = parseResource(resources.CPURequestsPath, pg.Spec.Parameters.Size.Requests.CPU, "not a valid cpu size")
 		if fieldErr != nil {
-			*allErrs = append(*allErrs, fieldErr)
+			fieldErrs = append(fieldErrs, fieldErr)
 		}
 	}
 
 	if pg.Spec.Parameters.Size.Memory != "" {
 		resources.MemoryLimits, fieldErr = parseResource(resources.MemoryLimitsPath, pg.Spec.Parameters.Size.Memory, "not a valid memory size")
 		if fieldErr != nil {
-			*allErrs = append(*allErrs, fieldErr)
+			fieldErrs = append(fieldErrs, fieldErr)
 		}
 	}
 
 	if pg.Spec.Parameters.Size.Requests.Memory != "" {
 		resources.MemoryRequests, fieldErr = parseResource(resources.MemoryRequestsPath, pg.Spec.Parameters.Size.Requests.Memory, "not a valid memory size")
 		if fieldErr != nil {
-			*allErrs = append(*allErrs, fieldErr)
+			fieldErrs = append(fieldErrs, fieldErr)
 		}
 	}
 
 	if pg.Spec.Parameters.Size.Disk != "" {
 		resources.Disk, fieldErr = parseResource(resources.DiskPath, pg.Spec.Parameters.Size.Disk, "not a valid cpu size")
 		if fieldErr != nil {
-			*allErrs = append(*allErrs, fieldErr)
+			fieldErrs = append(fieldErrs, fieldErr)
 		}
 	}
 
@@ -195,7 +201,7 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 		checkNamespaceQuota,
 	)
 
-	return checker.CheckQuotas(ctx)
+	return checker.CheckQuotas(ctx), fieldErrs
 }
 
 func parseResource(childPath *field.Path, value, errMessage string) (resource.Quantity, *field.Error) {
@@ -216,14 +222,15 @@ func (p *PostgreSQLWebhookHandler) addPathsToResources(r *quotas.Resources) {
 	r.DiskPath = basePath.Child("disk")
 }
 
-func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Context, pg *vshnv1.VSHNPostgreSQL, allErrs *field.ErrorList) {
+func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Context, pg *vshnv1.VSHNPostgreSQL) (fieldErrs field.ErrorList) {
 	// service level and instances are verified in the CRD validation, therefore I skip checking them
 	if pg.Spec.Parameters.Service.ServiceLevel == "guaranteed" && pg.Spec.Parameters.Instances < 2 {
-		*allErrs = append(*allErrs, &field.Error{
+		fieldErrs = append(fieldErrs, &field.Error{
 			Field:    "spec.parameters.instances",
 			Detail:   "guaranteed PostgreSQL instances must be at least 2. Please set .spec.parameters.instances: [2,3]. Additional cost will apply, please refer to: https://products.vshn.ch/appcat/pricing.html",
 			Type:     field.ErrorTypeInvalid,
 			BadValue: pg.Spec.Parameters.Instances,
 		})
 	}
+	return fieldErrs
 }

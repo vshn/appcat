@@ -55,7 +55,7 @@ type VSHNPostgreSQLParameters struct {
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
-	Size VSHNDBaaSSizeSpec `json:"size,omitempty"`
+	Size VSHNSizeSpec `json:"size,omitempty"`
 
 	// Scheduling contains settings to control the scheduling of an instance.
 	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`
@@ -161,51 +161,6 @@ type VSHNDBaaSPostgresExtension struct {
 type VSHNDBaaSSchedulingSpec struct {
 	// NodeSelector is a selector which must match a node’s labels for the pod to be scheduled on that node
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-}
-
-// VSHNDBaaSSizeSpec contains settings to control the sizing of a service.
-type VSHNDBaaSSizeSpec struct {
-	// CPU defines the amount of Kubernetes CPUs for an instance.
-	CPU string `json:"cpu,omitempty"`
-
-	// Memory defines the amount of memory in units of bytes for an instance.
-	Memory string `json:"memory,omitempty"`
-
-	// Requests defines CPU and memory requests for an instance
-	Requests VSHNDBaaSSizeRequestsSpec `json:"requests,omitempty"`
-
-	// Disk defines the amount of disk space for an instance.
-	Disk string `json:"disk,omitempty"`
-
-	// Plan is the name of the resource plan that defines the compute resources.
-	Plan string `json:"plan,omitempty"`
-}
-
-// VSHNDBaaSSizeRequestsSpec contains settings to control the resoure requests of a service.
-type VSHNDBaaSSizeRequestsSpec struct {
-	// CPU defines the amount of Kubernetes CPUs for an instance.
-	CPU string `json:"cpu,omitempty"`
-
-	// Memory defines the amount of memory in units of bytes for an instance.
-	Memory string `json:"memory,omitempty"`
-}
-
-// VSHNDBaaSNetworkSpec contains any network related settings.
-type VSHNDBaaSNetworkSpec struct {
-	// +kubebuilder:default={"0.0.0.0/0"}
-
-	// IPFilter is a list of allowed IPv4 CIDR ranges that can access the service.
-	// If no IP Filter is set, you may not be able to reach the service.
-	// A value of `0.0.0.0/0` will open the service to all addresses on the public internet.
-	IPFilter []string `json:"ipFilter,omitempty"`
-
-	// ServiceType defines the type of the service.
-	// Possible enum values:
-	//   - `"ClusterIP"` indicates that the service is only reachable from within the cluster.
-	//   - `"LoadBalancer"` indicates that the service is reachable from the public internet via dedicated Ipv4 address.
-	// +kubebuilder:default="ClusterIP"
-	// +kubebuilder:validation:Enum="ClusterIP";"LoadBalancer"
-	ServiceType string `json:"serviceType,omitempty"`
 }
 
 type VSHNPostgreSQLBackup struct {

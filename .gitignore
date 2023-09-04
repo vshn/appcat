@@ -13,6 +13,7 @@ appcat
 .work
 .cache
 .public
+.vscode
 
 # debug
 apiserver.local.config

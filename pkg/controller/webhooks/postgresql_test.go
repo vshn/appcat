@@ -44,7 +44,7 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 		},
 		Spec: vshnv1.VSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Size: vshnv1.VSHNDBaaSSizeSpec{
+				Size: vshnv1.VSHNSizeSpec{
 					CPU:    "500m",
 					Memory: "1Gi",
 				},

@@ -3,6 +3,7 @@ package vshnredis
 import (
 	"context"
 	_ "embed"
+
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"

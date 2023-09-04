@@ -82,3 +82,55 @@ func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceDayOfWeek(dow string) {
 func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceTimeOfDay(tod string) {
 	n.TimeOfDay = tod
 }
+
+// VSHNSizeSpec contains settings to control the sizing of a service.
+type VSHNSizeSpec struct {
+	// CPU defines the amount of Kubernetes CPUs for an instance.
+	CPU string `json:"cpu,omitempty"`
+
+	// Memory defines the amount of memory in units of bytes for an instance.
+	Memory string `json:"memory,omitempty"`
+
+	// Requests defines CPU and memory requests for an instance
+	Requests VSHNDBaaSSizeRequestsSpec `json:"requests,omitempty"`
+
+	// Disk defines the amount of disk space for an instance.
+	Disk string `json:"disk,omitempty"`
+
+	// Plan is the name of the resource plan that defines the compute resources.
+	Plan string `json:"plan,omitempty"`
+}
+
+func (p *VSHNSizeSpec) GetPlan(defaultPlan string) string {
+	if p.Plan != "" {
+		return p.Plan
+	}
+	return defaultPlan
+}
+
+// VSHNDBaaSSizeRequestsSpec contains settings to control the resoure requests of a service.
+type VSHNDBaaSSizeRequestsSpec struct {
+	// CPU defines the amount of Kubernetes CPUs for an instance.
+	CPU string `json:"cpu,omitempty"`
+
+	// Memory defines the amount of memory in units of bytes for an instance.
+	Memory string `json:"memory,omitempty"`
+}
+
+// VSHNDBaaSNetworkSpec contains any network related settings.
+type VSHNDBaaSNetworkSpec struct {
+	// +kubebuilder:default={"0.0.0.0/0"}
+
+	// IPFilter is a list of allowed IPv4 CIDR ranges that can access the service.
+	// If no IP Filter is set, you may not be able to reach the service.
+	// A value of `0.0.0.0/0` will open the service to all addresses on the public internet.
+	IPFilter []string `json:"ipFilter,omitempty"`
+
+	// ServiceType defines the type of the service.
+	// Possible enum values:
+	//   - `"ClusterIP"` indicates that the service is only reachable from within the cluster.
+	//   - `"LoadBalancer"` indicates that the service is reachable from the public internet via dedicated Ipv4 address.
+	// +kubebuilder:default="ClusterIP"
+	// +kubebuilder:validation:Enum="ClusterIP";"LoadBalancer"
+	ServiceType string `json:"serviceType,omitempty"`
+}

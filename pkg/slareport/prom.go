@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/utils/strings/slices"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ var (
 	promClientFunc   = getPrometheusAPIClient
 	getMetricsFunc   = getSLAMetrics
 	getTargetSLAFunc = getTargetSLA
+	allowedServices  = []string{"vshnpostgresql"}
 )
 
 func getPrometheusAPIClient(promURL string, thanosAllowPartialResponses bool, orgID string) (apiv1.API, error) {
@@ -83,6 +85,11 @@ func RunQuery(ctx context.Context, promURL, timeRange, date, mimirOrg string, se
 		l.V(1).Info("Parsing metrics", "org", org)
 
 		service := string(sample.Metric["service"])
+
+		if !slices.Contains(allowedServices, strings.ToLower(service)) {
+			l.V(1).Info("Service not supported: ", service)
+			continue
+		}
 
 		targetSLA, ok := serviceSla[strings.ToLower(string(sample.Metric["service"]))]
 		if !ok {

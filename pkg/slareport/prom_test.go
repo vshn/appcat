@@ -89,7 +89,7 @@ func TestRunQuery(t *testing.T) {
 						TargetSLA:  99.9,
 						OutcomeSLA: 99.99,
 						Cluster:    "mycluster",
-						Service:    "postgresql",
+						Service:    "vshnpostgresql",
 						Color:      "green",
 					},
 				},
@@ -99,7 +99,26 @@ func TestRunQuery(t *testing.T) {
 					Metric: model.Metric{
 						"name":         "test",
 						"namespace":    "myns",
-						"service":      "postgresql",
+						"service":      "vshnpostgresql",
+						"cluster_id":   "mycluster",
+						"organization": "mycustomer",
+					},
+					Values: []model.SamplePair{
+						{
+							Timestamp: model.Time(time.Now().UnixMilli()),
+							Value:     model.SampleValue(99.99),
+						},
+						{
+							Timestamp: model.Time(time.Now().UnixMilli()),
+							Value:     model.SampleValue(99.99),
+						},
+					},
+				},
+				{
+					Metric: model.Metric{
+						"name":         "test-2",
+						"namespace":    "myns",
+						"service":      "vshnredis",
 						"cluster_id":   "mycluster",
 						"organization": "mycustomer",
 					},
@@ -119,7 +138,7 @@ func TestRunQuery(t *testing.T) {
 		{
 			name: "GivenAvailableMetricsAndServiceSLAs_ThenExpectOutput",
 			serviceSLAs: map[string]float64{
-				"postgresql": 99.25,
+				"vshnpostgresql": 99.25,
 			},
 			want: map[string][]ServiceInstance{
 				"mycustomer": {
@@ -129,7 +148,7 @@ func TestRunQuery(t *testing.T) {
 						TargetSLA:  99.25,
 						OutcomeSLA: 99.99,
 						Cluster:    "mycluster",
-						Service:    "postgresql",
+						Service:    "vshnpostgresql",
 						Color:      "green",
 					},
 				},
@@ -139,7 +158,7 @@ func TestRunQuery(t *testing.T) {
 					Metric: model.Metric{
 						"name":         "test",
 						"namespace":    "myns",
-						"service":      "postgresql",
+						"service":      "vshnpostgresql",
 						"cluster_id":   "mycluster",
 						"organization": "mycustomer",
 					},
@@ -166,7 +185,7 @@ func TestRunQuery(t *testing.T) {
 						TargetSLA:  99.9,
 						OutcomeSLA: 99.8,
 						Cluster:    "mycluster",
-						Service:    "postgresql",
+						Service:    "vshnpostgresql",
 						Color:      "red",
 					},
 				},
@@ -176,7 +195,7 @@ func TestRunQuery(t *testing.T) {
 					Metric: model.Metric{
 						"name":         "test",
 						"namespace":    "myns",
-						"service":      "postgresql",
+						"service":      "vshnpostgresql",
 						"cluster_id":   "mycluster",
 						"organization": "mycustomer",
 					},
@@ -206,7 +225,7 @@ func TestRunQuery(t *testing.T) {
 					Metric: model.Metric{
 						"name":         "test",
 						"namespace":    "myns",
-						"service":      "postgresql",
+						"service":      "vshnpostgresql",
 						"cluster_id":   "mycluster",
 						"organization": "mycustomer",
 					},
@@ -216,14 +235,12 @@ func TestRunQuery(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-
-		promClientFunc = getDummyPromClient
-		getTargetSLAFunc = getDummySLA
-		getMetricsFunc = func(ctx context.Context, startDate, endDate *time.Time, timeRange string, client apiv1.API) (model.Matrix, error) {
-			return tt.metrics, nil
-		}
-
 		t.Run(tt.name, func(t *testing.T) {
+			promClientFunc = getDummyPromClient
+			getTargetSLAFunc = getDummySLA
+			getMetricsFunc = func(ctx context.Context, startDate, endDate *time.Time, timeRange string, client apiv1.API) (model.Matrix, error) {
+				return tt.metrics, nil
+			}
 			got, err := RunQuery(context.TODO(), "dummy", "30d", "2023-06-07T09:00:00Z", "", tt.serviceSLAs)
 			if tt.wantErr {
 				assert.Error(t, err)

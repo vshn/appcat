@@ -22,6 +22,21 @@ type DesiredResources struct {
 	composite xfnv1alpha1.DesiredComposite
 }
 
+// DesiredResourceOption will apply additional fields to the DesiredResource.
+type DesiredResourceOption func(*desiredResource)
+
+// AddDerivedConnectionDetails will add derived connectionDetails to a desired object.
+// So it's possible to directly access a managed resource's connectionDetails.
+func AddDerivedConnectionDetails(c []xfnv1alpha1.DerivedConnectionDetail) func(*desiredResource) {
+	return func(d *desiredResource) {
+		if d.DesiredResource.ConnectionDetails == nil || len(d.DesiredResource.ConnectionDetails) == 0 {
+			d.DesiredResource.ConnectionDetails = c
+			return
+		}
+		d.DesiredResource.ConnectionDetails = append(d.DesiredResource.ConnectionDetails, c...)
+	}
+}
+
 // List returns the list of managed resources from desired object
 func (d *DesiredResources) List(_ context.Context) []Resource {
 	return d.resources
@@ -35,14 +50,14 @@ func (d *DesiredResources) Get(ctx context.Context, obj client.Object, resName s
 
 // Put adds the object as is to the FunctionIO desired array.
 // It assumes that the given object is adheres to Crossplane's ManagedResource model.
-func (d *DesiredResources) Put(ctx context.Context, obj client.Object) error {
-	return d.put(ctx, obj, obj.GetName())
+func (d *DesiredResources) Put(ctx context.Context, obj client.Object, opts ...DesiredResourceOption) error {
+	return d.put(ctx, obj, obj.GetName(), opts...)
 }
 
 // PutWithResourceName allows you to put the resource with a custom name into the desire array.
 // This is useful to put back a resource that's already defined in the P+T composition.
-func (d *DesiredResources) PutWithResourceName(ctx context.Context, obj client.Object, resName string) error {
-	return d.put(ctx, obj, resName)
+func (d *DesiredResources) PutWithResourceName(ctx context.Context, obj client.Object, resName string, opts ...DesiredResourceOption) error {
+	return d.put(ctx, obj, resName, opts...)
 }
 
 // Remove removes a resource by name from the managed resources
@@ -109,7 +124,7 @@ func (d *DesiredResources) putIntoObject(ctx context.Context, observeOnly bool, 
 			Name: kon,
 		},
 		Spec: xkube.ObjectSpec{
-			ResourceSpec: v1.ResourceSpec{
+			ResourceSpec: xkube.ResourceSpec{
 				ProviderConfigReference: &v1.Reference{
 					Name: providerConfigRefName,
 				},
@@ -201,7 +216,7 @@ func (d *DesiredResources) fromKubeObject(ctx context.Context, kobj *xkube.Objec
 	return json.Unmarshal(kobj.Spec.ForProvider.Manifest.Raw, obj)
 }
 
-func (d *DesiredResources) put(ctx context.Context, obj client.Object, resName string) error {
+func (d *DesiredResources) put(ctx context.Context, obj client.Object, resName string, opts ...DesiredResourceOption) error {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.V(1).Info("Putting object into desired kube object", "kube object name", resName)
 	kind, _, err := s.ObjectKinds(obj)
@@ -230,6 +245,10 @@ func (d *DesiredResources) put(ctx context.Context, obj client.Object, resName s
 				Raw: rawData,
 			},
 		},
+	}
+
+	for _, option := range opts {
+		option(&dr)
 	}
 
 	log.V(1).Info("No desired kube object found, adding new one with resource", "kube object name", resName)

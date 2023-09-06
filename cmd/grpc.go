@@ -11,6 +11,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/helper"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/miniobucket"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/miniodev"
 	vpf "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshn-postgres-func"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnredis"
@@ -139,6 +140,12 @@ var images = map[string][]runtime.Transform{
 		{
 			Name:          "namespaceQuotas",
 			TransformFunc: common.AddInitialNamespaceQuotas("namespace-conditions"),
+		},
+	},
+	"minio": {
+		{
+			Name:          "provision-bucket",
+			TransformFunc: miniobucket.ProvisionMiniobucket,
 		},
 	},
 }

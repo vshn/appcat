@@ -12,7 +12,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/helper"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/miniobucket"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/miniodev"
 	vpf "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshn-postgres-func"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnredis"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -189,12 +188,6 @@ func enableDevMode(enable bool) error {
 	}
 
 	if enable {
-		images["miniodev"] = []runtime.Transform{
-			{
-				Name:          "miniodevbucket",
-				TransformFunc: miniodev.ProvisionMiniobucket,
-			},
-		}
 		for key := range images {
 			found := false
 			for _, transform := range images[key] {

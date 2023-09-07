@@ -149,6 +149,9 @@ func Test_Reconcile(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "instance-1",
 					DeletionTimestamp: &previousDay,
+					Finalizers: []string{
+						"dummy",
+					},
 				},
 				Spec: v1.VSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
@@ -181,6 +184,9 @@ func Test_Reconcile(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "instance-1",
 					DeletionTimestamp: &previousDay,
+					Finalizers: []string{
+						"dummy",
+					},
 				},
 				Spec: v1.VSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{

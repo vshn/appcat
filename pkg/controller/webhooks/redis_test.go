@@ -52,7 +52,7 @@ func TestSetupRedisWebhookHandlerWithManager(t *testing.T) {
 	}
 
 	// When within quota
-	_, err := handler.ValidateCreate(ctx, redisOrig)
+	err := handler.ValidateCreate(ctx, redisOrig)
 
 	//Then no err
 	assert.NoError(t, err)
@@ -61,62 +61,52 @@ func TestSetupRedisWebhookHandlerWithManager(t *testing.T) {
 	// CPU Requests
 	redisInvalid := redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.CPURequests = "5000m"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	// CPU Limit
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.CPULimits = "5000m"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	// Memory Limit
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.MemoryLimits = "25Gi"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	// Memory Requests
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.MemoryLimits = "25Gi"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	// Disk
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.Disk = "25Ti"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	//When invalid size
 	// CPU Requests
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.CPURequests = "foo"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	// CPU Limit
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.CPULimits = "foo"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	// Memory Limit
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.MemoryLimits = "foo"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	// Memory Requests
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.MemoryLimits = "foo"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 	// Disk
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.Disk = "foo"
-	_, err = handler.ValidateCreate(ctx, redisInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, redisInvalid))
 
 }

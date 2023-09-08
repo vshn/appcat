@@ -53,7 +53,7 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	}
 
 	// When within quota
-	_, err := handler.ValidateCreate(ctx, pgOrig)
+	err := handler.ValidateCreate(ctx, pgOrig)
 
 	//Then no err
 	assert.NoError(t, err)
@@ -62,68 +62,57 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	// CPU Limits
 	pgInvalid := pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.CPU = "5000m"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//CPU Requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.CPU = "5000m"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//Memory Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Memory = "25Gi"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//Memory requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.Memory = "25Gi"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//Disk
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Disk = "25Ti"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//When invalid size
 	// CPU Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.CPU = "foo"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//CPU Requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.CPU = "foo"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//Memory Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Memory = "foo"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//Memory requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.Memory = "foo"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//Disk
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Disk = "foo"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 
 	//Instances
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Instances = 1
 	pgInvalid.Spec.Parameters.Service.ServiceLevel = "guaranteed"
-	_, err = handler.ValidateCreate(ctx, pgInvalid)
-	assert.Error(t, err)
+	assert.Error(t, handler.ValidateCreate(ctx, pgInvalid))
 }

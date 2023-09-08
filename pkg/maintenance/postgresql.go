@@ -92,10 +92,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
 	if upgradeRequired {
 		p.log.Info("Doing a security maintenance")
-		err := p.createSecurityUpgrade(sgCluster.GetName())
-		if err != nil {
-			return err
-		}
+		p.createSecurityUpgrade(sgCluster.GetName())
 		p.log.Info("Waiting for security maintenance to finish before checking for minor upgrades")
 		err = p.waitForUpgrade(ctx, su)
 		if apierrors.IsTimeout(err) {

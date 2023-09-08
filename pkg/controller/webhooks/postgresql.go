@@ -15,7 +15,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // This go generate and kube builder marker are only here for completeness sake.
@@ -56,11 +55,11 @@ func SetupPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) 
 }
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
-func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) error {
 	allErrs := field.ErrorList{}
 	pg, ok := obj.(*vshnv1.VSHNPostgreSQL)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
+		return fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
 	if p.withQuota {
@@ -82,23 +81,23 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 	allErrs = append(allErrs, instancesError...)
 
 	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
+		return apierrors.NewInvalid(
 			pgGK,
 			pg.GetName(),
 			allErrs,
 		)
 	}
 
-	return nil, nil
+	return nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
-func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
 
 	allErrs := field.ErrorList{}
 	pg, ok := newObj.(*vshnv1.VSHNPostgreSQL)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
+		return fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
 	if p.withQuota {
@@ -122,20 +121,20 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 	// So the user is aware of all broken parameters.
 	// But at the same time, if any of these fail we cannot do proper quota checks anymore.
 	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
+		return apierrors.NewInvalid(
 			pgGK,
 			pg.GetName(),
 			allErrs,
 		)
 	}
 
-	return nil, nil
+	return nil
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
-func (p *PostgreSQLWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (p *PostgreSQLWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Object) error {
 	// NOOP for now
-	return nil, nil
+	return nil
 }
 
 // checkPostgreSQLQuotas will read the plan if it's set and then check if any other size parameters are overwriten

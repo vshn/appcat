@@ -3,7 +3,6 @@ package maintenance
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -398,17 +397,17 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 
 			setupEnvVars(t)
 
+			// Since controller-runtime v0.15.0 the fakeclient needs to be made
+			// aware of object status subresources, if you want to update them.
 			fclient := fake.NewClientBuilder().
 				WithScheme(pkg.SetupScheme()).
 				WithObjects(tt.objs...).
+				WithStatusSubresource(&stackgresv1.SGDbOps{}, &stackgresv1.SGCluster{}, &stackgresv1.SGPostgresConfig{}).
 				Build()
 
 			defer tt.server.Close()
 			ctx := context.TODO()
-			err := concurrentSGDbOpsUpdate(fclient, tt.updatedOps)
-			if err != nil {
-				assert.NoError(t, err)
-			}
+			concurrentSGDbOpsUpdate(fclient, tt.updatedOps)
 
 			p := &PostgreSQL{
 				Client:       fclient,
@@ -455,32 +454,31 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 	}
 }
 
-func concurrentSGDbOpsUpdate(fakeClient client.WithWatch, op string) error {
-	var err error
-	go func() error {
+func concurrentSGDbOpsUpdate(fakeClient client.WithWatch, op string) {
+	go func() {
 		ctx := context.Background()
 		sl := &stackgresv1.SGDbOpsList{}
-		for len(sl.Items) == 0 {
-			err := fakeClient.List(ctx, sl)
-			if err != nil {
-				return fmt.Errorf("cannot get sgdbops resources")
-			}
-		}
-		// Check that we can handle nils
-		for _, s := range sl.Items {
-			s.Status.Conditions = nil
-			err := fakeClient.Status().Update(ctx, &s)
-			if err != nil {
-				return fmt.Errorf("cannot update status of sgdbops resource")
-			}
-		}
-
-		// Check that we can handle not completes
-		err := fakeClient.List(ctx, sl)
+		watcher, err := fakeClient.Watch(ctx, sl)
 		if err != nil {
-			return fmt.Errorf("cannot get sgdbops resources")
+			panic(err)
+		}
+		defer watcher.Stop()
+		rc := watcher.ResultChan()
+
+		<-rc
+
+		sl.Items = []stackgresv1.SGDbOps{}
+		// Check that we can handle not completes
+		err = fakeClient.List(ctx, sl)
+		if err != nil {
+			panic(err)
 		}
 		for _, s := range sl.Items {
+			err := fakeClient.Get(ctx, client.ObjectKeyFromObject(&s), &s)
+			if err != nil {
+				panic(err)
+			}
+
 			s.Status.Conditions = &[]stackgresv1.SGDbOpsStatusConditionsItem{
 				{
 					Message: pointer.String("not yet"),
@@ -489,9 +487,9 @@ func concurrentSGDbOpsUpdate(fakeClient client.WithWatch, op string) error {
 					Type:    pointer.String("Completed"),
 				},
 			}
-			err := fakeClient.Status().Update(ctx, &s)
+			err = fakeClient.Status().Update(ctx, &s)
 			if err != nil {
-				return fmt.Errorf("cannot update status of sgdbops resource")
+				panic(err)
 			}
 		}
 
@@ -500,7 +498,7 @@ func concurrentSGDbOpsUpdate(fakeClient client.WithWatch, op string) error {
 			time.Sleep(time.Second)
 			err := fakeClient.List(ctx, sl)
 			if err != nil {
-				return fmt.Errorf("cannot get sgdbops resources")
+				panic(err)
 			}
 			for _, s := range sl.Items {
 				if op != "" && s.Spec.Op != op {
@@ -516,12 +514,11 @@ func concurrentSGDbOpsUpdate(fakeClient client.WithWatch, op string) error {
 				}
 				err := fakeClient.Status().Update(ctx, &s)
 				if err != nil {
-					return fmt.Errorf("cannot update status of sgdbops resource")
+					panic(err)
 				}
 			}
 		}
 	}()
-	return err
 }
 
 func setupEnvVars(t *testing.T) {

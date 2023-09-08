@@ -11,7 +11,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/helper"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/miniodev"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/miniobucket"
 	vpf "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshn-postgres-func"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnredis"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -141,6 +141,12 @@ var images = map[string][]runtime.Transform{
 			TransformFunc: common.AddInitialNamespaceQuotas("namespace-conditions"),
 		},
 	},
+	"minio": {
+		{
+			Name:          "provision-bucket",
+			TransformFunc: miniobucket.ProvisionMiniobucket,
+		},
+	},
 }
 
 type server struct {
@@ -182,12 +188,6 @@ func enableDevMode(enable bool) error {
 	}
 
 	if enable {
-		images["miniodev"] = []runtime.Transform{
-			{
-				Name:          "miniodevbucket",
-				TransformFunc: miniodev.ProvisionMiniobucket,
-			},
-		}
 		for key := range images {
 			found := false
 			for _, transform := range images[key] {

@@ -12,7 +12,6 @@ import (
 func init() {
 	rootCmd.AddCommand(
 		cmd.ControllerCMD,
-		cmd.APIServerCMD,
 		cmd.SLIProberCMD,
 		cmd.GrpcCMD,
 		cmd.MaintenanceCMD,

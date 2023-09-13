@@ -74,16 +74,7 @@ generate: $(protoc_bin) generate-stackgres-crds ## Generate code with controller
 	# So we make it explicitly a string.
 	$(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' apis/generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml
 	rm -rf crds && cp -r apis/generated crds
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat paths="{./apis/...,./pkg/apiserver/...}" output:artifacts:config=config/apiserver
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-sli-exporter paths="{./pkg/sliexporter/...}" output:artifacts:config=config/sliexporter/rbac
-	go run k8s.io/code-generator/cmd/go-to-protobuf \
-		--packages=github.com/vshn/appcat/v4/apis/appcat/v1 \
-		--output-base=./.work/tmp \
-		--go-header-file=./pkg/apiserver/hack/boilerplate.txt  \
-        --apimachinery-packages='-k8s.io/apimachinery/pkg/util/intstr,-k8s.io/apimachinery/pkg/api/resource,-k8s.io/apimachinery/pkg/runtime/schema,-k8s.io/apimachinery/pkg/runtime,-k8s.io/apimachinery/pkg/apis/meta/v1,-k8s.io/apimachinery/pkg/apis/meta/v1beta1,-k8s.io/api/core/v1,-k8s.io/api/rbac/v1' \
-        --proto-import=./.work/kubernetes/vendor/ && \
-    	mv ./.work/tmp/github.com/vshn/appcat/v4/apis/appcat/v1/generated.pb.go ./apis/appcat/v1/ && \
-    	rm -rf ./.work/tmp
 
 .PHONY: generate-stackgres-crds
 generate-stackgres-crds:

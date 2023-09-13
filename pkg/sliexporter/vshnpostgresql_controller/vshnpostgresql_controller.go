@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -130,7 +131,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 		return nil, err
 	}
 
-	org := ns.GetLabels()["appuio.io/organization"]
+	org := ns.GetLabels()[utils.OrgLabelName]
 	sla := inst.Spec.Parameters.Service.ServiceLevel
 	if sla == "" {
 		sla = vshnv1.BestEffort

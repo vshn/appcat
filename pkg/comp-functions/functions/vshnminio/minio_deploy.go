@@ -9,7 +9,7 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,7 +79,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 
 	plan := comp.Spec.Parameters.Size.GetPlan(iof.Config.Data["defaultPlan"])
 
-	resouces, err := common.FetchPlansFromConfig(ctx, iof, plan)
+	resouces, err := utils.FetchPlansFromConfig(ctx, iof, plan)
 	if err != nil {
 		return err
 	}

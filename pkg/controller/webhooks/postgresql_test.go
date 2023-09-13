@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -19,7 +20,7 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "claimns",
 			Labels: map[string]string{
-				"appuio.io/organization": "myorg",
+				utils.OrgLabelName: "myorg",
 			},
 		},
 	}

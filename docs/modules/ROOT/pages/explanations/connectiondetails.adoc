@@ -141,6 +141,7 @@ r := &v1beta1.Release{
 						Namespace: "myns",
 						FieldPath: "spec.ports[0].port",
 					},
+					ToConnectionSecretKey: "connectionPortKey"
 				},
 			},
 		},

@@ -157,6 +157,26 @@ However, provider-helm's connection detail management isn't perfect.
 It cannot handle any transformations on the secrets.
 So if anything needs to concatenated, split, or changed in any other way, then this might unfortunately not be the way to do it.
 
+These connection details then still need to be added to the composite as derived connectiondetails.
+
+[source,golang]
+----
+cd := []xfnv1alpha1.DerivedConnectionDetail{
+	{
+		Name:                    pointer.String(connectionPasswordKey),
+		FromConnectionSecretKey: pointer.String(connectionPasswordKey),
+		Type:                    xfnv1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
+	},
+	{
+		Name:                    pointer.String(connectionPortKey),
+		FromConnectionSecretKey: pointer.String(connectionPortKey),
+		Type:                    xfnv1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
+	},
+}
+
+return iof.Desired.PutWithResourceName(ctx, release, "minio-release", runtime.AddDerivedConnectionDetails(cd)
+----
+
 == Unmanaged Connection Details
 
 There are cases where the connection details are in objects that aren't managed by the composition function or any of the providers.

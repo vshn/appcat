@@ -132,7 +132,7 @@ r := &v1beta1.Release{
 						Namespace: "myns",
 						FieldPath: "data.my-password", <2>
 					},
-					ToConnectionSecretKey: "connectionKey",
+					ToConnectionSecretKey: "connectionPasswordKey",
 				},
 				{
 					ObjectReference: corev1.ObjectReference{

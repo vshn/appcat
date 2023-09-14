@@ -107,7 +107,7 @@ local xrd = xrds.XRDFromCRD(
 
 === Helm example
 
-These connection details differ a bit from normal managed resources, as the provider cannot now what secrets every available helm chart can expose.
+These connection details differ a bit from normal managed resources, as the provider cannot know what secrets every available helm chart can expose.
 
 Instead, provider-helm exposes a flexible way to specify exactly which of the helm managed object contain the relevant values.
 

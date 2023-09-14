@@ -1,16 +1,17 @@
-package quotas
+package utils
 
 import (
 	"context"
 	"encoding/json"
 
 	"github.com/spf13/viper"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type plans map[string]plan
+type Plans map[string]plan
 
 type plan struct {
 	Size struct {
@@ -24,7 +25,7 @@ type plan struct {
 // FetchPlansFromCluster will fetch the plans from the current PLANS_NAMESPACE namespace and parse them into Resources.
 // By default PLANS_NAMESPACE should be the same namespace where the controller pod is running.
 func FetchPlansFromCluster(ctx context.Context, c client.Client, name, plan string) (Resources, error) {
-	p := &plans{}
+	p := &Plans{}
 	cm := &corev1.ConfigMap{}
 
 	ns := viper.GetString("PLANS_NAMESPACE")
@@ -44,7 +45,20 @@ func FetchPlansFromCluster(ctx context.Context, c client.Client, name, plan stri
 	return r, err
 }
 
-func convertPlanToResource(plan string, p plans) (Resources, error) {
+func FetchPlansFromConfig(ctx context.Context, iof *runtime.Runtime, plan string) (Resources, error) {
+	p := &Plans{}
+
+	err := json.Unmarshal([]byte(iof.Config.Data["plans"]), p)
+	if err != nil {
+		return Resources{}, err
+	}
+
+	r, err := convertPlanToResource(plan, *p)
+
+	return r, err
+}
+
+func convertPlanToResource(plan string, p Plans) (Resources, error) {
 	r := Resources{}
 	var err error
 

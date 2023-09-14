@@ -8,6 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 
 	corev1 "k8s.io/api/core/v1"
@@ -113,7 +114,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.VS
 		return nil, err
 	}
 
-	org := ns.GetLabels()["appuio.io/organization"]
+	org := ns.GetLabels()[utils.OrgLabelName]
 
 	certPair, err := tls.X509KeyPair(credSecret.Data["tls.crt"], credSecret.Data["tls.key"])
 	if err != nil {

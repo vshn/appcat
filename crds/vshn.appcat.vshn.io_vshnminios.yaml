@@ -1,0 +1,174 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.3
+  creationTimestamp: null
+  name: vshnminios.vshn.appcat.vshn.io
+spec:
+  group: vshn.appcat.vshn.io
+  names:
+    kind: VSHNMinio
+    listKind: VSHNMinioList
+    plural: vshnminios
+    singular: vshnminio
+  scope: Namespaced
+  versions:
+    - name: v1
+      schema:
+        openAPIV3Schema:
+          description: VSHNMinio is the API for creating Minio instances.
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec defines the desired state of a VSHNMinio.
+              properties:
+                parameters:
+                  description: Parameters are the configurable fields of a VSHNMinio.
+                  properties:
+                    backup:
+                      description: Backup contains settings to control how the instance should get backed up.
+                      properties:
+                        retention:
+                          description: K8upRetentionPolicy describes the retention configuration for a K8up backup.
+                          properties:
+                            keepDaily:
+                              default: 6
+                              type: integer
+                            keepHourly:
+                              type: integer
+                            keepLast:
+                              type: integer
+                            keepMonthly:
+                              type: integer
+                            keepWeekly:
+                              type: integer
+                            keepYearly:
+                              type: integer
+                          type: object
+                        schedule:
+                          pattern: ^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
+                          type: string
+                      type: object
+                      default: {}
+                    instances:
+                      default: 4
+                      description: Instances configures the number of Minio instances for the cluster. Each instance contains one Minio server.
+                      minimum: 4
+                      type: integer
+                    mode:
+                      default: distributed
+                      description: Mode configures the mode of MinIO. Valid values are "distributed" and "standalone".
+                      enum:
+                        - distributed
+                        - standalone
+                      type: string
+                    restore:
+                      description: Restore contains settings to control the restore of an instance.
+                      properties:
+                        backupName:
+                          description: BackupName is the name of the specific backup you want to restore.
+                          type: string
+                        claimName:
+                          description: ClaimName specifies the name of the instance you want to restore from. The claim has to be in the same namespace as this new instance.
+                          type: string
+                      type: object
+                    size:
+                      description: Size contains settings to control the sizing of a service.
+                      properties:
+                        cpu:
+                          description: CPU defines the amount of Kubernetes CPUs for an instance.
+                          type: string
+                        disk:
+                          description: Disk defines the amount of disk space for an instance.
+                          type: string
+                        memory:
+                          description: Memory defines the amount of memory in units of bytes for an instance.
+                          type: string
+                        plan:
+                          description: Plan is the name of the resource plan that defines the compute resources.
+                          type: string
+                        requests:
+                          description: Requests defines CPU and memory requests for an instance
+                          properties:
+                            cpu:
+                              description: CPU defines the amount of Kubernetes CPUs for an instance.
+                              type: string
+                            memory:
+                              description: Memory defines the amount of memory in units of bytes for an instance.
+                              type: string
+                          type: object
+                      type: object
+                      default: {}
+                    storageClass:
+                      description: StorageClass configures the storageClass to use for the PVC used by MinIO.
+                      type: string
+                  type: object
+                  default: {}
+                writeConnectionSecretToRef:
+                  description: WriteConnectionSecretToRef references a secret to which the connection details will be written.
+                  properties:
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+                  x-kubernetes-map-type: atomic
+              type: object
+            status:
+              description: Status reflects the observed state of a VSHNMinio.
+              properties:
+                instanceNamespace:
+                  description: InstanceNamespace contains the name of the namespace where the instance resides
+                  type: string
+                namespaceConditions:
+                  description: MinioConditions contains the status conditions of the backing object.
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        description: LastTransitionTime is the last time the condition transitioned from one status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: Message is a human-readable message indicating details about the transition.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: ObservedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: Reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        maxLength: 1024
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        description: Type of condition.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    type: object
+                  type: array
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true

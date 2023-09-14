@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +23,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "myns",
 			Labels: map[string]string{
-				orgLabelName: "test",
+				utils.OrgLabelName: "test",
 			},
 		},
 	}
@@ -33,14 +34,14 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 	tests := []struct {
 		name        string
 		wantErr     bool
-		requested   Resources
+		requested   utils.Resources
 		instanceNS  *corev1.Namespace
 		dummyNs     int
 		NSOverrides int
 	}{
 		{
 			name: "GivenNoInstanceNamespace_WhenCheckingAgainstDefault_ThenNoError",
-			requested: Resources{
+			requested: utils.Resources{
 				CPURequests:    *resource.NewMilliQuantity(400, resource.DecimalSI),
 				CPULimits:      *resource.NewMilliQuantity(400, resource.DecimalSI),
 				Disk:           *resource.NewQuantity(21474836480, resource.BinarySI),
@@ -50,7 +51,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 		},
 		{
 			name: "GivenNotInstancenamespace_WhenCheckingAgainstDefault_ThenError",
-			requested: Resources{
+			requested: utils.Resources{
 				CPURequests:    *resource.NewMilliQuantity(5000, resource.DecimalSI),
 				CPULimits:      *resource.NewMilliQuantity(400, resource.DecimalSI),
 				Disk:           *resource.NewQuantity(21474836480, resource.BinarySI),
@@ -61,7 +62,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 		},
 		{
 			name: "GivenInstancenamespace_WhenCheckingAgainst_ThenNoError",
-			requested: Resources{
+			requested: utils.Resources{
 				CPURequests:    *resource.NewMilliQuantity(400, resource.DecimalSI),
 				CPULimits:      *resource.NewMilliQuantity(400, resource.DecimalSI),
 				Disk:           *resource.NewQuantity(21474836480, resource.BinarySI),
@@ -72,14 +73,14 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testns",
 					Labels: map[string]string{
-						orgLabelName: "test",
+						utils.OrgLabelName: "test",
 					},
 				},
 			},
 		},
 		{
 			name: "GivenInstancenamespace_WhenCheckingAgainst_ThenError",
-			requested: Resources{
+			requested: utils.Resources{
 				CPURequests:    *resource.NewMilliQuantity(5000, resource.DecimalSI),
 				CPULimits:      *resource.NewMilliQuantity(400, resource.DecimalSI),
 				Disk:           *resource.NewQuantity(21474836480, resource.BinarySI),
@@ -90,7 +91,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testns",
 					Labels: map[string]string{
-						orgLabelName: "test",
+						utils.OrgLabelName: "test",
 					},
 				},
 			},
@@ -98,7 +99,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 		},
 		{
 			name: "GivenTooManyNamespaces_ThenError",
-			requested: Resources{
+			requested: utils.Resources{
 				CPURequests:    *resource.NewMilliQuantity(400, resource.DecimalSI),
 				CPULimits:      *resource.NewMilliQuantity(400, resource.DecimalSI),
 				Disk:           *resource.NewQuantity(21474836480, resource.BinarySI),
@@ -110,7 +111,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 		},
 		{
 			name: "GivenNamespaceOverride_ThenNoError",
-			requested: Resources{
+			requested: utils.Resources{
 				CPURequests:    *resource.NewMilliQuantity(400, resource.DecimalSI),
 				CPULimits:      *resource.NewMilliQuantity(400, resource.DecimalSI),
 				Disk:           *resource.NewQuantity(21474836480, resource.BinarySI),
@@ -139,7 +140,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: fmt.Sprintf("instancens-%d", i),
 						Labels: map[string]string{
-							orgLabelName: "test",
+							utils.OrgLabelName: "test",
 						},
 					},
 				}))
@@ -148,17 +149,17 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 			if tt.NSOverrides > 0 {
 				assert.NoError(t, fclient.Create(ctx, &corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: nsOverrideCMNamespace,
+						Name: utils.NsOverrideCMNamespace,
 					},
 				}))
 
 				assert.NoError(t, fclient.Create(ctx, &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsOverrideCMPrefix + "test",
-						Namespace: nsOverrideCMNamespace,
+						Name:      utils.NsOverrideCMPrefix + "test",
+						Namespace: utils.NsOverrideCMNamespace,
 					},
 					Data: map[string]string{
-						overrideCMDataFieldName: strconv.Itoa(tt.NSOverrides),
+						utils.OverrideCMDataFieldName: strconv.Itoa(tt.NSOverrides),
 					},
 				}))
 			}

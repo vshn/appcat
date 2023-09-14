@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -141,11 +142,11 @@ func (p *PostgreSQLWebhookHandler) ValidateDelete(ctx context.Context, obj runti
 func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg *vshnv1.VSHNPostgreSQL, checkNamespaceQuota bool) (quotaErrs *apierrors.StatusError, fieldErrs field.ErrorList) {
 	var fieldErr *field.Error
 	instances := int64(pg.Spec.Parameters.Instances)
-	resources := quotas.Resources{}
+	resources := utils.Resources{}
 
 	if pg.Spec.Parameters.Size.Plan != "" {
 		var err error
-		resources, err = quotas.FetchPlansFromCluster(ctx, p.client, "vshnpostgresqlplans", pg.Spec.Parameters.Size.Plan)
+		resources, err = utils.FetchPlansFromCluster(ctx, p.client, "vshnpostgresqlplans", pg.Spec.Parameters.Size.Plan)
 		if err != nil {
 			return apierrors.NewInternalError(err), fieldErrs
 		}
@@ -212,7 +213,7 @@ func parseResource(childPath *field.Path, value, errMessage string) (resource.Qu
 	return quantity, nil
 }
 
-func (p *PostgreSQLWebhookHandler) addPathsToResources(r *quotas.Resources) {
+func (p *PostgreSQLWebhookHandler) addPathsToResources(r *utils.Resources) {
 	basePath := field.NewPath("spec", "parameters", "size")
 
 	r.CPULimitsPath = basePath.Child("cpu")

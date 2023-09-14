@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -90,11 +91,11 @@ func (r *RedisWebhookHandler) checkQuotas(ctx context.Context, redis *vshnv1.VSH
 
 	var fieldErr *field.Error
 	allErrs := field.ErrorList{}
-	resources := quotas.Resources{}
+	resources := utils.Resources{}
 
 	if redis.Spec.Parameters.Size.Plan != "" {
 		var err error
-		resources, err = quotas.FetchPlansFromCluster(ctx, r.client, "vshnredisplans", redis.Spec.Parameters.Size.Plan)
+		resources, err = utils.FetchPlansFromCluster(ctx, r.client, "vshnredisplans", redis.Spec.Parameters.Size.Plan)
 		if err != nil {
 			return apierrors.NewInternalError(err)
 		}
@@ -165,7 +166,7 @@ func (r *RedisWebhookHandler) checkQuotas(ctx context.Context, redis *vshnv1.VSH
 	return checker.CheckQuotas(ctx)
 }
 
-func (r *RedisWebhookHandler) addPathsToResources(res *quotas.Resources) {
+func (r *RedisWebhookHandler) addPathsToResources(res *utils.Resources) {
 	basePath := field.NewPath("spec", "parameters", "size")
 
 	res.CPULimitsPath = basePath.Child("CPULimits")

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
@@ -15,67 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	orgLabelName = "appuio.io/organization"
-
-	// Namespace related quotas
-	defaultMaxNamespaces    = 25
-	overrideCMDataFieldName = "namespaceQuota"
-	nsOverrideCMPrefix      = "override-"
-	nsOverrideCMNamespace   = "appuio-cloud"
-
-	// Resource related quota annotations
-	// general form: resourcequota.appuio.io/<resourceQuotaName>.<resource>
-
-	// resourceQuotaNameCompute resourceQuotaName for compute related quotas
-	resourceQuotaNameCompute = "organization-compute"
-	// resourceQuotaNameObjects resourceQuotaName for object related quotas
-	resourceQuotaNameObjects = "organization-objects"
-	// quotaAnnotationPrefix is the prefix for the quota annotations
-	quotaAnnotationPrefix = "resourcequota.appuio.io/"
-	// quotaResourceDisk resource for the disk quota
-	quotaResourceDisk = "requests.storage"
-	// quotaResourceCPURequests resource for the cpu requests quota
-	quotaResourceCPURequests = "requests.cpu"
-	// quotaResourceCPULimits resource for the cpu limit quota
-	quotaResourceCPULimits = "limits.cpu"
-	// quotaResourceMemoryRequests resource for the memory requests quota
-	quotaResourceMemoryRequests = "requests.memory"
-	// quotaResourceMemoryLimits resource for the memory limit quota
-	quotaResourceMemoryLimits = "limits.memory"
-
-	// Message snippets
-	contactSupportMessage = "Please reduce the resources and then contact VSHN support to increase the quota for the instance support@vshn.ch."
-)
-
-var (
-	// Now all the permutations for the annotations
-	cpuRequestAnnotation    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPURequests)
-	cpuLimitAnnotation      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPULimits)
-	memoryRequestAnnotation = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
-	memoryLimitAnnotation   = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
-	diskAnnotation          = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
-
-	errNSLimitReached = fmt.Errorf("creating a new instance will violate the namespace quota." +
-		"Please contact VSHN support to increase the amounts of namespaces you can create.")
-
-	// These defaults allow up to a PostgreSQL or Redis standard-8 with one replica.
-
-	// defaultCPURequests 2* standard-8 will request 4 CPUs. This default has 500m as spare for jobs
-	defaultCPURequests = resource.NewMilliQuantity(4500, resource.DecimalSI)
-	// defaultCPULimit by default same as DefaultCPURequests
-	defaultCPULimit = defaultCPURequests
-	// defaultMemoryRequests 2* standard-8 will request 16Gb. This default has 500mb as spare for jobs
-	defaultMemoryRequests = resource.NewQuantity(17301504000, resource.BinarySI)
-	// defaultMemoryLimits same as DefaultMemoryRequests
-	defaultMemoryLimits = defaultMemoryRequests
-	// defaultDiskRequests should be plenty for a large amount of replicas for any service
-	defaultDiskRequests = resource.NewQuantity(1099511627776, resource.DecimalSI)
-)
-
 // QuotaChecker can check the given resources against the quotas set on an intance namespace
 type QuotaChecker struct {
-	requestedResources  Resources
+	requestedResources  utils.Resources
 	instanceNamespace   string
 	claimNamespace      string
 	claimName           string
@@ -88,7 +30,7 @@ type QuotaChecker struct {
 // NewQuotaChecker creates a new quota checker.
 // checkNamespaceQuota specifies whether or not the checker should also take the amount of existing
 // namespaces into account, or not.
-func NewQuotaChecker(c client.Client, claimName, claimNamespace, instanceNamespace string, r Resources, gr schema.GroupResource, gk schema.GroupKind, checkNamespaceQuota bool) QuotaChecker {
+func NewQuotaChecker(c client.Client, claimName, claimNamespace, instanceNamespace string, r utils.Resources, gr schema.GroupResource, gk schema.GroupKind, checkNamespaceQuota bool) QuotaChecker {
 	return QuotaChecker{
 		requestedResources:  r,
 		instanceNamespace:   instanceNamespace,
@@ -126,7 +68,7 @@ func (q QuotaChecker) areNamespacesWithinQuota(ctx context.Context, orgName stri
 
 	l := ctrl.LoggerFrom(ctx)
 
-	orgReq, err := labels.NewRequirement(orgLabelName, selection.Equals, []string{orgName})
+	orgReq, err := labels.NewRequirement(utils.OrgLabelName, selection.Equals, []string{orgName})
 	if err != nil {
 		return apierrors.NewBadRequest(err.Error())
 	}
@@ -149,13 +91,13 @@ func (q QuotaChecker) areNamespacesWithinQuota(ctx context.Context, orgName stri
 	}
 	if found {
 		if foundNamespaces >= override {
-			return apierrors.NewForbidden(q.gr, q.claimName, errNSLimitReached)
+			return apierrors.NewForbidden(q.gr, q.claimName, utils.ErrNSLimitReached)
 		}
 		return nil
 	}
 
-	if foundNamespaces >= defaultMaxNamespaces {
-		return apierrors.NewForbidden(q.gr, q.claimName, errNSLimitReached)
+	if foundNamespaces >= utils.DefaultMaxNamespaces {
+		return apierrors.NewForbidden(q.gr, q.claimName, utils.ErrNSLimitReached)
 	}
 
 	return nil
@@ -171,7 +113,7 @@ func (q *QuotaChecker) getOrgFromNamespace(ctx context.Context, nsName string) (
 		return "", fmt.Errorf("cannot get namespace: %w", err)
 	}
 
-	nsOrg, ok := ns.GetLabels()[orgLabelName]
+	nsOrg, ok := ns.GetLabels()[utils.OrgLabelName]
 	if !ok {
 		return "", fmt.Errorf("namespace does not have organization label")
 	}
@@ -183,7 +125,7 @@ func (q *QuotaChecker) getOrgFromNamespace(ctx context.Context, nsName string) (
 func (q *QuotaChecker) getNamespaceOverrides(ctx context.Context, c client.Client, orgName string) (bool, int, error) {
 	cm := &corev1.ConfigMap{}
 
-	err := c.Get(ctx, client.ObjectKey{Name: nsOverrideCMPrefix + orgName, Namespace: nsOverrideCMNamespace}, cm)
+	err := c.Get(ctx, client.ObjectKey{Name: utils.NsOverrideCMPrefix + orgName, Namespace: utils.NsOverrideCMNamespace}, cm)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, 0, nil
@@ -191,7 +133,7 @@ func (q *QuotaChecker) getNamespaceOverrides(ctx context.Context, c client.Clien
 		return false, 0, err
 	}
 
-	override, ok := cm.Data[overrideCMDataFieldName]
+	override, ok := cm.Data[utils.OverrideCMDataFieldName]
 	if !ok {
 		return false, 0, nil
 	}
@@ -214,28 +156,28 @@ func AddInitalNamespaceQuotas(ns *corev1.Namespace) bool {
 
 	added := false
 
-	if _, ok := annotations[diskAnnotation]; !ok {
-		annotations[diskAnnotation] = defaultDiskRequests.String()
+	if _, ok := annotations[utils.DiskAnnotation]; !ok {
+		annotations[utils.DiskAnnotation] = utils.DefaultDiskRequests.String()
 		added = true
 	}
 
-	if _, ok := annotations[cpuRequestAnnotation]; !ok {
-		annotations[cpuRequestAnnotation] = defaultCPURequests.String()
+	if _, ok := annotations[utils.CpuRequestAnnotation]; !ok {
+		annotations[utils.CpuRequestAnnotation] = utils.DefaultCPURequests.String()
 		added = true
 	}
 
-	if _, ok := annotations[cpuLimitAnnotation]; !ok {
-		annotations[cpuLimitAnnotation] = defaultCPULimit.String()
+	if _, ok := annotations[utils.CpuLimitAnnotation]; !ok {
+		annotations[utils.CpuLimitAnnotation] = utils.DefaultCPULimit.String()
 		added = true
 	}
 
-	if _, ok := annotations[memoryRequestAnnotation]; !ok {
-		annotations[memoryRequestAnnotation] = defaultMemoryRequests.String()
+	if _, ok := annotations[utils.MemoryRequestAnnotation]; !ok {
+		annotations[utils.MemoryRequestAnnotation] = utils.DefaultMemoryRequests.String()
 		added = true
 	}
 
-	if _, ok := annotations[memoryLimitAnnotation]; !ok {
-		annotations[memoryLimitAnnotation] = defaultMemoryLimits.String()
+	if _, ok := annotations[utils.MemoryLimitAnnotation]; !ok {
+		annotations[utils.MemoryLimitAnnotation] = utils.DefaultMemoryLimits.String()
 		added = true
 	}
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 
 	"github.com/stretchr/testify/assert"
@@ -334,8 +335,8 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "bar",
 				Labels: map[string]string{
-					"appuio.io/organization": "bar",
-					"appcat.vshn.io/sla":     "besteffort",
+					utils.OrgLabelName:   "bar",
+					"appcat.vshn.io/sla": "besteffort",
 				},
 			},
 		},

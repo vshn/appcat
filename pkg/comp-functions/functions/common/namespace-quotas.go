@@ -4,12 +4,11 @@ import (
 	"context"
 
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector/metaonly"
 )
-
-const orgLabel = "appuio.io/organization"
 
 // AddInitialNamespaceQuotas will add the default quotas to a namespace if they are not yet set.
 // This function takes the name of the namespace resource as it appears in the functionIO, it then returns the actual
@@ -35,7 +34,7 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 		}
 
 		orgAdded := false
-		if value, ok := ns.GetLabels()[orgLabel]; !ok || value == "" {
+		if value, ok := ns.GetLabels()[utils.OrgLabelName]; !ok || value == "" {
 			objectMeta := &metaonly.MetadataOnlyObject{}
 
 			err := iof.Desired.GetComposite(ctx, objectMeta)
@@ -47,7 +46,7 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 				ns.Labels = map[string]string{}
 			}
 
-			ns.Labels[orgLabel] = objectMeta.GetLabels()[orgLabel]
+			ns.Labels[utils.OrgLabelName] = objectMeta.GetLabels()[utils.OrgLabelName]
 			orgAdded = true
 		}
 

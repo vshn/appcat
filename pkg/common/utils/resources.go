@@ -1,7 +1,8 @@
-package quotas
+package utils
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,6 +26,64 @@ type Resources struct {
 	Disk               resource.Quantity
 	DiskPath           *field.Path
 }
+
+const (
+	OrgLabelName = "appuio.io/organization"
+
+	// Namespace related quotas
+	DefaultMaxNamespaces    = 25
+	OverrideCMDataFieldName = "namespaceQuota"
+	NsOverrideCMPrefix      = "override-"
+	NsOverrideCMNamespace   = "appuio-cloud"
+
+	// Resource related quota annotations
+	// general form: resourcequota.appuio.io/<resourceQuotaName>.<resource>
+
+	// resourceQuotaNameCompute resourceQuotaName for compute related quotas
+	resourceQuotaNameCompute = "organization-compute"
+	// resourceQuotaNameObjects resourceQuotaName for object related quotas
+	resourceQuotaNameObjects = "organization-objects"
+	// quotaAnnotationPrefix is the prefix for the quota annotations
+	quotaAnnotationPrefix = "resourcequota.appuio.io/"
+	// quotaResourceDisk resource for the disk quota
+	quotaResourceDisk = "requests.storage"
+	// quotaResourceCPURequests resource for the cpu requests quota
+	quotaResourceCPURequests = "requests.cpu"
+	// quotaResourceCPULimits resource for the cpu limit quota
+	quotaResourceCPULimits = "limits.cpu"
+	// quotaResourceMemoryRequests resource for the memory requests quota
+	quotaResourceMemoryRequests = "requests.memory"
+	// quotaResourceMemoryLimits resource for the memory limit quota
+	quotaResourceMemoryLimits = "limits.memory"
+
+	// Message snippets
+	contactSupportMessage = "Please reduce the resources and then contact VSHN support to increase the quota for the instance support@vshn.ch."
+)
+
+var (
+	// Now all the permutations for the annotations
+	CpuRequestAnnotation    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPURequests)
+	CpuLimitAnnotation      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPULimits)
+	MemoryRequestAnnotation = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
+	MemoryLimitAnnotation   = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
+	DiskAnnotation          = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
+
+	ErrNSLimitReached = fmt.Errorf("creating a new instance will violate the namespace quota." +
+		"Please contact VSHN support to increase the amounts of namespaces you can create.")
+
+	// These defaults allow up to a PostgreSQL or Redis standard-8 with one replica.
+
+	// defaultCPURequests 2* standard-8 will request 4 CPUs. This default has 500m as spare for jobs
+	DefaultCPURequests = resource.NewMilliQuantity(4500, resource.DecimalSI)
+	// defaultCPULimit by default same as DefaultCPURequests
+	DefaultCPULimit = DefaultCPURequests
+	// defaultMemoryRequests 2* standard-8 will request 16Gb. This default has 500mb as spare for jobs
+	DefaultMemoryRequests = resource.NewQuantity(17301504000, resource.BinarySI)
+	// defaultMemoryLimits same as DefaultMemoryRequests
+	DefaultMemoryLimits = DefaultMemoryRequests
+	// defaultDiskRequests should be plenty for a large amount of replicas for any service
+	DefaultDiskRequests = resource.NewQuantity(1099511627776, resource.DecimalSI)
+)
 
 // CheckResourcesAgainstQuotas will check the given resources either against:
 // The resources in the instanceNamespace, if it's found
@@ -72,7 +131,7 @@ func (r *Resources) getNamespaceQuotas(ctx context.Context, c client.Client, ins
 
 	annotations := ns.GetAnnotations()
 
-	cpuReqString, ok := annotations[cpuRequestAnnotation]
+	cpuReqString, ok := annotations[CpuRequestAnnotation]
 	if ok {
 		cpuRequests, err := resource.ParseQuantity(cpuReqString)
 		if err != nil {
@@ -81,7 +140,7 @@ func (r *Resources) getNamespaceQuotas(ctx context.Context, c client.Client, ins
 		foundRes.CPURequests = cpuRequests
 	}
 
-	cpuLimitString, ok := annotations[cpuLimitAnnotation]
+	cpuLimitString, ok := annotations[CpuLimitAnnotation]
 	if ok {
 		cpuLimits, err := resource.ParseQuantity(cpuLimitString)
 		if err != nil {
@@ -90,7 +149,7 @@ func (r *Resources) getNamespaceQuotas(ctx context.Context, c client.Client, ins
 		foundRes.CPULimits = cpuLimits
 	}
 
-	memoryReqString, ok := annotations[memoryRequestAnnotation]
+	memoryReqString, ok := annotations[MemoryRequestAnnotation]
 	if ok {
 		memoryRequests, err := resource.ParseQuantity(memoryReqString)
 		if err != nil {
@@ -99,7 +158,7 @@ func (r *Resources) getNamespaceQuotas(ctx context.Context, c client.Client, ins
 		foundRes.MemoryRequests = memoryRequests
 	}
 
-	memoryLimitString, ok := annotations[memoryLimitAnnotation]
+	memoryLimitString, ok := annotations[MemoryLimitAnnotation]
 	if ok {
 		memoryLimits, err := resource.ParseQuantity(memoryLimitString)
 		if err != nil {
@@ -108,7 +167,7 @@ func (r *Resources) getNamespaceQuotas(ctx context.Context, c client.Client, ins
 		foundRes.MemoryLimits = memoryLimits
 	}
 
-	diskString, ok := annotations[diskAnnotation]
+	diskString, ok := annotations[DiskAnnotation]
 	if ok {
 		disk, err := resource.ParseQuantity(diskString)
 		if err != nil {
@@ -125,48 +184,48 @@ func (r *Resources) getNamespaceQuotas(ctx context.Context, c client.Client, ins
 func (r *Resources) checkAgainstResources(quotaResources Resources) field.ErrorList {
 	foundErrs := field.ErrorList{}
 
-	errCPURequests := field.Forbidden(r.CPURequestsPath, "Max allowed CPU requests: "+defaultCPURequests.String()+". Configured requests: "+r.CPURequests.String()+". "+contactSupportMessage)
+	errCPURequests := field.Forbidden(r.CPURequestsPath, "Max allowed CPU requests: "+DefaultCPURequests.String()+". Configured requests: "+r.CPURequests.String()+". "+contactSupportMessage)
 	if !quotaResources.CPURequests.IsZero() {
 		if r.CPURequests.Cmp(quotaResources.CPURequests) == 1 {
 			foundErrs = append(foundErrs, errCPURequests)
 		}
-	} else if r.CPURequests.Cmp(*defaultCPURequests) == 1 {
+	} else if r.CPURequests.Cmp(*DefaultCPURequests) == 1 {
 		foundErrs = append(foundErrs, errCPURequests)
 	}
 
-	errCPULimits := field.Forbidden(r.CPULimitsPath, "Max allowed CPU limits: "+defaultCPULimit.String()+". Configured limits: "+r.CPULimits.String()+". "+contactSupportMessage)
+	errCPULimits := field.Forbidden(r.CPULimitsPath, "Max allowed CPU limits: "+DefaultCPULimit.String()+". Configured limits: "+r.CPULimits.String()+". "+contactSupportMessage)
 	if !quotaResources.CPULimits.IsZero() {
 		if r.CPULimits.Cmp(quotaResources.CPULimits) == 1 {
 			foundErrs = append(foundErrs, errCPULimits)
 		}
-	} else if r.CPULimits.Cmp(*defaultCPULimit) == 1 {
+	} else if r.CPULimits.Cmp(*DefaultCPULimit) == 1 {
 		foundErrs = append(foundErrs, errCPULimits)
 	}
 
-	errMemoryRequests := field.Forbidden(r.MemoryRequestsPath, "Max allowed Memory requests: "+defaultMemoryRequests.String()+". Configured requests: "+r.MemoryRequests.String()+". "+contactSupportMessage)
+	errMemoryRequests := field.Forbidden(r.MemoryRequestsPath, "Max allowed Memory requests: "+DefaultMemoryRequests.String()+". Configured requests: "+r.MemoryRequests.String()+". "+contactSupportMessage)
 	if !quotaResources.MemoryRequests.IsZero() {
 		if r.MemoryRequests.Cmp(quotaResources.MemoryRequests) == 1 {
 			foundErrs = append(foundErrs, errMemoryRequests)
 		}
-	} else if r.MemoryRequests.Cmp(*defaultMemoryRequests) == 1 {
+	} else if r.MemoryRequests.Cmp(*DefaultMemoryRequests) == 1 {
 		foundErrs = append(foundErrs, errMemoryRequests)
 	}
 
-	errMemoryLimits := field.Forbidden(r.MemoryLimitsPath, "Max allowed Memory limits: "+defaultMemoryLimits.String()+". Configured limits: "+r.MemoryLimits.String()+". "+contactSupportMessage)
+	errMemoryLimits := field.Forbidden(r.MemoryLimitsPath, "Max allowed Memory limits: "+DefaultMemoryLimits.String()+". Configured limits: "+r.MemoryLimits.String()+". "+contactSupportMessage)
 	if !quotaResources.MemoryLimits.IsZero() {
 		if r.MemoryLimits.Cmp(quotaResources.MemoryLimits) == 1 {
 			foundErrs = append(foundErrs, errMemoryLimits)
 		}
-	} else if r.MemoryLimits.Cmp(*defaultMemoryLimits) == 1 {
+	} else if r.MemoryLimits.Cmp(*DefaultMemoryLimits) == 1 {
 		foundErrs = append(foundErrs, errMemoryLimits)
 	}
 
-	errDisk := field.Forbidden(r.DiskPath, "Max allowed Disk: "+defaultCPULimit.String()+". Configured requests: "+r.Disk.String()+". "+contactSupportMessage)
+	errDisk := field.Forbidden(r.DiskPath, "Max allowed Disk: "+DefaultCPULimit.String()+". Configured requests: "+r.Disk.String()+". "+contactSupportMessage)
 	if !quotaResources.Disk.IsZero() {
 		if r.Disk.Cmp(quotaResources.Disk) == 1 {
 			foundErrs = append(foundErrs, errDisk)
 		}
-	} else if r.Disk.Cmp(*defaultDiskRequests) == 1 {
+	} else if r.Disk.Cmp(*DefaultDiskRequests) == 1 {
 		foundErrs = append(foundErrs, errDisk)
 	}
 

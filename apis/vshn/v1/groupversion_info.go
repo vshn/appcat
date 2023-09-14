@@ -28,5 +28,7 @@ func init() {
 		&XVSHNPostgreSQLList{},
 		&VSHNRedis{},
 		&VSHNRedisList{},
+		&VSHNMinio{},
+		&VSHNMinioList{},
 	)
 }

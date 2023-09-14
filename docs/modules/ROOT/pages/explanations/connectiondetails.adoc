@@ -35,7 +35,7 @@ Let's have a look at an easy example and a more complicated one.
 
 We use the minio User managed resource in this example.
 The User can expose two connection details: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
-It's important that we set the `WriteConnectionSecretToReference`.
+It's important that we set the `WriteConnectionSecretToReference` in the composition.
 
 [source,golang]
 ----
@@ -53,7 +53,7 @@ user := &miniov1.User{
 }
 ----
 <1> Unique name for this secret, usually the composite name + some suffix
-<2> The namespace where the secret should be saved, usually set to `writeConnectionSecretsToNamespace`.
+<2> The namespace where the secret should be saved, usually set to `writeConnectionSecretsToNamespace` defined in the composition.
 
 It depends on how the `User` object is used afterward to determine where to save the connection details.
 

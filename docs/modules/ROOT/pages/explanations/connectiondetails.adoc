@@ -137,6 +137,7 @@ r := &v1beta1.Release{
 				},
 				{
 					ObjectReference: corev1.ObjectReference{
+						APIVersion : "v1"
 						Kind:      "Service",
 						Name:      "myservice",
 						Namespace: "myns",

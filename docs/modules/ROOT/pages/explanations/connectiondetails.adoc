@@ -217,3 +217,11 @@ if err != nil {
 <1> We need to ignore not found errors here, as the observer will not exist during the first reconcile
 
 Also, here for secrets the values will not be base64 encoded, so they can be used directly.
+
+[source,golang]
+----
+iof.Desired.PutCompositeConnectionDetail(ctx, v1alpha1.ExplicitConnectionDetail{
+	Name:  "MY_PASSWORD",
+	Value: string(secret.Data["my_password"])
+})
+----

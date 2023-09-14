@@ -127,6 +127,7 @@ r := &v1beta1.Release{
 			ConnectionDetails: []v1beta1.ConnectionDetail{
 				{
 					ObjectReference: corev1.ObjectReference{
+						APIVersion: "v1",
 						Kind:      "Secret",
 						Name:      "mysecret",
 						Namespace: "myns",

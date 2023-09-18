@@ -15,6 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var (
@@ -45,45 +46,45 @@ func SetupRedisWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error
 }
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
-func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 
 	pg, ok := obj.(*vshnv1.VSHNRedis)
 	if !ok {
-		return fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
+		return nil, fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
 	}
 
 	if r.withQuota {
 		err := r.checkQuotas(ctx, pg, true)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
-func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 
 	redis, ok := newObj.(*vshnv1.VSHNRedis)
 	if !ok {
-		return fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
+		return nil, fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
 	}
 
 	if r.withQuota {
 		err := r.checkQuotas(ctx, redis, false)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
-func (r *RedisWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+func (r *RedisWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	// NOOP for now
-	return nil
+	return nil, nil
 }
 
 // checkQuotas will read the plan if it's set and then check if any other size parameters are overwriten

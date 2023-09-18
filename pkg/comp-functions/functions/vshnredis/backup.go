@@ -125,7 +125,7 @@ func createObjectBucketCredentialObserver(ctx context.Context, comp *vshnv1.VSHN
 					Object: secret,
 				},
 			},
-			ResourceSpec: xpv1.ResourceSpec{
+			ResourceSpec: xkube.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: "kubernetes",
 				},

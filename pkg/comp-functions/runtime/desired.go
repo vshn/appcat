@@ -124,7 +124,7 @@ func (d *DesiredResources) putIntoObject(ctx context.Context, observeOnly bool, 
 			Name: kon,
 		},
 		Spec: xkube.ObjectSpec{
-			ResourceSpec: v1.ResourceSpec{
+			ResourceSpec: xkube.ResourceSpec{
 				ProviderConfigReference: &v1.Reference{
 					Name: providerConfigRefName,
 				},

@@ -136,12 +136,14 @@ docker-build:
 
 .PHONY: docker-build-branchtag
 docker-build-branchtag: docker-build ## Build docker image with current branch name
-	tag=$$(git rev-parse --abbrev-ref HEAD) && \
+	#tag=$$(git rev-parse --abbrev-ref HEAD) && \
+	tag=kalafiorek && \
 	docker tag ${GHCR_IMG} ghcr.io/vshn/appcat:"$${tag////_}"
 
 .PHONY: kind-load-branch-tag
 kind-load-branch-tag: ## load docker image with current branch tag into kind
-	tag=$$(git rev-parse --abbrev-ref HEAD) && \
+	#tag=$$(git rev-parse --abbrev-ref HEAD) && \
+	tag=kalafiorek && \
 	kind load docker-image --name kindev ghcr.io/vshn/appcat:"$${tag////_}"
 
 .PHONY: docker-push

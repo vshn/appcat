@@ -13,6 +13,7 @@ config:
     minioChartVersion: 5.0.13
     plans: "{\"standard-1\": {\"size\": {\"cpu\": \"250m\", \"disk\": \"16Gi\", \"enabled\": true, \"memory\": \"1Gi\"}}}"
     defaultPlan: standard-1
+    providerEnabled: 'true'
 observed:
   composite:
     resource:

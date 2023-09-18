@@ -107,7 +107,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 	}
 
 	values := map[string]interface{}{
-		"mode":     comp.Spec.Parameters.Mode,
+		"mode":     comp.Spec.Parameters.Service.Mode,
 		"replicas": comp.Spec.Parameters.Instances,
 		"networkPolicy": map[string]interface{}{
 			"enabled": true,
@@ -168,21 +168,21 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 					ObjectReference: corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Secret",
-						Name:       comp.GetName() + "-minio",
+						Name:       comp.GetName(),
 						Namespace:  comp.GetInstanceNamespace(),
 						FieldPath:  "data.rootUser",
 					},
-					ToConnectionSecretKey: "MINIO_USERNAME",
+					ToConnectionSecretKey: "AWS_ACCESS_KEY_ID",
 				},
 				{
 					ObjectReference: corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Secret",
-						Name:       comp.GetName() + "-minio",
+						Name:       comp.GetName(),
 						Namespace:  comp.GetInstanceNamespace(),
 						FieldPath:  "data.rootPassword",
 					},
-					ToConnectionSecretKey: "MINIO_PASSWORD",
+					ToConnectionSecretKey: "AWS_SECRET_ACCESS_KEY",
 				},
 			},
 		},
@@ -208,7 +208,7 @@ func createServiceObserver(ctx context.Context, comp *vshnv1.VSHNMinio, iof *run
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + "-minio",
+			Name:      comp.GetName(),
 			Namespace: comp.GetInstanceNamespace(),
 		},
 	}

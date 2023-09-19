@@ -29,6 +29,10 @@ func TestPostgreSQL_Probe(t *testing.T) {
 	require.NoError(t, err)
 	defer pool.Purge(res)
 
+	// race condition exists on my machine, therefore sleep to wait for postgres to be ready
+	// there is unfortunately no way to check if postgres is ready using dockertest
+	time.Sleep(3 * time.Second)
+
 	var p Prober
 	assert.Eventually(t, func() bool {
 		p, err = NewPostgreSQL("VSHN", "test", "test",
@@ -36,7 +40,7 @@ func TestPostgreSQL_Probe(t *testing.T) {
 				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 				user,
 				password,
-				"localhost",
+				"127.0.0.1",
 				res.GetPort("5432/tcp"),
 				db,
 			),

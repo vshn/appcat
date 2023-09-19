@@ -102,6 +102,10 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
+	if pg.DeletionTimestamp != nil {
+		return nil, nil
+	}
+
 	if p.withQuota {
 		quotaErrs, fieldErrs := p.checkPostgreSQLQuotas(ctx, pg, false)
 		if quotaErrs != nil {
@@ -152,6 +156,15 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 			return apierrors.NewInternalError(err), fieldErrs
 		}
 	}
+	s, err := utils.FetchSidecarsFromCluster(ctx, p.client, "vshnpostgresqlplans")
+	if err != nil {
+		return apierrors.NewInternalError(err), fieldErrs
+	}
+
+	resourcesSidecars, err := utils.GetAllSideCarsResources(s)
+	if err != nil {
+		return apierrors.NewInternalError(err), fieldErrs
+	}
 
 	p.addPathsToResources(&resources)
 
@@ -190,6 +203,7 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 		}
 	}
 
+	resources.AddResources(resourcesSidecars)
 	resources.MultiplyBy(instances)
 
 	checker := quotas.NewQuotaChecker(
@@ -201,6 +215,7 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 		pgGR,
 		pgGK,
 		checkNamespaceQuota,
+		instances,
 	)
 
 	return checker.CheckQuotas(ctx), fieldErrs

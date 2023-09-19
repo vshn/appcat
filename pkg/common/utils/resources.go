@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -76,7 +77,7 @@ var (
 	// defaultCPURequests 2* standard-8 will request 4 CPUs. This default has 500m as spare for jobs
 	DefaultCPURequests = resource.NewMilliQuantity(4500, resource.DecimalSI)
 	// defaultCPULimit by default same as DefaultCPURequests
-	DefaultCPULimit = DefaultCPURequests
+	DefaultCPULimits = DefaultCPURequests
 	// defaultMemoryRequests 2* standard-8 will request 16Gb. This default has 500mb as spare for jobs
 	DefaultMemoryRequests = resource.NewQuantity(17301504000, resource.BinarySI)
 	// defaultMemoryLimits same as DefaultMemoryRequests
@@ -91,9 +92,10 @@ var (
 // The second case is usually triggered if a new instance is created, as we don't have a
 // namespace to check against.
 // Once the namespace exists, the composition should ensure that the annotations are set.
-func (r *Resources) CheckResourcesAgainstQuotas(ctx context.Context, c client.Client, claimName, instanceNamespace string, gk schema.GroupKind) *apierrors.StatusError {
+func (r *Resources) CheckResourcesAgainstQuotas(ctx context.Context, c client.Client, claimName, instanceNamespace string, gk schema.GroupKind, instances int64) *apierrors.StatusError {
 
-	nsQuotas := Resources{}
+	var nsQuotas Resources
+	s := &Sidecars{}
 	if instanceNamespace != "" {
 		q, err := r.getNamespaceQuotas(ctx, c, instanceNamespace)
 		if err != nil {
@@ -102,9 +104,18 @@ func (r *Resources) CheckResourcesAgainstQuotas(ctx context.Context, c client.Cl
 			}
 		}
 		nsQuotas = q
+	} else {
+		if gk.Kind == "VSHNPostgreSQL" {
+			var err error
+			s, err = FetchSidecarsFromCluster(ctx, c, "vshnpostgresqlplans")
+			if err != nil {
+				return apierrors.NewInternalError(err)
+			}
+		}
+		nsQuotas = *GetDefaultResources(gk.Kind, s)
 	}
 
-	quotaErrs := r.checkAgainstResources(nsQuotas)
+	quotaErrs := r.checkAgainstResources(nsQuotas, gk.Kind, s)
 
 	if len(quotaErrs) == 0 {
 		return nil
@@ -181,46 +192,49 @@ func (r *Resources) getNamespaceQuotas(ctx context.Context, c client.Client, ins
 
 // checkAgainstResources compares this resources against the given resources.
 // Any non-populated fields are checked against their defaults.
-func (r *Resources) checkAgainstResources(quotaResources Resources) field.ErrorList {
+func (r *Resources) checkAgainstResources(quotaResources Resources, kind string, s *Sidecars) field.ErrorList {
 	foundErrs := field.ErrorList{}
 
-	errCPURequests := field.Forbidden(r.CPURequestsPath, "Max allowed CPU requests: "+DefaultCPURequests.String()+". Configured requests: "+r.CPURequests.String()+". "+contactSupportMessage)
+	rDef := GetDefaultResources(kind, s)
+
+	errCPURequests := field.Forbidden(r.CPURequestsPath, "Max allowed CPU requests: "+quotaResources.CPURequests.String()+". Configured requests: "+r.CPURequests.String()+". "+contactSupportMessage)
+
 	if !quotaResources.CPURequests.IsZero() {
 		if r.CPURequests.Cmp(quotaResources.CPURequests) == 1 {
 			foundErrs = append(foundErrs, errCPURequests)
 		}
-	} else if r.CPURequests.Cmp(*DefaultCPURequests) == 1 {
+	} else if r.CPURequests.Cmp(rDef.CPURequests) == 1 {
 		foundErrs = append(foundErrs, errCPURequests)
 	}
 
-	errCPULimits := field.Forbidden(r.CPULimitsPath, "Max allowed CPU limits: "+DefaultCPULimit.String()+". Configured limits: "+r.CPULimits.String()+". "+contactSupportMessage)
+	errCPULimits := field.Forbidden(r.CPULimitsPath, "Max allowed CPU limits: "+quotaResources.CPULimits.String()+". Configured limits: "+r.CPULimits.String()+". "+contactSupportMessage)
 	if !quotaResources.CPULimits.IsZero() {
 		if r.CPULimits.Cmp(quotaResources.CPULimits) == 1 {
 			foundErrs = append(foundErrs, errCPULimits)
 		}
-	} else if r.CPULimits.Cmp(*DefaultCPULimit) == 1 {
+	} else if r.CPULimits.Cmp(rDef.CPULimits) == 1 {
 		foundErrs = append(foundErrs, errCPULimits)
 	}
 
-	errMemoryRequests := field.Forbidden(r.MemoryRequestsPath, "Max allowed Memory requests: "+DefaultMemoryRequests.String()+". Configured requests: "+r.MemoryRequests.String()+". "+contactSupportMessage)
+	errMemoryRequests := field.Forbidden(r.MemoryRequestsPath, "Max allowed Memory requests: "+quotaResources.MemoryRequests.String()+". Configured requests: "+r.MemoryRequests.String()+". "+contactSupportMessage)
 	if !quotaResources.MemoryRequests.IsZero() {
 		if r.MemoryRequests.Cmp(quotaResources.MemoryRequests) == 1 {
 			foundErrs = append(foundErrs, errMemoryRequests)
 		}
-	} else if r.MemoryRequests.Cmp(*DefaultMemoryRequests) == 1 {
+	} else if r.MemoryRequests.Cmp(rDef.MemoryRequests) == 1 {
 		foundErrs = append(foundErrs, errMemoryRequests)
 	}
 
-	errMemoryLimits := field.Forbidden(r.MemoryLimitsPath, "Max allowed Memory limits: "+DefaultMemoryLimits.String()+". Configured limits: "+r.MemoryLimits.String()+". "+contactSupportMessage)
+	errMemoryLimits := field.Forbidden(r.MemoryLimitsPath, "Max allowed Memory limits: "+quotaResources.MemoryLimits.String()+". Configured limits: "+r.MemoryLimits.String()+". "+contactSupportMessage)
 	if !quotaResources.MemoryLimits.IsZero() {
 		if r.MemoryLimits.Cmp(quotaResources.MemoryLimits) == 1 {
 			foundErrs = append(foundErrs, errMemoryLimits)
 		}
-	} else if r.MemoryLimits.Cmp(*DefaultMemoryLimits) == 1 {
+	} else if r.MemoryLimits.Cmp(rDef.MemoryLimits) == 1 {
 		foundErrs = append(foundErrs, errMemoryLimits)
 	}
 
-	errDisk := field.Forbidden(r.DiskPath, "Max allowed Disk: "+DefaultCPULimit.String()+". Configured requests: "+r.Disk.String()+". "+contactSupportMessage)
+	errDisk := field.Forbidden(r.DiskPath, "Max allowed Disk: "+quotaResources.Disk.String()+". Configured requests: "+r.Disk.String()+". "+contactSupportMessage)
 	if !quotaResources.Disk.IsZero() {
 		if r.Disk.Cmp(quotaResources.Disk) == 1 {
 			foundErrs = append(foundErrs, errDisk)
@@ -247,4 +261,40 @@ func (r *Resources) MultiplyBy(i int64) {
 	r.MemoryLimits.Set(r.MemoryLimits.Value() * i)
 	r.MemoryRequests.Set(r.MemoryRequests.Value() * i)
 	r.Disk.Set(r.Disk.Value() * i)
+}
+
+func (r *Resources) AddResources(resource Resources) {
+	r.CPULimits.Add(resource.CPULimits)
+	r.CPURequests.Add(resource.CPURequests)
+	r.MemoryLimits.Add(resource.MemoryLimits)
+	r.MemoryRequests.Add(resource.MemoryRequests)
+	r.Disk.Add(resource.Disk)
+}
+
+// AddPsqlSidecarResources adds the resource overhead for the PostgreSQL sidecar to the given resource.
+func (r *Resources) AddPsqlSidecarResources(s *Sidecars, instances int64) {
+	resourcesSidecars, err := GetAllSideCarsResources(s)
+	if err != nil {
+		instances = 1
+	}
+	r.CPURequests.Add(*resource.NewMilliQuantity(resourcesSidecars.CPURequests.MilliValue()*instances, resource.DecimalSI))
+	r.MemoryRequests.Add(*resource.NewQuantity(resourcesSidecars.MemoryRequests.Value()*instances, resource.BinarySI))
+
+	// Sidecar limits: 4800m CPU, 6144Mi Memory
+	r.CPULimits.Add(*resource.NewMilliQuantity(resourcesSidecars.CPULimits.MilliValue()*instances, resource.DecimalSI))
+	r.MemoryLimits.Add(*resource.NewQuantity(resourcesSidecars.MemoryLimits.Value()*instances, resource.BinarySI))
+}
+
+// GetDefaultResources returns a new Resources struct with the default values.
+func GetDefaultResources(kind string, s *Sidecars) *Resources {
+	r := &Resources{
+		CPURequests:    *DefaultCPURequests,
+		CPULimits:      *DefaultCPULimits,
+		MemoryRequests: *DefaultMemoryRequests,
+		MemoryLimits:   *DefaultMemoryLimits,
+	}
+	if strings.Contains(kind, "VSHNPostgreSQL") {
+		r.AddPsqlSidecarResources(s, int64(2))
+	}
+	return r
 }

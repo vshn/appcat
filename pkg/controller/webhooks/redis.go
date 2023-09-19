@@ -71,6 +71,10 @@ func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj
 		return nil, fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
 	}
 
+	if redis.DeletionTimestamp != nil {
+		return nil, nil
+	}
+
 	if r.withQuota {
 		err := r.checkQuotas(ctx, redis, false)
 		if err != nil {

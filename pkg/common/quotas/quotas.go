@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/vshn/appcat/v4/pkg/common/utils"
+	iofruntime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -25,12 +26,13 @@ type QuotaChecker struct {
 	gr                  schema.GroupResource
 	gk                  schema.GroupKind
 	checkNamespaceQuota bool
+	instances           int64
 }
 
 // NewQuotaChecker creates a new quota checker.
 // checkNamespaceQuota specifies whether or not the checker should also take the amount of existing
 // namespaces into account, or not.
-func NewQuotaChecker(c client.Client, claimName, claimNamespace, instanceNamespace string, r utils.Resources, gr schema.GroupResource, gk schema.GroupKind, checkNamespaceQuota bool) QuotaChecker {
+func NewQuotaChecker(c client.Client, claimName, claimNamespace, instanceNamespace string, r utils.Resources, gr schema.GroupResource, gk schema.GroupKind, checkNamespaceQuota bool, instances int64) QuotaChecker {
 	return QuotaChecker{
 		requestedResources:  r,
 		instanceNamespace:   instanceNamespace,
@@ -40,6 +42,7 @@ func NewQuotaChecker(c client.Client, claimName, claimNamespace, instanceNamespa
 		gr:                  gr,
 		gk:                  gk,
 		checkNamespaceQuota: checkNamespaceQuota,
+		instances:           instances,
 	}
 }
 
@@ -60,7 +63,7 @@ func (q *QuotaChecker) CheckQuotas(ctx context.Context) *apierrors.StatusError {
 		return nsErr
 	}
 
-	return q.requestedResources.CheckResourcesAgainstQuotas(ctx, q.client, q.claimName, q.instanceNamespace, q.gk)
+	return q.requestedResources.CheckResourcesAgainstQuotas(ctx, q.client, q.claimName, q.instanceNamespace, q.gk, q.instances)
 }
 
 // areNamespacesWithinQuota checks for the given organization if there are still enough namespaces available.
@@ -148,7 +151,7 @@ func (q *QuotaChecker) getNamespaceOverrides(ctx context.Context, c client.Clien
 
 // AddInitalNamespaceQuotas will add the default quotas to the namespace annotations.
 // It will only add them, if there are currently no such annotations in place.
-func AddInitalNamespaceQuotas(ns *corev1.Namespace) bool {
+func AddInitalNamespaceQuotas(ctx context.Context, iof *iofruntime.Runtime, ns *corev1.Namespace, s *utils.Sidecars, kind string) bool {
 	annotations := ns.GetAnnotations()
 	if annotations == nil {
 		annotations = map[string]string{}
@@ -156,28 +159,30 @@ func AddInitalNamespaceQuotas(ns *corev1.Namespace) bool {
 
 	added := false
 
+	r := utils.GetDefaultResources(kind, s)
+
 	if _, ok := annotations[utils.DiskAnnotation]; !ok {
 		annotations[utils.DiskAnnotation] = utils.DefaultDiskRequests.String()
 		added = true
 	}
 
 	if _, ok := annotations[utils.CpuRequestAnnotation]; !ok {
-		annotations[utils.CpuRequestAnnotation] = utils.DefaultCPURequests.String()
+		annotations[utils.CpuRequestAnnotation] = r.CPURequests.String()
 		added = true
 	}
 
 	if _, ok := annotations[utils.CpuLimitAnnotation]; !ok {
-		annotations[utils.CpuLimitAnnotation] = utils.DefaultCPULimit.String()
+		annotations[utils.CpuLimitAnnotation] = r.CPULimits.String()
 		added = true
 	}
 
 	if _, ok := annotations[utils.MemoryRequestAnnotation]; !ok {
-		annotations[utils.MemoryRequestAnnotation] = utils.DefaultMemoryRequests.String()
+		annotations[utils.MemoryRequestAnnotation] = r.MemoryRequests.String()
 		added = true
 	}
 
 	if _, ok := annotations[utils.MemoryLimitAnnotation]; !ok {
-		annotations[utils.MemoryLimitAnnotation] = utils.DefaultMemoryLimits.String()
+		annotations[utils.MemoryLimitAnnotation] = r.MemoryLimits.String()
 		added = true
 	}
 

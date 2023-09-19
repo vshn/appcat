@@ -116,7 +116,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) (probes.Prober, error) {
-	instance := &vshnv1.VSHNPostgreSQL{}
+	instance := &vshnv1.XVSHNPostgreSQL{}
 	err := r.Get(ctx, types.NamespacedName{
 		Name:      inst.ObjectMeta.Labels["crossplane.io/claim-name"],
 		Namespace: inst.ObjectMeta.Labels["crossplane.io/claim-namespace"],

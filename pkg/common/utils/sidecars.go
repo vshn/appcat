@@ -38,7 +38,7 @@ func GetAllSideCarsResources(ctx context.Context, c client.Client, name string) 
 		if err != nil {
 			return Resources{}, err
 		}
-		rTot.AddByResource(r)
+		rTot.AddResources(r)
 	}
 
 	return rTot, nil
@@ -71,12 +71,12 @@ func FetchSidecarFromCluster(ctx context.Context, c client.Client, name, sidecar
 		return Resources{}, err
 	}
 
-	r, err := convertSidecarToResource(sidecar, *s)
+	r, err := s.convertSidecarToResource(sidecar)
 
 	return r, err
 }
 
-func convertSidecarToResource(sidecar string, s Sidecars) (Resources, error) {
+func (s Sidecars) convertSidecarToResource(sidecar string) (Resources, error) {
 	r := Resources{}
 	var err error
 

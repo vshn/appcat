@@ -196,7 +196,7 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 	}
 
 	resources.MultiplyBy(instances)
-	resources.AddByResource(resourcesSidecars)
+	resources.AddResources(resourcesSidecars)
 
 	checker := quotas.NewQuotaChecker(
 		p.client,

@@ -73,14 +73,14 @@ var (
 
 	// These defaults allow up to a PostgreSQL or Redis standard-8 with one replica.
 
-	// defaultCPURequests 2* standard-8 will request 4 CPUs. This default has 500m as spare for jobs
-	DefaultCPURequests = resource.NewMilliQuantity(4500, resource.DecimalSI)
-	// defaultCPULimit by default same as DefaultCPURequests
-	DefaultCPULimit = DefaultCPURequests
-	// defaultMemoryRequests 2* standard-8 will request 16Gb. This default has 500mb as spare for jobs
-	DefaultMemoryRequests = resource.NewQuantity(17301504000, resource.BinarySI)
-	// defaultMemoryLimits same as DefaultMemoryRequests
-	DefaultMemoryLimits = DefaultMemoryRequests
+	// defaultCPURequests 2* standard-8 will request 4 CPUs + the sidecars will each request 850m. This default has 500m as spare for jobs
+	DefaultCPURequests = resource.NewMilliQuantity(6200, resource.DecimalSI)
+	// defaultCPULimit by default same as DefaultCPURequests + 4800m for the sidecars limit
+	DefaultCPULimit = resource.NewMilliQuantity(DefaultCPURequests.MilliValue()+4800, resource.DecimalSI)
+	// defaultMemoryRequests 2* standard-8 will request 16Gb + the sidecars will each request 1088Mi. This default has 500mb as spare for jobs
+	DefaultMemoryRequests = resource.NewQuantity(18442354688, resource.BinarySI)
+	// defaultMemoryLimits same as DefaultMemoryRequests + 6144Mi for the sidecars limit
+	DefaultMemoryLimits = resource.NewQuantity(DefaultMemoryRequests.Value()+6442450944, resource.BinarySI)
 	// defaultDiskRequests should be plenty for a large amount of replicas for any service
 	DefaultDiskRequests = resource.NewQuantity(1099511627776, resource.DecimalSI)
 )
@@ -247,4 +247,12 @@ func (r *Resources) MultiplyBy(i int64) {
 	r.MemoryLimits.Set(r.MemoryLimits.Value() * i)
 	r.MemoryRequests.Set(r.MemoryRequests.Value() * i)
 	r.Disk.Set(r.Disk.Value() * i)
+}
+
+func (r *Resources) AddByResource(resource Resources) {
+	r.CPULimits.Add(resource.CPULimits)
+	r.CPURequests.Add(resource.CPURequests)
+	r.MemoryLimits.Add(resource.MemoryLimits)
+	r.MemoryRequests.Add(resource.MemoryRequests)
+	r.Disk.Add(resource.Disk)
 }

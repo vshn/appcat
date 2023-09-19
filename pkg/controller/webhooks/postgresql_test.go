@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg"
@@ -24,13 +25,108 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 			},
 		},
 	}
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vshnpostgresqlplans",
+			Namespace: "testns",
+		},
+		Data: map[string]string{
+			"sidecars": `
+			{
+				"clusterController": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "32m",
+						"memory": "188Mi"
+					}
+				},
+				"createBackup": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "250m",
+						"memory": "256Mi"
+					}
+				},
+				"envoy": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "32m",
+						"memory": "64Mi"
+					}
+				},
+				"pgbouncer": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "16m",
+						"memory": "32Mi"
+					}
+				},
+				"postgresUtil": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "10m",
+						"memory": "4Mi"
+					}
+				},
+				"prometheusPostgresExporter": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "10m",
+						"memory": "32Mi"
+					}
+				},
+				"runDbops": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "250m",
+						"memory": "256Mi"
+					}
+				},
+				"setDbopsResult": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "250m",
+						"memory": "256Mi"
+					}
+				}
+			}
+			`,
+		},
+	}
 
 	ctx := context.TODO()
 
 	fclient := fake.NewClientBuilder().
 		WithScheme(pkg.SetupScheme()).
-		WithObjects(claimNS).
+		WithObjects(claimNS, cm).
 		Build()
+
+	viper.Set("PLANS_NAMESPACE", "testns")
+	viper.AutomaticEnv()
 
 	handler := PostgreSQLWebhookHandler{
 		client:    fclient,
@@ -62,13 +158,13 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	//When quota breached
 	// CPU Limits
 	pgInvalid := pgOrig.DeepCopy()
-	pgInvalid.Spec.Parameters.Size.CPU = "5000m"
+	pgInvalid.Spec.Parameters.Size.CPU = "10000m"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
 	//CPU Requests
 	pgInvalid = pgOrig.DeepCopy()
-	pgInvalid.Spec.Parameters.Size.Requests.CPU = "5000m"
+	pgInvalid.Spec.Parameters.Size.Requests.CPU = "6000m"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 

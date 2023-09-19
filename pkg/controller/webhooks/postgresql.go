@@ -153,6 +153,11 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 		}
 	}
 
+	resourcesSidecars, err := utils.GetAllSideCarsResources(ctx, p.client, "vshnpostgresqlplans")
+	if err != nil {
+		return apierrors.NewInternalError(err), fieldErrs
+	}
+
 	p.addPathsToResources(&resources)
 
 	if pg.Spec.Parameters.Size.CPU != "" {
@@ -191,6 +196,7 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 	}
 
 	resources.MultiplyBy(instances)
+	resources.AddByResource(resourcesSidecars)
 
 	checker := quotas.NewQuotaChecker(
 		p.client,

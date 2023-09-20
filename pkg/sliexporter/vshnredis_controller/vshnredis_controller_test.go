@@ -166,7 +166,7 @@ func TestVSHNRedis_StartStop(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
+		Service:   "XVSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -196,7 +196,7 @@ func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
+		Service:   "XVSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -214,7 +214,7 @@ func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
 func TestVSHNRedis_Multi(t *testing.T) {
 	dbBar := newTestVSHNRedis("bar", "foo", "creds")
 	dbBarer := newTestVSHNRedis("bar", "fooer", "credentials")
-	dbBuzz := newTestVSHNRedis("buzz", "foo", "creds")
+	dbBuzz := newTestVSHNRedis("buzz", "fooz", "creds")
 	r, manager, c := setupVSHNRedisTest(t,
 		dbBar,
 		newTestVSHNRedisCred("bar", "creds"),
@@ -225,18 +225,18 @@ func TestVSHNRedis_Multi(t *testing.T) {
 	)
 
 	barPi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
+		Service:   "XVSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
 	barerPi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
+		Service:   "XVSHNRedis",
 		Name:      "fooer",
 		Namespace: "bar",
 	}
 	buzzPi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
+		Service:   "XVSHNRedis",
+		Name:      "fooz",
 		Namespace: "buzz",
 	}
 
@@ -252,7 +252,7 @@ func TestVSHNRedis_Multi(t *testing.T) {
 	require.NoError(t, c.Delete(context.TODO(), dbBar))
 	_, err = r.Reconcile(context.TODO(), recReq("bar", "foo"))
 	assert.NoError(t, err)
-	_, err = r.Reconcile(context.TODO(), recReq("buzz", "foo"))
+	_, err = r.Reconcile(context.TODO(), recReq("buzz", "fooz"))
 	assert.NoError(t, err)
 
 	assert.False(t, manager.probers[getFakeKey(barPi)])
@@ -267,7 +267,7 @@ func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
 		db,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
+		Service:   "XVSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -286,7 +286,7 @@ func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
 		db,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
+		Service:   "XVSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -303,7 +303,7 @@ func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
 		db,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
+		Service:   "XVSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -343,7 +343,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 	)
 	r.RedisDialer = func(service, name, namespace, organization string, opts redis.Options) (*probes.VSHNRedis, error) {
 
-		assert.Equal(t, "VSHNRedis", service)
+		assert.Equal(t, "XVSHNRedis", service)
 		assert.Equal(t, "foo", name)
 		assert.Equal(t, "bar", namespace)
 		assert.Equal(t, "bar", organization)
@@ -374,7 +374,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
+		Service:   "XVSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -424,7 +424,7 @@ func (m *fakeProbeManager) StopProbe(p probes.ProbeInfo) {
 }
 
 func getFakeKey(pi probes.ProbeInfo) key {
-	return key(fmt.Sprintf("%s; %s; %s", pi.Service, pi.Namespace, pi.Name))
+	return key(fmt.Sprintf("%s; %s", pi.Service, pi.Name))
 }
 
 func setupVSHNRedisTest(t *testing.T, objs ...client.Object) (VSHNRedisReconciler, *fakeProbeManager, client.Client) {
@@ -448,8 +448,8 @@ func setupVSHNRedisTest(t *testing.T, objs ...client.Object) (VSHNRedisReconcile
 	return r, manager, client
 }
 
-func newTestVSHNRedis(namespace, name, cred string) *vshnv1.VSHNRedis {
-	return &vshnv1.VSHNRedis{
+func newTestVSHNRedis(namespace, name, cred string) *vshnv1.XVSHNRedis {
+	return &vshnv1.XVSHNRedis{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,

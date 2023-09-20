@@ -63,15 +63,22 @@ type VSHNMinioParameters struct {
 	// Each instance contains one Minio server.
 	Instances int `json:"instances,omitempty"`
 
+	// StorageClass configures the storageClass to use for the PVC used by MinIO.
+	StorageClass string `json:"storageClass,omitempty"`
+
+	// Service contains the Minio specific configurations
+	Service VSHNMinioServiceSpec `json:"service,omitempty"`
+}
+
+// VSHNMinioServiceSpec contains Redis DBaaS specific properties
+type VSHNMinioServiceSpec struct {
+
 	// +kubebuilder:default="distributed"
 	// +kubebuilder:validation:Enum=distributed;standalone
 
 	// Mode configures the mode of MinIO.
 	// Valid values are "distributed" and "standalone".
 	Mode string `json:"mode,omitempty"`
-
-	// StorageClass configures the storageClass to use for the PVC used by MinIO.
-	StorageClass string `json:"storageClass,omitempty"`
 }
 
 // VSHNMinioStatus reflects the observed state of a VSHNMinio.

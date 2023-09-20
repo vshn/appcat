@@ -31,7 +31,7 @@ func NewFatalErr(ctx context.Context, msg string, err error) Result {
 	controllerruntime.LoggerFrom(ctx).Error(err, msg)
 	return result{
 		Severity: v1alpha1.SeverityFatal,
-		Message:  msg,
+		Message:  msg + ": " + err.Error(),
 	}
 }
 

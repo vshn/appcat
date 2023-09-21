@@ -10,8 +10,9 @@ import (
 type VSHNRedis struct {
 	redisClient  redis.Client
 	Service      string
-	Instance     string
+	Name         string
 	Namespace    string
+	Instances    int
 	Organization string
 }
 
@@ -28,7 +29,7 @@ func (redis VSHNRedis) Close() error {
 func (redis VSHNRedis) GetInfo() ProbeInfo {
 	return ProbeInfo{
 		Service:      redis.Service,
-		Name:         redis.Instance,
+		Name:         redis.Name,
 		Namespace:    redis.Namespace,
 		Organization: redis.Organization,
 	}
@@ -43,15 +44,16 @@ func (redis VSHNRedis) Probe(ctx context.Context) error {
 	return nil
 }
 
-func NewRedis(service, name, namespace, organization string, opts redis.Options) (*VSHNRedis, error) {
+func NewRedis(service, name, namespace, organization string, instances int, opts redis.Options) (*VSHNRedis, error) {
 
 	client := redis.NewClient(&opts)
 
 	return &VSHNRedis{
 		redisClient:  *client,
 		Service:      service,
-		Instance:     name,
+		Name:         name,
 		Namespace:    namespace,
+		Instances:    instances,
 		Organization: organization,
 	}, nil
 }

@@ -341,7 +341,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 			},
 		},
 	)
-	r.RedisDialer = func(service, name, namespace, organization string, opts redis.Options) (*probes.VSHNRedis, error) {
+	r.RedisDialer = func(service, name, namespace, organization string, instances int, opts redis.Options) (*probes.VSHNRedis, error) {
 
 		assert.Equal(t, "XVSHNRedis", service)
 		assert.Equal(t, "foo", name)
@@ -360,7 +360,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 			InsecureSkipVerify: true,
 		}
 
-		return fakeRedisDialer(service, name, namespace, organization, redis.Options{
+		return fakeRedisDialer(service, name, namespace, organization, 1, redis.Options{
 			Addr:      string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
 			Username:  string(cred.Data["REDIS_USERNAME"]),
 			Password:  string(cred.Data["REDIS_PASSWORD"]),
@@ -389,11 +389,12 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
-func fakeRedisDialer(service, name, namespace, organization string, opts redis.Options) (*probes.VSHNRedis, error) {
+func fakeRedisDialer(service, name, namespace, organization string, instances int, opts redis.Options) (*probes.VSHNRedis, error) {
 	p := &probes.VSHNRedis{
 		Service:      service,
-		Instance:     name,
+		Name:         name,
 		Namespace:    namespace,
+		Instances:    instances,
 		Organization: organization,
 	}
 	return p, nil

@@ -118,6 +118,7 @@ The exporter exposes a histogram `appcat_probes_seconds` with five labels
 * `namespace`, the namespace of the claim that was monitored
 * `name`, the name of the claim that was monitored
 * `sla`, the service level. Can either be `besteffort` or `guaranteed`
+* `instances`, the number of instances (replicas) of this service
 * `reason`, if the probe was successful. Can either be `success`, `fail-timeout`, or `fail-unkown`
 
 #### Adding a Prober

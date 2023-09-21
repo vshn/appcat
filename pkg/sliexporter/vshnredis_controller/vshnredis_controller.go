@@ -35,7 +35,7 @@ type VSHNRedisReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	RedisDialer        func(service, name, namespace, organization string, opts redis.Options) (*probes.VSHNRedis, error)
+	RedisDialer        func(service, name, namespace, organization string, instances int, opts redis.Options) (*probes.VSHNRedis, error)
 }
 
 type probeManager interface {
@@ -146,7 +146,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 
 	tlsConfig.RootCAs.AppendCertsFromPEM(credentials.Data["ca.crt"])
 
-	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, redis.Options{
+	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, 1, redis.Options{
 		Addr:      string(credentials.Data["REDIS_HOST"]) + ":" + string(credentials.Data["REDIS_PORT"]),
 		Username:  string(credentials.Data["REDIS_USERNAME"]),
 		Password:  string(credentials.Data["REDIS_PASSWORD"]),

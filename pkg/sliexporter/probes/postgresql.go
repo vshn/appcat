@@ -17,9 +17,10 @@ type PostgreSQL struct {
 	db *pgxpool.Pool
 
 	Service      string
-	Instance     string
+	Name         string
 	Namespace    string
 	Organization string
+	Instances    int
 	ServiceLevel string
 }
 
@@ -35,9 +36,10 @@ func (p PostgreSQL) Close() error {
 func (p PostgreSQL) GetInfo() ProbeInfo {
 	return ProbeInfo{
 		Service:      p.Service,
-		Name:         p.Instance,
+		Name:         p.Name,
 		Namespace:    p.Namespace,
 		Organization: p.Organization,
+		Instances:    p.Instances,
 		ServiceLevel: p.ServiceLevel,
 	}
 }
@@ -53,7 +55,7 @@ func (p PostgreSQL) Probe(ctx context.Context) error {
 }
 
 // NewPostgreSQL connects to the provided dsn and returns a prober
-func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
+func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, instances int, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
 	conf, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, err
@@ -76,9 +78,10 @@ func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ops 
 	return &PostgreSQL{
 		db:           db,
 		Service:      service,
-		Instance:     name,
+		Name:         name,
 		Namespace:    namespace,
 		Organization: organization,
+		Instances:    instances,
 		ServiceLevel: sla,
 	}, nil
 }
@@ -88,7 +91,7 @@ func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ops 
 func NewFailingPostgreSQL(service, name, namespace string) (*PostgreSQL, error) {
 	return &PostgreSQL{
 		Service:   service,
-		Instance:  name,
+		Name:      name,
 		Namespace: namespace,
 	}, nil
 }

@@ -26,10 +26,10 @@ import (
 )
 
 func TestVSHNPostgreSQL_StartStop(t *testing.T) {
-	db := newTestVSHNPostgre("bar", "foo", "creds")
+	db := newTestVSHNPostgres("bar", "foo", "creds", 1)
 	r, manager, client := setupVSHNPostgreTest(t,
 		db,
-		newTestVSHNPostgreCred("bar", "creds"),
+		newTestVSHNPostgresCred("bar", "creds"),
 	)
 
 	req := ctrl.Request{
@@ -54,11 +54,11 @@ func TestVSHNPostgreSQL_StartStop(t *testing.T) {
 }
 
 func TestVSHNPostgreSQL_StartStop_WithFinalizer(t *testing.T) {
-	db := newTestVSHNPostgre("bar", "foo", "creds")
+	db := newTestVSHNPostgres("bar", "foo", "creds", 1)
 	db.SetFinalizers([]string{"foobar.vshn.io"})
 	r, manager, client := setupVSHNPostgreTest(t,
 		db,
-		newTestVSHNPostgreCred("bar", "creds"),
+		newTestVSHNPostgresCred("bar", "creds"),
 	)
 
 	req := ctrl.Request{
@@ -83,16 +83,16 @@ func TestVSHNPostgreSQL_StartStop_WithFinalizer(t *testing.T) {
 }
 
 func TestVSHNPostgreSQL_Multi(t *testing.T) {
-	dbBar := newTestVSHNPostgre("bar", "foo", "creds")
-	dbBarer := newTestVSHNPostgre("bar", "fooer", "credentials")
-	dbBuzz := newTestVSHNPostgre("buzz", "foobar", "creds")
+	dbBar := newTestVSHNPostgres("bar", "foo", "creds", 1)
+	dbBarer := newTestVSHNPostgres("bar", "fooer", "credentials", 1)
+	dbBuzz := newTestVSHNPostgres("buzz", "foobar", "creds", 1)
 	r, manager, c := setupVSHNPostgreTest(t,
 		dbBar,
-		newTestVSHNPostgreCred("bar", "creds"),
+		newTestVSHNPostgresCred("bar", "creds"),
 		dbBarer,
-		newTestVSHNPostgreCred("bar", "credentials"),
+		newTestVSHNPostgresCred("bar", "credentials"),
 		dbBuzz,
-		newTestVSHNPostgreCred("buzz", "creds"),
+		newTestVSHNPostgresCred("buzz", "creds"),
 	)
 
 	barPi := probes.ProbeInfo{
@@ -129,7 +129,7 @@ func TestVSHNPostgreSQL_Multi(t *testing.T) {
 }
 
 func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
-	db := newTestVSHNPostgre("bar", "foo", "creds")
+	db := newTestVSHNPostgres("bar", "foo", "creds", 1)
 	db.SetCreationTimestamp(metav1.Now())
 	r, manager, _ := setupVSHNPostgreTest(t,
 		db,
@@ -148,7 +148,7 @@ func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
 }
 
 func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
-	db := newTestVSHNPostgre("bar", "foo", "creds")
+	db := newTestVSHNPostgres("bar", "foo", "creds", 1)
 	db.Spec.WriteConnectionSecretToRef.Name = ""
 	r, manager, _ := setupVSHNPostgreTest(t,
 		db,
@@ -165,7 +165,7 @@ func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
 }
 
 func TestVSHNPostgreSQL_Started_NoCreds_Probe_Failure(t *testing.T) {
-	db := newTestVSHNPostgre("bar", "foo", "creds")
+	db := newTestVSHNPostgres("bar", "foo", "creds", 1)
 	db.SetCreationTimestamp(metav1.Time{Time: time.Now().Add(-1 * time.Hour)})
 	r, manager, _ := setupVSHNPostgreTest(t,
 		db,
@@ -182,9 +182,9 @@ func TestVSHNPostgreSQL_Started_NoCreds_Probe_Failure(t *testing.T) {
 	assert.True(t, manager.probers[getFakeKey(pi)])
 }
 
-func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
-	db := newTestVSHNPostgre("bar", "foo", "creds")
-	cred := newTestVSHNPostgreCred("bar", "creds")
+func TestVSHNPostgreSQL_PassCredentials(t *testing.T) {
+	db := newTestVSHNPostgres("bar", "foo", "creds", 3)
+	cred := newTestVSHNPostgresCred("bar", "creds")
 	cred.Data = map[string][]byte{
 		"POSTGRESQL_USER":     []byte("userfoo"),
 		"POSTGRESQL_PASSWORD": []byte("password"),
@@ -206,16 +206,17 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 			},
 		},
 	)
-	r.PostgreDialer = func(service, name, namespace, dsn, organization, sla string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+	r.PostgreDialer = func(service, name, namespace, dsn, organization, sla string, instances int, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 
 		assert.Equal(t, "XVSHNPostgreSQL", service)
 		assert.Equal(t, "foo", name)
 		assert.Equal(t, "bar", namespace)
 		assert.Equal(t, "postgresql://userfoo:password@foo.bar:5433/pg?sslmode=verify-ca", dsn)
+		assert.Equal(t, 3, instances)
 		assert.Equal(t, "bar", organization)
 		assert.Equal(t, "besteffort", sla)
 
-		return fakePostgreDialer(service, name, namespace, dsn, organization, sla, ops...)
+		return fakePostgreDialer(service, name, namespace, dsn, organization, sla, 1, ops...)
 	}
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
@@ -238,12 +239,13 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
-func fakePostgreDialer(service string, name string, namespace string, dsn string, organization string, sla string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+func fakePostgreDialer(service string, name string, namespace string, dsn string, organization string, sla string, instances int, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 	p := &probes.PostgreSQL{
 		Service:      service,
-		Instance:     name,
+		Name:         name,
 		Namespace:    namespace,
 		Organization: organization,
+		Instances:    instances,
 		ServiceLevel: sla,
 	}
 	return p, nil
@@ -298,20 +300,23 @@ func setupVSHNPostgreTest(t *testing.T, objs ...client.Object) (VSHNPostgreSQLRe
 	return r, manager, client
 }
 
-func newTestVSHNPostgre(namespace, name, cred string) *vshnv1.XVSHNPostgreSQL {
+func newTestVSHNPostgres(namespace, name, cred string, instances int) *vshnv1.XVSHNPostgreSQL {
 	return &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
 		Spec: vshnv1.VSHNPostgreSQLSpec{
+			Parameters: vshnv1.VSHNPostgreSQLParameters{
+				Instances: instances,
+			},
 			WriteConnectionSecretToRef: v1.LocalObjectReference{
 				Name: cred,
 			},
 		},
 	}
 }
-func newTestVSHNPostgreCred(namespace, name string) *corev1.Secret {
+func newTestVSHNPostgresCred(namespace, name string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

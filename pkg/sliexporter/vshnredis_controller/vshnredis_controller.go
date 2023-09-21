@@ -23,7 +23,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var vshnRedisServiceKey = "XVSHNRedis"
+var (
+	vshnRedisServiceKey = "XVSHNRedis"
+	claimNamespaceLabel = "crossplane.io/claim-namespace"
+	claimNameLabel      = "crossplane.io/claim-name"
+)
 
 type VSHNRedisReconciler struct {
 	client.Client
@@ -104,8 +108,8 @@ func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XVSHNRedis) (prober probes.Prober, err error) {
 	instance := &vshnv1.VSHNRedis{}
 	err = r.Get(ctx, types.NamespacedName{
-		Name:      inst.ObjectMeta.Labels["crossplane.io/claim-name"],
-		Namespace: inst.ObjectMeta.Labels["crossplane.io/claim-namespace"],
+		Name:      inst.ObjectMeta.Labels[claimNameLabel],
+		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
 	}, instance)
 
 	if err != nil {
@@ -116,7 +120,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 
 	err = r.Get(ctx, types.NamespacedName{
 		Name:      instance.Spec.WriteConnectionSecretToRef.Name,
-		Namespace: inst.ObjectMeta.Labels["crossplane.io/claim-namespace"],
+		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
 	}, &credentials)
 
 	if err != nil {
@@ -124,7 +128,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 	}
 
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels["crossplane.io/claim-namespace"]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels[claimNamespaceLabel]}, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +146,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 
 	tlsConfig.RootCAs.AppendCertsFromPEM(credentials.Data["ca.crt"])
 
-	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels["crossplane.io/claim-namespace"], org, redis.Options{
+	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, redis.Options{
 		Addr:      string(credentials.Data["REDIS_HOST"]) + ":" + string(credentials.Data["REDIS_PORT"]),
 		Username:  string(credentials.Data["REDIS_USERNAME"]),
 		Password:  string(credentials.Data["REDIS_PASSWORD"]),

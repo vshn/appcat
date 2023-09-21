@@ -36,7 +36,11 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
-var vshnpostgresqlsServiceKey = "XVSHNPostgreSQL"
+var (
+	vshnpostgresqlsServiceKey = "XVSHNPostgreSQL"
+	claimNamespaceLabel       = "crossplane.io/claim-namespace"
+	claimNameLabel            = "crossplane.io/claim-name"
+)
 
 // VSHNPostgreSQLReconciler reconciles a VSHNPostgreSQL object
 type VSHNPostgreSQLReconciler struct {
@@ -104,7 +108,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		// Create a pobe that will always fail
-		probe, err = probes.NewFailingPostgreSQL(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels["crossplane.io/claim-namespace"])
+		probe, err = probes.NewFailingPostgreSQL(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel])
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -118,8 +122,8 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) (probes.Prober, error) {
 	instance := &vshnv1.VSHNPostgreSQL{}
 	err := r.Get(ctx, types.NamespacedName{
-		Name:      inst.ObjectMeta.Labels["crossplane.io/claim-name"],
-		Namespace: inst.ObjectMeta.Labels["crossplane.io/claim-namespace"],
+		Name:      inst.ObjectMeta.Labels[claimNameLabel],
+		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
 	}, instance)
 
 	if err != nil {
@@ -129,7 +133,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 	credSecret := corev1.Secret{}
 	err = r.Get(ctx, types.NamespacedName{
 		Name:      instance.Spec.WriteConnectionSecretToRef.Name,
-		Namespace: inst.ObjectMeta.Labels["crossplane.io/claim-namespace"],
+		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
 	}, &credSecret)
 
 	if err != nil {
@@ -137,7 +141,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 	}
 
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels["crossplane.io/claim-namespace"]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels[claimNamespaceLabel]}, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +152,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 		sla = vshnv1.BestEffort
 	}
 
-	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels["crossplane.io/claim-namespace"],
+	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel],
 		fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=verify-ca",
 			credSecret.Data["POSTGRESQL_USER"],

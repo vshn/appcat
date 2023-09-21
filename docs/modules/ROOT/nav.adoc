@@ -20,3 +20,4 @@
 * xref:explanations/comp-functions/redis-pvc-resize.adoc[]
 * xref:explanations/webhooks.adoc[]
 * xref:explanations/connectiondetails.adoc[]
+* xref:explanations/helm-maintenance.adoc[]

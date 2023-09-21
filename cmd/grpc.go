@@ -151,6 +151,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "deploy-providerconfig",
 			TransformFunc: vshnminio.DeployMinioProviderConfig,
 		},
+		{
+			Name:          "maintenance",
+			TransformFunc: vshnminio.AddMaintenanceJob,
+		},
 	},
 	"miniobucket": {
 		{

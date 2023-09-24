@@ -141,6 +141,10 @@ var images = map[string][]runtime.Transform{
 			Name:          "namespaceQuotas",
 			TransformFunc: common.AddInitialNamespaceQuotas("namespace-conditions"),
 		},
+		{
+			Name:          "redis_url",
+			TransformFunc: vshnredis.AddUrlToConnectionDetails,
+		},
 	},
 	"minio": {
 		{

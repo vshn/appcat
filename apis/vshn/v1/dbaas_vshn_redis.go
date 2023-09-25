@@ -128,20 +128,3 @@ type VSHNRedisStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 }
-
-// +kubebuilder:object:generate=true
-// +kubebuilder:object:root=true
-
-// XVSHNRedis represents the internal composite of this claim
-type XVSHNRedis VSHNRedis
-
-// +kubebuilder:object:generate=true
-// +kubebuilder:object:root=true
-
-// XVSHNRedisList represents a list of composites
-type XVSHNRedisList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-
-	Items []XVSHNRedis `json:"items"`
-}

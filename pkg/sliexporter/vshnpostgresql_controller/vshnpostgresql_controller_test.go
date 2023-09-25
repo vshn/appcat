@@ -39,8 +39,9 @@ func TestVSHNPostgreSQL_StartStop(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
-		Name:    "foo",
+		Service:   "VSHNPostgreSQL",
+		Name:      "foo",
+		Namespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -68,8 +69,9 @@ func TestVSHNPostgreSQL_StartStop_WithFinalizer(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
-		Name:    "foo",
+		Service:   "VSHNPostgreSQL",
+		Name:      "foo",
+		Namespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -85,7 +87,7 @@ func TestVSHNPostgreSQL_StartStop_WithFinalizer(t *testing.T) {
 func TestVSHNPostgreSQL_Multi(t *testing.T) {
 	dbBar := newTestVSHNPostgre("bar", "foo", "creds")
 	dbBarer := newTestVSHNPostgre("bar", "fooer", "credentials")
-	dbBuzz := newTestVSHNPostgre("buzz", "foobar", "creds")
+	dbBuzz := newTestVSHNPostgre("buzz", "foo", "creds")
 	r, manager, c := setupVSHNPostgreTest(t,
 		dbBar,
 		newTestVSHNPostgreCred("bar", "creds"),
@@ -96,36 +98,39 @@ func TestVSHNPostgreSQL_Multi(t *testing.T) {
 	)
 
 	barPi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
-		Name:    "foo",
+		Service:   "VSHNPostgreSQL",
+		Name:      "foo",
+		Namespace: "bar",
 	}
 	barerPi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
-		Name:    "fooer",
+		Service:   "VSHNPostgreSQL",
+		Name:      "fooer",
+		Namespace: "bar",
 	}
 	buzzPi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
-		Name:    "foobar",
+		Service:   "VSHNPostgreSQL",
+		Name:      "foo",
+		Namespace: "buzz",
 	}
 
 	_, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	_, err = r.Reconcile(context.TODO(), recReq("bar", "fooer"))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
-	require.True(t, manager.probers[getFakeKey(barPi)])
-	require.True(t, manager.probers[getFakeKey(barerPi)])
-	require.False(t, manager.probers[getFakeKey(buzzPi)])
+	assert.True(t, manager.probers[getFakeKey(barPi)])
+	assert.True(t, manager.probers[getFakeKey(barerPi)])
+	assert.False(t, manager.probers[getFakeKey(buzzPi)])
 
 	require.NoError(t, c.Delete(context.TODO(), dbBar))
 	_, err = r.Reconcile(context.TODO(), recReq("bar", "foo"))
-	require.NoError(t, err)
-	_, err = r.Reconcile(context.TODO(), recReq("buzz", "foobar"))
-	require.NoError(t, err)
+	assert.NoError(t, err)
+	_, err = r.Reconcile(context.TODO(), recReq("buzz", "foo"))
+	assert.NoError(t, err)
 
-	require.False(t, manager.probers[getFakeKey(barPi)])
-	require.True(t, manager.probers[getFakeKey(barerPi)])
-	require.True(t, manager.probers[getFakeKey(buzzPi)])
+	assert.False(t, manager.probers[getFakeKey(barPi)])
+	assert.True(t, manager.probers[getFakeKey(barerPi)])
+	assert.True(t, manager.probers[getFakeKey(buzzPi)])
 }
 
 func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
@@ -171,8 +176,9 @@ func TestVSHNPostgreSQL_Started_NoCreds_Probe_Failure(t *testing.T) {
 		db,
 	)
 	pi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
-		Name:    "foo",
+		Service:   "VSHNPostgreSQL",
+		Name:      "foo",
+		Namespace: "bar",
 	}
 
 	res, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
@@ -208,7 +214,7 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 	)
 	r.PostgreDialer = func(service, name, namespace, dsn, organization, sla string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 
-		assert.Equal(t, "XVSHNPostgreSQL", service)
+		assert.Equal(t, "VSHNPostgreSQL", service)
 		assert.Equal(t, "foo", name)
 		assert.Equal(t, "bar", namespace)
 		assert.Equal(t, "postgresql://userfoo:password@foo.bar:5433/pg?sslmode=verify-ca", dsn)
@@ -224,8 +230,9 @@ func TestVSHNPostgreSQL_PassCerdentials(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
-		Name:    "foo",
+		Service:   "VSHNPostgreSQL",
+		Name:      "foo",
+		Namespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -274,7 +281,7 @@ func (m *fakeProbeManager) StopProbe(p probes.ProbeInfo) {
 }
 
 func getFakeKey(pi probes.ProbeInfo) key {
-	return key(fmt.Sprintf("%s; %s", pi.Service, pi.Name))
+	return key(fmt.Sprintf("%s; %s; %s", pi.Service, pi.Namespace, pi.Name))
 }
 
 func setupVSHNPostgreTest(t *testing.T, objs ...client.Object) (VSHNPostgreSQLReconciler, *fakeProbeManager, client.Client) {
@@ -298,8 +305,8 @@ func setupVSHNPostgreTest(t *testing.T, objs ...client.Object) (VSHNPostgreSQLRe
 	return r, manager, client
 }
 
-func newTestVSHNPostgre(namespace, name, cred string) *vshnv1.XVSHNPostgreSQL {
-	return &vshnv1.XVSHNPostgreSQL{
+func newTestVSHNPostgre(namespace, name, cred string) *vshnv1.VSHNPostgreSQL {
+	return &vshnv1.VSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,

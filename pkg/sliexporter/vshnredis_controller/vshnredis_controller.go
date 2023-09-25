@@ -12,7 +12,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,11 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
-	vshnRedisServiceKey = "XVSHNRedis"
-	claimNamespaceLabel = "crossplane.io/claim-namespace"
-	claimNameLabel      = "crossplane.io/claim-name"
-)
+var vshnRedisServiceKey = "VSHNRedis"
 
 type VSHNRedisReconciler struct {
 	client.Client
@@ -43,8 +38,6 @@ type probeManager interface {
 	StopProbe(p probes.ProbeInfo)
 }
 
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnredis,verbs=get;list;watch
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnredis/status,verbs=get
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=vshnredis,verbs=get;list;watch
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=vshnredis/status,verbs=get
 
@@ -54,8 +47,7 @@ type probeManager interface {
 func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	l := log.FromContext(ctx).WithValues("namespace", req.Namespace, "instance", req.Name)
 	l.Info("Reconciling VSHNRedis")
-	inst := &vshnv1.XVSHNRedis{}
-
+	inst := &vshnv1.VSHNRedis{}
 	err = r.Get(ctx, req.NamespacedName, inst)
 
 	if apierrors.IsNotFound(err) || inst.DeletionTimestamp != nil {
@@ -105,37 +97,26 @@ func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 }
 
-func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XVSHNRedis) (prober probes.Prober, err error) {
-	instance := &vshnv1.VSHNRedis{}
+func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.VSHNRedis) (prober probes.Prober, err error) {
+	credSecret := corev1.Secret{}
 	err = r.Get(ctx, types.NamespacedName{
-		Name:      inst.ObjectMeta.Labels[claimNameLabel],
-		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
-	}, instance)
-
-	if err != nil {
-		return nil, err
-	}
-
-	credentials := v1.Secret{}
-
-	err = r.Get(ctx, types.NamespacedName{
-		Name:      instance.Spec.WriteConnectionSecretToRef.Name,
-		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
-	}, &credentials)
+		Name:      inst.Spec.WriteConnectionSecretToRef.Name,
+		Namespace: inst.Namespace,
+	}, &credSecret)
 
 	if err != nil {
 		return nil, err
 	}
 
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels[claimNamespaceLabel]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: inst.Namespace}, ns)
 	if err != nil {
 		return nil, err
 	}
 
 	org := ns.GetLabels()[utils.OrgLabelName]
 
-	certPair, err := tls.X509KeyPair(credentials.Data["tls.crt"], credentials.Data["tls.key"])
+	certPair, err := tls.X509KeyPair(credSecret.Data["tls.crt"], credSecret.Data["tls.key"])
 	if err != nil {
 		return nil, err
 	}
@@ -144,12 +125,12 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 		RootCAs:      x509.NewCertPool(),
 	}
 
-	tlsConfig.RootCAs.AppendCertsFromPEM(credentials.Data["ca.crt"])
+	tlsConfig.RootCAs.AppendCertsFromPEM(credSecret.Data["ca.crt"])
 
-	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, redis.Options{
-		Addr:      string(credentials.Data["REDIS_HOST"]) + ":" + string(credentials.Data["REDIS_PORT"]),
-		Username:  string(credentials.Data["REDIS_USERNAME"]),
-		Password:  string(credentials.Data["REDIS_PASSWORD"]),
+	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.Namespace, org, redis.Options{
+		Addr:      string(credSecret.Data["REDIS_HOST"]) + ":" + string(credSecret.Data["REDIS_PORT"]),
+		Username:  string(credSecret.Data["REDIS_USERNAME"]),
+		Password:  string(credSecret.Data["REDIS_PASSWORD"]),
 		TLSConfig: &tlsConfig,
 	})
 	if err != nil {
@@ -163,6 +144,6 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 // SetupWithManager sets up the controller with the Manager.
 func (r *VSHNRedisReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&vshnv1.XVSHNRedis{}).
+		For(&vshnv1.VSHNRedis{}).
 		Complete(r)
 }

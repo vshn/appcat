@@ -36,11 +36,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
-var (
-	vshnpostgresqlsServiceKey = "XVSHNPostgreSQL"
-	claimNamespaceLabel       = "crossplane.io/claim-namespace"
-	claimNameLabel            = "crossplane.io/claim-name"
-)
+var vshnpostgresqlsServiceKey = "VSHNPostgreSQL"
 
 // VSHNPostgreSQLReconciler reconciles a VSHNPostgreSQL object
 type VSHNPostgreSQLReconciler struct {
@@ -57,8 +53,6 @@ type probeManager interface {
 	StopProbe(p probes.ProbeInfo)
 }
 
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,verbs=get;list;watch
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls/status,verbs=get
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=vshnpostgresqls,verbs=get;list;watch
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=vshnpostgresqls/status,verbs=get
 
@@ -71,7 +65,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	l := log.FromContext(ctx).WithValues("namespace", req.Namespace, "instance", req.Name)
 	res := ctrl.Result{}
 
-	inst := &vshnv1.XVSHNPostgreSQL{}
+	inst := &vshnv1.VSHNPostgreSQL{}
 	err := r.Get(ctx, req.NamespacedName, inst)
 
 	if apierrors.IsNotFound(err) || inst.DeletionTimestamp != nil {
@@ -108,7 +102,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		// Create a pobe that will always fail
-		probe, err = probes.NewFailingPostgreSQL(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel])
+		probe, err = probes.NewFailingPostgreSQL(vshnpostgresqlsServiceKey, inst.Name, inst.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -119,21 +113,12 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return res, nil
 }
 
-func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) (probes.Prober, error) {
-	instance := &vshnv1.VSHNPostgreSQL{}
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      inst.ObjectMeta.Labels[claimNameLabel],
-		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
-	}, instance)
-
-	if err != nil {
-		return nil, err
-	}
+func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshnv1.VSHNPostgreSQL) (probes.Prober, error) {
 
 	credSecret := corev1.Secret{}
-	err = r.Get(ctx, types.NamespacedName{
-		Name:      instance.Spec.WriteConnectionSecretToRef.Name,
-		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
+	err := r.Get(ctx, types.NamespacedName{
+		Name:      inst.Spec.WriteConnectionSecretToRef.Name,
+		Namespace: inst.Namespace,
 	}, &credSecret)
 
 	if err != nil {
@@ -141,7 +126,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 	}
 
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels[claimNamespaceLabel]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: inst.Namespace}, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +137,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 		sla = vshnv1.BestEffort
 	}
 
-	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel],
+	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.Name, inst.Namespace,
 		fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=verify-ca",
 			credSecret.Data["POSTGRESQL_USER"],
@@ -171,6 +156,6 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 // SetupWithManager sets up the controller with the Manager.
 func (r *VSHNPostgreSQLReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&vshnv1.XVSHNPostgreSQL{}).
+		For(&vshnv1.VSHNPostgreSQL{}).
 		Complete(r)
 }

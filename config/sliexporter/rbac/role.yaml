@@ -48,3 +48,31 @@ rules:
   - vshnredis/status
   verbs:
   - get
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnpostgresqls
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnpostgresqls/status
+  verbs:
+  - get
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnredis
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnredis/status
+  verbs:
+  - get

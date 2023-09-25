@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/blang/semver/v4"
 	"github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	"github.com/go-logr/logr"
@@ -11,12 +14,10 @@ import (
 	"github.com/vshn/appcat/v4/pkg/controller/postgres"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
-	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
 )
 
-var redisURL = "https://hub.docker.com/v2/namespaces/library/repositories/redis/tags?page_size=100"
+var redisURL = "https://hub.docker.com/v2/repositories/bitnami/redis/tags/?page_size=100"
 var imageContentType = "image"
 var activeTagStatus = "active"
 

@@ -206,17 +206,17 @@ func TestVSHNPostgreSQL_PassCredentials(t *testing.T) {
 			},
 		},
 	)
-	r.PostgreDialer = func(service, name, namespace, dsn, organization, sla string, instances int, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+	r.PostgreDialer = func(service, name, namespace, dsn, organization, sla string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 
 		assert.Equal(t, "XVSHNPostgreSQL", service)
 		assert.Equal(t, "foo", name)
 		assert.Equal(t, "bar", namespace)
 		assert.Equal(t, "postgresql://userfoo:password@foo.bar:5433/pg?sslmode=verify-ca", dsn)
-		assert.Equal(t, 3, instances)
+		assert.Equal(t, true, ha)
 		assert.Equal(t, "bar", organization)
 		assert.Equal(t, "besteffort", sla)
 
-		return fakePostgreDialer(service, name, namespace, dsn, organization, sla, 1, ops...)
+		return fakePostgreDialer(service, name, namespace, dsn, organization, sla, ha, ops...)
 	}
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
@@ -239,14 +239,14 @@ func TestVSHNPostgreSQL_PassCredentials(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
-func fakePostgreDialer(service string, name string, namespace string, dsn string, organization string, sla string, instances int, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
+func fakePostgreDialer(service string, name string, namespace string, dsn string, organization string, sla string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 	p := &probes.PostgreSQL{
-		Service:      service,
-		Name:         name,
-		Namespace:    namespace,
-		Organization: organization,
-		Instances:    instances,
-		ServiceLevel: sla,
+		Service:       service,
+		Name:          name,
+		Namespace:     namespace,
+		Organization:  organization,
+		HighAvailable: ha,
+		ServiceLevel:  sla,
 	}
 	return p, nil
 }

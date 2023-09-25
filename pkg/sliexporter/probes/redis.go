@@ -8,12 +8,12 @@ import (
 )
 
 type VSHNRedis struct {
-	redisClient  redis.Client
-	Service      string
-	Name         string
-	Namespace    string
-	Instances    int
-	Organization string
+	redisClient   redis.Client
+	Service       string
+	Name          string
+	Namespace     string
+	HighAvailable bool
+	Organization  string
 }
 
 func (redis VSHNRedis) Close() error {
@@ -44,16 +44,16 @@ func (redis VSHNRedis) Probe(ctx context.Context) error {
 	return nil
 }
 
-func NewRedis(service, name, namespace, organization string, instances int, opts redis.Options) (*VSHNRedis, error) {
+func NewRedis(service, name, namespace, organization string, ha bool, opts redis.Options) (*VSHNRedis, error) {
 
 	client := redis.NewClient(&opts)
 
 	return &VSHNRedis{
-		redisClient:  *client,
-		Service:      service,
-		Name:         name,
-		Namespace:    namespace,
-		Instances:    instances,
-		Organization: organization,
+		redisClient:   *client,
+		Service:       service,
+		Name:          name,
+		Namespace:     namespace,
+		HighAvailable: ha,
+		Organization:  organization,
 	}, nil
 }

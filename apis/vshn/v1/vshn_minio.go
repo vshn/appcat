@@ -68,6 +68,9 @@ type VSHNMinioParameters struct {
 
 	// Service contains the Minio specific configurations
 	Service VSHNMinioServiceSpec `json:"service,omitempty"`
+
+	// Maintenance contains settings to control the maintenance of an instance.
+	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
 }
 
 // VSHNMinioServiceSpec contains Redis DBaaS specific properties

@@ -1,0 +1,21 @@
+= Helm Maintenance
+
+The module `github.com/vshn/appcat/v4/pkg/maintenance/helm` provides generic logic to update helm releases based on a path, containing the tag path in the values and a version comparison strategy.
+
+A very simple helm based maintenance can look like this:
+
+[source,golang]
+----
+myserviceURL = "https://hub.docker.com/v2/repositories/myorg/myservice/tags/?page_size=100"
+
+// DoMaintenance will run service's maintenance script.
+func (r *Redis) DoMaintenance(ctx context.Context) error {
+	patcher := helm.NewImagePatcher(r.k8sClient, r.httpClient, logr.FromContextOrDiscard(ctx).WithValues("type", "myservice"))
+
+	return patcher.DoMaintenance(ctx, myservieURL, helm.NewValuePath("service","image", "tag"), helm.SemVerPatchesOnly)
+}
+----
+
+The example above is based on some imaginary service, but it could be applied to any service, that adheres to semver and where only automatic patch updates are desired.
+
+It's easy to provide custom `VersionComparisonStrategy` functions to the `DoMaintenance()` function.

@@ -25,11 +25,13 @@ const (
 	noDefault service = iota
 	postgresql
 	redis
+	minio
 )
 
 var maintenanceServices = map[service][]string{
 	postgresql: {"postgresql"},
 	redis:      {"redis"},
+	minio:      {"minio"},
 }
 
 var serviceName service
@@ -79,11 +81,12 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		}
 		return pg.DoMaintenance(cmd.Context())
 	case redis:
-		r := maintenance.Redis{
-			K8sClient:  kubeClient,
-			HttpClient: http.DefaultClient,
-		}
+		r := maintenance.NewRedis(kubeClient, http.DefaultClient)
 		return r.DoMaintenance(cmd.Context())
+
+	case minio:
+		m := maintenance.NewMinio(kubeClient, http.DefaultClient)
+		return m.DoMaintenance(cmd.Context())
 	}
 
 	return nil

@@ -11,6 +11,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/common/jsonpatch"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -49,14 +50,14 @@ func Test_Handle(t *testing.T) {
 			obj:           getXVSHNPostgreSQL(true, nil),
 			enabled:       false,
 			retention:     0,
-			expectedPatch: getPatch(opRemove),
+			expectedPatch: getPatch(jsonpatch.JSONopRemove),
 		},
 		"WhenRetentionEnabledAndNoFinalizerAndNotDeleted_ThenAddOpPatch": {
 			ctx:           context.Background(),
 			obj:           getXVSHNPostgreSQL(false, nil),
 			enabled:       true,
 			retention:     0,
-			expectedPatch: getPatch(opAdd),
+			expectedPatch: getPatch(jsonpatch.JSONopAdd),
 		},
 		"WhenRetentionEnabledAndFinalizerAndDeletedAndRetentionNonZero_ThenNilPatch": {
 			ctx:           context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
@@ -70,7 +71,7 @@ func Test_Handle(t *testing.T) {
 			obj:           getXVSHNPostgreSQL(true, &previousDay),
 			enabled:       true,
 			retention:     0,
-			expectedPatch: getPatch(opRemove),
+			expectedPatch: getPatch(jsonpatch.JSONopRemove),
 		},
 		"WhenRetentionEnabledAndFinalizerAndNotDeleted_ThenNilPatch": {
 			ctx:           context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
@@ -101,37 +102,37 @@ func Test_CheckRetention(t *testing.T) {
 		ctx        context.Context
 		obj        vshnv1.XVSHNPostgreSQL
 		retention  int
-		expectedOp jsonOp
+		expectedOp jsonpatch.JSONop
 	}{
 		"WhenDeletionTimePlusRetentionTimeBeforeCurrentRuntime_ThenRemoveOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
 			retention:  1,
-			expectedOp: opRemove,
+			expectedOp: jsonpatch.JSONopRemove,
 		},
 		"WhenDeletionTimeAndNoRetentionBeforeCurrentRuntime_ThenRemoveOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
 			retention:  0,
-			expectedOp: opRemove,
+			expectedOp: jsonpatch.JSONopRemove,
 		},
 		"WhenDeletionTimePlusRetentionAfterCurrentRuntime_ThenNonOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
 			retention:  5,
-			expectedOp: opNone,
+			expectedOp: jsonpatch.JSONopNone,
 		},
 		"WhenDeletionTimeWithoutRetentionAfterCurrentRuntime_ThenNonOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &nextDay),
 			retention:  5,
-			expectedOp: opNone,
+			expectedOp: jsonpatch.JSONopNone,
 		},
 		"WhenDeletionTimeWithRetentionEqualsCurrentRuntime_ThenNonOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
 			obj:        getXVSHNPostgreSQL(true, &previousDay),
 			retention:  1,
-			expectedOp: opNone,
+			expectedOp: jsonpatch.JSONopNone,
 		},
 	}
 	for name, tc := range tests {
@@ -188,28 +189,28 @@ func Test_GetRequeueTime(t *testing.T) {
 func Test_GetPatchObjectFinalizer(t *testing.T) {
 	tests := map[string]struct {
 		obj           vshnv1.XVSHNPostgreSQL
-		op            jsonOp
+		op            jsonpatch.JSONop
 		expectedPatch client.Patch
 	}{
 		"WhenOpNone_ThenNil": {
 			obj:           getXVSHNPostgreSQL(true, nil),
-			op:            opNone,
+			op:            jsonpatch.JSONopNone,
 			expectedPatch: nil,
 		},
 		"WhenOpRemove_ThenReturnPatch": {
 			obj:           getXVSHNPostgreSQL(true, nil),
-			op:            opRemove,
-			expectedPatch: getPatch(opRemove),
+			op:            jsonpatch.JSONopRemove,
+			expectedPatch: getPatch(jsonpatch.JSONopRemove),
 		},
 		"WhenOpAdd_ThenReturnPatch": {
 			obj:           getXVSHNPostgreSQL(true, nil),
-			op:            opAdd,
-			expectedPatch: getPatch(opAdd),
+			op:            jsonpatch.JSONopAdd,
+			expectedPatch: getPatch(jsonpatch.JSONopAdd),
 		},
 		"WhenOpReplace_ThenReturnPatch": {
 			obj:           getXVSHNPostgreSQL(true, nil),
-			op:            opReplace,
-			expectedPatch: getPatch(opReplace),
+			op:            jsonpatch.JSONopReplace,
+			expectedPatch: getPatch(jsonpatch.JSONopReplace),
 		},
 	}
 	for name, tc := range tests {
@@ -248,12 +249,12 @@ func getXVSHNPostgreSQL(addFinalizer bool, deletedTime *time.Time) vshnv1.XVSHNP
 	return obj
 }
 
-func getPatch(op jsonOp) client.Patch {
+func getPatch(op jsonpatch.JSONop) client.Patch {
 	strIndex := strconv.Itoa(0)
-	if op == opAdd {
+	if op == jsonpatch.JSONopAdd {
 		strIndex = "-"
 	}
-	patchOps := []Jsonpatch{
+	patchOps := []jsonpatch.JSONpatch{
 		{
 			Op:    op,
 			Path:  "/metadata/finalizers/" + strIndex,
@@ -267,7 +268,7 @@ func getPatch(op jsonOp) client.Patch {
 func Test_instanceNamespaceDeleted(t *testing.T) {
 	tests := []struct {
 		name          string
-		want          jsonOp
+		want          jsonpatch.JSONop
 		wantDeleted   bool
 		wantFinalizer bool
 		wantErr       bool
@@ -277,7 +278,7 @@ func Test_instanceNamespaceDeleted(t *testing.T) {
 	}{
 		{
 			name:          "GivenEnabledAndNotDeleted_ThenExpectNoOpAndFinalizer",
-			want:          opNone,
+			want:          jsonpatch.JSONopNone,
 			wantFinalizer: true,
 			enabled:       true,
 			instance: vshnv1.XVSHNPostgreSQL{
@@ -293,7 +294,7 @@ func Test_instanceNamespaceDeleted(t *testing.T) {
 		},
 		{
 			name:          "GivenEnabledAndDeleted_ThenExpectRemoveOpAndNoObject",
-			want:          opRemove,
+			want:          jsonpatch.JSONopRemove,
 			wantFinalizer: false,
 			wantDeleted:   true,
 			enabled:       true,
@@ -312,7 +313,7 @@ func Test_instanceNamespaceDeleted(t *testing.T) {
 		},
 		{
 			name:          "GivenNotEnabledAndNotDeleted_ThenExpectNoOpAndNoFinalizer",
-			want:          opNone,
+			want:          jsonpatch.JSONopNone,
 			wantFinalizer: false,
 			enabled:       false,
 			instance: vshnv1.XVSHNPostgreSQL{
@@ -328,7 +329,7 @@ func Test_instanceNamespaceDeleted(t *testing.T) {
 		},
 		{
 			name:          "GivenNotEnabledAndNotFound_ThenExpectNoOpAndNoObject",
-			want:          opNone,
+			want:          jsonpatch.JSONopNone,
 			wantFinalizer: false,
 			wantDeleted:   true,
 			enabled:       false,
@@ -341,7 +342,7 @@ func Test_instanceNamespaceDeleted(t *testing.T) {
 		},
 		{
 			name:          "GivenNotEnabledAndFinalizer_ThenExpectRemoveOpAndNoFinalizer",
-			want:          opRemove,
+			want:          jsonpatch.JSONopRemove,
 			wantFinalizer: false,
 			enabled:       false,
 			instance: vshnv1.XVSHNPostgreSQL{

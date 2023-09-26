@@ -107,8 +107,9 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 	}
 
 	values := map[string]interface{}{
-		"mode":     comp.Spec.Parameters.Service.Mode,
-		"replicas": comp.Spec.Parameters.Instances,
+		"fullnameOverride": comp.GetName(),
+		"mode":             comp.Spec.Parameters.Service.Mode,
+		"replicas":         comp.Spec.Parameters.Instances,
 		"networkPolicy": map[string]interface{}{
 			"enabled": true,
 		},

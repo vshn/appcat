@@ -16,11 +16,12 @@ var _ Prober = PostgreSQL{}
 type PostgreSQL struct {
 	db *pgxpool.Pool
 
-	Service      string
-	Instance     string
-	Namespace    string
-	Organization string
-	ServiceLevel string
+	Service       string
+	Name          string
+	Namespace     string
+	Organization  string
+	HighAvailable bool
+	ServiceLevel  string
 }
 
 // Close closes open connections to the PostgreSQL server.
@@ -34,11 +35,12 @@ func (p PostgreSQL) Close() error {
 // GetInfo returns the prober infos
 func (p PostgreSQL) GetInfo() ProbeInfo {
 	return ProbeInfo{
-		Service:      p.Service,
-		Name:         p.Instance,
-		Namespace:    p.Namespace,
-		Organization: p.Organization,
-		ServiceLevel: p.ServiceLevel,
+		Service:       p.Service,
+		Name:          p.Name,
+		Namespace:     p.Namespace,
+		Organization:  p.Organization,
+		HighAvailable: p.HighAvailable,
+		ServiceLevel:  p.ServiceLevel,
 	}
 }
 
@@ -53,7 +55,7 @@ func (p PostgreSQL) Probe(ctx context.Context) error {
 }
 
 // NewPostgreSQL connects to the provided dsn and returns a prober
-func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
+func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ha bool, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
 	conf, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, err
@@ -74,12 +76,13 @@ func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ops 
 	}
 
 	return &PostgreSQL{
-		db:           db,
-		Service:      service,
-		Instance:     name,
-		Namespace:    namespace,
-		Organization: organization,
-		ServiceLevel: sla,
+		db:            db,
+		Service:       service,
+		Name:          name,
+		Namespace:     namespace,
+		Organization:  organization,
+		HighAvailable: ha,
+		ServiceLevel:  sla,
 	}, nil
 }
 
@@ -88,7 +91,7 @@ func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ops 
 func NewFailingPostgreSQL(service, name, namespace string) (*PostgreSQL, error) {
 	return &PostgreSQL{
 		Service:   service,
-		Instance:  name,
+		Name:      name,
 		Namespace: namespace,
 	}, nil
 }

@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"github.com/vshn/appcat/v4/apis/metadata"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,14 +10,13 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/controller/garbagecollector/metaonly"
 )
 
 func TestAddInitialNamespaceQuotas(t *testing.T) {
 	iof := commontest.LoadRuntimeFromFile(t, "common/quotas/01_default.yaml")
 	ctx := context.TODO()
 
-	obj := &metaonly.MetadataOnlyObject{
+	obj := &metadata.MetadataOnlyObject{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},

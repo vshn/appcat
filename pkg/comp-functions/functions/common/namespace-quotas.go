@@ -2,12 +2,11 @@ package common
 
 import (
 	"context"
-
+	"github.com/vshn/appcat/v4/apis/metadata"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/kubernetes/pkg/controller/garbagecollector/metaonly"
 )
 
 // AddInitialNamespaceQuotas will add the default quotas to a namespace if they are not yet set.
@@ -35,7 +34,7 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 
 		orgAdded := false
 		if value, ok := ns.GetLabels()[utils.OrgLabelName]; !ok || value == "" {
-			objectMeta := &metaonly.MetadataOnlyObject{}
+			objectMeta := &metadata.MetadataOnlyObject{}
 
 			err := iof.Desired.GetComposite(ctx, objectMeta)
 			if err != nil {
@@ -51,7 +50,7 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 		}
 
 		// We only act if either the quotas were missing or the organization label is not on the
-		// namespace. Otherwise we ignore updates. This is to prevent any unwanted overwriting.
+		// namespace. Otherwise, we ignore updates. This is to prevent any unwanted overwriting.
 		if quotas.AddInitalNamespaceQuotas(ns) || orgAdded {
 			err = iof.Desired.PutIntoObject(ctx, ns, namespaceKon)
 			if err != nil {

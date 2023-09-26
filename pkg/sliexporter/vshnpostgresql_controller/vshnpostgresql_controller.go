@@ -49,7 +49,7 @@ type VSHNPostgreSQLReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	PostgreDialer      func(service, name, namespace, dsn, organization, serviceLevel string, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
+	PostgreDialer      func(service, name, namespace, dsn, organization, serviceLevel string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
 }
 
 type probeManager interface {
@@ -152,6 +152,11 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 		sla = vshnv1.BestEffort
 	}
 
+	ha := true
+	if inst.Spec.Parameters.Instances == 1 {
+		ha = false
+	}
+
 	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel],
 		fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=verify-ca",
@@ -160,7 +165,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 			credSecret.Data["POSTGRESQL_HOST"],
 			credSecret.Data["POSTGRESQL_PORT"],
 			credSecret.Data["POSTGRESQL_DB"],
-		), org, string(sla),
+		), org, string(sla), ha,
 		probes.PGWithCA(credSecret.Data["ca.crt"]))
 	if err != nil {
 		return nil, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -31,11 +32,12 @@ type Prober interface {
 
 // ProbeInfo contains meta information on a prober and in turn an AppCat service
 type ProbeInfo struct {
-	Service      string
-	Name         string
-	Namespace    string
-	Organization string
-	ServiceLevel string
+	Service       string
+	Name          string
+	Namespace     string
+	Organization  string
+	HighAvailable bool
+	ServiceLevel  string
 }
 
 // key uniquely identifies a prober
@@ -52,7 +54,7 @@ func NewManager(l logr.Logger) Manager {
 		Name:    "appcat_probes_seconds",
 		Help:    "Latency of probes to appact services",
 		Buckets: []float64{0.001, 0.002, 0.003, 0.004, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1, .5, 1},
-	}, []string{"service", "namespace", "name", "reason", "organization", "sla"})
+	}, []string{"service", "namespace", "name", "reason", "organization", "ha", "sla"})
 
 	return Manager{
 		hist:      hist,
@@ -129,6 +131,7 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 		"namespace":    pi.Namespace,
 		"name":         pi.Name,
 		"organization": pi.Organization,
+		"ha":           strconv.FormatBool(pi.HighAvailable),
 		"sla":          pi.ServiceLevel,
 	})
 	if err != nil {

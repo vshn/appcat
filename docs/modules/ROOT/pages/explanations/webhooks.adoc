@@ -5,6 +5,7 @@ APPUiO Cloud provides a quota system, which AppCat has to comply and integrate i
 It accomplishes that, by providing nice error messages, if any of the given quotas are breached.
 
 There are multiple quotas that need to be complied by this system:
+
 * the amount of namespaces an organization can have
 * the amount of resources that can be used within a namespace
 
@@ -16,8 +17,11 @@ If the requested AppCat instance would tip the amount of namespaces over this th
 Additionally, each namespace has quotas that need to comply.
 Via AppCat comp-functions, we set the quotas to a slightly higher value than the APPUiO Cloud default:
 
-* 4.5 CPU limts/requests
-* 16.5Gb Memory limits/requests
+* 4.5 CPU limits/requests + limits/requests of all sidecars
+* 16.5Gb Memory limits/requests + limits/requests of all sidecars
+
+The limits/requests of the sidecars are automatically calculated based on the defined limits/requests of all involved sidecars.
+They are defined in the `sideCars` section of the service in the https://github.com/vshn/component-appcat/blob/master/class/defaults.yml[componet-appcat].
 
 This should ensure that for each service at least one replica can be instantiated with the `*-8` plans.
 These values are written into annotations on the namespace.

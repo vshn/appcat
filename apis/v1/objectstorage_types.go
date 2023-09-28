@@ -4,6 +4,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// DeleteIfEmpty only deletes the bucket if the bucket is empty.
+	DeleteIfEmpty BucketDeletionPolicy = "DeleteIfEmpty"
+	// DeleteAll recursively deletes all objects in the bucket and then removes it.
+	DeleteAll BucketDeletionPolicy = "DeleteAll"
+)
+
+// BucketDeletionPolicy determines how buckets should be deleted when a Bucket is deleted.
+type BucketDeletionPolicy string
+
 // +kubebuilder:object:root=true
 // +kubebuilder:printcolumn:name="Bucket Name",type="string",JSONPath=".spec.parameters.bucketName"
 // +kubebuilder:printcolumn:name="Region",type="string",JSONPath=".spec.parameters.region"
@@ -40,6 +50,13 @@ type ObjectBucketParameters struct {
 	// Region is the name of the region where the bucket shall be created.
 	// The region must be available in the S3 endpoint.
 	Region string `json:"region"`
+
+	// +kubebuilder:default=DeleteAll
+
+	// BucketDeletionPolicy determines how buckets should be deleted when Bucket is deleted.
+	//  `DeleteIfEmpty` only deletes the bucket if the bucket is empty.
+	//  `DeleteAll` recursively deletes all objects in the bucket and then removes it.
+	BucketDeletionPolicy BucketDeletionPolicy `json:"bucketDeletionPolicy,omitempty"`
 }
 
 // ObjectBucketStatus reflects the observed state of a ObjectBucket.

@@ -38,6 +38,13 @@ spec:
                 description: ObjectBucketParameters are the configurable fields of
                   a ObjectBucket.
                 properties:
+                  bucketDeletionPolicy:
+                    default: DeleteAll
+                    description: BucketDeletionPolicy determines how buckets should
+                      be deleted when Bucket is deleted. `DeleteIfEmpty` only deletes
+                      the bucket if the bucket is empty. `DeleteAll` recursively deletes
+                      all objects in the bucket and then removes it.
+                    type: string
                   bucketName:
                     description: BucketName is the name of the bucket to create. Cannot
                       be changed after bucket is created. Name must be acceptable

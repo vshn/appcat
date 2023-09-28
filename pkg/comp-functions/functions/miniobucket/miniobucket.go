@@ -76,7 +76,7 @@ func addBucket(ctx context.Context, iof *runtime.Runtime, bucket *appcatv1.Objec
 		},
 		Spec: miniov1.BucketSpec{
 			ForProvider: miniov1.BucketParameters{
-				BucketDeletionPolicy: miniov1.DeleteAll,
+				BucketDeletionPolicy: miniov1.BucketDeletionPolicy(bucket.Spec.Parameters.BucketDeletionPolicy),
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{

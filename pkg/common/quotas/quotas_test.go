@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/vshn/appcat/v4/apis/metadata"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +40,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 		instanceNS  *corev1.Namespace
 		dummyNs     int
 		NSOverrides int
+		instances   int64
 	}{
 		{
 			name: "GivenNoInstanceNamespace_WhenCheckingAgainstDefault_ThenNoError",
@@ -48,6 +51,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 				MemoryRequests: *resource.NewQuantity(1811939328, resource.BinarySI),
 				MemoryLimits:   *resource.NewQuantity(1811939328, resource.BinarySI),
 			},
+			instances: 1,
 		},
 		{
 			name: "GivenNotInstancenamespace_WhenCheckingAgainstDefault_ThenError",
@@ -58,7 +62,8 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 				MemoryRequests: *resource.NewQuantity(1811939328, resource.BinarySI),
 				MemoryLimits:   *resource.NewQuantity(1811939328, resource.BinarySI),
 			},
-			wantErr: true,
+			instances: 1,
+			wantErr:   true,
 		},
 		{
 			name: "GivenInstancenamespace_WhenCheckingAgainst_ThenNoError",
@@ -77,6 +82,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 					},
 				},
 			},
+			instances: 1,
 		},
 		{
 			name: "GivenInstancenamespace_WhenCheckingAgainst_ThenError",
@@ -95,7 +101,8 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 					},
 				},
 			},
-			wantErr: true,
+			instances: 1,
+			wantErr:   true,
 		},
 		{
 			name: "GivenTooManyNamespaces_ThenError",
@@ -106,8 +113,9 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 				MemoryRequests: *resource.NewQuantity(1811939328, resource.BinarySI),
 				MemoryLimits:   *resource.NewQuantity(1811939328, resource.BinarySI),
 			},
-			wantErr: true,
-			dummyNs: 30,
+			instances: 1,
+			wantErr:   true,
+			dummyNs:   30,
 		},
 		{
 			name: "GivenNamespaceOverride_ThenNoError",
@@ -118,6 +126,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 				MemoryRequests: *resource.NewQuantity(1811939328, resource.BinarySI),
 				MemoryLimits:   *resource.NewQuantity(1811939328, resource.BinarySI),
 			},
+			instances:   1,
 			dummyNs:     30,
 			NSOverrides: 35,
 		},
@@ -130,8 +139,16 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 				WithScheme(pkg.SetupScheme()).
 				WithObjects(ns).Build()
 
+			iof := commontest.LoadRuntimeFromFile(t, "common/quotas/01_default.yaml")
+			objectMeta := &metadata.MetadataOnlyObject{}
+
+			err := iof.Desired.GetComposite(ctx, objectMeta)
+			assert.NoError(t, err)
+
 			if tt.instanceNS != nil {
-				AddInitalNamespaceQuotas(ns)
+				s := &utils.Sidecars{}
+				assert.NoError(t, err)
+				AddInitalNamespaceQuotas(ctx, iof, ns, s, gk.Kind)
 				assert.NoError(t, fclient.Create(ctx, tt.instanceNS))
 			}
 
@@ -165,8 +182,8 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 			}
 
 			//when
-			checker := NewQuotaChecker(fclient, "mytest", "myns", "testns", tt.requested, gr, gk, true)
-			err := checker.CheckQuotas(ctx)
+			checker := NewQuotaChecker(fclient, "mytest", "myns", "testns", tt.requested, gr, gk, true, tt.instances)
+			err = checker.CheckQuotas(ctx)
 
 			//Then
 			// Unfortunately assert.Error and assert.NoError give us false positives here.

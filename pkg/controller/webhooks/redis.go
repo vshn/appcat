@@ -20,7 +20,7 @@ import (
 
 var (
 	redisGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNRedis"}
-	redisGR = schema.GroupResource{Group: pgGK.Group, Resource: "vshnredis"}
+	redisGR = schema.GroupResource{Group: redisGK.Group, Resource: "vshnredis"}
 )
 
 var _ webhook.CustomValidator = &RedisWebhookHandler{}
@@ -48,13 +48,13 @@ func SetupRedisWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 
-	pg, ok := obj.(*vshnv1.VSHNRedis)
+	redis, ok := obj.(*vshnv1.VSHNRedis)
 	if !ok {
 		return nil, fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
 	}
 
 	if r.withQuota {
-		err := r.checkQuotas(ctx, pg, true)
+		err := r.checkQuotas(ctx, redis, true)
 		if err != nil {
 			return nil, err
 		}
@@ -69,6 +69,10 @@ func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj
 	redis, ok := newObj.(*vshnv1.VSHNRedis)
 	if !ok {
 		return nil, fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
+	}
+
+	if redis.DeletionTimestamp != nil {
+		return nil, nil
 	}
 
 	if r.withQuota {
@@ -91,6 +95,8 @@ func (r *RedisWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Ob
 func (r *RedisWebhookHandler) checkQuotas(ctx context.Context, redis *vshnv1.VSHNRedis, checkNamespaceQuota bool) *apierrors.StatusError {
 
 	var fieldErr *field.Error
+	// TODO: Fix once we support replicas
+	instances := int64(1)
 	allErrs := field.ErrorList{}
 	resources := utils.Resources{}
 
@@ -144,7 +150,7 @@ func (r *RedisWebhookHandler) checkQuotas(ctx context.Context, redis *vshnv1.VSH
 	// But at the same time, if any of these fail we cannot do proper quota checks anymore.
 	if len(allErrs) != 0 {
 		return apierrors.NewInvalid(
-			pgGK,
+			redisGK,
 			redis.GetName(),
 			allErrs,
 		)
@@ -159,9 +165,10 @@ func (r *RedisWebhookHandler) checkQuotas(ctx context.Context, redis *vshnv1.VSH
 		redis.GetNamespace(),
 		redis.Status.InstanceNamespace,
 		resources,
-		pgGR,
-		pgGK,
+		redisGR,
+		redisGK,
 		checkNamespaceQuota,
+		instances,
 	)
 
 	return checker.CheckQuotas(ctx)

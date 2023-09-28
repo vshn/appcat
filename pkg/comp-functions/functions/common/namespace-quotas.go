@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+
 	"github.com/vshn/appcat/v4/apis/metadata"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -33,6 +34,13 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 		}
 
 		orgAdded := false
+		objectMeta := &metadata.MetadataOnlyObject{}
+
+		err = iof.Desired.GetComposite(ctx, objectMeta)
+		if err != nil {
+			return runtime.NewFatalErr(ctx, "cannot get composite meta", err)
+		}
+
 		if value, ok := ns.GetLabels()[utils.OrgLabelName]; !ok || value == "" {
 			objectMeta := &metadata.MetadataOnlyObject{}
 
@@ -49,9 +57,14 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 			orgAdded = true
 		}
 
+		s, err := utils.FetchSidecarsFromConfig(ctx, iof)
+		if err != nil {
+			s = &utils.Sidecars{}
+		}
+
 		// We only act if either the quotas were missing or the organization label is not on the
-		// namespace. Otherwise, we ignore updates. This is to prevent any unwanted overwriting.
-		if quotas.AddInitalNamespaceQuotas(ns) || orgAdded {
+		// namespace. Otherwise we ignore updates. This is to prevent any unwanted overwriting.
+		if quotas.AddInitalNamespaceQuotas(ctx, iof, ns, s, objectMeta.TypeMeta.Kind) || orgAdded {
 			err = iof.Desired.PutIntoObject(ctx, ns, namespaceKon)
 			if err != nil {
 				return runtime.NewFatalErr(ctx, "cannot save namespace quotas", err)

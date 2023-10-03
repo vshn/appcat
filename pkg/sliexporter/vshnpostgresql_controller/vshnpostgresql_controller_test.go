@@ -39,7 +39,7 @@ func TestVSHNPostgreSQL_StartStop(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
+		Service: "VSHNPostgreSQL",
 		Name:    "foo",
 	}
 
@@ -68,7 +68,7 @@ func TestVSHNPostgreSQL_StartStop_WithFinalizer(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
+		Service: "VSHNPostgreSQL",
 		Name:    "foo",
 	}
 
@@ -96,15 +96,15 @@ func TestVSHNPostgreSQL_Multi(t *testing.T) {
 	)
 
 	barPi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
+		Service: "VSHNPostgreSQL",
 		Name:    "foo",
 	}
 	barerPi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
+		Service: "VSHNPostgreSQL",
 		Name:    "fooer",
 	}
 	buzzPi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
+		Service: "VSHNPostgreSQL",
 		Name:    "foobar",
 	}
 
@@ -171,7 +171,7 @@ func TestVSHNPostgreSQL_Started_NoCreds_Probe_Failure(t *testing.T) {
 		db,
 	)
 	pi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
+		Service: "VSHNPostgreSQL",
 		Name:    "foo",
 	}
 
@@ -208,7 +208,7 @@ func TestVSHNPostgreSQL_PassCredentials(t *testing.T) {
 	)
 	r.PostgreDialer = func(service, name, namespace, dsn, organization, sla string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {
 
-		assert.Equal(t, "XVSHNPostgreSQL", service)
+		assert.Equal(t, "VSHNPostgreSQL", service)
 		assert.Equal(t, "foo", name)
 		assert.Equal(t, "bar", namespace)
 		assert.Equal(t, "postgresql://userfoo:password@foo.bar:5433/pg?sslmode=verify-ca", dsn)
@@ -225,7 +225,7 @@ func TestVSHNPostgreSQL_PassCredentials(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service: "XVSHNPostgreSQL",
+		Service: "VSHNPostgreSQL",
 		Name:    "foo",
 	}
 

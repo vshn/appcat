@@ -56,7 +56,7 @@ upload them to an S3 bucket.`,
 	command.Flags().StringVar(&endpointURL, "endpointurl", viper.GetString("ENDPOINT_URL"), "S3 endpoint url for uploading the reports. ENV: ENDPOINT_URL")
 	command.Flags().StringVar(&bucket, "bucket", viper.GetString("BUCKET_NAME"), "S3 bucketname for uploading the reports. ENV: BUCKET_NAME")
 	command.Flags().StringVar(&mimirOrg, "mimirorg", "", "Set the X-Scope-OrgID header for mimir queries")
-	command.Flags().StringToStringVar(&serviceSlas, "sla", nil, "Set SLA for each service comma separated. Ex. 's1=sla1,s2=sla2'. Available services: vshnpostgresql")
+	command.Flags().StringToStringVar(&serviceSlas, "sla", nil, "Set SLA for each service comma separated. Ex. 's1=sla1,s2=sla2'. Available services: vshnpostgresql, vshnredis")
 	command.Flags().BoolVar(&previousMonth, "previousmonth", false, "Run the report for the previous month. Sets the date to the last day of the previous month and range to 30d. This takes precedence over date and range.")
 
 	return command

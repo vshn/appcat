@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	vshnRedisServiceKey = "XVSHNRedis"
+	vshnRedisServiceKey = "VSHNRedis"
 	claimNamespaceLabel = "crossplane.io/claim-namespace"
 	claimNameLabel      = "crossplane.io/claim-name"
 )

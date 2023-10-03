@@ -166,7 +166,7 @@ func TestVSHNRedis_StartStop(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -196,7 +196,7 @@ func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -225,17 +225,17 @@ func TestVSHNRedis_Multi(t *testing.T) {
 	)
 
 	barPi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
 	barerPi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "fooer",
 		Namespace: "bar",
 	}
 	buzzPi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "fooz",
 		Namespace: "buzz",
 	}
@@ -267,7 +267,7 @@ func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
 		db,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -286,7 +286,7 @@ func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
 		db,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -303,7 +303,7 @@ func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
 		db,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}
@@ -343,7 +343,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 	)
 	r.RedisDialer = func(service, name, namespace, organization string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 
-		assert.Equal(t, "XVSHNRedis", service)
+		assert.Equal(t, "VSHNRedis", service)
 		assert.Equal(t, "foo", name)
 		assert.Equal(t, "bar", namespace)
 		assert.Equal(t, "bar", organization)
@@ -374,7 +374,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "XVSHNRedis",
+		Service:   "VSHNRedis",
 		Name:      "foo",
 		Namespace: "bar",
 	}

@@ -92,6 +92,15 @@ func TestRunQuery(t *testing.T) {
 						Service:    "vshnpostgresql",
 						Color:      "green",
 					},
+					{
+						Namespace:  "myns",
+						Instance:   "test-2",
+						TargetSLA:  99.9,
+						OutcomeSLA: 99.99,
+						Cluster:    "mycluster",
+						Service:    "vshnredis",
+						Color:      "green",
+					},
 				},
 			},
 			metrics: model.Matrix{

@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en" prefix="og: http://ogp.me/ns/website#">
+  <head itemscope itemtype="http://schema.org/WebSite">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Connection Details :: Application Catalog</title>
+    <meta property="og:title" itemprop="name" content="Connection Details">
+    <meta name="twitter:title" content="Connection Details">
+    <link rel="canonical" href="https://vshn.github.io/appcat/appcat/explanations/connectiondetails.html">
+    <meta property="og:url" content="https://vshn.github.io/appcat/appcat/explanations/connectiondetails.html">
+    <meta name="generator" content="Antora 3.1.4">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Application Catalog" />
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="vshn_ch">
+    <meta property="og:locale" content="en_US" />
+    <script>var uiRootPath = '../../../_'</script>
+    <script type="text/javascript" id="hs-script-loader" async defer src="//js.hs-scripts.com/7105834.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="apple-touch-icon" sizes="152x152" href="/_/img/favicon-152x152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/_/img/favicon-167x167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/_/img/favicon-180x180.png">
+
+<link rel="icon" type="image/png" href="/_/img/favicon-196x196.png" sizes="196x196">
+<link rel="icon" type="image/png" href="/_/img/favicon-192x192.png" sizes="192x192">
+<link rel="icon" type="image/png" href="/_/img/favicon-96x96.png" sizes="96x96">
+<link rel="icon" type="image/png" href="/_/img/favicon-16x16.png" sizes="16x16">
+<link rel="icon" type="image/png" href="/_/img/favicon-32x32.png" sizes="32x32">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="navbar-item">
+        <div class="vshn_logo"></div>
+        <a href="https://vshn.github.io/appcat">Application Catalog
+           –
+          v4.34</a>
+      </div>
+      <button class="navbar-burger" data-target="topbar-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">VSHN</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" target="_blank" href="https://www.vshn.ch/">Main website</a>
+            <a class="navbar-item" target="_blank" href="https://handbook.vshn.ch/">Handbook</a>
+            <a class="navbar-item" target="_blank" href="https://kb.vshn.ch/">Knowledge Base</a>
+            <a class="navbar-item" target="_blank" href="https://products.docs.vshn.ch/">Products</a>
+            <a class="navbar-item" target="_blank" href="https://legal.docs.vshn.ch/">Legal</a>
+            <a class="navbar-item" target="_blank" href="https://control.docs.vshn.ch/">Portal Help</a>
+            <a class="navbar-item" target="_blank" href="https://docs.appuio.cloud/">APPUiO Cloud Docs</a>
+            <a class="navbar-item" target="_blank" href="https://syn.tools/">Project Syn</a>
+            <a class="navbar-item" target="_blank" href="https://k8up.io/">K8up</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <div class="search-field">
+            <input id="search-input" class="search-input" type="search" placeholder="Search">
+            <button type="submit" class="search-button">
+              <i class="fa fa-search"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="appcat" data-version="4.34">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <h3 class="title"><a href="../index.html">Application Catalog</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Introduction</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <span class="nav-text"><a href="https://github.com/vshn/appcat/releases" target="_blank" rel="noopener">Changelog</a> 🔗</span>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">How To</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../examples/vscode.html">VSCode Launch Configs</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Technical reference</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../references/apiserver/env-variables.html">Env variables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Explanation</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="#explanations/apiserver/boostrap.adoc">Boostrap</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="comp-functions/runtime.html">Runtime Library</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="comp-functions/vshn-postgres.html">VSHN Postgres Functions</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="slareports.html">SLA Reports</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="dev-notes.html">Dev Notes for Composition Functions</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="comp-functions/debug.html">Debugging</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="comp-functions/redis-pvc-resize.html">Redis PVC resize</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="webhooks.html">Webhooks</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <a class="nav-link" href="connectiondetails.html">Connection Details</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="helm-maintenance.html">Helm Maintenance</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Application Catalog</span>
+    <span class="version">4.34</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <a class="title" href="../../index.html">Application Catalog</a>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../index.html">master</a>
+        </li>
+        <li class="version is-current">
+          <a href="../index.html">4.34</a>
+        </li>
+        <li class="version">
+          <a href="../../4.33/index.html">4.33</a>
+        </li>
+        <li class="version">
+          <a href="../../4.32/index.html">4.32</a>
+        </li>
+        <li class="version">
+          <a href="../../4.31/index.html">4.31</a>
+        </li>
+        <li class="version">
+          <a href="../../4.30/index.html">4.30</a>
+        </li>
+        <li class="version">
+          <a href="../../4.29/index.html">4.29</a>
+        </li>
+        <li class="version">
+          <a href="../../4.28/index.html">4.28</a>
+        </li>
+        <li class="version">
+          <a href="../../4.27/index.html">4.27</a>
+        </li>
+        <li class="version">
+          <a href="../../4.26/index.html">4.26</a>
+        </li>
+        <li class="version">
+          <a href="../../4.25/index.html">4.25</a>
+        </li>
+        <li class="version">
+          <a href="../../4.24/index.html">4.24</a>
+        </li>
+        <li class="version">
+          <a href="../../4.23/index.html">4.23</a>
+        </li>
+        <li class="version">
+          <a href="../../4.22/index.html">4.22</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <a class="title" href="../../../go-bootstrap/index.html">Go Bootstrap</a>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../go-bootstrap/index.html">master</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.21/index.html">4.21</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.20/index.html">4.20</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.19/index.html">4.19</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.18/index.html">4.18</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.17/index.html">4.17</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.16/index.html">4.16</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.15/index.html">4.15</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.14/index.html">4.14</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.13/index.html">4.13</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.12/index.html">4.12</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.11/index.html">4.11</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.10/index.html">4.10</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.9/index.html">4.9</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.8/index.html">4.8</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.7/index.html">4.7</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.6/index.html">4.6</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.5/index.html">4.5</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.4/index.html">4.4</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.3/index.html">4.3</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.2/index.html">4.2</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.1/index.html">4.1</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.0/index.html">4.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Application Catalog</a></li>
+    <li>Explanation</li>
+    <li><a href="connectiondetails.html">Connection Details</a></li>
+  </ul>
+</nav>
+<div class="page-versions">
+  <button class="version-menu-toggle" title="Show other versions of page">4.34</button>
+  <div class="version-menu">
+    <a class="version" href="../../explanations/connectiondetails.html">master</a>
+    <a class="version is-current" href="connectiondetails.html">4.34</a>
+    <a class="version" href="../../4.33/explanations/connectiondetails.html">4.33</a>
+    <a class="version" href="../../4.32/explanations/connectiondetails.html">4.32</a>
+    <a class="version" href="../../4.31/explanations/connectiondetails.html">4.31</a>
+    <a class="version" href="../../4.30/explanations/connectiondetails.html">4.30</a>
+    <a class="version" href="../../4.29/explanations/connectiondetails.html">4.29</a>
+    <a class="version" href="../../4.28/explanations/connectiondetails.html">4.28</a>
+    <a class="version" href="../../4.27/explanations/connectiondetails.html">4.27</a>
+    <a class="version" href="../../4.26/explanations/connectiondetails.html">4.26</a>
+    <a class="version is-missing" href="../../4.25/index.html">4.25</a>
+    <a class="version is-missing" href="../../4.24/index.html">4.24</a>
+    <a class="version is-missing" href="../../4.23/index.html">4.23</a>
+    <a class="version is-missing" href="../../4.22/index.html">4.22</a>
+  </div>
+</div>
+  <div class="edit-this-page"><a href="https://github.com/vshn/appcat/edit/docs/v4.34/docs/modules/ROOT/pages/explanations/connectiondetails.adoc">Edit this Page</a></div>
+  </div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Connection Details</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>This page will try to document the various layers of connection details and how to handle them.</p>
+</div>
+<div class="paragraph">
+<p>Please read <a href="https://docs.crossplane.io/knowledge-base/guides/connection-details/">Crossplane&#8217;s docs about this topic first</a>.
+It explains the various connection details very well.
+The following page assumes you&#8217;ve read and understand.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_composite_resource_connection_details"><a class="anchor" href="#_composite_resource_connection_details"></a>Composite Resource Connection Details</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>These are the most straight forward kind of connection details to handle.
+In terms of go code they are specified by <code>xfnv1alpha1.ExplicitConnectionDetail</code>.
+As the name suggests, they are explicit and take a name and a value.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-golang hljs" data-lang="golang">iof.Desired.PutCompositeConnectionDetail(ctx, xfnv1alpha1.ExplicitConnectionDetail{
+	Name:  "ENDPOINT",
+	Value: bucket.Status.Endpoint,
+})</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_managed_resource_connection_details"><a class="anchor" href="#_managed_resource_connection_details"></a>Managed Resource Connection Details</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each manged resource can optionally expose its own connection details.
+Some examples:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Exoscale IAM</p>
+</li>
+<li>
+<p>Minio User</p>
+</li>
+<li>
+<p>Helm Release</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s have a look at an easy example and a more complicated one.</p>
+</div>
+<div class="sect2">
+<h3 id="_simple_example"><a class="anchor" href="#_simple_example"></a>Simple Example</h3>
+<div class="paragraph">
+<p>We use the minio User managed resource in this example.
+The User can expose two connection details: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>.
+It&#8217;s important that we set the <code>WriteConnectionSecretToReference</code> in the composition.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-golang hljs" data-lang="golang">user := &amp;miniov1.User{
+  ...
+	Spec: miniov1.UserSpec{
+    Spec: ...
+		ResourceSpec: xpv1.ResourceSpec{
+			WriteConnectionSecretToReference: &amp;xpv1.SecretReference{
+				Name:      "uniqname", <i class="conum" data-value="1"></i><b>(1)</b>
+				Namespace: "secretnamespace", <i class="conum" data-value="2"></i><b>(2)</b>
+			},
+		},
+	},
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Unique name for this secret, usually the composite name + some suffix</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The namespace where the secret should be saved, usually set to <code>writeConnectionSecretsToNamespace</code> defined in the composition.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>It depends on how the <code>User</code> object is used afterward to determine where to save the connection details.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>It&#8217;s a pure bucket for the end user</strong>. Then we can save the connection details in the <code>writeConnectionSecretsToNamespace</code> namespace.
+It will be made available for the end-user via the claim&#8217;s <code>writeConnectionSecretToRef</code>.</p>
+</li>
+<li>
+<p><strong>It&#8217;s used as part of service</strong>. If the service needs a bucket for backups or other uses, then we need to save the connection details in a namespace where the service can access it (instance namespace).
+In such a case the connection details should be treated as an internal secret and not be exposed to the user.
+This can be achieved by <strong>not</strong> specifying the keys in the composite&#8217;s <code>connectionSecretKeys</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>For this example we assume the first case.
+To actually expose the secrets we need to use <code>xfnv1alpha1.DerivedConnectionDetail</code>.
+These are usually indirect connection details, but they can also take the value directly.</p>
+</div>
+<div class="paragraph">
+<p>It&#8217;s possible to reference connection details that are exposed via the managed resource, or any field path within the managed resources, like status fields.
+With composition functions the <code>ConnectionDetailTypeFromConnectionSecretKey</code> is probably most commonly used, as field values can easily be accessed and set as an <code>xfnv1alpha1.ExplicitConnectionDetail</code> in the composite.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-golang hljs" data-lang="golang">cd := []xfnv1alpha1.DerivedConnectionDetail{
+	{
+		Name:                    pointer.String(secretKeyName),
+		FromConnectionSecretKey: pointer.String(secretKeyName),
+		Type:                    xfnv1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
+	},
+	{
+		Name:                    pointer.String(accessKeyName),
+		FromConnectionSecretKey: pointer.String(accessKeyName),
+		Type:                    xfnv1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
+	},
+}
+
+return iof.Desired.PutWithResourceName(ctx, user, "minio-user", runtime.AddDerivedConnectionDetails(cd))</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Lastly, the <code>User</code> xrd needs to be made aware of the keys it should expose in the claim connection details.
+This is done in <code>component-appcat</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-jsonnet hljs" data-lang="jsonnet">local connectionSecretKeys = [
+  'AWS_ACCESS_KEY_ID',
+  'AWS_SECRET_ACCESS_KEY',
+];
+
+local xrd = xrds.XRDFromCRD(
+  ...
+  connectionSecretKeys=connectionSecretKeys,
+);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_helm_example"><a class="anchor" href="#_helm_example"></a>Helm example</h3>
+<div class="paragraph">
+<p>These connection details differ a bit from normal managed resources, as the provider cannot know what secrets every available helm chart can expose.</p>
+</div>
+<div class="paragraph">
+<p>Instead, provider-helm exposes a flexible way to specify exactly which of the helm managed object contain the relevant values.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s assume our given helm chart writes a secret and a service.
+Both of them contain information relevant to the user to access the service.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-golang hljs" data-lang="golang">r := &amp;v1beta1.Release{
+		Spec: v1beta1.ReleaseSpec{
+			ResourceSpec: xpv1.ResourceSpec{
+				WriteConnectionSecretToReference: &amp;xpv1.SecretReference{ <i class="conum" data-value="1"></i><b>(1)</b>
+					Name: "myname",
+					Namespace: "secretnamespace",
+				},
+			},
+			ConnectionDetails: []v1beta1.ConnectionDetail{
+				{
+					ObjectReference: corev1.ObjectReference{
+						APIVersion: "v1",
+						Kind:      "Secret",
+						Name:      "mysecret",
+						Namespace: "myns",
+						FieldPath: "data.my-password", <i class="conum" data-value="2"></i><b>(2)</b>
+					},
+					ToConnectionSecretKey: "connectionPasswordKey",
+				},
+				{
+					ObjectReference: corev1.ObjectReference{
+						APIVersion : "v1"
+						Kind:      "Service",
+						Name:      "myservice",
+						Namespace: "myns",
+						FieldPath: "spec.ports[0].port",
+					},
+					ToConnectionSecretKey: "connectionPortKey"
+				},
+			},
+		},
+	}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The connection detail still needs to be written somewhere.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>We don&#8217;t have to bother with base64 encoding, provider-helm will handle this for us.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>With this method it should be easier to handle most cases.
+However, provider-helm&#8217;s connection detail management isn&#8217;t perfect.
+It cannot handle any transformations on the secrets.
+So if anything needs to concatenated, split, or changed in any other way, then this might unfortunately not be the way to do it.</p>
+</div>
+<div class="paragraph">
+<p>These connection details then still need to be added to the composite as derived connectiondetails.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-golang hljs" data-lang="golang">cd := []xfnv1alpha1.DerivedConnectionDetail{
+	{
+		Name:                    pointer.String(connectionPasswordKey),
+		FromConnectionSecretKey: pointer.String(connectionPasswordKey),
+		Type:                    xfnv1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
+	},
+	{
+		Name:                    pointer.String(connectionPortKey),
+		FromConnectionSecretKey: pointer.String(connectionPortKey),
+		Type:                    xfnv1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
+	},
+}
+
+return iof.Desired.PutWithResourceName(ctx, release, "minio-release", runtime.AddDerivedConnectionDetails(cd)</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_unmanaged_connection_details"><a class="anchor" href="#_unmanaged_connection_details"></a>Unmanaged Connection Details</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>There are cases where the connection details are in objects that aren&#8217;t managed by the composition function or any of the providers.
+For example if the service is provisioned via an operator.
+Also, if the given methods to acquire the connection details aren&#8217;t powerful enough, for example if some helm release connection details need some transformations.</p>
+</div>
+<div class="paragraph">
+<p>To still get access to any information needed, an observer object can be leveraged.
+This uses provider-kubernetes to deploy an <code>Object</code> with the <code>Observe</code> policy.
+These objects will only be read and never modified, making it perfect for this use-case.</p>
+</div>
+<div class="paragraph">
+<p>However this involes two steps, first to deploy the observer and then in the next reconcile to read it.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Deploy observer</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>secret := &amp;corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mysecret",
+			Namespace: "myns",
+		},
+	}
+
+	return iof.Desired.PutIntoObserveOnlyObject(ctx, secret, comp.Name+"-secret-observer")</pre>
+</div>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Read observer</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>secret := &amp;corev1.Secret{}
+err = iof.Observed.Get(ctx, secret, comp.Name+"-secret-observer")
+if err != nil {
+  if err == runtime.ErrNotFound { <i class="conum" data-value="1"></i><b>(1)</b>
+    return runtime.NewNormal()
+  }
+	return runtime.NewFatalErr(ctx, "cannot get observed deletion job", err)
+}</pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>We need to ignore not found errors here, as the observer will not exist during the first reconcile</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Also, here for secrets the values will not be base64 encoded, so they can be used directly.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-golang hljs" data-lang="golang">iof.Desired.PutCompositeConnectionDetail(ctx, v1alpha1.ExplicitConnectionDetail{
+	Name:  "MY_PASSWORD",
+	Value: string(secret.Data["my_password"])
+})</code></pre>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>Copyright © VSHN 2021 – All Rights Reserved. <a href="https://vshn.ch/en/privacy-policy/">Privacy Policy</a>, <a href="https://vshn.ch/en/imprint/">Imprint</a>, and <a href="https://vshn.ch/en/contact/">Contact</a>.</p>
+</footer>
+<script src="../../../_/js/site.js"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.6/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  messageStyle: "none",
+  tex2jax: {
+    inlineMath: [["\\(", "\\)"]],
+    displayMath: [["\\[", "\\]"]],
+    ignoreClass: "nostem|nolatexmath"
+  },
+  asciimath2jax: {
+    delimiters: [["\\$", "\\$"]],
+    ignoreClass: "nostem|noasciimath"
+  },
+  TeX: { equationNumbers: { autoNumber: "none" } }
+});
+</script>
+  </body>
+</html>

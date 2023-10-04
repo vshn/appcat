@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"k8s.io/utils/strings/slices"
 	"strings"
 	"time"
+
+	"k8s.io/utils/strings/slices"
 
 	"github.com/appuio/appuio-cloud-reporting/pkg/thanos"
 	"github.com/prometheus/client_golang/api"
@@ -23,7 +24,7 @@ var (
 	promClientFunc   = getPrometheusAPIClient
 	getMetricsFunc   = getSLAMetrics
 	getTargetSLAFunc = getTargetSLA
-	allowedServices  = []string{"vshnpostgresql"}
+	allowedServices  = []string{"vshnpostgresql", "vshnredis"}
 )
 
 func getPrometheusAPIClient(promURL string, thanosAllowPartialResponses bool, orgID string) (apiv1.API, error) {

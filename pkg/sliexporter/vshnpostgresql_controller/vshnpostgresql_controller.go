@@ -37,7 +37,7 @@ import (
 )
 
 var (
-	vshnpostgresqlsServiceKey = "XVSHNPostgreSQL"
+	vshnpostgresqlsServiceKey = "VSHNPostgreSQL"
 	claimNamespaceLabel       = "crossplane.io/claim-namespace"
 	claimNameLabel            = "crossplane.io/claim-name"
 )

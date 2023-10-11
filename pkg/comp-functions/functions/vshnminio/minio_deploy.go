@@ -113,6 +113,9 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 		"networkPolicy": map[string]interface{}{
 			"enabled": true,
 		},
+		"deploymentUpdate": map[string]interface{}{
+			"type": "Recreate",
+		},
 		"resources": map[string]interface{}{
 			"requests": map[string]interface{}{
 				"memory": reqMem,

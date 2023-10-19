@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	xhelmbeta1 "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
@@ -37,6 +38,11 @@ func TestMinioDeploy(t *testing.T) {
 	assert.Equal(t, rootUser, cd[0].Value)
 	assert.Equal(t, rootPassword, cd[1].Value)
 	assert.Equal(t, minioHost, cd[2].Value)
+
+	sm := &promv1.ServiceMonitor{}
+	assert.NoError(t, iof.Desired.GetFromObject(ctx, sm, comp.Name+"-service-monitor"))
+	assert.Equal(t, "/minio/v2/metrics/node", sm.Spec.Endpoints[0].Path)
+	assert.Equal(t, "/minio/v2/metrics/cluster", sm.Spec.Endpoints[1].Path)
 }
 
 func getMinioComp(t *testing.T) (*runtime.Runtime, *vshnv1.VSHNMinio) {

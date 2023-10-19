@@ -8,6 +8,7 @@ import (
 	xhelmbeta1 "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -45,6 +46,12 @@ func DeployMinio(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	err = createServiceObserver(ctx, comp, iof)
 	if err != nil {
 		return runtime.NewFatalErr(ctx, "cannot create service observer", err)
+	}
+
+	l.Info("creating service monitor")
+	err = createServiceMonitor(ctx, comp, iof)
+	if err != nil {
+		return runtime.NewFatalErr(ctx, "cannot create service monitor", err)
 	}
 
 	l.Info("Get connection details from secret")
@@ -194,13 +201,13 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 
 	cd := []v1alpha1.DerivedConnectionDetail{
 		{
-			Name:                    pointer.String("MINIO_USERNAME"),
-			FromConnectionSecretKey: pointer.String("MINIO_USERNAME"),
+			Name:                    pointer.String("AWS_ACCESS_KEY_ID"),
+			FromConnectionSecretKey: pointer.String("AWS_ACCESS_KEY_ID"),
 			Type:                    v1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
 		},
 		{
-			Name:                    pointer.String("MINIO_PASSWORD"),
-			FromConnectionSecretKey: pointer.String("MINIO_PASSWORD"),
+			Name:                    pointer.String("AWS_SECRET_ACCESS_KEY"),
+			FromConnectionSecretKey: pointer.String("AWS_SECRET_ACCESS_KEY"),
 			Type:                    v1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
 		},
 	}
@@ -235,4 +242,46 @@ func getConnectionDetails(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runt
 	})
 
 	return nil
+}
+
+func createServiceMonitor(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runtime.Runtime) error {
+
+	err := runtime.AddToScheme(promv1.SchemeBuilder)
+	if err != nil {
+		return err
+	}
+	sm := &promv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName(),
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: promv1.ServiceMonitorSpec{
+			Endpoints: []promv1.Endpoint{
+				{
+					Port:   "http",
+					Scheme: "http",
+					Path:   "/minio/v2/metrics/node",
+				},
+				{
+					Port:   "http",
+					Scheme: "http",
+					Path:   "/minio/v2/metrics/cluster",
+				},
+			},
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app":        "minio",
+					"monitoring": "true",
+					"release":    comp.GetName(),
+				},
+			},
+			NamespaceSelector: promv1.NamespaceSelector{
+				MatchNames: []string{
+					comp.GetInstanceNamespace(),
+				},
+			},
+		},
+	}
+
+	return iof.Desired.PutIntoObject(ctx, sm, comp.Name+"-service-monitor")
 }

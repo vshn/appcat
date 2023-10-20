@@ -14,6 +14,7 @@ type VSHNRedis struct {
 	Namespace     string
 	HighAvailable bool
 	Organization  string
+	ServiceLevel  string
 }
 
 func (redis VSHNRedis) Close() error {
@@ -28,10 +29,12 @@ func (redis VSHNRedis) Close() error {
 
 func (redis VSHNRedis) GetInfo() ProbeInfo {
 	return ProbeInfo{
-		Service:      redis.Service,
-		Name:         redis.Name,
-		Namespace:    redis.Namespace,
-		Organization: redis.Organization,
+		Service:       redis.Service,
+		Name:          redis.Name,
+		Namespace:     redis.Namespace,
+		HighAvailable: false,
+		Organization:  redis.Organization,
+		ServiceLevel:  "bad one",
 	}
 }
 
@@ -55,5 +58,6 @@ func NewRedis(service, name, namespace, organization string, ha bool, opts redis
 		Namespace:     namespace,
 		HighAvailable: ha,
 		Organization:  organization,
+		ServiceLevel:  "bad one",
 	}, nil
 }

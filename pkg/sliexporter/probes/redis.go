@@ -34,7 +34,7 @@ func (redis VSHNRedis) GetInfo() ProbeInfo {
 		Namespace:     redis.Namespace,
 		HighAvailable: false,
 		Organization:  redis.Organization,
-		ServiceLevel:  "bad one",
+		ServiceLevel:  redis.ServiceLevel,
 	}
 }
 
@@ -47,7 +47,7 @@ func (redis VSHNRedis) Probe(ctx context.Context) error {
 	return nil
 }
 
-func NewRedis(service, name, namespace, organization string, ha bool, opts redis.Options) (*VSHNRedis, error) {
+func NewRedis(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*VSHNRedis, error) {
 
 	client := redis.NewClient(&opts)
 
@@ -58,6 +58,6 @@ func NewRedis(service, name, namespace, organization string, ha bool, opts redis
 		Namespace:     namespace,
 		HighAvailable: ha,
 		Organization:  organization,
-		ServiceLevel:  "bad one",
+		ServiceLevel:  sla,
 	}, nil
 }

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en" prefix="og: http://ogp.me/ns/website#">
+  <head itemscope itemtype="http://schema.org/WebSite">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Redis PVC resize :: Application Catalog</title>
+    <meta property="og:title" itemprop="name" content="Redis PVC resize">
+    <meta name="twitter:title" content="Redis PVC resize">
+    <link rel="canonical" href="https://vshn.github.io/appcat/appcat/explanations/comp-functions/redis-pvc-resize.html">
+    <meta property="og:url" content="https://vshn.github.io/appcat/appcat/explanations/comp-functions/redis-pvc-resize.html">
+    <meta name="generator" content="Antora 3.1.4">
+    <link rel="stylesheet" href="../../../../_/css/site.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Application Catalog" />
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="vshn_ch">
+    <meta property="og:locale" content="en_US" />
+    <script>var uiRootPath = '../../../../_'</script>
+    <script type="text/javascript" id="hs-script-loader" async defer src="//js.hs-scripts.com/7105834.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="apple-touch-icon" sizes="152x152" href="/_/img/favicon-152x152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/_/img/favicon-167x167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/_/img/favicon-180x180.png">
+
+<link rel="icon" type="image/png" href="/_/img/favicon-196x196.png" sizes="196x196">
+<link rel="icon" type="image/png" href="/_/img/favicon-192x192.png" sizes="192x192">
+<link rel="icon" type="image/png" href="/_/img/favicon-96x96.png" sizes="96x96">
+<link rel="icon" type="image/png" href="/_/img/favicon-16x16.png" sizes="16x16">
+<link rel="icon" type="image/png" href="/_/img/favicon-32x32.png" sizes="32x32">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="navbar-item">
+        <div class="vshn_logo"></div>
+        <a href="https://vshn.github.io/appcat">Application Catalog
+           –
+          v4.37-rc1</a>
+      </div>
+      <button class="navbar-burger" data-target="topbar-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">VSHN</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" target="_blank" href="https://www.vshn.ch/">Main website</a>
+            <a class="navbar-item" target="_blank" href="https://handbook.vshn.ch/">Handbook</a>
+            <a class="navbar-item" target="_blank" href="https://kb.vshn.ch/">Knowledge Base</a>
+            <a class="navbar-item" target="_blank" href="https://products.docs.vshn.ch/">Products</a>
+            <a class="navbar-item" target="_blank" href="https://legal.docs.vshn.ch/">Legal</a>
+            <a class="navbar-item" target="_blank" href="https://control.docs.vshn.ch/">Portal Help</a>
+            <a class="navbar-item" target="_blank" href="https://docs.appuio.cloud/">APPUiO Cloud Docs</a>
+            <a class="navbar-item" target="_blank" href="https://syn.tools/">Project Syn</a>
+            <a class="navbar-item" target="_blank" href="https://k8up.io/">K8up</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <div class="search-field">
+            <input id="search-input" class="search-input" type="search" placeholder="Search">
+            <button type="submit" class="search-button">
+              <i class="fa fa-search"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="appcat" data-version="4.37">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <h3 class="title"><a href="../../index.html">Application Catalog</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../index.html">Introduction</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <span class="nav-text"><a href="https://github.com/vshn/appcat/releases" target="_blank" rel="noopener">Changelog</a> 🔗</span>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">How To</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../examples/vscode.html">VSCode Launch Configs</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Technical reference</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../references/apiserver/env-variables.html">Env variables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Explanation</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="#explanations/apiserver/boostrap.adoc">Boostrap</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="runtime.html">Runtime Library</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="vshn-postgres.html">VSHN Postgres Functions</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../slareports.html">SLA Reports</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../dev-notes.html">Dev Notes for Composition Functions</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="debug.html">Debugging</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <a class="nav-link" href="redis-pvc-resize.html">Redis PVC resize</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../webhooks.html">Webhooks</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../connectiondetails.html">Connection Details</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../helm-maintenance.html">Helm Maintenance</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Application Catalog</span>
+    <span class="version">4.37-rc1</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <a class="title" href="../../../index.html">Application Catalog</a>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../index.html">master</a>
+        </li>
+        <li class="version is-current">
+          <a href="../../index.html">4.37-rc1</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.36/index.html">4.36</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.35/index.html">4.35</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.34/index.html">4.34</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.33/index.html">4.33</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.32/index.html">4.32</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.31/index.html">4.31</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.30/index.html">4.30</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.29/index.html">4.29</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.28/index.html">4.28</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.27/index.html">4.27</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.26/index.html">4.26</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.25/index.html">4.25</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.24/index.html">4.24</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.23/index.html">4.23</a>
+        </li>
+        <li class="version">
+          <a href="../../../4.22/index.html">4.22</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <a class="title" href="../../../../go-bootstrap/index.html">Go Bootstrap</a>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../go-bootstrap/index.html">master</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.21/index.html">4.21</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.20/index.html">4.20</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.19/index.html">4.19</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.18/index.html">4.18</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.17/index.html">4.17</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.16/index.html">4.16</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.15/index.html">4.15</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.14/index.html">4.14</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.13/index.html">4.13</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.12/index.html">4.12</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.11/index.html">4.11</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.10/index.html">4.10</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.9/index.html">4.9</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.8/index.html">4.8</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.7/index.html">4.7</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.6/index.html">4.6</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.5/index.html">4.5</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.4/index.html">4.4</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.3/index.html">4.3</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.2/index.html">4.2</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.1/index.html">4.1</a>
+        </li>
+        <li class="version">
+          <a href="../../../../go-bootstrap/4.0/index.html">4.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../index.html">Application Catalog</a></li>
+    <li>Explanation</li>
+    <li><a href="redis-pvc-resize.html">Redis PVC resize</a></li>
+  </ul>
+</nav>
+<div class="page-versions">
+  <button class="version-menu-toggle" title="Show other versions of page">4.37-rc1</button>
+  <div class="version-menu">
+    <a class="version" href="../../../explanations/comp-functions/redis-pvc-resize.html">master</a>
+    <a class="version is-current" href="redis-pvc-resize.html">4.37-rc1</a>
+    <a class="version" href="../../../4.36/explanations/comp-functions/redis-pvc-resize.html">4.36</a>
+    <a class="version" href="../../../4.35/explanations/comp-functions/redis-pvc-resize.html">4.35</a>
+    <a class="version" href="../../../4.34/explanations/comp-functions/redis-pvc-resize.html">4.34</a>
+    <a class="version" href="../../../4.33/explanations/comp-functions/redis-pvc-resize.html">4.33</a>
+    <a class="version" href="../../../4.32/explanations/comp-functions/redis-pvc-resize.html">4.32</a>
+    <a class="version" href="../../../4.31/explanations/comp-functions/redis-pvc-resize.html">4.31</a>
+    <a class="version" href="../../../4.30/explanations/comp-functions/redis-pvc-resize.html">4.30</a>
+    <a class="version" href="../../../4.29/explanations/comp-functions/redis-pvc-resize.html">4.29</a>
+    <a class="version" href="../../../4.28/explanations/comp-functions/redis-pvc-resize.html">4.28</a>
+    <a class="version" href="../../../4.27/explanations/comp-functions/redis-pvc-resize.html">4.27</a>
+    <a class="version" href="../../../4.26/explanations/comp-functions/redis-pvc-resize.html">4.26</a>
+    <a class="version" href="../../../4.25/explanations/comp-functions/redis-pvc-resize.html">4.25</a>
+    <a class="version" href="../../../4.24/explanations/comp-functions/redis-pvc-resize.html">4.24</a>
+    <a class="version" href="../../../4.23/explanations/comp-functions/redis-pvc-resize.html">4.23</a>
+    <a class="version" href="../../../4.22/explanations/comp-functions/redis-pvc-resize.html">4.22</a>
+  </div>
+</div>
+  <div class="edit-this-page"><a href="https://github.com/vshn/appcat/edit/docs/v4.37-rc/docs/modules/ROOT/pages/explanations/comp-functions/redis-pvc-resize.adoc">Edit this Page</a></div>
+  </div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Redis PVC resize</h1>
+<div class="paragraph">
+<p>This process requires the <code>bitnami/kubectl</code> image.
+So if AppCat is deployed to an air gapped cluster, please keep this in mind.</p>
+</div>
+<div class="paragraph">
+<p>Resizing the PVCs for Redis is a mutlistage process:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>A job that crosschecks if the sts PVC template size is equal to the size in the request</p>
+</li>
+<li>
+<p>If they don&#8217;t match the current sts will be deleted with the <code>--cascade=orphan</code> option. This is because the sts can&#8217;t be adjusted once it&#8217;s created. The cascade option leaves the pods running.</p>
+</li>
+<li>
+<p>Then the helm release will be updated to trigger the re-creation of the sts</p>
+</li>
+<li>
+<p>Once the sts is re-created it will add an annotation so it&#8217;s picked up by the statefulset-resize-controller</p>
+</li>
+<li>
+<p>The statefulset-resize-controller then actually handles the resize of the PVCs</p>
+</li>
+</ol>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>Copyright © VSHN 2021 – All Rights Reserved. <a href="https://vshn.ch/en/privacy-policy/">Privacy Policy</a>, <a href="https://vshn.ch/en/imprint/">Imprint</a>, and <a href="https://vshn.ch/en/contact/">Contact</a>.</p>
+</footer>
+<script src="../../../../_/js/site.js"></script>
+<script async src="../../../../_/js/vendor/highlight.js"></script>
+<script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.6/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  messageStyle: "none",
+  tex2jax: {
+    inlineMath: [["\\(", "\\)"]],
+    displayMath: [["\\[", "\\]"]],
+    ignoreClass: "nostem|nolatexmath"
+  },
+  asciimath2jax: {
+    delimiters: [["\\$", "\\$"]],
+    ignoreClass: "nostem|noasciimath"
+  },
+  TeX: { equationNumbers: { autoNumber: "none" } }
+});
+</script>
+  </body>
+</html>

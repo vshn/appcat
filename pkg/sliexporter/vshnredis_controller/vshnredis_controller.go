@@ -35,7 +35,7 @@ type VSHNRedisReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	RedisDialer        func(service, name, namespace, organization string, ha bool, opts redis.Options) (*probes.VSHNRedis, error)
+	RedisDialer        func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error)
 }
 
 type probeManager interface {
@@ -135,6 +135,8 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 
 	org := ns.GetLabels()[utils.OrgLabelName]
 
+	sla := inst.Spec.Parameters.Service.ServiceLevel
+
 	certPair, err := tls.X509KeyPair(credentials.Data["tls.crt"], credentials.Data["tls.key"])
 	if err != nil {
 		return nil, err
@@ -146,7 +148,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 
 	tlsConfig.RootCAs.AppendCertsFromPEM(credentials.Data["ca.crt"])
 
-	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, false, redis.Options{
+	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, string(sla), false, redis.Options{
 		Addr:      string(credentials.Data["REDIS_HOST"]) + ":" + string(credentials.Data["REDIS_PORT"]),
 		Username:  string(credentials.Data["REDIS_USERNAME"]),
 		Password:  string(credentials.Data["REDIS_PASSWORD"]),

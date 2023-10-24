@@ -80,6 +80,12 @@ type VSHNRedisServiceSpec struct {
 
 	// RedisSettings contains additional Redis settings.
 	RedisSettings string `json:"redisSettings,omitempty"`
+
+	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
+	// +kubebuilder:default="besteffort"
+
+	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
+	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 }
 
 // VSHNRedisSizeSpec contains settings to control the sizing of a service.

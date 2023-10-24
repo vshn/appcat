@@ -102,6 +102,13 @@ spec:
                         redisSettings:
                           description: RedisSettings contains additional Redis settings.
                           type: string
+                        serviceLevel:
+                          default: besteffort
+                          description: ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
+                          enum:
+                            - besteffort
+                            - guaranteed
+                          type: string
                         version:
                           default: "7.0"
                           description: Version contains supported version of Redis. Multiple versions are supported. The latest version "7.0" is the default version.

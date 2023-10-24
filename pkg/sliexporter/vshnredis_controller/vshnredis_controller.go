@@ -136,9 +136,6 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 	org := ns.GetLabels()[utils.OrgLabelName]
 
 	sla := inst.Spec.Parameters.Service.ServiceLevel
-	if sla == "" {
-		sla = vshnv1.BestEffort
-	}
 
 	certPair, err := tls.X509KeyPair(credentials.Data["tls.crt"], credentials.Data["tls.key"])
 	if err != nil {

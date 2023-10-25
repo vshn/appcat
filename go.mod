@@ -33,7 +33,7 @@ require (
 	github.com/vektra/mockery/v2 v2.26.1
 	github.com/vshn/provider-minio v0.0.0-20230906065457-d7b41bd371e8
 	go.uber.org/zap v1.25.0
-	google.golang.org/grpc v1.57.0
+	google.golang.org/grpc v1.57.1
 	k8s.io/api v0.28.1
 	k8s.io/apimachinery v0.28.1
 	k8s.io/client-go v0.28.1

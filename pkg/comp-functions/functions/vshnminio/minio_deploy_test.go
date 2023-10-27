@@ -43,6 +43,8 @@ func TestMinioDeploy(t *testing.T) {
 	assert.NoError(t, iof.Desired.GetFromObject(ctx, sm, comp.Name+"-service-monitor"))
 	assert.Equal(t, "/minio/v2/metrics/node", sm.Spec.Endpoints[0].Path)
 	assert.Equal(t, "/minio/v2/metrics/cluster", sm.Spec.Endpoints[1].Path)
+	assert.Equal(t, "/minio/v2/metrics/bucket", sm.Spec.Endpoints[2].Path)
+	assert.Equal(t, "/minio/v2/metrics/resource", sm.Spec.Endpoints[3].Path)
 }
 
 func getMinioComp(t *testing.T) (*runtime.Runtime, *vshnv1.VSHNMinio) {

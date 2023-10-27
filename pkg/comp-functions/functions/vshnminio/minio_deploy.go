@@ -267,6 +267,16 @@ func createServiceMonitor(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runt
 					Scheme: "http",
 					Path:   "/minio/v2/metrics/cluster",
 				},
+				{
+					Port:   "http",
+					Scheme: "http",
+					Path:   "/minio/v2/metrics/bucket",
+				},
+				{
+					Port:   "http",
+					Scheme: "http",
+					Path:   "/minio/v2/metrics/resource",
+				},
 			},
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{

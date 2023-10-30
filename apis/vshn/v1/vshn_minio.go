@@ -100,3 +100,20 @@ func (v *VSHNMinio) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-minio-%s", v.GetName())
 
 }
+
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+
+// XVSHNMinios represents the internal composite of this claim
+type XVSHNMinio VSHNMinio
+
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+
+// XVSHNMiniosList represents a list of composites
+type XVSHNMinioList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []XVSHNMinio `json:"items"`
+}

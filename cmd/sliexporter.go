@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
+	vshnminiocontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnminio_controller"
 	vshnpostgresqlcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnpostgresql_controller"
 	vshnrediscontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnredis_controller"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,9 +19,9 @@ import (
 )
 
 type sliProber struct {
-	scheme                                             *runtime.Scheme
-	metricsAddr, probeAddr                             string
-	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis bool
+	scheme                                                              *runtime.Scheme
+	metricsAddr, probeAddr                                              string
+	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis, enableVSHNMinio bool
 }
 
 var s = sliProber{
@@ -43,6 +44,8 @@ func init() {
 		"Enable probing of VSHNPostgreSQL instances")
 	SLIProberCMD.Flags().BoolVar(&s.enableVSHNRedis, "vshn-redis", getEnvBool("APPCAT_SLI_VSHNREDIS"),
 		"Enable probing of VSHNRedis instances")
+	SLIProberCMD.Flags().BoolVar(&s.enableVSHNMinio, "vshn-minio", getEnvBool("APPCAT_SLI_VSHNMINIO"),
+		"Enable probing of VSHNMinio instances")
 }
 
 func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
@@ -89,6 +92,20 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 			ProbeManager:       &probeManager,
 			StartupGracePeriod: 10 * time.Minute,
 			RedisDialer:        probes.NewRedis,
+		}).SetupWithManager(mgr); err != nil {
+			log.Error(err, "unable to create controller", "controller", "VSHNRedis")
+			return err
+		}
+	}
+
+	if s.enableVSHNMinio {
+		log.Info("Enabling VSHNRedis controller")
+		if err = (&vshnminiocontroller.VSHNMinioReconciler{
+			Client:             mgr.GetClient(),
+			Scheme:             mgr.GetScheme(),
+			ProbeManager:       &probeManager,
+			StartupGracePeriod: 10 * time.Minute,
+			MinioDialer:        probes.NewMinio,
 		}).SetupWithManager(mgr); err != nil {
 			log.Error(err, "unable to create controller", "controller", "VSHNRedis")
 			return err

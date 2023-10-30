@@ -7,6 +7,7 @@ import (
 	xhelmbeta1 "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
+	v1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -33,6 +34,9 @@ func TestMinioDeploy(t *testing.T) {
 
 	service := &corev1.Service{}
 	assert.NoError(t, iof.Observed.GetFromObject(ctx, service, comp.Name+"-service-observer"))
+
+	objBuck := &v1.ObjectBucket{}
+	assert.NoError(t, iof.Desired.Get(ctx, objBuck, comp.Name+"-vshn-test-bucket-for-sli"))
 
 	cd := iof.Desired.GetCompositeConnectionDetails(ctx)
 	assert.Equal(t, rootUser, cd[0].Value)

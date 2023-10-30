@@ -32,5 +32,7 @@ func init() {
 		&VSHNMinioList{},
 		&XVSHNRedis{},
 		&XVSHNRedisList{},
+		&XVSHNMinio{},
+		&XVSHNMinioList{},
 	)
 }

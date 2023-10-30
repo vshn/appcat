@@ -1,6 +1,7 @@
 package v1
 
 import (
+	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,7 +33,8 @@ type ObjectBucketSpec struct {
 	Parameters ObjectBucketParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef LocalObjectReference            `json:"writeConnectionSecretToRef,omitempty"`
+	CompositionReference       crossplane.CompositionReference `json:"compositionRef,omitempty"`
 }
 
 // ObjectBucketParameters are the configurable fields of a ObjectBucket.

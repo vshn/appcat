@@ -24,7 +24,7 @@ var (
 	promClientFunc   = getPrometheusAPIClient
 	getMetricsFunc   = getSLAMetrics
 	getTargetSLAFunc = getTargetSLA
-	allowedServices  = []string{"vshnpostgresql", "vshnredis"}
+	allowedServices  = []string{"vshnpostgresql", "vshnredis", "vshnminio"}
 )
 
 func getPrometheusAPIClient(promURL string, thanosAllowPartialResponses bool, orgID string) (apiv1.API, error) {

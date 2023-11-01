@@ -83,9 +83,9 @@ func RunQuery(ctx context.Context, promURL, timeRange, date, mimirOrg string, se
 			org = "noOrganizationInfo"
 		}
 
-		l.V(1).Info("Parsing metrics", "org", org)
-
 		service := string(sample.Metric["service"])
+
+		l.V(1).Info("Parsing metrics", "org", org, "service", service)
 
 		if !slices.Contains(allowedServices, strings.ToLower(service)) {
 			l.V(1).Info("Service not supported: ", service)

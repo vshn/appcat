@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"sync"
 	"time"
@@ -40,11 +42,23 @@ type ProbeInfo struct {
 	ServiceLevel  string
 }
 
+func NewProbeInfo(serviceKey string, nn types.NamespacedName, o client.Object) ProbeInfo {
+	namespace := nn.Namespace
+	if namespace == "" {
+		namespace = o.GetLabels()["crossplane.io/claim-namespace"]
+	}
+	return ProbeInfo{
+		Service:   serviceKey,
+		Name:      o.GetName(),
+		Namespace: namespace,
+	}
+}
+
 // key uniquely identifies a prober
 type key string
 
 func getKey(pi ProbeInfo) key {
-	return key(fmt.Sprintf("%s; %s; %s", pi.Service, pi.Namespace, pi.Name))
+	return key(fmt.Sprintf("%s; %s", pi.Service, pi.Name))
 }
 
 var ErrTimeout = errors.New("probe timed out")

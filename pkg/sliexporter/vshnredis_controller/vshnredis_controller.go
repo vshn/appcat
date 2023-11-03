@@ -56,15 +56,12 @@ func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	l.Info("Reconciling VSHNRedis")
 	inst := &vshnv1.XVSHNRedis{}
 
-	err = r.Get(ctx, req.NamespacedName, inst)
+	nn := req.NamespacedName
+	err = r.Get(ctx, nn, inst)
 
 	if apierrors.IsNotFound(err) || inst.DeletionTimestamp != nil {
 		l.Info("Stopping Probe")
-		r.ProbeManager.StopProbe(probes.ProbeInfo{
-			Service:   vshnRedisServiceKey,
-			Name:      req.Name,
-			Namespace: req.Namespace,
-		})
+		r.ProbeManager.StopProbe(probes.NewProbeInfo(vshnRedisServiceKey, nn, inst))
 		return ctrl.Result{}, nil
 	}
 	if err != nil {

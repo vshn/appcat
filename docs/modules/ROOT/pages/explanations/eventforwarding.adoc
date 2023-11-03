@@ -1,0 +1,22 @@
+= Event Forwarding
+
+== How does it work?
+
+We use a controller to catch all events on a cluster.
+We check the owner object of every event for a specific annotation.
+
+The annotation contains the kind, namespace and name of a claim that should receive the event.
+
+
+== Annotation
+
+The annotation is called `appcat.vshn.io/forward-events-to` and has the following format: `<claim_kind>/<claim_namespace>/<claim_name>`.
+
+== Example
+
+```yaml
+annotations:
+  appcat.vshn.io/forward-events-to: VSHNRedis/my-project/my-redis
+```
+
+will forward all events that are owned by that object to the `VSHNRedis` claim `my-redis` in the namespace `my-project`.

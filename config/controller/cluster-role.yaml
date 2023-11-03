@@ -31,3 +31,48 @@ rules:
       - list
       - watch
       - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - get
+      - update
+      - list
+      - watch
+      - delete
+      - create
+      - patch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - get
+  - apiGroups:
+      - cert-manager.io
+    resources:
+      - issuers
+      - certificates
+    verbs:
+      - get
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+    verbs:
+      - get
+  - apiGroups:
+      - vshn.appcat.vshn.io
+    resources:
+      - "*"
+    verbs:
+      - get

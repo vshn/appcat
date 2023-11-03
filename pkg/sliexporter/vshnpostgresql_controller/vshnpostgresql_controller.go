@@ -72,15 +72,12 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	res := ctrl.Result{}
 
 	inst := &vshnv1.XVSHNPostgreSQL{}
-	err := r.Get(ctx, req.NamespacedName, inst)
+	nn := req.NamespacedName
+	err := r.Get(ctx, nn, inst)
 
 	if apierrors.IsNotFound(err) || inst.DeletionTimestamp != nil {
 		l.Info("Stopping Probe")
-		r.ProbeManager.StopProbe(probes.ProbeInfo{
-			Service:   vshnpostgresqlsServiceKey,
-			Name:      req.Name,
-			Namespace: req.Namespace,
-		})
+		r.ProbeManager.StopProbe(probes.NewProbeInfo(vshnpostgresqlsServiceKey, nn, inst))
 		return ctrl.Result{}, nil
 	}
 	if err != nil {

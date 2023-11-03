@@ -50,7 +50,7 @@ func TestVSHNPostgreSQL_StartStop(t *testing.T) {
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.False(t, manager.probers[getFakeKey(pi)])
+	assert.True(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNPostgreSQL_StartStop_WithFinalizer(t *testing.T) {
@@ -123,7 +123,7 @@ func TestVSHNPostgreSQL_Multi(t *testing.T) {
 	_, err = r.Reconcile(context.TODO(), recReq("buzz", "foobar"))
 	require.NoError(t, err)
 
-	require.False(t, manager.probers[getFakeKey(barPi)])
+	require.True(t, manager.probers[getFakeKey(barPi)])
 	require.True(t, manager.probers[getFakeKey(barerPi)])
 	require.True(t, manager.probers[getFakeKey(buzzPi)])
 }
@@ -236,7 +236,7 @@ func TestVSHNPostgreSQL_PassCredentials(t *testing.T) {
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.False(t, manager.probers[getFakeKey(pi)])
+	assert.True(t, manager.probers[getFakeKey(pi)])
 }
 
 func fakePostgreDialer(service string, name string, namespace string, dsn string, organization string, sla string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error) {

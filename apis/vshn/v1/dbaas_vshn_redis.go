@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"fmt"
+
 	v1 "github.com/vshn/appcat/v4/apis/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -67,6 +69,9 @@ type VSHNRedisParameters struct {
 
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
+
+	// Monitoring contains settings to control monitoring.
+	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 }
 
 // VSHNRedisServiceSpec contains Redis DBaaS specific properties
@@ -150,4 +155,12 @@ type XVSHNRedisList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []XVSHNRedis `json:"items"`
+}
+
+func (redis *VSHNRedis) GetVSHNMonitoring() VSHNMonitoring {
+	return redis.Spec.Parameters.Monitoring
+}
+
+func (redis *VSHNRedis) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-redis-%s", redis.GetName())
 }

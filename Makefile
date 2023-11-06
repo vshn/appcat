@@ -72,7 +72,7 @@ generate: $(protoc_bin) generate-stackgres-crds ## Generate code with controller
 	# Because yaml is such a fun and easy specification, we need to hack some things here.
 	# Depending on the yaml parser implementation the equal sign (=) has special meaning, or not...
 	# So we make it explicitly a string.
-	$(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' apis/generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml
+	find apis/generated/ -exec $(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' {} \;
 	rm -rf crds && cp -r apis/generated crds
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-sli-exporter paths="{./pkg/sliexporter/...}" output:artifacts:config=config/sliexporter/rbac
 

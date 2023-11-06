@@ -98,7 +98,6 @@ func (v *VSHNMinio) GetClaimNamespace() string {
 
 func (v *VSHNMinio) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-minio-%s", v.GetName())
-
 }
 
 // +kubebuilder:object:generate=true

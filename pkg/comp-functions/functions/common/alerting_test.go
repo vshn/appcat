@@ -1,34 +1,30 @@
-package vshnpostgres
+package common
 
 import (
 	"context"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
-	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	v1 "k8s.io/api/core/v1"
+
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAddUserAlerting_NoInstanceNamespace(t *testing.T) {
 	ctx := context.Background()
-	expectResult := runtime.NewWarning(ctx, "Composite is missing instance namespace, skipping transformation")
-
 	t.Run("WhenNoInstance_ThenNoErrorAndNoChanges", func(t *testing.T) {
 
 		//Given
 		io := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/05-GivenNoStatusInstanceNamespace.yaml")
 
-		// When
-		result := AddUserAlerting(ctx, io)
-
 		// Then
-		assert.Equal(t, expectResult, result)
+		runForGivenInputAlerting(t, ctx, io, runtime.NewNormal())
+
 	})
 }
 
@@ -42,7 +38,7 @@ func TestAddUserAlerting(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		expResult xfnv1alpha1.Result
+		expResult runtime.Result
 	}{
 		{
 			name: "GivenNoMonitoringParams_ThenExpectNoOutput",
@@ -50,14 +46,11 @@ func TestAddUserAlerting(t *testing.T) {
 				expectedFuncIO: "vshn-postgres/alerting/01-ThenExpectNoOutput.yaml",
 				inputFuncIO:    "vshn-postgres/alerting/01-GivenNoMonitoringParams.yaml",
 			},
-			expResult: xfnv1alpha1.Result{
-				Severity: xfnv1alpha1.SeverityNormal,
-				Message:  "function ran successfully",
-			},
+			expResult: runtime.NewNormal(),
 		},
 		{
 			name:      "GivenConfigRefNoSecretRef_ThenExpectError",
-			expResult: runtime.NewFatal(ctx, "Found AlertmanagerConfigRef but no AlertmanagerConfigSecretRef, please specify as well").Resolve(),
+			expResult: runtime.NewFatal(ctx, "Found AlertmanagerConfigRef but no AlertmanagerConfigSecretRef, please specify as well"),
 			args: args{
 				expectedFuncIO: "vshn-postgres/alerting/02-ThenExpectError.yaml",
 				inputFuncIO:    "vshn-postgres/alerting/02-GivenConfigRefNoSecretRef.yaml",
@@ -70,9 +63,8 @@ func TestAddUserAlerting(t *testing.T) {
 			iof := commontest.LoadRuntimeFromFile(t, tt.args.inputFuncIO)
 			expIof := commontest.LoadRuntimeFromFile(t, tt.args.expectedFuncIO)
 
-			r := AddUserAlerting(ctx, iof)
+			runForGivenInputAlerting(t, ctx, iof, tt.expResult)
 
-			assert.Equal(t, tt.expResult, r.Resolve())
 			assert.Equal(t, commontest.GetFunctionIo(expIof), commontest.GetFunctionIo(iof))
 		})
 	}
@@ -86,8 +78,7 @@ func TestGivenConfigRefAndSecretThenExpectOutput(t *testing.T) {
 
 		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/03-GivenConfigRefAndSecret.yaml")
 
-		r := AddUserAlerting(ctx, iof)
-		assert.Equal(t, runtime.NewNormal(), r)
+		runForGivenInputAlerting(t, ctx, iof, runtime.NewNormal())
 
 		resName := "psql-alertmanagerconfig"
 		kubeObject := &xkube.Object{}
@@ -117,8 +108,7 @@ func TestGivenConfigTemplateAndSecretThenExpectOutput(t *testing.T) {
 
 		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/04-GivenConfigTemplateAndSecret.yaml")
 
-		r := AddUserAlerting(ctx, iof)
-		assert.Equal(t, runtime.NewNormal(), r)
+		runForGivenInputAlerting(t, ctx, iof, runtime.NewNormal())
 
 		resName := "psql-alertmanagerconfig"
 		kubeObject := &xkube.Object{}
@@ -139,4 +129,15 @@ func TestGivenConfigTemplateAndSecretThenExpectOutput(t *testing.T) {
 
 		assert.Equal(t, comp.Spec.Parameters.Monitoring.AlertmanagerConfigSecretRef, secret.GetName())
 	})
+}
+
+func runForGivenInputAlerting(t *testing.T, ctx context.Context, input *runtime.Runtime, res runtime.Result) {
+	fnc := AddUserAlerting(&vshnv1.VSHNRedis{})
+
+	assert.Equal(t, res, fnc(ctx, input))
+
+	fnc = AddUserAlerting(&vshnv1.VSHNPostgreSQL{})
+
+	assert.Equal(t, res, fnc(ctx, input))
+
 }

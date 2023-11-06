@@ -8,6 +8,7 @@ import (
 	pb "github.com/crossplane/crossplane/apis/apiextensions/fn/proto/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/helper"
@@ -77,7 +78,7 @@ var images = map[string][]runtime.Transform{
 		},
 		{
 			Name:          "user-alerting",
-			TransformFunc: vpf.AddUserAlerting,
+			TransformFunc: common.AddUserAlerting(&vshnv1.VSHNPostgreSQL{}),
 		},
 		{
 			Name:          "restart",
@@ -97,7 +98,7 @@ var images = map[string][]runtime.Transform{
 		},
 		{
 			Name:          "mailgun-alerting",
-			TransformFunc: vpf.MailgunAlerting,
+			TransformFunc: common.MailgunAlerting(&vshnv1.VSHNPostgreSQL{}),
 		},
 		{
 			Name:          "extensions",
@@ -144,6 +145,14 @@ var images = map[string][]runtime.Transform{
 		{
 			Name:          "redis_url",
 			TransformFunc: vshnredis.AddUrlToConnectionDetails,
+		},
+		{
+			Name:          "mailgun-alerting",
+			TransformFunc: common.MailgunAlerting(&vshnv1.VSHNRedis{}),
+		},
+		{
+			Name:          "user-alerting",
+			TransformFunc: common.AddUserAlerting(&vshnv1.VSHNRedis{}),
 		},
 	},
 	"minio": {

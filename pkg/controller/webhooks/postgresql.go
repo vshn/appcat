@@ -244,7 +244,7 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Conte
 	if pg.Spec.Parameters.Service.ServiceLevel == "guaranteed" && pg.Spec.Parameters.Instances < 2 {
 		fieldErrs = append(fieldErrs, &field.Error{
 			Field:    "spec.parameters.instances",
-			Detail:   "guaranteed PostgreSQL instances must be at least 2. Please set .spec.parameters.instances: [2,3]. Additional cost will apply, please refer to: https://products.vshn.ch/appcat/pricing.html",
+			Detail:   "PostgreSQL instances with service level Guaranteed Availability must have at least 2 replicas. Please set .spec.parameters.instances: [2,3]. Additional costs will apply, please refer to: https://products.vshn.ch/appcat/pricing.html",
 			Type:     field.ErrorTypeInvalid,
 			BadValue: pg.Spec.Parameters.Instances,
 		})

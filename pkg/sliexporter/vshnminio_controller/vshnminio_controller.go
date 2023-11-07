@@ -116,12 +116,6 @@ func (r VSHNMinioReconciler) getMinioProber(ctx context.Context, inst *vshnv1.XV
 		return nil, err
 	}
 
-	org := inst.GetLabels()[utils.OrgLabelName]
-	if org == "" {
-		// for development
-		org = "vshn"
-	}
-
 	ha := false
 	sla := vshnv1.BestEffort
 	if inst.Spec.Parameters.Instances >= 4 {
@@ -132,7 +126,7 @@ func (r VSHNMinioReconciler) getMinioProber(ctx context.Context, inst *vshnv1.XV
 		vshnMinioServiceKey,
 		inst.Name,
 		inst.ObjectMeta.Labels[claimNamespaceLabel],
-		org,
+		inst.GetLabels()[utils.OrgLabelName],
 		string(sla),
 		string(creds.Data["ENDPOINT"]),
 		ha,

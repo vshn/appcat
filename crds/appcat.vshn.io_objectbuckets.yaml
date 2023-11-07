@@ -41,6 +41,15 @@ spec:
           spec:
             description: ObjectBucketSpec defines the desired state of a ObjectBucket.
             properties:
+              compositionRef:
+                description: A CompositionReference references a Composition.
+                properties:
+                  name:
+                    description: Name of the Composition.
+                    type: string
+                required:
+                - name
+                type: object
               parameters:
                 description: ObjectBucketParameters are the configurable fields of
                   a ObjectBucket.

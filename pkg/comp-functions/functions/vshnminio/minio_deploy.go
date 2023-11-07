@@ -3,12 +3,15 @@ package vshnminio
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	xhelmbeta1 "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
+	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	v1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -17,6 +20,10 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	controllerruntime "sigs.k8s.io/controller-runtime"
+)
+
+const (
+	SLIBucketName = "vshn-test-bucket-for-sli"
 )
 
 // DeployMinio will add deploy the objects to deploy minio
@@ -60,6 +67,11 @@ func DeployMinio(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 		return runtime.NewWarning(ctx, "cannot get connection details")
 	}
 
+	l.Info("Starting vshn-test-bucket-for-sli creation")
+	if err := createSliBucket(ctx, comp, comp.Labels["crossplane.io/claim-name"], iof); err != nil {
+		l.Info("Failed to create SLI bucket")
+		return runtime.NewFatal(ctx, "can't create SliBucket")
+	}
 	return runtime.NewNormal()
 }
 
@@ -294,4 +306,27 @@ func createServiceMonitor(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runt
 	}
 
 	return iof.Desired.PutIntoObject(ctx, sm, comp.Name+"-service-monitor")
+}
+
+func createSliBucket(ctx context.Context, comp *vshnv1.VSHNMinio, xminioName string, iof *runtime.Runtime) error {
+	obj := &v1.ObjectBucket{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SLIBucketName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: v1.ObjectBucketSpec{
+			Parameters: v1.ObjectBucketParameters{
+				BucketName: SLIBucketName,
+				Region:     "us-east-1",
+			},
+			WriteConnectionSecretToRef: v1.LocalObjectReference{
+				Name:      SLIBucketName,
+				Namespace: comp.GetInstanceNamespace(),
+			},
+			CompositionReference: crossplane.CompositionReference{
+				Name: fmt.Sprintf("%s.objectbuckets.appcat.vshn.io", xminioName),
+			},
+		},
+	}
+	return iof.Desired.PutWithResourceName(ctx, obj, comp.Name+"-vshn-test-bucket-for-sli")
 }

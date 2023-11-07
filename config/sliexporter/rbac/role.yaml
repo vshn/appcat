@@ -23,6 +23,20 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - vshnminios
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - vshnminios/status
+  verbs:
+  - get
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
   - vshnpostgresqls
   verbs:
   - get
@@ -46,6 +60,20 @@ rules:
   - vshn.appcat.vshn.io
   resources:
   - vshnredis/status
+  verbs:
+  - get
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnminios
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnminios/status
   verbs:
   - get
 - apiGroups:

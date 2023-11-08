@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: vshnredis.vshn.appcat.vshn.io
 spec:
   group: vshn.appcat.vshn.io
@@ -3711,6 +3711,32 @@ spec:
                         type: string
                     type: object
                   type: array
+                schedules:
+                  description: Schedules keeps track of random generated schedules, is overwriten by schedules set in the service's spec.
+                  properties:
+                    backup:
+                      description: Backup keeps track of the backup schedule.
+                      type: string
+                    maintenance:
+                      description: Maintenance keeps track of the maintenance schedule.
+                      properties:
+                        dayOfWeek:
+                          description: DayOfWeek specifies at which weekday the maintenance is held place. Allowed values are [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+                          enum:
+                            - monday
+                            - tuesday
+                            - wednesday
+                            - thursday
+                            - friday
+                            - saturday
+                            - sunday
+                          type: string
+                        timeOfDay:
+                          description: 'TimeOfDay for installing updates in UTC. Format: "hh:mm:ss".'
+                          pattern: ^([0-1]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$
+                          type: string
+                      type: object
+                  type: object
                 selfSignedIssuerConditions:
                   items:
                     properties:

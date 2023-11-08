@@ -5,12 +5,11 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	miniov1 "github.com/vshn/appcat/v4/apis/minio/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -21,54 +20,47 @@ const (
 // ProvisionMiniobucket will create a bucket in a pre-deployed minio instance.
 // This function will leverage provider-minio to deploy proper policies and users
 // alongside the bucket.
-func ProvisionMiniobucket(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func ProvisionMiniobucket(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	bucket := &appcatv1.ObjectBucket{}
 
-	err := iof.Desired.GetComposite(ctx, bucket)
+	err := svc.GetObservedComposite(bucket)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "Could not get ObjectBucket claim", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	config, ok := iof.Config.Data["providerConfig"]
+	config, ok := svc.Config.Data["providerConfig"]
 	if !ok {
-		return runtime.NewFatalErr(ctx, "no providerConfig specified in composition config", fmt.Errorf("no providerConfig specified"))
+		return runtime.NewFatalResult(fmt.Errorf("no providerConfig specified"))
 	}
 
-	err = addBucket(ctx, iof, bucket, config)
+	err = addBucket(svc, bucket, config)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot apply bucket", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	err = addPolicy(ctx, iof, bucket, config)
+	err = addPolicy(svc, bucket, config)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot apply policy", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	err = addUser(ctx, iof, bucket, config)
+	err = addUser(svc, bucket, config)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot apply user", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	iof.Desired.PutCompositeConnectionDetail(ctx, xfnv1alpha1.ExplicitConnectionDetail{
-		Name:  "BUCKET_NAME",
-		Value: bucket.Spec.Parameters.BucketName,
-	})
+	svc.SetConnectionDetail("BUCKET_NAME", []byte(bucket.Spec.Parameters.BucketName))
+	svc.SetConnectionDetail("AWS_REGION", []byte(bucket.Spec.Parameters.Region))
 
-	iof.Desired.PutCompositeConnectionDetail(ctx, xfnv1alpha1.ExplicitConnectionDetail{
-		Name:  "AWS_REGION",
-		Value: bucket.Spec.Parameters.Region,
-	})
-
-	err = populateEndpointConnectionDetails(ctx, iof)
+	err = populateEndpointConnectionDetails(svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot populate connectionDetails", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	return runtime.NewNormal()
+	return nil
 }
 
-func addBucket(ctx context.Context, iof *runtime.Runtime, bucket *appcatv1.ObjectBucket, config string) error {
+func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
 	mb := &miniov1.Bucket{
 		ObjectMeta: metav1.ObjectMeta{
@@ -86,10 +78,10 @@ func addBucket(ctx context.Context, iof *runtime.Runtime, bucket *appcatv1.Objec
 		},
 	}
 
-	return iof.Desired.PutWithResourceName(ctx, mb, "minio-bucket")
+	return svc.SetDesiredComposedResourceWithName(mb, "minio-bucket")
 }
 
-func addUser(ctx context.Context, iof *runtime.Runtime, bucket *appcatv1.ObjectBucket, config string) error {
+func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
 	user := &miniov1.User{
 		ObjectMeta: metav1.ObjectMeta{
@@ -113,23 +105,19 @@ func addUser(ctx context.Context, iof *runtime.Runtime, bucket *appcatv1.ObjectB
 		},
 	}
 
-	cd := []xfnv1alpha1.DerivedConnectionDetail{
-		{
-			Name:                    pointer.String(secretKeyName),
-			FromConnectionSecretKey: pointer.String(secretKeyName),
-			Type:                    xfnv1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
-		},
-		{
-			Name:                    pointer.String(accessKeyName),
-			FromConnectionSecretKey: pointer.String(accessKeyName),
-			Type:                    xfnv1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
-		},
+	cd, err := svc.GetObservedComposedResourceConnectionDetails("minio-user")
+	if err != nil && err != runtime.ErrNotFound {
+		return err
 	}
 
-	return iof.Desired.PutWithResourceName(ctx, user, "minio-user", runtime.AddDerivedConnectionDetails(cd))
+	for v, k := range cd {
+		svc.SetConnectionDetail(v, k)
+	}
+
+	return svc.SetDesiredComposedResourceWithName(user, "minio-user")
 }
 
-func addPolicy(ctx context.Context, iof *runtime.Runtime, bucket *appcatv1.ObjectBucket, config string) error {
+func addPolicy(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
 	policy := &miniov1.Policy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -147,29 +135,22 @@ func addPolicy(ctx context.Context, iof *runtime.Runtime, bucket *appcatv1.Objec
 		},
 	}
 
-	return iof.Desired.PutWithResourceName(ctx, policy, "minio-policy")
+	return svc.SetDesiredComposedResourceWithName(policy, "minio-policy")
 }
 
-func populateEndpointConnectionDetails(ctx context.Context, iof *runtime.Runtime) error {
+func populateEndpointConnectionDetails(svc *runtime.ServiceRuntime) error {
 
 	bucket := &miniov1.Bucket{}
 
-	err := iof.Observed.Get(ctx, bucket, "minio-bucket")
+	err := svc.GetObservedComposedResource(bucket, "minio-bucket")
 	if err != nil && err == runtime.ErrNotFound {
 		return nil
 	} else if err != nil {
 		return err
 	}
 
-	iof.Desired.PutCompositeConnectionDetail(ctx, xfnv1alpha1.ExplicitConnectionDetail{
-		Name:  "ENDPOINT",
-		Value: bucket.Status.Endpoint,
-	})
-
-	iof.Desired.PutCompositeConnectionDetail(ctx, xfnv1alpha1.ExplicitConnectionDetail{
-		Name:  "ENDPOINT_URL",
-		Value: bucket.Status.EndpointURL,
-	})
+	svc.SetConnectionDetail("ENDPOINT", []byte(bucket.Status.Endpoint))
+	svc.SetConnectionDetail("ENDPOINT_URL", []byte(bucket.Status.EndpointURL))
 
 	return nil
 

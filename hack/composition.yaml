@@ -1,0 +1,27 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: function-template-go
+spec:
+  compositeTypeRef:
+    apiVersion: example.crossplane.io/v1
+    kind: XR
+  mode: Pipeline
+  pipeline:
+  - step: vshnminio
+    functionRef:
+      name: appcat-functions
+    input:
+      apiVersion: v1
+      kind: config
+      data:
+        serviceName: minio
+        controlNamespace: syn-appcat-control
+        defaultPlan: standard-1
+        imageTag: v4.40.0
+        maintenanceSA: helm-based-service-maintenance
+        minioChartRepository: https://charts.min.io
+        minioChartVersion: 5.0.13
+        plans: '{"standard-1": {"size": {"cpu": "1", "disk": "50Gi", "enabled":
+          true, "memory": "1Gi"}}}'
+        providerEnabled: 'true'

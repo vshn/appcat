@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	"github.com/vshn/appcat/v4/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

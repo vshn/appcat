@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -90,6 +91,9 @@ type VSHNMinioStatus struct {
 	NamespaceConditions []v1.Condition `json:"namespaceConditions,omitempty"`
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
+	// Schedules keeps track of random generated schedules, is overwriten by
+	// schedules set in the service's spec.
+	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 }
 
 func (v *VSHNMinio) GetClaimNamespace() string {
@@ -104,7 +108,26 @@ func (v *VSHNMinio) GetInstanceNamespace() string {
 // +kubebuilder:object:root=true
 
 // XVSHNMinios represents the internal composite of this claim
-type XVSHNMinio VSHNMinio
+type XVSHNMinio struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   XVSHNMinioSpec   `json:"spec"`
+	Status XVSHNMinioStatus `json:"status,omitempty"`
+}
+
+// XVSHNMinioSpec defines the desired state of a VSHNMinio.
+type XVSHNMinioSpec struct {
+	// Parameters are the configurable fields of a VSHNMinio.
+	Parameters VSHNMinioParameters `json:"parameters,omitempty"`
+
+	xpv1.ResourceSpec `json:"spec"`
+}
+
+type XVSHNMinioStatus struct {
+	VSHNMinioStatus     `json:"spec"`
+	xpv1.ResourceStatus `json:"spec"`
+}
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
@@ -115,4 +138,51 @@ type XVSHNMinioList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []XVSHNMinio `json:"items"`
+}
+
+// GetMaintenanceDayOfWeek returns the currently set day of week
+func (n *VSHNMinio) GetMaintenanceDayOfWeek() string {
+	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
+		return n.Spec.Parameters.Maintenance.DayOfWeek
+	}
+	return n.Status.Schedules.Maintenance.DayOfWeek
+}
+
+// GetMaintenanceTimeOfDay returns the currently set time of day
+func (v *VSHNMinio) GetMaintenanceTimeOfDay() string {
+	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
+		return v.Spec.Parameters.Maintenance.TimeOfDay
+	}
+	return v.Status.Schedules.Maintenance.TimeOfDay
+}
+
+// SetMaintenanceDayOfWeek sets the day of week to the given value
+func (v *VSHNMinio) SetMaintenanceDayOfWeek(dow string) {
+	v.Status.Schedules.Maintenance.DayOfWeek = dow
+}
+
+// SetMaintenanceTimeOfDay sets the time of day to the given value
+func (v *VSHNMinio) SetMaintenanceTimeOfDay(tod string) {
+	v.Status.Schedules.Maintenance.TimeOfDay = tod
+}
+
+// GetBackupSchedule returns the current backup schedule
+func (v *VSHNMinio) GetBackupSchedule() string {
+	if v.Spec.Parameters.Backup.Schedule != "" {
+		return v.Spec.Parameters.Backup.Schedule
+	}
+	return v.Status.Schedules.Backup
+}
+
+// SetBackupSchedule overwrites the current backup schedule
+func (v *VSHNMinio) SetBackupSchedule(schedule string) {
+	v.Status.Schedules.Backup = schedule
+}
+
+// GetFullMaintenanceSchedule returns
+func (v *VSHNMinio) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
+	schedule := v.Spec.Parameters.Maintenance
+	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
+	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
+	return schedule
 }

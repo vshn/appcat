@@ -11,7 +11,7 @@ import (
 )
 
 // AddSaWithRole creates a service account with the given policy and binds it to the role.
-func AddSaWithRole(ctx context.Context, iof *runtime.Runtime, policies []rbacv1.PolicyRule, compName, namespace, suffix string) error {
+func AddSaWithRole(ctx context.Context, svc *runtime.ServiceRuntime, policies []rbacv1.PolicyRule, compName, namespace, suffix string) error {
 	serviceAccountName := compName + "-" + suffix + "-serviceaccount"
 
 	sa := &corev1.ServiceAccount{
@@ -21,7 +21,7 @@ func AddSaWithRole(ctx context.Context, iof *runtime.Runtime, policies []rbacv1.
 		},
 	}
 
-	err := iof.Desired.PutIntoObject(ctx, sa, serviceAccountName)
+	err := svc.SetDesiredKubeObject(sa, serviceAccountName)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func AddSaWithRole(ctx context.Context, iof *runtime.Runtime, policies []rbacv1.
 		},
 	}
 
-	err = iof.Desired.PutIntoObject(ctx, role, compName+"-"+suffix+"-role", saReference)
+	err = svc.SetDesiredKubeObject(role, compName+"-"+suffix+"-role", saReference)
 	if err != nil {
 		return err
 	}
@@ -70,5 +70,5 @@ func AddSaWithRole(ctx context.Context, iof *runtime.Runtime, policies []rbacv1.
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, roleBinding, compName+"-"+suffix+"-rolebinding", roleReference, saReference)
+	return svc.SetDesiredKubeObject(roleBinding, compName+"-"+suffix+"-rolebinding", roleReference, saReference)
 }

@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	helmv1beta1 "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	helmv1beta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,31 +23,31 @@ import (
 var stsRecreateScript string
 
 // ResizePVCs will add a job to do the pvc resize for the instance
-func ResizePVCs(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func ResizePVCs(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	comp := &vshnv1.VSHNRedis{}
-	err := iof.Desired.GetComposite(ctx, comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "failed to parse composite", err)
+		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
 
 	if comp.Spec.Parameters.Size.Disk == "" {
-		return runtime.NewNormal()
+		return nil
 	}
 
-	release, err := getObservedOrDesiredRelease(ctx, iof)
+	release, err := getObservedOrDesiredRelease(ctx, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot get release", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot get release: %w", err))
 	}
 
 	values, err := getReleaseValues(release)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot parse release values", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot parse release values: %w", err))
 	}
 
-	err = addStsObserver(ctx, iof, comp)
+	err = addStsObserver(ctx, svc, comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot observe sts", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot observe sts: %w", err))
 	}
 
 	patch, result := needReleasePatch(ctx, comp, values)
@@ -55,28 +56,28 @@ func ResizePVCs(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	}
 
 	if patch {
-		err = addDeletionJob(ctx, iof, comp)
+		err = addDeletionJob(ctx, svc, comp)
 		if err != nil {
-			return runtime.NewFatalErr(ctx, "cannot create RBAC for the deletion job", err)
+			return runtime.NewFatalResult(fmt.Errorf("cannot create RBAC for the deletion job: %w", err))
 		}
 
-		return runtime.NewNormal()
+		return nil
 	}
 
 	xJob := &xkubev1.Object{}
-	err = iof.Observed.Get(ctx, xJob, comp.Name+"-sts-deleter")
+	err = svc.GetObservedComposedResource(xJob, comp.Name+"-sts-deleter")
 	if err != nil && err != runtime.ErrNotFound {
-		return runtime.NewFatalErr(ctx, "cannot get observed deletion job", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot get observed deletion job: %w", err))
 	}
 	// If there's no job observed, we're done here.
 	if err == runtime.ErrNotFound {
-		return runtime.NewNormal()
+		return nil
 	}
 
 	sts := &appsv1.StatefulSet{}
-	err = iof.Observed.GetFromObject(ctx, sts, comp.Name+"-sts-observer")
+	err = svc.GetObservedKubeObject(sts, comp.Name+"-sts-observer")
 	if err != nil && err != runtime.ErrNotFound {
-		return runtime.NewFatalErr(ctx, "cannot get observed statefulset job", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot get observed statefulset job: %w", err))
 	}
 
 	// If the xkube object has been created it's still possible that the actual job hasn't been observedJob.
@@ -89,7 +90,7 @@ func ResizePVCs(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	}
 	desiredSize, err := getSizeAsInt(comp.Spec.Parameters.Size.Disk)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot parse desired size", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot parse desired size: %w", err))
 	}
 	stsUpdated := stsSize == desiredSize
 
@@ -97,39 +98,39 @@ func ResizePVCs(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	if observedJob {
 		err := json.Unmarshal(xJob.Status.AtProvider.Manifest.Raw, deletionJob)
 		if err != nil {
-			return runtime.NewFatalErr(ctx, "cannot unmarshal sts deleter job", err)
+			return runtime.NewFatalResult(fmt.Errorf("cannot unmarshal sts deleter job: %w", err))
 		}
 	}
 
 	// The job hasn't been observed yet, so we need to keep it in desired, or we will have a recreate loop
 	// Also as long as it hasn't finished we need to make sure it exists.
 	if (!observedJob || deletionJob.Status.Succeeded < 1) || (sts.Status.ReadyReplicas == 0 && !stsUpdated) {
-		err := addDeletionJob(ctx, iof, comp)
+		err := addDeletionJob(ctx, svc, comp)
 		if err != nil {
-			return runtime.NewFatalErr(ctx, "cannot create RBAC for the deletion job", err)
+			return runtime.NewFatalResult(fmt.Errorf("cannot create RBAC for the deletion job: %w", err))
 		}
 	}
 
-	return runtime.NewNormal()
+	return nil
 }
 
-func needReleasePatch(ctx context.Context, comp *vshnv1.VSHNRedis, values map[string]interface{}) (bool, runtime.Result) {
+func needReleasePatch(ctx context.Context, comp *vshnv1.VSHNRedis, values map[string]interface{}) (bool, *xfnproto.Result) {
 	releaseSizeValue, found, err := unstructured.NestedString(values, "master", "persistence", "size")
 	if !found {
-		return false, runtime.NewFatalErr(ctx, "could not find disk size in release", fmt.Errorf("disk size not found in release"))
+		return false, runtime.NewFatalResult(fmt.Errorf("disk size not found in release"))
 	}
 	if err != nil {
-		return false, runtime.NewFatalErr(ctx, "failed to read size from release", err)
+		return false, runtime.NewFatalResult(fmt.Errorf("failed to read size from release: %w", err))
 	}
 
 	desiredInt, err := getSizeAsInt(comp.Spec.Parameters.Size.Disk)
 	if err != nil {
-		return false, runtime.NewFatalErr(ctx, "cannot parse desired disk size", err)
+		return false, runtime.NewFatalResult(fmt.Errorf("cannot parse desired disk size: %w", err))
 	}
 
 	releaseInt, err := getSizeAsInt(releaseSizeValue)
 	if err != nil {
-		return false, runtime.NewFatalErr(ctx, "cannot parse release disk size", err)
+		return false, runtime.NewFatalResult(fmt.Errorf("cannot parse release disk size: %w", err))
 	}
 
 	return desiredInt > releaseInt, nil
@@ -145,15 +146,15 @@ func getSizeAsInt(size string) (int64, error) {
 	return finalSize, nil
 }
 
-func getObservedOrDesiredRelease(ctx context.Context, iof *runtime.Runtime) (*helmv1beta1.Release, error) {
+func getObservedOrDesiredRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*helmv1beta1.Release, error) {
 	r := &helmv1beta1.Release{}
-	err := iof.Observed.Get(ctx, r, redisRelease)
+	err := svc.GetObservedComposedResource(r, redisRelease)
 	if err != nil && err != runtime.ErrNotFound {
 		return nil, fmt.Errorf("cannot get redis release from observed iof: %v", err)
 	}
 
 	if err == runtime.ErrNotFound {
-		err := iof.Desired.Get(ctx, r, redisRelease)
+		err := svc.GetObservedComposedResource(r, redisRelease)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
 		}
@@ -161,8 +162,8 @@ func getObservedOrDesiredRelease(ctx context.Context, iof *runtime.Runtime) (*he
 	return r, nil
 }
 
-func addDeletionJob(ctx context.Context, iof *runtime.Runtime, comp *vshnv1.VSHNRedis) error {
-	ns := iof.Config.Data["controlNamespace"]
+func addDeletionJob(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
+	ns := svc.Config.Data["controlNamespace"]
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -211,10 +212,10 @@ func addDeletionJob(ctx context.Context, iof *runtime.Runtime, comp *vshnv1.VSHN
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, job, comp.Name+"-sts-deleter")
+	return svc.SetDesiredKubeObject(job, comp.Name+"-sts-deleter")
 }
 
-func addStsObserver(ctx context.Context, iof *runtime.Runtime, comp *vshnv1.VSHNRedis) error {
+func addStsObserver(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
 
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -223,5 +224,5 @@ func addStsObserver(ctx context.Context, iof *runtime.Runtime, comp *vshnv1.VSHN
 		},
 	}
 
-	return iof.Desired.PutIntoObserveOnlyObject(ctx, statefulset, comp.Name+"-sts-observer")
+	return svc.SetDesiredKubeObserveObject(statefulset, comp.Name+"-sts-observer")
 }

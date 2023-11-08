@@ -153,4 +153,14 @@ type VSHNMonitoring struct {
 
 	// Email necessary to send alerts via email
 	Email string `json:"email,omitempty"`
+	// VSHNScheduleStatus keeps track of the maintenance and backup schedules.
+	// As of Crossplane 1.14 it's no longer allowed to change the composite.spec, so
+	// any generate
+}
+
+type VSHNScheduleStatus struct {
+	// Maintenance keeps track of the maintenance schedule.
+	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
+	// Backup keeps track of the backup schedule.
+	Backup string `json:"backup,omitempty"`
 }

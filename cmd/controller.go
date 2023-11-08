@@ -14,6 +14,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 type controller struct {
@@ -57,11 +59,16 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 c.scheme,
-		Port:                   9443,
 		HealthProbeBindAddress: c.healthAddr,
 		LeaderElection:         c.leaderElect,
 		LeaderElectionID:       "35t6u158.appcat.vshn.io",
-		CertDir:                c.certDir,
+		Metrics: server.Options{
+			BindAddress: c.metricsAddr,
+		},
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port:    9443,
+			CertDir: c.certDir,
+		}),
 	})
 	if err != nil {
 		return err

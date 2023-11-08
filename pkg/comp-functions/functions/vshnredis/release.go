@@ -7,35 +7,36 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
-	"github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
 var redisRelease = "release"
 
 // ManageRelease will update the release in line with other composition functions
-func ManageRelease(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func ManageRelease(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
 	comp := &vshnv1.VSHNRedis{}
-	err := iof.Observed.GetComposite(ctx, comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "can't get composite", err)
+		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	desiredRelease, err := getRelease(ctx, iof)
+	desiredRelease, err := getRelease(ctx, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot get redis release from iof", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot get redis release from iof: %w", err))
 	}
-	observedRelease, err := getObservedRelease(ctx, iof)
+	observedRelease, err := getObservedRelease(ctx, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot get observed release", err)
+		return runtime.NewWarningResult("cannot get observed release, skipping")
 	}
 
 	releaseName := desiredRelease.Name
@@ -43,29 +44,29 @@ func ManageRelease(ctx context.Context, iof *runtime.Runtime) runtime.Result {
 	l.Info("Updating helm values")
 	desiredRelease, err = updateRelease(ctx, comp, desiredRelease, observedRelease)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, fmt.Sprintf("cannot update redis release %q: %q", releaseName, err.Error()), err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot update redis release %q: %q: %w", releaseName, err.Error(), err))
 	}
 
-	err = iof.Desired.PutWithResourceName(ctx, desiredRelease, redisRelease)
+	err = svc.SetDesiredComposedResourceWithName(desiredRelease, redisRelease)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, fmt.Sprintf("cannot update release %q", releaseName), err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot update release %q: %w", releaseName, err))
 	}
 
-	return runtime.NewNormal()
+	return nil
 }
 
-func getRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
+func getRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*v1beta1.Release, error) {
 	r := &v1beta1.Release{}
-	err := iof.Desired.Get(ctx, r, redisRelease)
+	err := svc.GetDesiredComposedResourceByName(r, redisRelease)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
 	}
 	return r, nil
 }
 
-func getObservedRelease(ctx context.Context, iof *runtime.Runtime) (*v1beta1.Release, error) {
+func getObservedRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*v1beta1.Release, error) {
 	r := &v1beta1.Release{}
-	err := iof.Observed.Get(ctx, r, redisRelease)
+	err := svc.GetObservedComposedResource(r, redisRelease)
 	if errors.Is(err, runtime.ErrNotFound) {
 		return r, nil
 	}
@@ -160,7 +161,7 @@ func addBackupCM(valueMap map[string]any) error {
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: backupScriptCMName,
 					},
-					DefaultMode: pointer.Int32(0774),
+					DefaultMode: ptr.To(int32(0774)),
 				},
 			},
 		},

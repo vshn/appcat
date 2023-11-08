@@ -3,8 +3,8 @@ package v1
 import (
 	"fmt"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -34,17 +34,8 @@ type VSHNPostgreSQL struct {
 // VSHNPostgreSQLSpec defines the desired state of a VSHNPostgreSQL.
 type VSHNPostgreSQLSpec struct {
 	// Parameters are the configurable fields of a VSHNPostgreSQL.
-	Parameters VSHNPostgreSQLParameters `json:"parameters,omitempty"`
-	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
-
-	// ResourceRef contains a reference to the composite.
-	ResourceRef corev1.ObjectReference `json:"resourceRef,omitempty"`
-
-	// CompositeDeletePolicy defines how the claim should behave if it's deleted.
-	// This field definition will be overwritten by crossplane again, once the XRD is applied to a cluster.
-	// It's added here so it can be marshalled correctly in third party operators or composition functions.
-	CompositeDeletePolicy string `json:"compositeDeletePolicy,omitempty"`
+	Parameters        VSHNPostgreSQLParameters `json:"parameters,omitempty"`
+	xpv1.ResourceSpec `json:",inline"`
 }
 
 // VSHNPostgreSQLParameters are the configurable fields of a VSHNPostgreSQL.
@@ -232,13 +223,16 @@ type VSHNPostgreSQLStatus struct {
 	PGConfigConditions           []v1.Condition `json:"pgconfigConditions,omitempty"`
 	PGClusterConditions          []v1.Condition `json:"pgclusterConditions,omitempty"`
 	SecretsConditions            []v1.Condition `json:"secretConditions,omitempty"`
-	ObjectBucketConditions       []v1.Condition `json:"ObjectBucketConditions,omitempty"`
-	ObjectBackupConfigConditions []v1.Condition `json:"ObjectBackupConfigConditions,omitempty"`
+	ObjectBucketConditions       []v1.Condition `json:"objectBucketConditions,omitempty"`
+	ObjectBackupConfigConditions []v1.Condition `json:"objectBackupConfigConditions,omitempty"`
 	NetworkPolicyConditions      []v1.Condition `json:"networkPolicyConditions,omitempty"`
 	LocalCAConditions            []v1.Condition `json:"localCAConditions,omitempty"`
 	CertificateConditions        []v1.Condition `json:"certificateConditions,omitempty"`
 	// IsEOL indicates if this instance is using an EOL version of PostgreSQL.
 	IsEOL bool `json:"isEOL,omitempty"`
+	// Schedules keeps track of random generated schedules, is overwriten by
+	// schedules set in the service's spec.
+	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -251,11 +245,75 @@ type VSHNPostgreSQLList struct {
 	Items []VSHNPostgreSQL `json:"items"`
 }
 
+// GetMaintenanceDayOfWeek returns the currently set day of week
+func (n *VSHNPostgreSQL) GetMaintenanceDayOfWeek() string {
+	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
+		return n.Spec.Parameters.Maintenance.DayOfWeek
+	}
+	return n.Status.Schedules.Maintenance.DayOfWeek
+}
+
+// GetMaintenanceTimeOfDay returns the currently set time of day
+func (n *VSHNPostgreSQL) GetMaintenanceTimeOfDay() string {
+	if n.Spec.Parameters.Maintenance.TimeOfDay != "" {
+		return n.Spec.Parameters.Maintenance.TimeOfDay
+	}
+	return n.Status.Schedules.Maintenance.TimeOfDay
+}
+
+// SetMaintenanceDayOfWeek sets the day of week to the given value
+func (n *VSHNPostgreSQL) SetMaintenanceDayOfWeek(dow string) {
+	n.Status.Schedules.Maintenance.DayOfWeek = dow
+}
+
+// SetMaintenanceTimeOfDay sets the time of day to the given value
+func (n *VSHNPostgreSQL) SetMaintenanceTimeOfDay(tod string) {
+	n.Status.Schedules.Maintenance.TimeOfDay = tod
+}
+
+// GetBackupSchedule returns the current backup schedule
+func (n *VSHNPostgreSQL) GetBackupSchedule() string {
+	if n.Spec.Parameters.Backup.Schedule != "" {
+		return n.Spec.Parameters.Backup.Schedule
+	}
+	return n.Status.Schedules.Backup
+}
+
+// SetBackupSchedule overwrites the current backup schedule
+func (n *VSHNPostgreSQL) SetBackupSchedule(schedule string) {
+	n.Status.Schedules.Backup = schedule
+}
+
+// GetFullMaintenanceSchedule returns
+func (n *VSHNPostgreSQL) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
+	schedule := n.Spec.Parameters.Maintenance
+	schedule.DayOfWeek = n.GetMaintenanceDayOfWeek()
+	schedule.TimeOfDay = n.GetMaintenanceTimeOfDay()
+	return schedule
+}
+
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
 // XVSHNPostgreSQL represents the internal composite of this claim
-type XVSHNPostgreSQL VSHNPostgreSQL
+type XVSHNPostgreSQL struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   XVSHNPostgreSQLSpec   `json:"spec"`
+	Status XVSHNPostgreSQLStatus `json:"status,omitempty"`
+}
+
+type XVSHNPostgreSQLStatus struct {
+	VSHNPostgreSQLStatus `json:",inline"`
+	xpv1.ResourceStatus  `json:",inline"`
+}
+
+type XVSHNPostgreSQLSpec struct {
+	// Parameters are the configurable fields of a VSHNPostgreSQL.
+	Parameters        VSHNPostgreSQLParameters `json:"parameters,omitempty"`
+	xpv1.ResourceSpec `json:",inline"`
+}
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true

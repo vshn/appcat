@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/blang/semver/v4"
-	"github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
+	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	"github.com/vshn/appcat/v4/pkg/common/jsonpatch"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"

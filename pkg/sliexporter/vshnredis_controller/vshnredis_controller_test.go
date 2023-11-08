@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	v1 "github.com/vshn/appcat/v4/apis/v1"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
@@ -281,7 +281,7 @@ func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
 
 func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
 	db := newTestVSHNRedis("bar", "foo", "creds")
-	db.Spec.WriteConnectionSecretToRef.Name = ""
+	db.Spec.WriteConnectionSecretToReference.Name = ""
 	r, manager, _ := setupVSHNRedisTest(t,
 		db,
 	)
@@ -455,9 +455,11 @@ func newTestVSHNRedis(namespace, name, cred string) *vshnv1.XVSHNRedis {
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: vshnv1.VSHNRedisSpec{
-			WriteConnectionSecretToRef: v1.LocalObjectReference{
-				Name: cred,
+		Spec: vshnv1.XVSHNRedisSpec{
+			ResourceSpec: xpv1.ResourceSpec{
+				WriteConnectionSecretToReference: &xpv1.SecretReference{
+					Name: cred,
+				},
 			},
 		},
 	}

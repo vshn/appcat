@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
@@ -29,8 +30,8 @@ type Maintenance struct {
 	helmBasedService bool
 	// resource object of this service
 	resource client.Object
-	// iof is Crossplane IO function
-	iof *runtime.Runtime
+	// svc is is the ServiceRuntime
+	svc *runtime.ServiceRuntime
 	// schedule is the schedule spec of the resource
 	schedule vshnv1.VSHNDBaaSMaintenanceScheduleSpec
 	// policyRules are the permissions to be give to the maintenance role
@@ -62,12 +63,12 @@ var (
 )
 
 // New creates a Maintenance object with required attributes
-func New(r client.Object, iof *runtime.Runtime, schedule vshnv1.VSHNDBaaSMaintenanceScheduleSpec, instanceNamespace, service string) *Maintenance {
+func New(r client.Object, svc *runtime.ServiceRuntime, schedule vshnv1.VSHNDBaaSMaintenanceScheduleSpec, instanceNamespace, service string) *Maintenance {
 	return &Maintenance{
 		instanceNamespace: instanceNamespace,
 		service:           service,
 		resource:          r,
-		iof:               iof,
+		svc:               svc,
 		schedule:          schedule,
 	}
 }
@@ -103,17 +104,17 @@ func (m *Maintenance) WithRole(role string) *Maintenance {
 }
 
 // Run generates k8s resources for maintenance
-func (m *Maintenance) Run(ctx context.Context) runtime.Result {
+func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 
 	log.Info("Adding maintenance cronjob to the instance")
 	cron, err := m.parseCron()
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "can't parse maintenance to cron", err)
+		return runtime.NewFatalResult(err)
 	}
 	if cron == "" {
 		log.Info("Maintenance schedule not yet populated")
-		return runtime.NewNormal()
+		return runtime.NewNormalResult("Maintenance schedule not yet populated")
 	}
 
 	// Helm based services are having maintenance done in a control namespace therefore rbac rules are created
@@ -121,22 +122,22 @@ func (m *Maintenance) Run(ctx context.Context) runtime.Result {
 	if !m.helmBasedService && m.mainRole != "" {
 		err = m.createRBAC(ctx)
 		if err != nil {
-			return runtime.NewFatalErr(ctx, "can't create rbac for maintenance", err)
+			return runtime.NewFatalResult(err)
 		}
 	}
 
 	for _, extraR := range m.extraResources {
-		err = m.iof.Desired.PutIntoObject(ctx, extraR.Resource, extraR.Name, extraR.Refs...)
+		err = m.svc.SetDesiredKubeObject(extraR.Resource, extraR.Name, extraR.Refs...)
 		if err != nil {
-			return runtime.NewFatalErr(ctx, "can't create resource", err)
+			return runtime.NewFatalResult(err)
 		}
 	}
 
 	err = m.createMaintenanceJob(ctx, cron)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "can't create maintenance job", err)
+		return runtime.NewFatalResult(err)
 	}
-	return runtime.NewNormal()
+	return nil
 }
 
 func (m *Maintenance) createRBAC(ctx context.Context) error {
@@ -158,7 +159,7 @@ func (m *Maintenance) createRBAC(ctx context.Context) error {
 }
 
 func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule string) error {
-	imageTag := m.iof.Config.Data["imageTag"]
+	imageTag := m.svc.Config.Data["imageTag"]
 	if imageTag == "" {
 		return fmt.Errorf("no imageTag field in composition function configuration")
 	}
@@ -170,11 +171,11 @@ func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule str
 	// For helm based services create the job in the control namespace
 	if m.helmBasedService {
 		jobName = m.resource.GetName() + "-maintenancejob"
-		jobNamespace = m.iof.Config.Data["controlNamespace"]
+		jobNamespace = m.svc.Config.Data["controlNamespace"]
 		if jobNamespace == "" {
 			return fmt.Errorf("no controlNamespace field in composition function configuration")
 		}
-		sa = m.iof.Config.Data["maintenanceSA"]
+		sa = m.svc.Config.Data["maintenanceSA"]
 		if sa == "" {
 			return fmt.Errorf("no maintenanceSA field in composition function configuration")
 		}
@@ -228,7 +229,7 @@ func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule str
 		},
 	}
 
-	return m.iof.Desired.PutIntoObject(ctx, job, m.resource.GetName()+"-maintenancejob")
+	return m.svc.SetDesiredKubeObject(job, m.resource.GetName()+"-maintenancejob")
 }
 
 func (m *Maintenance) createMaintenanceRolebinding(ctx context.Context) error {
@@ -250,7 +251,7 @@ func (m *Maintenance) createMaintenanceRolebinding(ctx context.Context) error {
 		},
 	}
 
-	return m.iof.Desired.PutIntoObject(ctx, roleBinding, m.resource.GetName()+"-maintenance-rolebinding")
+	return m.svc.SetDesiredKubeObject(roleBinding, m.resource.GetName()+"-maintenance-rolebinding")
 }
 
 func (m *Maintenance) createMaintenanceRole(ctx context.Context) error {
@@ -262,7 +263,7 @@ func (m *Maintenance) createMaintenanceRole(ctx context.Context) error {
 		Rules: m.policyRules,
 	}
 
-	return m.iof.Desired.PutIntoObject(ctx, role, m.resource.GetName()+"-maintenance-role")
+	return m.svc.SetDesiredKubeObject(role, m.resource.GetName()+"-maintenance-role")
 }
 
 func (m *Maintenance) createMaintenanceServiceAccount(ctx context.Context) error {
@@ -273,7 +274,7 @@ func (m *Maintenance) createMaintenanceServiceAccount(ctx context.Context) error
 		},
 	}
 
-	return m.iof.Desired.PutIntoObject(ctx, sa, m.resource.GetName()+"-maintenance-serviceaccount")
+	return m.svc.SetDesiredKubeObject(sa, m.resource.GetName()+"-maintenance-serviceaccount")
 }
 
 func (m *Maintenance) parseCron() (string, error) {

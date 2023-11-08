@@ -16,6 +16,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 type sliProber struct {
@@ -54,11 +55,12 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 s.scheme,
-		MetricsBindAddress:     s.metricsAddr,
-		Port:                   9443,
 		HealthProbeBindAddress: s.probeAddr,
 		LeaderElection:         s.leaderElect,
 		LeaderElectionID:       "05f8b574.appcat.vshn.io",
+		Metrics: server.Options{
+			BindAddress: s.metricsAddr,
+		},
 	})
 	if err != nil {
 		log.Error(err, "unable to start manager")

@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	v1 "github.com/vshn/appcat/v4/apis/v1"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
@@ -149,7 +149,7 @@ func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
 
 func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
 	db := newTestVSHNPostgres("bar", "foo", "creds", 1)
-	db.Spec.WriteConnectionSecretToRef.Name = ""
+	db.Spec.WriteConnectionSecretToReference.Name = ""
 	r, manager, _ := setupVSHNPostgreTest(t,
 		db,
 	)
@@ -306,12 +306,14 @@ func newTestVSHNPostgres(namespace, name, cred string, instances int) *vshnv1.XV
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: vshnv1.VSHNPostgreSQLSpec{
+		Spec: vshnv1.XVSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
 				Instances: instances,
 			},
-			WriteConnectionSecretToRef: v1.LocalObjectReference{
-				Name: cred,
+			ResourceSpec: xpv1.ResourceSpec{
+				WriteConnectionSecretToReference: &xpv1.SecretReference{
+					Name: cred,
+				},
 			},
 		},
 	}

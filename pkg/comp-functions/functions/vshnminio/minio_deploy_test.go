@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	xhelmbeta1 "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
+	xhelmbeta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
@@ -16,7 +16,7 @@ import (
 
 func TestMinioDeploy(t *testing.T) {
 
-	iof, comp := getMinioComp(t)
+	svc, comp := getMinioComp(t)
 
 	ctx := context.TODO()
 
@@ -24,39 +24,39 @@ func TestMinioDeploy(t *testing.T) {
 	rootPassword := "minio123"
 	minioHost := "http://10.0.0.1:9000"
 
-	assert.Equal(t, runtime.NewNormal(), DeployMinio(ctx, iof))
+	assert.Nil(t, DeployMinio(ctx, svc))
 
 	ns := &corev1.Namespace{}
-	assert.NoError(t, iof.Observed.GetFromObject(ctx, ns, comp.Name+"-ns"))
+	assert.NoError(t, svc.GetObservedKubeObject(ns, comp.Name+"-ns"))
 
 	r := &xhelmbeta1.Release{}
-	assert.NoError(t, iof.Observed.Get(ctx, r, comp.Name+"-release"))
+	assert.NoError(t, svc.GetObservedComposedResource(r, comp.Name+"-release"))
 
 	service := &corev1.Service{}
-	assert.NoError(t, iof.Observed.GetFromObject(ctx, service, comp.Name+"-service-observer"))
+	assert.NoError(t, svc.GetObservedKubeObject(service, comp.Name+"-service-observer"))
 
 	objBuck := &v1.ObjectBucket{}
-	assert.NoError(t, iof.Desired.Get(ctx, objBuck, comp.Name+"-vshn-test-bucket-for-sli"))
+	assert.NoError(t, svc.GetDesiredKubeObject(objBuck, comp.Name+"-vshn-test-bucket-for-sli"))
 
-	cd := iof.Desired.GetCompositeConnectionDetails(ctx)
-	assert.Equal(t, rootUser, cd[0].Value)
-	assert.Equal(t, rootPassword, cd[1].Value)
-	assert.Equal(t, minioHost, cd[2].Value)
+	cd := svc.GetConnectionDetails()
+	assert.Equal(t, rootUser, string(cd["AWS_ACCESS_KEY_ID"]))
+	assert.Equal(t, rootPassword, string(cd["AWS_SECRET_ACCESS_KEY"]))
+	assert.Equal(t, minioHost, string(cd["MINIO_URL"]))
 
 	sm := &promv1.ServiceMonitor{}
-	assert.NoError(t, iof.Desired.GetFromObject(ctx, sm, comp.Name+"-service-monitor"))
+	assert.NoError(t, svc.GetDesiredKubeObject(sm, comp.Name+"-service-monitor"))
 	assert.Equal(t, "/minio/v2/metrics/node", sm.Spec.Endpoints[0].Path)
 	assert.Equal(t, "/minio/v2/metrics/cluster", sm.Spec.Endpoints[1].Path)
 	assert.Equal(t, "/minio/v2/metrics/bucket", sm.Spec.Endpoints[2].Path)
 	assert.Equal(t, "/minio/v2/metrics/resource", sm.Spec.Endpoints[3].Path)
 }
 
-func getMinioComp(t *testing.T) (*runtime.Runtime, *vshnv1.VSHNMinio) {
-	iof := commontest.LoadRuntimeFromFile(t, "vshnminio/deploy/01_default.yaml")
+func getMinioComp(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNMinio) {
+	svc := commontest.LoadRuntimeFromFile(t, "vshnminio/deploy/01_default.yaml")
 
 	comp := &vshnv1.VSHNMinio{}
-	err := iof.Observed.GetComposite(context.TODO(), comp)
+	err := svc.GetObservedComposite(comp)
 	assert.NoError(t, err)
 
-	return iof, comp
+	return svc, comp
 }

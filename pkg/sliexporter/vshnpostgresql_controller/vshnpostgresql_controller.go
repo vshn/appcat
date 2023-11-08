@@ -84,7 +84,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if inst.Spec.WriteConnectionSecretToRef.Name == "" {
+	if inst.Spec.WriteConnectionSecretToReference.Name == "" {
 		l.Info("No connection secret requested. Skipping.")
 		return ctrl.Result{}, nil
 	}
@@ -94,7 +94,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 	if apierrors.IsNotFound(err) {
-		l.WithValues("credentials", inst.Spec.WriteConnectionSecretToRef.Name, "error", err.Error()).
+		l.WithValues("credentials", inst.Spec.WriteConnectionSecretToReference.Name, "error", err.Error()).
 			Info("Failed to find credentials. Backing off")
 		res.Requeue = true
 		res.RequeueAfter = 30 * time.Second
@@ -129,7 +129,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 
 	credSecret := corev1.Secret{}
 	err = r.Get(ctx, types.NamespacedName{
-		Name:      instance.Spec.WriteConnectionSecretToRef.Name,
+		Name:      instance.Spec.WriteConnectionSecretToReference.Name,
 		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
 	}, &credSecret)
 

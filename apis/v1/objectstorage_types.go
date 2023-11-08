@@ -1,6 +1,7 @@
 package v1
 
 import (
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -67,6 +68,8 @@ type ObjectBucketStatus struct {
 	AccessUserConditions []Condition `json:"accessUserConditions,omitempty"`
 	// BucketConditions contains a copy of the claim's underlying bucket conditions.
 	BucketConditions []Condition `json:"bucketConditions,omitempty"`
+
+	xpv1.ResourceStatus `json:",inline"`
 }
 
 // +kubebuilder:object:generate=true
@@ -85,8 +88,7 @@ type XObjectBucket struct {
 type XObjectBucketSpec struct {
 	Parameters ObjectBucketParameters `json:"parameters,omitempty"`
 
-	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef NamespacedName `json:"writeConnectionSecretToRef,omitempty"`
+	xpv1.ResourceSpec `json:",inline"`
 }
 
 // NamespacedName describes an object reference by its name and namespace

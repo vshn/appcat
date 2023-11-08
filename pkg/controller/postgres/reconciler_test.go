@@ -52,7 +52,7 @@ func Test_Reconcile(t *testing.T) {
 					Name:       "instance-1",
 					Finalizers: []string{"dummy"}, // we can't jsonpatch an empty array...
 				},
-				Spec: v1.VSHNPostgreSQLSpec{
+				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
 							DeletionProtection: true,
@@ -84,7 +84,7 @@ func Test_Reconcile(t *testing.T) {
 					Name:       "instance-1",
 					Finalizers: []string{finalizerName},
 				},
-				Spec: v1.VSHNPostgreSQLSpec{
+				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
 							DeletionProtection: true,
@@ -117,7 +117,7 @@ func Test_Reconcile(t *testing.T) {
 					DeletionTimestamp: &previousDay,
 					Finalizers:        []string{finalizerName},
 				},
-				Spec: v1.VSHNPostgreSQLSpec{
+				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
 							DeletionProtection: true,
@@ -153,7 +153,7 @@ func Test_Reconcile(t *testing.T) {
 						"dummy",
 					},
 				},
-				Spec: v1.VSHNPostgreSQLSpec{
+				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
 							DeletionProtection: true,
@@ -188,7 +188,7 @@ func Test_Reconcile(t *testing.T) {
 						"dummy",
 					},
 				},
-				Spec: v1.VSHNPostgreSQLSpec{
+				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
 							DeletionProtection: true,
@@ -220,7 +220,7 @@ func Test_Reconcile(t *testing.T) {
 					Name:       "instance-1",
 					Finalizers: []string{finalizerName},
 				},
-				Spec: v1.VSHNPostgreSQLSpec{
+				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
 							DeletionProtection: true,

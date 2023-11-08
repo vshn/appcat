@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/blang/semver/v4"
-	"github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	"github.com/vshn/appcat/v4/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

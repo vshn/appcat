@@ -13,12 +13,14 @@ func init() {
 	rootCmd.AddCommand(
 		cmd.ControllerCMD,
 		cmd.SLIProberCMD,
-		cmd.GrpcCMD,
+		cmd.FunctionCMD,
 		cmd.MaintenanceCMD,
-		cmd.SlareportCMD)
+		cmd.SlareportCMD,
+		cmd.ConvertCMD)
 }
 
 func main() {
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -58,10 +58,10 @@ func FetchSidecarsFromCluster(ctx context.Context, c client.Client, name string)
 	return s, nil
 }
 
-func FetchSidecarsFromConfig(ctx context.Context, iof *runtime.Runtime) (*Sidecars, error) {
+func FetchSidecarsFromConfig(ctx context.Context, svc *runtime.ServiceRuntime) (*Sidecars, error) {
 	s := &Sidecars{}
 
-	err := json.Unmarshal([]byte(iof.Config.Data["sideCars"]), s)
+	err := json.Unmarshal([]byte(svc.Config.Data["sideCars"]), s)
 	if err != nil {
 		return &Sidecars{}, err
 	}

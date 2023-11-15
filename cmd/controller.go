@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/postgres"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,6 +73,17 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	}
 
 	err = xpg.SetupWithManager(mgr)
+	if err != nil {
+		return err
+	}
+
+	events := &events.EventHandler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}
+
+	err = events.SetupWithManager(mgr)
+
 	if err != nil {
 		return err
 	}

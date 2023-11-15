@@ -328,5 +328,6 @@ func createSliBucket(ctx context.Context, comp *vshnv1.VSHNMinio, xminioName str
 			},
 		},
 	}
-	return iof.Desired.PutWithResourceName(ctx, obj, comp.Name+"-vshn-test-bucket-for-sli")
+
+	return iof.Desired.PutIntoObject(ctx, obj, comp.Name+"-vshn-test-bucket-for-sli")
 }

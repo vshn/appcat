@@ -5,6 +5,7 @@ import (
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
+	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -36,4 +37,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = appsv1.SchemeBuilder.AddToScheme(s)
 	_ = miniov1.SchemeBuilder.AddToScheme(s)
 	_ = minioproviderv1.SchemeBuilder.AddToScheme(s)
+	_ = alertmanagerv1alpha1.SchemeBuilder.AddToScheme(s)
 }

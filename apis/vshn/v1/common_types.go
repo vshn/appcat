@@ -1,5 +1,7 @@
 package v1
 
+import alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+
 // K8upBackupSpec specifies when a backup for redis should be triggered.
 // It also contains the retention policy for the backup.
 type K8upBackupSpec struct {
@@ -133,4 +135,22 @@ type VSHNDBaaSNetworkSpec struct {
 	// +kubebuilder:default="ClusterIP"
 	// +kubebuilder:validation:Enum="ClusterIP";"LoadBalancer"
 	ServiceType string `json:"serviceType,omitempty"`
+}
+
+// VSHNMonitoring contains settings to configure monitoring aspects of databases managed by VSHN
+type VSHNMonitoring struct {
+	// AlertmanagerConfigRef contains the name of the AlertmanagerConfig that should be copied over to the
+	// namespace of the instance.
+	AlertmanagerConfigRef string `json:"alertmanagerConfigRef,omitempty"`
+
+	// AlertmanagerConfigSecretRef contains the name of the secret that is used
+	// in the referenced AlertmanagerConfig
+	AlertmanagerConfigSecretRef string `json:"alertmanagerConfigSecretRef,omitempty"`
+
+	// AlertmanagerConfigSpecTemplate takes an AlertmanagerConfigSpec object.
+	// This takes precedence over the AlertmanagerConfigRef.
+	AlertmanagerConfigSpecTemplate *alertmanagerv1alpha1.AlertmanagerConfigSpec `json:"alertmanagerConfigTemplate,omitempty"`
+
+	// Email necessary to send alerts via email
+	Email string `json:"email,omitempty"`
 }

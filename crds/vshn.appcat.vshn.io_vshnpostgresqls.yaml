@@ -94,7 +94,7 @@ spec:
                       description: Monitoring contains settings to control monitoring.
                       properties:
                         alertmanagerConfigRef:
-                          description: AlertmanagerConfigRef contains the name of the AlertmanagerConfig that should be copied over to the namespace of the PostgreSQL instance.
+                          description: AlertmanagerConfigRef contains the name of the AlertmanagerConfig that should be copied over to the namespace of the instance.
                           type: string
                         alertmanagerConfigSecretRef:
                           description: AlertmanagerConfigSecretRef contains the name of the secret that is used in the referenced AlertmanagerConfig

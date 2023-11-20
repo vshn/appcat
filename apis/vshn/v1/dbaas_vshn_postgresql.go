@@ -1,7 +1,8 @@
 package v1
 
 import (
-	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"fmt"
+
 	v1 "github.com/vshn/appcat/v4/apis/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,7 +71,7 @@ type VSHNPostgreSQLParameters struct {
 	Restore VSHNPostgreSQLRestore `json:"restore,omitempty"`
 
 	// Monitoring contains settings to control monitoring.
-	Monitoring VSHNPostgreSQLMonitoring `json:"monitoring,omitempty"`
+	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
 	// Encryption contains settings to control the storage encryption of an instance.
 	Encryption VSHNPostgreSQLEncryption `json:"encryption,omitempty"`
@@ -209,22 +210,8 @@ type VSHNPostgreSQLRestore struct {
 	RecoveryTimeStamp string `json:"recoveryTimeStamp,omitempty"`
 }
 
-// VSHNPostgreSQLMonitoring contains settings to configure monitoring aspects of PostgreSQL
-type VSHNPostgreSQLMonitoring struct {
-	// AlertmanagerConfigRef contains the name of the AlertmanagerConfig that should be copied over to the
-	// namespace of the PostgreSQL instance.
-	AlertmanagerConfigRef string `json:"alertmanagerConfigRef,omitempty"`
-
-	// AlertmanagerConfigSecretRef contains the name of the secret that is used
-	// in the referenced AlertmanagerConfig
-	AlertmanagerConfigSecretRef string `json:"alertmanagerConfigSecretRef,omitempty"`
-
-	// AlertmanagerConfigSpecTemplate takes an AlertmanagerConfigSpec object.
-	// This takes precedence over the AlertmanagerConfigRef.
-	AlertmanagerConfigSpecTemplate *alertmanagerv1alpha1.AlertmanagerConfigSpec `json:"alertmanagerConfigTemplate,omitempty"`
-
-	// Email necessary to send alerts via email
-	Email string `json:"email,omitempty"`
+func (p *VSHNPostgreSQL) GetVSHNMonitoring() VSHNMonitoring {
+	return p.Spec.Parameters.Monitoring
 }
 
 // VSHNPostgreSQLEncryption contains storage encryption specific parameters
@@ -279,4 +266,8 @@ type XVSHNPostgreSQLList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []XVSHNPostgreSQL `json:"items"`
+}
+
+func (pg *VSHNPostgreSQL) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
 }

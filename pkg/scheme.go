@@ -3,6 +3,7 @@ package pkg
 import (
 	xhelm "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 
+	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -15,7 +16,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -40,4 +43,6 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = minioproviderv1.SchemeBuilder.AddToScheme(s)
 	_ = promv1.AddToScheme(s)
 	_ = alertmanagerv1alpha1.AddToScheme(s)
+	_ = cmv1.SchemeBuilder.AddToScheme(s)
+	_ = netv1.AddToScheme(s)
 }

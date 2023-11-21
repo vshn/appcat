@@ -8,6 +8,7 @@ require (
 	dario.cat/mergo v1.0.0
 	github.com/appuio/appuio-cloud-reporting v0.15.0
 	github.com/blang/semver/v4 v4.0.0
+	github.com/cert-manager/cert-manager v1.13.2
 	github.com/crossplane-contrib/provider-kubernetes v0.10.0-rc.0.0.20230815142830-063004a06019
 	github.com/crossplane/crossplane v1.14.1
 	github.com/crossplane/crossplane-runtime v1.14.2
@@ -16,9 +17,10 @@ require (
 	github.com/deepmap/oapi-codegen v0.0.0-00010101000000-000000000000
 	github.com/go-logr/logr v1.3.0
 	github.com/go-logr/zapr v1.2.4
-	github.com/golang/mock v1.4.4
+	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/go-version v1.6.0
+	github.com/iancoleman/strcase v0.2.0
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/k8up-io/k8up/v2 v2.7.1
 	github.com/minio/minio-go/v7 v7.0.63
@@ -113,7 +115,6 @@ require (
 	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20230516205744-dbecb1de8cfa // indirect
 	github.com/google/safetext v0.0.0-20220905092116-b49f7bc46da2 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
-	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.1-0.20220621161143-b0104c826a24 // indirect
@@ -124,7 +125,6 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/onsi/ginkgo/v2 v2.12.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -143,6 +143,7 @@ require (
 	k8s.io/apiserver v0.28.3 // indirect
 	k8s.io/cli-runtime v0.28.2 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
+	sigs.k8s.io/gateway-api v0.8.0 // indirect
 )
 
 require (

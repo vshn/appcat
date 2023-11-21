@@ -14,6 +14,7 @@
 * xref:explanations/apiserver/boostrap.adoc[Boostrap]
 * xref:explanations/comp-functions/runtime.adoc[Runtime Library]
 * xref:explanations/comp-functions/vshn-postgres.adoc[VSHN Postgres Functions]
+* xref:explanations/boostrap_api.adoc[Bootstrap AppCat service API definition]
 * xref:explanations/slareports.adoc[]
 * xref:explanations/dev-notes.adoc[]
 * xref:explanations/comp-functions/debug.adoc[]

@@ -1,0 +1,57 @@
+= Bootstrapping the API definition for a new AppCat service
+
+The repository contains a bootstrap tool to generate a basic API definition for a new AppCat service.
+
+You need a simple json file with all relevant information and pass this to the make target as an environment variable.
+
+== Json config
+
+The configuration currently supports the following fields:
+
+=== `name`
+
+(String) The name of the AppCat service
+
+=== `backup`
+
+(Boolean) If backup related API fields should be created
+
+=== `restore`
+
+(Boolean) If restore related API fields should be created
+
+=== `maintenance`
+
+(Boolean) If maintenance related API fields should be created
+
+=== `tls`
+
+(Boolean) If tls related API fields should be created
+
+=== `settingsKey`
+
+(String) The name of the key used for specific settings for service
+
+== Example
+
+mariadb.json:
+[source,json]
+----
+{
+    "name": "VSHNMariaDB",
+    "backup": true,
+    "restore": true,
+    "maintenance": true,
+    "tls": true,
+    "settingsKey": "mariadbSettings"
+}
+----
+
+Generating the API definition:
+
+[source,bash]
+----
+make API_FILE=mariadb.json bootstrap
+----
+
+This will create the new API definition for the `VSHNMariaDB` and save it in `apis/vshn/v1/dbaas_vshn_mariadb.go`

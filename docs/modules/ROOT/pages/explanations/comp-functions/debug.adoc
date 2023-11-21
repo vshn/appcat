@@ -1,7 +1,20 @@
 = Debugging
 
-If the GRPC server is in devmode, it will save the funcIOs of each function to configMaps in the default namespace. It will always keep two configMaps per composite and function. One contains the previous and one the current state. For example for VSHNPostgreSQL this could result in up to four configMaps; two for the postgresql function and two for the miniodev function (which provides the local S3 bucket).
+The function server can be started in an insecure mode.
+This mode will make it listen on plain http on port 9443.
+Any valid Composition Function GRPC request can be redirected to this port.
 
-These configMaps can be used to see the state of the whole FuncIO and should help with local debugging. Additionally, the GRPC server now prints a diff of those configMaps on each reconcile.
+There are two tools helping with debugging local running function servers:
 
-The configMaps and the diffs will only rotate on `.spec` changes on the claim/composite, it uses the generation to track current and previous states. This way we can track the "logical" diff of a change, even if it needs multiple reconcile loops to be applied fully.
+* Crank renderer (github.com/crossplane/crossplane/cmd/crank beta render)
+* Function proxy
+
+The crank rendered will take the given xr, composition and function as yaml files.
+It then sends the given XR to the function server where it will handle accordingly.
+It's also possible to add observed objects via a folder with their yaml definitions.
+This method of debugging is handy when the raw output of the function needs to be inspected.
+
+The function proxy on the other hand, is a running function server instance on the cluster itself.
+It will then only redirect any given GRPC call to the given endpoint.
+This given endpoint can then be the local running function server.
+The function server can run in a debug session, so stepping through the execution is supported.

@@ -254,7 +254,9 @@ func getConnectionDetails(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runt
 		return err
 	}
 
-	svc.SetConnectionDetail("MINIO_URL", []byte("http://"+service.Spec.ClusterIP+":"+strconv.Itoa(int(service.Spec.Ports[0].Port))))
+	minioURL := fmt.Sprintf("http://%s:%s", service.Spec.ClusterIP, strconv.Itoa(int(service.Spec.Ports[0].Port)))
+
+	svc.SetConnectionDetail("MINIO_URL", []byte(minioURL))
 
 	return nil
 }

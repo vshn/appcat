@@ -555,6 +555,10 @@ func (s *ServiceRuntime) GetObservedKubeObject(obj client.Object, name string) e
 		return err
 	}
 
+	if len(kube.Status.AtProvider.Manifest.Raw) == 0 {
+		return ErrNotFound
+	}
+
 	return json.Unmarshal(kube.Status.AtProvider.Manifest.Raw, obj)
 }
 

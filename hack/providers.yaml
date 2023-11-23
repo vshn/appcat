@@ -1,0 +1,65 @@
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: '10'
+  labels:
+    name: provider-exoscale
+  name: provider-exoscale
+spec:
+  package: ghcr.io/vshn/provider-exoscale/provider:v0.10.4
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: '10'
+  labels:
+    name: provider-kubernetes
+  name: provider-kubernetes
+spec:
+  controllerConfigRef:
+    name: kubernetes
+  package: xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.9.0
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: '10'
+  labels:
+    name: provider-cloudscale
+  name: provider-cloudscale
+spec:
+  package: ghcr.io/vshn/provider-cloudscale/provider:v0.5.0
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: '10'
+  labels:
+    name: provider-helm
+  name: provider-helm
+spec:
+  controllerConfigRef:
+    name: helm
+  package: xpkg.upbound.io/crossplane-contrib/provider-helm:v0.15.0
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: '10'
+  labels:
+    name: provider-minio
+  name: provider-minio
+spec:
+  controllerConfigRef:
+    name: minio
+  package: ghcr.io/vshn/provider-minio/provider:v0.1.0

@@ -2,18 +2,19 @@ package maintenance
 
 import (
 	"context"
+	"reflect"
+	"testing"
+
 	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	"reflect"
-	"testing"
 )
 
 func Test_parseCron(t *testing.T) {
@@ -72,7 +73,7 @@ func Test_parseCron(t *testing.T) {
 func TestAddMaintenanceJob(t *testing.T) {
 	tests := []struct {
 		name          string
-		want          runtime.Result
+		want          *xfnproto.Result
 		wantedSa      bool
 		wantedRole    bool
 		wantedBinding bool
@@ -82,7 +83,7 @@ func TestAddMaintenanceJob(t *testing.T) {
 	}{
 		{
 			name:          "GivenSchedule_ThenExpectMaintenanceObjects",
-			want:          runtime.NewNormal(),
+			want:          nil,
 			wantedSa:      true,
 			wantedRole:    true,
 			wantedBinding: true,
@@ -91,8 +92,11 @@ func TestAddMaintenanceJob(t *testing.T) {
 			fileName:      "vshn-postgres/maintenance/01-GivenSchedule.yaml",
 		},
 		{
-			name:     "GivenNoSchedule_ThenExpectNoObjects",
-			want:     runtime.NewNormal(),
+			name: "GivenNoSchedule_ThenExpectNoObjects",
+			want: &xfnproto.Result{
+				Severity: xfnproto.Severity_SEVERITY_NORMAL,
+				Message:  "Maintenance schedule not yet populated",
+			},
 			fileName: "vshn-postgres/maintenance/02-GivenNoSchedule.yaml",
 		},
 	}
@@ -103,17 +107,17 @@ func TestAddMaintenanceJob(t *testing.T) {
 
 			ctx := context.TODO()
 
-			iof := commontest.LoadRuntimeFromFile(t, tt.fileName)
+			svc := commontest.LoadRuntimeFromFile(t, tt.fileName)
 
 			comp := &vshnv1.VSHNPostgreSQL{}
-			err := iof.Observed.GetComposite(ctx, comp)
+			err := svc.GetObservedComposite(comp)
 			assert.NoError(t, err)
 
 			in := "vshn-postgresql-" + comp.GetName()
-			m := New(comp, iof, comp.Spec.Parameters.Maintenance, in, "postgresql").
+			m := New(comp, svc, comp.Spec.Parameters.Maintenance, in, "postgresql").
 				WithPolicyRules([]rbacv1.PolicyRule{}).
 				WithRole("crossplane:appcat:job:postgres:maintenance").
-				WithExtraResources(createMaintenanceSecretTest(in, iof.Config.Data["sgNamespace"], comp.GetName()+"-maintenance-secret"))
+				WithExtraResources(createMaintenanceSecretTest(in, svc.Config.Data["sgNamespace"], comp.GetName()+"-maintenance-secret"))
 
 			if got := m.Run(ctx); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("AddMaintenanceJob() = %v, want %v", got, tt.want)
@@ -121,7 +125,7 @@ func TestAddMaintenanceJob(t *testing.T) {
 
 			sa := &corev1.ServiceAccount{}
 
-			err = iof.Desired.GetFromObject(ctx, sa, namePrefix+"maintenance-serviceaccount")
+			err = svc.GetDesiredKubeObject(sa, namePrefix+"maintenance-serviceaccount")
 
 			if tt.wantedSa {
 				assert.NoError(t, err)
@@ -131,7 +135,7 @@ func TestAddMaintenanceJob(t *testing.T) {
 
 			role := &rbacv1.Role{}
 
-			err = iof.Desired.GetFromObject(ctx, role, namePrefix+"maintenance-role")
+			err = svc.GetDesiredKubeObject(role, namePrefix+"maintenance-role")
 
 			if tt.wantedRole {
 				assert.NoError(t, err)
@@ -141,7 +145,7 @@ func TestAddMaintenanceJob(t *testing.T) {
 
 			binding := &rbacv1.RoleBinding{}
 
-			err = iof.Desired.GetFromObject(ctx, binding, namePrefix+"maintenance-rolebinding")
+			err = svc.GetDesiredKubeObject(binding, namePrefix+"maintenance-rolebinding")
 
 			if tt.wantedBinding {
 				assert.NoError(t, err)
@@ -151,7 +155,7 @@ func TestAddMaintenanceJob(t *testing.T) {
 
 			secret := &corev1.Secret{}
 
-			err = iof.Desired.GetFromObject(ctx, secret, namePrefix+"maintenance-secret")
+			err = svc.GetDesiredKubeObject(secret, namePrefix+"maintenance-secret")
 
 			if tt.wantedSecret {
 				assert.NoError(t, err)
@@ -161,7 +165,7 @@ func TestAddMaintenanceJob(t *testing.T) {
 
 			job := &batchv1.CronJob{}
 
-			err = iof.Desired.GetFromObject(ctx, job, namePrefix+"maintenancejob")
+			err = svc.GetDesiredKubeObject(job, namePrefix+"maintenancejob")
 
 			if tt.wantedJob {
 				assert.NoError(t, err)

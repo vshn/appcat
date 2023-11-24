@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/minio/minio-go/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 	corev1 "k8s.io/api/core/v1"
@@ -115,7 +115,7 @@ func TestVSHNMinioSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
 
 func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
 	db := giveMeMinio("bar", "foo")
-	db.Spec.WriteConnectionSecretToRef.Name = ""
+	db.Spec.WriteConnectionSecretToReference.Name = ""
 	r, manager, _ := setupVSHNMinioTest(t,
 		db,
 	)
@@ -148,13 +148,15 @@ func giveMeMinio(bucketName string, namespace string) *vshnv1.XVSHNMinio {
 			Namespace:         namespace,
 			CreationTimestamp: metav1.Now(),
 		},
-		Spec: vshnv1.VSHNMinioSpec{
+		Spec: vshnv1.XVSHNMinioSpec{
 			Parameters: vshnv1.VSHNMinioParameters{
 				Instances: 4,
 			},
-			WriteConnectionSecretToRef: v1.LocalObjectReference{
-				Name:      bucketName,
-				Namespace: "vshn-minio-" + namespace,
+			ResourceSpec: xpv1.ResourceSpec{
+				WriteConnectionSecretToReference: &xpv1.SecretReference{
+					Name:      bucketName,
+					Namespace: "vshn-minio-" + namespace,
+				},
 			},
 		},
 	}

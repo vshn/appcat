@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	v1 "k8s.io/api/core/v1"
 
@@ -17,32 +18,25 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-func init() {
-	err := runtime.AddToScheme(alertmanagerv1alpha1.SchemeBuilder)
-	if err != nil {
-		panic(err)
-	}
-}
-
 func TestMailgunAlerting(t *testing.T) {
 	ctx := context.Background()
 
 	// return Normal when there is no email configured
 	inputFnio := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/06-GivenNoEmail.yaml")
 
-	runForGivenInputMailgun(t, ctx, inputFnio, runtime.NewNormal())
+	runForGivenInputMailgun(t, ctx, inputFnio, nil)
 
 	// return Normal and 2 new resources in Desired when email is provided
 	inputFnio = commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/07-GivenEmail.yaml")
 
-	runForGivenInputMailgun(t, ctx, inputFnio, runtime.NewNormal())
+	runForGivenInputMailgun(t, ctx, inputFnio, nil)
 
 	comp := &vshnv1.VSHNPostgreSQL{}
-	assert.NoError(t, inputFnio.Observed.GetComposite(ctx, comp))
+	assert.NoError(t, inputFnio.GetObservedComposite(comp))
 
 	resNameMailgunSecret := "psql-alertmanagerconfig-mailgun-secret"
 	kubeObjectMailgunSecret := &xkube.Object{}
-	assert.NoError(t, inputFnio.Desired.Get(ctx, kubeObjectMailgunSecret, resNameMailgunSecret))
+	assert.NoError(t, inputFnio.GetDesiredComposedResourceByName(kubeObjectMailgunSecret, resNameMailgunSecret))
 
 	s := &v1.Secret{}
 
@@ -51,7 +45,7 @@ func TestMailgunAlerting(t *testing.T) {
 
 	resNameMailgun := "psql-alertmanagerconfig-mailgun"
 	kubeObjectMailgun := &xkube.Object{}
-	assert.NoError(t, inputFnio.Desired.Get(ctx, kubeObjectMailgun, resNameMailgun))
+	assert.NoError(t, inputFnio.GetDesiredComposedResourceByName(kubeObjectMailgun, resNameMailgun))
 
 	ac := &alertmanagerv1alpha1.AlertmanagerConfig{}
 	assert.NoError(t, json.Unmarshal(kubeObjectMailgun.Spec.ForProvider.Manifest.Raw, ac))
@@ -60,24 +54,24 @@ func TestMailgunAlerting(t *testing.T) {
 	// email is provided but empty, so return Normal and no new resources in Desired
 	inputFnio = commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/08-GivenEmptyEmail.yaml")
 
-	runForGivenInputMailgun(t, ctx, inputFnio, runtime.NewNormal())
+	runForGivenInputMailgun(t, ctx, inputFnio, nil)
 
-	assert.Empty(t, inputFnio.Desired.List(ctx))
+	assert.Empty(t, inputFnio.GetAllDesired())
 
 	inputFnio = commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/09-GivenEmailAlertingDisabled.yaml")
 
-	runForGivenInputMailgun(t, ctx, inputFnio, runtime.NewWarning(context.Background(), "Email Alerting is not enabled"))
+	runForGivenInputMailgun(t, ctx, inputFnio, runtime.NewWarningResult("Email Alerting is not enabled"))
 
-	assert.Empty(t, inputFnio.Desired.List(ctx))
+	assert.Empty(t, inputFnio.GetAllDesired())
 
 	inputFnio = commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/10-GivenNoEmailAlertingDisabled.yaml")
 
-	runForGivenInputMailgun(t, ctx, inputFnio, runtime.NewNormal())
+	runForGivenInputMailgun(t, ctx, inputFnio, nil)
 
-	assert.Empty(t, inputFnio.Desired.List(ctx))
+	assert.Empty(t, inputFnio.GetAllDesired())
 }
 
-func runForGivenInputMailgun(t *testing.T, ctx context.Context, input *runtime.Runtime, res runtime.Result) {
+func runForGivenInputMailgun(t *testing.T, ctx context.Context, input *runtime.ServiceRuntime, res *xfnproto.Result) {
 	fnc := MailgunAlerting(&vshnv1.VSHNRedis{})
 
 	assert.Equal(t, res, fnc(ctx, input))

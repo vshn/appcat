@@ -2,7 +2,9 @@ package vshnminio
 
 import (
 	"context"
+	"fmt"
 
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	minioproviderv1 "github.com/vshn/provider-minio/apis/provider/v1"
@@ -11,17 +13,18 @@ import (
 )
 
 // DeployMinioProviderConfig will deploy a providerconfig with the claim's name
-func DeployMinioProviderConfig(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func DeployMinioProviderConfig(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	if !iof.GetBoolFromCompositionConfig("providerEnabled") {
-		return runtime.NewNormal()
+	if !svc.GetBoolFromCompositionConfig("providerEnabled") {
+		return nil
 	}
 
 	comp := &vshnv1.VSHNMinio{}
 
-	err := iof.Desired.GetComposite(ctx, comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot get composition", err)
+		err = fmt.Errorf("cannot get desired composite: %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
 	config := &minioproviderv1.ProviderConfig{
@@ -39,10 +42,11 @@ func DeployMinioProviderConfig(ctx context.Context, iof *runtime.Runtime) runtim
 		},
 	}
 
-	err = iof.Desired.PutIntoObject(ctx, config, comp.GetName()+"-providerconfig")
+	err = svc.SetDesiredKubeObject(config, comp.GetName()+"-providerconfig")
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot write minio providerconfig", err)
+		err = fmt.Errorf("cannot get providerconfig: %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	return runtime.NewNormal()
+	return nil
 }

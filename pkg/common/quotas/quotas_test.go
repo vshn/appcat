@@ -139,16 +139,16 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 				WithScheme(pkg.SetupScheme()).
 				WithObjects(ns).Build()
 
-			iof := commontest.LoadRuntimeFromFile(t, "common/quotas/01_default.yaml")
+			svc := commontest.LoadRuntimeFromFile(t, "common/quotas/01_default.yaml")
 			objectMeta := &metadata.MetadataOnlyObject{}
 
-			err := iof.Desired.GetComposite(ctx, objectMeta)
+			err := svc.GetObservedComposite(objectMeta)
 			assert.NoError(t, err)
 
 			if tt.instanceNS != nil {
 				s := &utils.Sidecars{}
 				assert.NoError(t, err)
-				AddInitalNamespaceQuotas(ctx, iof, ns, s, gk.Kind)
+				AddInitalNamespaceQuotas(ctx, ns, s, gk.Kind)
 				assert.NoError(t, fclient.Create(ctx, tt.instanceNS))
 			}
 

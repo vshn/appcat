@@ -3,8 +3,10 @@ package vshnredis
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"strings"
 
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	runtime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
@@ -22,74 +24,69 @@ var restoreScript string
 //go:embed script/cleanupRestore.sh
 var cleanupRestoreScript string
 
-func RestoreBackup(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func RestoreBackup(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Starting RestoreBackup function")
 
 	comp := &vshnv1.VSHNRedis{}
-	err := iof.Observed.GetComposite(ctx, comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "Cannot get composite from function io", err)
-	}
-
-	// Wait for the next reconciliation in case instance namespace is missing
-	if comp.Status.InstanceNamespace == "" {
-		return runtime.NewWarning(ctx, "Composite is missing instance namespace, skipping transformation")
+		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
 	}
 
 	if comp.Spec.Parameters.Restore.BackupName == "" && comp.Spec.Parameters.Restore.ClaimName == "" {
-		return runtime.NewNormal()
+		return runtime.NewWarningResult("Composite is missing backupName or claimName namespace, skipping transformation")
 	}
 
 	if comp.Spec.Parameters.Restore.ClaimName == "" {
-		return runtime.NewWarning(ctx, "Composite is missing claimName parameter to restore from backup")
+		return runtime.NewFatalResult(fmt.Errorf("Composite is missing claimName parameter to restore from backup"))
 	}
 
 	if comp.Spec.Parameters.Restore.BackupName == "" {
-		return runtime.NewWarning(ctx, "Composite is missing backupName parameter to restore from backup")
+		return runtime.NewFatalResult(fmt.Errorf("Composite is missing backupName parameter to restore from backup"))
 	}
 
 	log.Info("Prepare for restore")
 
-	err = addPrepareRestoreJob(ctx, comp, iof)
+	err = addPrepareRestoreJob(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "Can't deploy prepareRestore Job", err)
+		return runtime.NewFatalResult(fmt.Errorf("Can't deploy prepareRestore Job: %w", err))
 	}
 
 	log.Info("Restoring from backup")
 
-	err = addRestoreJob(ctx, comp, iof)
+	err = addRestoreJob(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "Can't deploy restore Job", err)
+		return runtime.NewFatalResult(fmt.Errorf("Can't deploy restore Job: %w", err))
 	}
 
 	log.Info("Cleanup restore")
 
-	err = addCleanUpJob(ctx, comp, iof)
+	err = addCleanUpJob(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "Can't deploy cleanupRestore job", err)
+		return runtime.NewFatalResult(fmt.Errorf("Can't deploy cleanupRestore job: %w", err))
 	}
 
 	log.Info("Finishing Restoring RestoreBackup function")
 
-	return runtime.NewNormal()
+	return nil
 
 }
 
-func addPrepareRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
+func addPrepareRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 	prepRestoreJobName := truncateObjectName(comp.Name + "-" + comp.Spec.Parameters.Restore.BackupName + "-prepare-job")
 	claimNamespaceLabel := "crossplane.io/claim-namespace"
 
 	prepJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      prepRestoreJobName,
-			Namespace: iof.Config.Data["controlNamespace"],
+			Namespace: svc.Config.Data["controlNamespace"],
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy:      "Never",
-					ServiceAccountName: iof.Config.Data["restoreSA"],
+					ServiceAccountName: svc.Config.Data["restoreSA"],
 					Containers: []corev1.Container{
 						{
 							Name:  "copyjob",
@@ -114,7 +111,7 @@ func addPrepareRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runt
 								},
 								{
 									Name:  "TARGET_NAMESPACE",
-									Value: comp.Status.InstanceNamespace,
+									Value: getInstanceNamespace(comp),
 								},
 							},
 						},
@@ -124,17 +121,17 @@ func addPrepareRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runt
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, prepJob, prepRestoreJobName)
+	return svc.SetDesiredKubeObject(prepJob, prepRestoreJobName)
 }
 
-func addRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
+func addRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 	restoreJobName := truncateObjectName(comp.Name + "-" + comp.Spec.Parameters.Restore.BackupName + "-restore-job")
 	restoreSecret := "restore-credentials-" + comp.Spec.Parameters.Restore.BackupName
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      restoreJobName,
-			Namespace: comp.Status.InstanceNamespace,
+			Namespace: getInstanceNamespace(comp),
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
@@ -240,10 +237,10 @@ func addRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Run
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, job, restoreJobName)
+	return svc.SetDesiredKubeObject(job, restoreJobName)
 }
 
-func addCleanUpJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
+func addCleanUpJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 	cleanupRestoreJobName := truncateObjectName(comp.Name + "-" + comp.Spec.Parameters.Restore.BackupName + "-cleanup-job")
 	restoreJobName := truncateObjectName(comp.Name + "-" + comp.Spec.Parameters.Restore.BackupName + "-restore-job")
 	restoreSecret := "statefulset-replicas-" + comp.Spec.Parameters.Restore.ClaimName + "-" + comp.Spec.Parameters.Restore.BackupName
@@ -253,13 +250,13 @@ func addCleanUpJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Run
 	prepJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cleanupRestoreJobName,
-			Namespace: iof.Config.Data["controlNamespace"],
+			Namespace: svc.Config.Data["controlNamespace"],
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy:      "Never",
-					ServiceAccountName: iof.Config.Data["restoreSA"],
+					ServiceAccountName: svc.Config.Data["restoreSA"],
 					Containers: []corev1.Container{
 						{
 							Name:  "copyjob",
@@ -292,7 +289,7 @@ func addCleanUpJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Run
 								},
 								{
 									Name:  "TARGET_NAMESPACE",
-									Value: comp.Status.InstanceNamespace,
+									Value: getInstanceNamespace(comp),
 								},
 								{
 									Name: "NUM_REPLICAS",
@@ -313,7 +310,7 @@ func addCleanUpJob(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Run
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, prepJob, cleanupRestoreJobName)
+	return svc.SetDesiredKubeObject(prepJob, cleanupRestoreJobName)
 }
 
 func truncateObjectName(s string) string {

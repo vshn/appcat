@@ -57,6 +57,7 @@ $(protoc_bin): | $(go_bin)
 	@rm $(go_bin)/protoc.zip
 
 -include docs/antora-preview.mk docs/antora-build.mk
+-include package/package.mk
 
 .PHONY: help
 help: ## Display this help.
@@ -64,7 +65,7 @@ help: ## Display this help.
 
 .PHONY: generate
 generate: export PATH := $(go_bin):$(PATH)
-generate: $(protoc_bin) generate-stackgres-crds ## Generate code with controller-gen and protobuf.
+generate: $(protoc_bin) get-crds generate-stackgres-crds ## Generate code with controller-gen and protobuf.
 	go version
 	rm -rf apis/generated
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths=./apis/... object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
@@ -185,3 +186,7 @@ webhook-debug:
 .PHONY: clean
 clean:
 	rm -rf bin/ appcat .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated default.sock
+
+get-crds:
+	./hack/get_crds.sh https://github.com/vshn/provider-minio provider-minio apis/minio/v1 apis/minio
+	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-helm provider-helm apis/release apis/helm

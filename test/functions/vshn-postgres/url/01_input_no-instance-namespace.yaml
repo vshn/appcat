@@ -1,0 +1,73 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        name: pgsql-gc9x4
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: test
+        compositionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          backup:
+            retention: 6
+            schedule: 0 22 * * *
+          maintenance:
+            dayOfWeek: tuesday
+            timeOfDay: "22:30:00"
+          service:
+            majorVersion: "15"
+          size:
+            cpu: 600m
+            disk: 5Gi
+            memory: 3500Mi
+            plan: standard-2
+        resourceRefs:
+        - apiVersion: kubernetes.crossplane.io/v1alpha1
+          kind: Object
+          name: pgsql-gc9x4-connection
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        name: pgsql-gc9x4
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: test
+        compositionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          backup:
+            retention: 6
+            schedule: 0 22 * * *
+          maintenance:
+            dayOfWeek: tuesday
+            timeOfDay: "22:30:00"
+          service:
+            majorVersion: "15"
+          size:
+            cpu: 600m
+            disk: 5Gi
+            memory: 3500Mi
+            plan: standard-2
+        resourceRefs:
+        - apiVersion: kubernetes.crossplane.io/v1alpha1
+          kind: Object
+          name: pgsql-gc9x4-connection
+

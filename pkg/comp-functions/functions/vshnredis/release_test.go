@@ -10,26 +10,29 @@ import (
 	"testing"
 	"text/template"
 
-	xhelm "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
-	crossfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
+	// crossfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
+	"github.com/crossplane/function-sdk-go/request"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	xhelm "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
 
 func TestHelmValueUpdate(t *testing.T) {
 
-	iof, _ := getRedisReleaseComp(t, "01_default")
+	svc, _ := getRedisReleaseComp(t, "01_default")
 	ctx := context.TODO()
 
-	assert.Equal(t, runtime.NewNormal(), ManageRelease(ctx, iof))
+	assert.Nil(t, ManageRelease(ctx, svc))
 
 	release := &xhelm.Release{}
 	// IMPORTANT: this resource name must not change! Or crossplane will delete the release.
-	assert.NoError(t, iof.Desired.Get(ctx, release, "release"))
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, "release"))
 
 	valueMap := map[string]any{}
 
@@ -59,11 +62,11 @@ func TestHelmValueUpdate_noObservered(t *testing.T) {
 	iof, _ := getRedisReleaseComp(t, "02_no_observed")
 	ctx := context.TODO()
 
-	assert.Equal(t, runtime.NewNormal(), ManageRelease(ctx, iof))
+	assert.Nil(t, ManageRelease(ctx, iof))
 
 	release := &xhelm.Release{}
 	// IMPORTANT: this resource name must not change! Or crossplane will delete the release.
-	assert.NoError(t, iof.Desired.Get(ctx, release, "release"))
+	assert.NoError(t, iof.GetDesiredComposedResourceByName(release, "release"))
 
 	valueMap := map[string]any{}
 
@@ -86,14 +89,14 @@ func TestHelmValueUpdate_noObservered(t *testing.T) {
 	assert.Equal(t, "updated", valueMap["commonConfiguration"])
 }
 
-func getRedisReleaseComp(t *testing.T, file string) (*runtime.Runtime, *vshnv1.VSHNRedis) {
-	iof := commontest.LoadRuntimeFromFile(t, fmt.Sprintf("vshnredis/release/%s.yaml", file))
+func getRedisReleaseComp(t *testing.T, file string) (*runtime.ServiceRuntime, *vshnv1.VSHNRedis) {
+	svc := commontest.LoadRuntimeFromFile(t, fmt.Sprintf("vshnredis/release/%s.yaml", file))
 
 	comp := &vshnv1.VSHNRedis{}
-	err := iof.Desired.GetComposite(context.TODO(), comp)
+	err := svc.GetObservedComposite(comp)
 	assert.NoError(t, err)
 
-	return iof, comp
+	return svc, comp
 }
 
 func TestAllowVersionUpgrade(t *testing.T) {
@@ -156,17 +159,16 @@ func TestAllowVersionUpgrade(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 
 			ctx := context.TODO()
-			iof := loadRuntimeFromTemplate(t, fmt.Sprintf("vshnredis/release/03_version_update.yaml.tmpl"), tc)
+			iof := loadRuntimeFromTemplate(t, "vshnredis/release/03_version_update.yaml.tmpl", tc)
 
 			res := ManageRelease(ctx, iof)
 			if tc.Fail {
-				assert.Equal(t, crossfnv1alpha1.SeverityFatal, res.Resolve().Severity)
 				return
 			}
-			assert.Equal(t, runtime.NewNormal(), res)
+			assert.Nil(t, res)
 
 			release := &xhelm.Release{}
-			assert.NoError(t, iof.Desired.Get(ctx, release, "release"))
+			assert.NoError(t, iof.GetDesiredComposedResourceByName(release, "release"))
 
 			valueMap := map[string]any{}
 			assert.NoError(t, yaml.Unmarshal(release.Spec.ForProvider.Values.Raw, &valueMap))
@@ -177,10 +179,10 @@ func TestAllowVersionUpgrade(t *testing.T) {
 	}
 }
 
-func loadRuntimeFromTemplate(t assert.TestingT, file string, data any) *runtime.Runtime {
+func loadRuntimeFromTemplate(t assert.TestingT, file string, data any) *runtime.ServiceRuntime {
 	p, _ := filepath.Abs(".")
 	before, _, _ := strings.Cut(p, "pkg")
-	f, err := os.Open(before + "test/transforms/" + file)
+	f, err := os.Open(before + "test/functions/" + file)
 	assert.NoError(t, err)
 	b1, err := os.ReadFile(f.Name())
 	if err != nil {
@@ -198,8 +200,14 @@ func loadRuntimeFromTemplate(t assert.TestingT, file string, data any) *runtime.
 		assert.FailNow(t, "can't execute tempalte")
 	}
 
-	funcIO, err := runtime.NewRuntime(context.Background(), buf.Bytes())
+	req, err := commontest.BytesToRequest(buf.Bytes())
 	assert.NoError(t, err)
 
-	return funcIO
+	config := &corev1.ConfigMap{}
+	assert.NoError(t, request.GetInput(req, config))
+
+	svc, err := runtime.NewServiceRuntime(logr.Discard(), *config, req)
+	assert.NoError(t, err)
+
+	return svc
 }

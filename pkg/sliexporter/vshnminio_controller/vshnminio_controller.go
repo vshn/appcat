@@ -71,7 +71,7 @@ func (r *VSHNMinioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if inst.Spec.WriteConnectionSecretToRef.Name == "" {
+	if inst.Spec.WriteConnectionSecretToReference.Name == "" {
 		l.Info("No connection secret requested. Skipping.")
 		return ctrl.Result{}, nil
 	}
@@ -82,7 +82,7 @@ func (r *VSHNMinioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if apierrors.IsNotFound(err) {
-		l.WithValues("credentials", inst.Spec.WriteConnectionSecretToRef.Name, "error", err.Error()).
+		l.WithValues("credentials", inst.Spec.WriteConnectionSecretToReference.Name, "error", err.Error()).
 			Info("Failed to find credentials. Backing off")
 		res.Requeue = true
 		res.RequeueAfter = 30 * time.Second

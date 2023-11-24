@@ -1,0 +1,14 @@
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: '10'
+  labels:
+    name: provider-minio
+  name: provider-minio
+spec:
+  controllerConfigRef:
+    name: minio
+  package: ghcr.io/vshn/provider-minio/provider:v0.1.0

@@ -4,6 +4,7 @@ dist/
 
 # Binaries for programs and plugins
 appcat
+:9443
 # But don't ignore the appcat APIS!
 !apis/appcat
 
@@ -21,3 +22,6 @@ __debug_bin*
 
 # Kubebuilder
 /apis/generated/
+
+# Ignore crossplane packages
+*.xpkg

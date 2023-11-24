@@ -1,0 +1,9 @@
+---
+apiVersion: meta.pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: function-appcat
+spec:
+  image: ghcr.io/vshn/appcat:change_xplane114
+  crossplane:
+    version: ">=1.14.0"

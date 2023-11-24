@@ -18,7 +18,7 @@ import (
 
 func TestRestoreBackup_NoConfig(t *testing.T) {
 	ctx := context.Background()
-	expectResult := runtime.NewWarning(ctx, "Composite is missing instance namespace, skipping transformation")
+	expectResult := runtime.NewWarningResult("Composite is missing backupName or claimName namespace, skipping transformation")
 
 	t.Run("WhenNoRestore_ThenNoErrorAndNoChanges", func(t *testing.T) {
 
@@ -36,8 +36,7 @@ func TestRestoreBackup_NoConfig(t *testing.T) {
 func TestRestoreBackup_IncompleteConfig(t *testing.T) {
 	ctx := context.Background()
 
-	expectResultCN := runtime.NewWarning(ctx, "Composite is missing claimName parameter to restore from backup")
-	expectResultBN := runtime.NewWarning(ctx, "Composite is missing backupName parameter to restore from backup")
+	expectResultCN := runtime.NewWarningResult("Composite is missing backupName or claimName namespace, skipping transformation")
 
 	t.Run("WhenNoRestore_ThenNoErrorAndNoChanges", func(t *testing.T) {
 
@@ -56,7 +55,7 @@ func TestRestoreBackup_IncompleteConfig(t *testing.T) {
 		resultBN := RestoreBackup(ctx, io)
 
 		// Then
-		assert.Equal(t, expectResultBN, resultBN)
+		assert.Equal(t, expectResultCN, resultBN)
 	})
 }
 
@@ -67,11 +66,11 @@ func TestRestoreBackup(t *testing.T) {
 	io := commontest.LoadRuntimeFromFile(t, "vshnredis/restore/01-GivenRestoreConfig.yaml")
 
 	result := RestoreBackup(ctx, io)
-	assert.Equal(t, runtime.NewNormal(), result)
+	assert.Nil(t, result)
 
 	resNamePrepJob := "redis-gc9x4-bar-prepare-job"
 	kubeObjectPrepJob := &xkube.Object{}
-	assert.NoError(t, io.Desired.Get(ctx, kubeObjectPrepJob, resNamePrepJob))
+	assert.NoError(t, io.GetDesiredComposedResourceByName(kubeObjectPrepJob, resNamePrepJob))
 
 	j := &batchv1.Job{}
 

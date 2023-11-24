@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strconv"
 
-	xhelmbeta1 "github.com/crossplane-contrib/provider-helm/apis/release/v1beta1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	xhelmbeta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -18,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
@@ -27,56 +26,65 @@ const (
 )
 
 // DeployMinio will add deploy the objects to deploy minio
-func DeployMinio(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func DeployMinio(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
 	comp := &vshnv1.VSHNMinio{}
-	err := iof.Observed.GetComposite(ctx, comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "can't get composite", err)
+		err = fmt.Errorf("cannot get observed composite: %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
 	l.Info("Creating namespace for minio instance")
-	err = createObjectNamespace(ctx, comp, iof)
+	err = createObjectNamespace(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create object namespace", err)
+		err = fmt.Errorf("cannot create minio namespace: %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
 	l.Info("Creating helm release for minio instance")
-	err = createObjectHelmRelease(ctx, comp, iof)
+	err = createObjectHelmRelease(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create object release", err)
+		err = fmt.Errorf("cannot create helm release: %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	l.Info("creating service observer")
-	err = createServiceObserver(ctx, comp, iof)
+	l.Info("Creating service observer")
+	err = createServiceObserver(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create service observer", err)
+		err = fmt.Errorf("cannot create service observer: %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	l.Info("creating service monitor")
-	err = createServiceMonitor(ctx, comp, iof)
+	l.Info("Creating service monitor")
+	err = createServiceMonitor(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create service monitor", err)
+		err = fmt.Errorf("cannot create service monitor; %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
 	l.Info("Get connection details from secret")
-	err = getConnectionDetails(ctx, comp, iof)
+	err = getConnectionDetails(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewWarning(ctx, "cannot get connection details")
+		if err == runtime.ErrNotFound {
+			return runtime.NewNormalResult("skipping sli bucket, connectiondetails not yet available")
+		}
+		err = fmt.Errorf("cannot get connection details: %w", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot get connection details: %w", err))
 	}
 
 	l.Info("Starting vshn-test-bucket-for-sli creation")
-	if err := createSliBucket(ctx, comp, comp.Labels["crossplane.io/claim-name"], iof); err != nil {
+	if err := createSliBucket(ctx, comp, comp.Labels["crossplane.io/claim-name"], svc); err != nil {
 		l.Info("Failed to create SLI bucket")
-		return runtime.NewFatal(ctx, "can't create SliBucket")
+		return runtime.NewFatalResult(fmt.Errorf("can't create SliBucket: %w", err))
 	}
-	return runtime.NewNormal()
+	return nil
 }
 
 // Create the namespace for the minio instance
-func createObjectNamespace(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runtime.Runtime) error {
+func createObjectNamespace(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) error {
 
 	ns := &corev1.Namespace{
 
@@ -90,16 +98,17 @@ func createObjectNamespace(ctx context.Context, comp *vshnv1.VSHNMinio, iof *run
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, ns, comp.Name+"-ns")
+	return svc.SetDesiredKubeObject(ns, comp.Name+"-ns")
 }
 
 // Create the helm release for the minio instance
-func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runtime.Runtime) error {
+func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) error {
 
-	plan := comp.Spec.Parameters.Size.GetPlan(iof.Config.Data["defaultPlan"])
+	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
-	resouces, err := utils.FetchPlansFromConfig(ctx, iof, plan)
+	resouces, err := utils.FetchPlansFromConfig(ctx, svc, plan)
 	if err != nil {
+		err = fmt.Errorf("cannot fetch plans from the composition config, maybe they are not set: %w", err)
 		return err
 	}
 
@@ -156,6 +165,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 
 	vb, err := json.Marshal(values)
 	if err != nil {
+		err = fmt.Errorf("cannot marshal helm values: %w", err)
 		return err
 	}
 
@@ -166,8 +176,8 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 		Spec: xhelmbeta1.ReleaseSpec{
 			ForProvider: xhelmbeta1.ReleaseParameters{
 				Chart: xhelmbeta1.ChartSpec{
-					Repository: iof.Config.Data["minioChartRepository"],
-					Version:    iof.Config.Data["minioChartVersion"],
+					Repository: svc.Config.Data["minioChartRepository"],
+					Version:    svc.Config.Data["minioChartVersion"],
 					Name:       "minio",
 				},
 				Namespace: comp.GetInstanceNamespace(),
@@ -211,23 +221,15 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, iof *r
 		},
 	}
 
-	cd := []v1alpha1.DerivedConnectionDetail{
-		{
-			Name:                    pointer.String("AWS_ACCESS_KEY_ID"),
-			FromConnectionSecretKey: pointer.String("AWS_ACCESS_KEY_ID"),
-			Type:                    v1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
-		},
-		{
-			Name:                    pointer.String("AWS_SECRET_ACCESS_KEY"),
-			FromConnectionSecretKey: pointer.String("AWS_SECRET_ACCESS_KEY"),
-			Type:                    v1alpha1.ConnectionDetailTypeFromConnectionSecretKey,
-		},
+	err = svc.AddObservedConnectionDetails(comp.Name + "-release")
+	if err != nil {
+		return err
 	}
 
-	return iof.Desired.PutWithResourceName(ctx, r, comp.Name+"-release", runtime.AddDerivedConnectionDetails(cd))
+	return svc.SetDesiredComposedResourceWithName(r, comp.Name+"-release")
 }
 
-func createServiceObserver(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runtime.Runtime) error {
+func createServiceObserver(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) error {
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -236,32 +238,31 @@ func createServiceObserver(ctx context.Context, comp *vshnv1.VSHNMinio, iof *run
 		},
 	}
 
-	return iof.Desired.PutIntoObserveOnlyObject(ctx, service, comp.Name+"-service-observer")
+	return svc.SetDesiredKubeObserveObject(service, comp.Name+"-service-observer")
 }
 
-func getConnectionDetails(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runtime.Runtime) error {
+func getConnectionDetails(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) error {
 
 	service := &corev1.Service{}
 
-	err := iof.Observed.GetFromObject(ctx, service, comp.Name+"-service-observer")
+	err := svc.GetObservedKubeObject(service, comp.Name+"-service-observer")
 	if err != nil {
+		if err == runtime.ErrNotFound {
+			return err
+		}
+		err = fmt.Errorf("cannot get observed connectiondetails: %w", err)
 		return err
 	}
 
-	iof.Desired.PutCompositeConnectionDetail(ctx, v1alpha1.ExplicitConnectionDetail{
-		Name:  "MINIO_URL",
-		Value: "http://" + service.Spec.ClusterIP + ":" + strconv.Itoa(int(service.Spec.Ports[0].Port)),
-	})
+	minioURL := fmt.Sprintf("http://%s:%s", service.Spec.ClusterIP, strconv.Itoa(int(service.Spec.Ports[0].Port)))
+
+	svc.SetConnectionDetail("MINIO_URL", []byte(minioURL))
 
 	return nil
 }
 
-func createServiceMonitor(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runtime.Runtime) error {
+func createServiceMonitor(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) error {
 
-	err := runtime.AddToScheme(promv1.SchemeBuilder)
-	if err != nil {
-		return err
-	}
 	sm := &promv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
@@ -305,10 +306,10 @@ func createServiceMonitor(ctx context.Context, comp *vshnv1.VSHNMinio, iof *runt
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, sm, comp.Name+"-service-monitor")
+	return svc.SetDesiredKubeObject(sm, comp.Name+"-service-monitor")
 }
 
-func createSliBucket(ctx context.Context, comp *vshnv1.VSHNMinio, xminioName string, iof *runtime.Runtime) error {
+func createSliBucket(ctx context.Context, comp *vshnv1.VSHNMinio, xminioName string, svc *runtime.ServiceRuntime) error {
 	obj := &v1.ObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      SLIBucketName,
@@ -328,6 +329,5 @@ func createSliBucket(ctx context.Context, comp *vshnv1.VSHNMinio, xminioName str
 			},
 		},
 	}
-
-	return iof.Desired.PutIntoObject(ctx, obj, comp.Name+"-vshn-test-bucket-for-sli")
+	return svc.SetDesiredKubeObject(obj, comp.Name+"-vshn-test-bucket-for-sli")
 }

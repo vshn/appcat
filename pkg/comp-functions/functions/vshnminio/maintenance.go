@@ -2,7 +2,9 @@ package vshnminio
 
 import (
 	"context"
+	"fmt"
 
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
@@ -12,25 +14,27 @@ import (
 var service = "minio"
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
-func AddMaintenanceJob(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func AddMaintenanceJob(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	comp := &vshnv1.VSHNMinio{}
-	err := iof.Observed.GetComposite(ctx, comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "can't get composite", err)
+		err = fmt.Errorf("cannot get observed composite: %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
-	common.SetRandomSchedules(&comp.Spec.Parameters.Backup, &comp.Spec.Parameters.Maintenance)
+	common.SetRandomSchedules(comp, comp)
 
-	err = iof.Desired.SetComposite(ctx, comp)
+	err = svc.SetDesiredCompositeStatus(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot update composite", err)
+		err = fmt.Errorf("cannot set desired composite status: %w", err)
+		return runtime.NewFatalResult(err)
 	}
 
 	instanceNamespace := getInstanceNamespace(comp)
-	schedule := comp.Spec.Parameters.Maintenance
+	schedule := comp.GetFullMaintenanceSchedule()
 
-	return maintenance.New(comp, iof, schedule, instanceNamespace, service).
+	return maintenance.New(comp, svc, schedule, instanceNamespace, service).
 		WithHelmBasedService().
 		Run(ctx)
 }

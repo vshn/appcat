@@ -1,0 +1,13 @@
+apiVersion: vshn.appcat.vshn.io/v1
+kind: VSHNMinio
+metadata:
+  name: minio-test
+  namespace: default
+spec:
+  parameters:
+    service:
+      mode: standalone
+    size:
+      disk: 1Gi
+  writeConnectionSecretToRef:
+    name: minio-creds

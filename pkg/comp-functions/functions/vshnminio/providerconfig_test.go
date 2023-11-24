@@ -5,21 +5,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	minioproviderv1 "github.com/vshn/provider-minio/apis/provider/v1"
 )
 
 func TestDeployMinioProviderConfig(t *testing.T) {
-	iof, comp := getMinioComp(t)
+	svc, comp := getMinioComp(t)
 
 	ctx := context.TODO()
 
-	assert.NoError(t, iof.Desired.SetComposite(ctx, comp))
-
-	assert.Equal(t, runtime.NewNormal(), DeployMinioProviderConfig(ctx, iof))
+	assert.Nil(t, DeployMinioProviderConfig(ctx, svc))
 
 	config := &minioproviderv1.ProviderConfig{}
 
-	assert.NoError(t, iof.Desired.GetFromObject(ctx, config, comp.GetName()+"-providerconfig"))
+	assert.NoError(t, svc.GetDesiredKubeObject(config, comp.GetName()+"-providerconfig"))
 
 }

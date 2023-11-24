@@ -1,0 +1,8 @@
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: function-appcat
+spec:
+  package: ghcr.io/vshn/appcat:latest-func
+  runtimeConfigRef:
+      name: enable-proxy

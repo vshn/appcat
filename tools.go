@@ -19,6 +19,10 @@ import (
 	// mock tool
 	_ "github.com/vektra/mockery/v2"
 	// Add any build-time dependencies here with blank imports like `_ "package"`
+	_ "github.com/crossplane/crossplane-tools/cmd/angryjet"
 	_ "github.com/deepmap/oapi-codegen/cmd/oapi-codegen"
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
+
+	// Crossplane package manager
+	_ "github.com/crossplane/crossplane/cmd/crank"
 )

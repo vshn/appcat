@@ -1,0 +1,154 @@
+desired: {}
+input:
+  apiVersion: v1
+  data:
+    defaultPlan: standard-1
+    minioChartRepo: https://charts.min.io
+    minioChartVersion: 5.0.13
+    plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true,
+      "memory": "1Gi"}}}'
+    providerEnabled: "true"
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNMinio
+      metadata:
+        annotations: null
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: minio-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: minio
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: minio-gc9x4
+        name: minio-gc9x4
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNMinio
+          name: minio
+          namespace: unit-test
+        compositionRef:
+          name: vshnminio.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnminio.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+  resources:
+    minio-gc9x4-ns:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: vshn-minio-minio-gc9x4
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: vshn-minio-minio-gc9x4
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: vshn-minio-minio-gc9x4
+    minio-gc9x4-release:
+      connection_details:
+        AWS_ACCESS_KEY_ID: bWluaW8= #minio
+        AWS_SECRET_ACCESS_KEY: bWluaW8xMjM= #minio123
+      resource:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        spec:
+          forProvider:
+            chart:
+              name: minio
+              repository: https://charts.min.io
+            values:
+              fullnameOverride: minio
+              image:
+                repository: quay.io/minio/minio
+                tag: RELEASE.2023-07-07T07-13-57Z
+              mode: distributed
+              persistence:
+                size: 50Gi
+              replicas: 4
+              resources:
+                limits:
+                  cpu: 1
+                  memory: 1Gi
+                requests:
+                  cpu: 1
+                  memory: 1Gi
+    minio-gc9x4-secret-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: minio-gc9x4-minio
+          namespace: vshn-minio-minio-gc9x4
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: minio-gc9x4-minio
+                namespace: vshn-minio-minio-gc9x4
+              type: Opaque
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              data:
+                rootPassword: bWluaW8xMjM=
+                rootUser: bWluaW8=
+              kind: Secret
+              metadata:
+                name: minio-gc9x4-minio
+                namespace: vshn-minio-minio-gc9x4
+              type: Opaque
+    minio-gc9x4-service-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: minio-gc9x4-minio
+          namespace: vshn-minio-minio-gc9x4
+        spec:
+          forProvider:
+            manifests:
+            - apiVersion: v1
+              kind: Service
+              metadata:
+                name: minio-gc9x4-minio
+                namespace: vshn-minio-minio-gc9x4
+              spec: {}
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Service
+              metadata:
+                name: minio-gc9x4-minio
+                namespace: vshn-minio-minio-gc9x4
+              spec:
+                clusterIP: 10.0.0.1
+                ports:
+                - name: http
+                  port: 9000
+                  protocol: TCP
+                  targetPort: 9000
+                type: ClusterIP

@@ -3,9 +3,12 @@ package vshnredis
 import (
 	"context"
 	_ "embed"
+	"fmt"
+	"strings"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	"github.com/sethvargo/go-password/password"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
@@ -15,7 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
@@ -30,57 +33,57 @@ const (
 var redisBackupScript string
 
 // AddBackup creates an object bucket and a K8up schedule to do the actual backup.
-func AddBackup(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func AddBackup(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
 	comp := &vshnv1.VSHNRedis{}
-	err := iof.Desired.GetComposite(ctx, comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "failed to parse composite", err)
+		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
 
-	common.SetRandomSchedules(&comp.Spec.Parameters.Backup, &comp.Spec.Parameters.Maintenance)
+	common.SetRandomSchedules(comp, comp)
 
-	err = iof.Desired.SetComposite(ctx, comp)
+	err = svc.SetDesiredCompositeStatus(comp)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "failed to set composite", err)
+		return runtime.NewFatalResult(fmt.Errorf("failed to set composite: %w", err))
 	}
 
 	l.Info("Creating backup bucket")
-	err = createObjectBucket(ctx, comp, iof)
+	err = createObjectBucket(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create backup bucket", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot create backup bucket: %w", err))
 	}
 
 	l.Info("Creating credential observer")
-	err = createObjectBucketCredentialObserver(ctx, comp, iof)
+	err = createObjectBucketCredentialObserver(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create credential observer", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot create credential observer: %w", err))
 	}
 
 	l.Info("Creating repository password")
-	err = createRepositoryPassword(ctx, comp, iof)
+	err = createRepositoryPassword(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create repository password", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot create repository password: %w", err))
 	}
 
 	l.Info("Creating backup schedule")
-	err = createK8upSchedule(ctx, comp, iof)
+	err = createK8upSchedule(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create backup schedule", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot create backup schedule, %w", err))
 	}
 
 	l.Info("Creating backup config map")
-	err = createScriptCM(ctx, comp, iof)
+	err = createScriptCM(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalErr(ctx, "cannot create backup config map", err)
+		return runtime.NewFatalResult(fmt.Errorf("cannot create backup config map: %w", err))
 	}
 
-	return runtime.NewNormal()
+	return nil
 }
 
-func createObjectBucket(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
+func createObjectBucket(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 
 	ob := &appcatv1.XObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
@@ -89,19 +92,21 @@ func createObjectBucket(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtim
 		Spec: appcatv1.XObjectBucketSpec{
 			Parameters: appcatv1.ObjectBucketParameters{
 				BucketName: comp.Name + "-backup",
-				Region:     iof.Config.Data["bucketRegion"],
+				Region:     svc.Config.Data["bucketRegion"],
 			},
-			WriteConnectionSecretToRef: appcatv1.NamespacedName{
-				Namespace: getInstanceNamespace(comp),
-				Name:      credentialSecretName,
+			ResourceSpec: xpv1.ResourceSpec{
+				WriteConnectionSecretToReference: &xpv1.SecretReference{
+					Namespace: getInstanceNamespace(comp),
+					Name:      credentialSecretName,
+				},
 			},
 		},
 	}
 
-	return iof.Desired.Put(ctx, ob)
+	return svc.SetDesiredComposedResource(ob)
 }
 
-func createObjectBucketCredentialObserver(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
+func createObjectBucketCredentialObserver(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 
 	secret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
@@ -133,10 +138,10 @@ func createObjectBucketCredentialObserver(ctx context.Context, comp *vshnv1.VSHN
 		},
 	}
 
-	return iof.Desired.Put(ctx, xobj)
+	return svc.SetDesiredComposedResource(xobj)
 }
 
-func createRepositoryPassword(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
+func createRepositoryPassword(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
@@ -147,14 +152,14 @@ func createRepositoryPassword(ctx context.Context, comp *vshnv1.VSHNRedis, iof *
 		},
 	}
 
-	err := iof.Observed.GetFromObject(ctx, secret, comp.Name+"-k8up-repo-pw")
+	err := svc.GetObservedKubeObject(secret, comp.Name+"-k8up-repo-pw")
 	if err != nil && err != runtime.ErrNotFound {
 		return err
 	}
 
 	if _, ok := secret.Data[k8upRepoSecretKey]; ok {
 		l.V(1).Info("secret is not empty")
-		return iof.Desired.PutIntoObject(ctx, secret, comp.Name+"-k8up-repo-pw")
+		return svc.SetDesiredKubeObject(secret, comp.Name+"-k8up-repo-pw")
 	}
 
 	pw, err := password.Generate(64, 5, 5, false, true)
@@ -166,16 +171,16 @@ func createRepositoryPassword(ctx context.Context, comp *vshnv1.VSHNRedis, iof *
 		k8upRepoSecretKey: []byte(pw),
 	}
 
-	return iof.Desired.PutIntoObject(ctx, secret, comp.Name+"-k8up-repo-pw")
+	return svc.SetDesiredKubeObject(secret, comp.Name+"-k8up-repo-pw")
 }
 
-func createK8upSchedule(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
+func createK8upSchedule(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
 	creds := &corev1.Secret{}
 
-	err := iof.Observed.GetFromObject(ctx, creds, comp.Name+"-backup-credential-observer")
+	err := svc.GetObservedKubeObject(creds, comp.Name+"-backup-credential-observer")
 	if err != nil && err == runtime.ErrNotFound {
 		l.V(1).Info("credential secret not found, skipping schedule")
 		return nil
@@ -186,6 +191,8 @@ func createK8upSchedule(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtim
 	bucket := string(creds.Data["BUCKET_NAME"])
 	endpoint := string(creds.Data["ENDPOINT_URL"])
 	retention := comp.Spec.Parameters.Backup.Retention
+
+	endpoint, _ = strings.CutSuffix(endpoint, "/")
 
 	schedule := &k8upv1.Schedule{
 		ObjectMeta: metav1.ObjectMeta{
@@ -219,10 +226,10 @@ func createK8upSchedule(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtim
 			},
 			Backup: &k8upv1.BackupSchedule{
 				ScheduleCommon: &k8upv1.ScheduleCommon{
-					Schedule: k8upv1.ScheduleDefinition(comp.Spec.Parameters.Backup.Schedule),
+					Schedule: k8upv1.ScheduleDefinition(comp.GetBackupSchedule()),
 				},
 				BackupSpec: k8upv1.BackupSpec{
-					KeepJobs: pointer.Int(0),
+					KeepJobs: ptr.To(0),
 				},
 			},
 			Prune: &k8upv1.PruneSchedule{
@@ -243,10 +250,10 @@ func createK8upSchedule(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtim
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, schedule, comp.Name+"-backup-schedule")
+	return svc.SetDesiredKubeObject(schedule, comp.Name+"-backup-schedule")
 }
 
-func createScriptCM(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Runtime) error {
+func createScriptCM(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -258,5 +265,5 @@ func createScriptCM(ctx context.Context, comp *vshnv1.VSHNRedis, iof *runtime.Ru
 		},
 	}
 
-	return iof.Desired.PutIntoObject(ctx, cm, comp.Name+"-backup-cm")
+	return svc.SetDesiredKubeObject(cm, comp.Name+"-backup-cm")
 }

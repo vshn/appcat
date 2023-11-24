@@ -9,33 +9,32 @@ import (
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 )
 
 func TestPVCResize(t *testing.T) {
 
 	// First reconcile, creation of the job
-	iof := commontest.LoadRuntimeFromFile(t, "vshnredis/pvcresize/01_default.yaml")
+	svc := commontest.LoadRuntimeFromFile(t, "vshnredis/pvcresize/01_default.yaml")
 
 	comp := &vshnv1.VSHNRedis{}
-	err := iof.Desired.GetComposite(context.TODO(), comp)
+	err := svc.GetDesiredComposite(comp)
 	assert.NoError(t, err)
 
 	ctx := context.TODO()
 
-	assert.Equal(t, runtime.NewNormal(), ResizePVCs(ctx, iof))
+	assert.Nil(t, ResizePVCs(ctx, svc))
 
 	job := &batchv1.Job{}
-	assert.NoError(t, iof.Desired.GetFromObject(ctx, job, "redis-gc9x4-sts-deleter"))
+	assert.NoError(t, svc.GetDesiredKubeObject(job, "redis-gc9x4-sts-deleter"))
 
 	obj := &xkubev1.Object{}
-	assert.NoError(t, iof.Desired.Get(ctx, obj, "redis-gc9x4-sts-deleter"))
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(obj, "redis-gc9x4-sts-deleter"))
 
 	// Second reconcile, check for removed job
-	iof = commontest.LoadRuntimeFromFile(t, "vshnredis/pvcresize/01_job.yaml")
-	assert.Equal(t, runtime.NewNormal(), ResizePVCs(ctx, iof))
-	assert.Error(t, iof.Desired.GetFromObject(ctx, job, "redis-gc9x4-sts-deleter"))
+	svc = commontest.LoadRuntimeFromFile(t, "vshnredis/pvcresize/01_job.yaml")
+	assert.Nil(t, ResizePVCs(ctx, svc))
+	assert.Error(t, svc.GetDesiredKubeObject(job, "redis-gc9x4-sts-deleter"))
 
 }
 

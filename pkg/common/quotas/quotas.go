@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/vshn/appcat/v4/pkg/common/utils"
-	iofruntime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -151,7 +150,7 @@ func (q *QuotaChecker) getNamespaceOverrides(ctx context.Context, c client.Clien
 
 // AddInitalNamespaceQuotas will add the default quotas to the namespace annotations.
 // It will only add them, if there are currently no such annotations in place.
-func AddInitalNamespaceQuotas(ctx context.Context, iof *iofruntime.Runtime, ns *corev1.Namespace, s *utils.Sidecars, kind string) bool {
+func AddInitalNamespaceQuotas(ctx context.Context, ns *corev1.Namespace, s *utils.Sidecars, kind string) bool {
 	annotations := ns.GetAnnotations()
 	if annotations == nil {
 		annotations = map[string]string{}

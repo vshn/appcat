@@ -45,10 +45,10 @@ func FetchPlansFromCluster(ctx context.Context, c client.Client, name, plan stri
 	return r, err
 }
 
-func FetchPlansFromConfig(ctx context.Context, iof *runtime.Runtime, plan string) (Resources, error) {
+func FetchPlansFromConfig(ctx context.Context, svc *runtime.ServiceRuntime, plan string) (Resources, error) {
 	p := &Plans{}
 
-	err := json.Unmarshal([]byte(iof.Config.Data["plans"]), p)
+	err := json.Unmarshal([]byte(svc.Config.Data["plans"]), p)
 	if err != nil {
 		return Resources{}, err
 	}

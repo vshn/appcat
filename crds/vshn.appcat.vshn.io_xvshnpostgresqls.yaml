@@ -148,7 +148,7 @@ spec:
                       alertmanagerConfigRef:
                         description: AlertmanagerConfigRef contains the name of the
                           AlertmanagerConfig that should be copied over to the namespace
-                          of the PostgreSQL instance.
+                          of the instance.
                         type: string
                       alertmanagerConfigSecretRef:
                         description: AlertmanagerConfigSecretRef contains the name
@@ -188,7 +188,7 @@ spec:
                                           over Regex (deprecated) if non-empty.
                                         enum:
                                         - '!='
-                                        - =
+                                        - "="
                                         - =~
                                         - '!~'
                                         type: string
@@ -223,7 +223,7 @@ spec:
                                           over Regex (deprecated) if non-empty.
                                         enum:
                                         - '!='
-                                        - =
+                                        - "="
                                         - =~
                                         - '!~'
                                         type: string
@@ -4863,7 +4863,7 @@ spec:
                                         over Regex (deprecated) if non-empty.
                                       enum:
                                       - '!='
-                                      - =
+                                      - "="
                                       - =~
                                       - '!~'
                                       type: string

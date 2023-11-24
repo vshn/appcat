@@ -125,8 +125,8 @@ type XVSHNMinioSpec struct {
 }
 
 type XVSHNMinioStatus struct {
-	VSHNMinioStatus     `json:"spec"`
-	xpv1.ResourceStatus `json:"spec"`
+	VSHNMinioStatus     `json:",inline"`
+	xpv1.ResourceStatus `json:",inline"`
 }
 
 // +kubebuilder:object:generate=true

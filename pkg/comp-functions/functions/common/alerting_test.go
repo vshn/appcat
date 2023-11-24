@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
-	"github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
@@ -66,7 +65,7 @@ func TestAddUserAlerting(t *testing.T) {
 			svc := commontest.LoadRuntimeFromFile(t, tt.args.inputFuncIO)
 			expSvc := commontest.LoadRuntimeFromFile(t, tt.args.expectedFuncIO)
 
-			runForGivenInputAlerting(t, ctx, svc, nil)
+			runForGivenInputAlerting(t, ctx, svc, tt.expResult)
 
 			assert.Equal(t, expSvc, svc)
 		})
@@ -134,7 +133,7 @@ func TestGivenConfigTemplateAndSecretThenExpectOutput(t *testing.T) {
 	})
 }
 
-func runForGivenInputAlerting(t *testing.T, ctx context.Context, input *runtime.ServiceRuntime, res *v1beta1.Result) {
+func runForGivenInputAlerting(t *testing.T, ctx context.Context, input *runtime.ServiceRuntime, res *xfnproto.Result) {
 	fnc := AddUserAlerting(&vshnv1.VSHNRedis{})
 
 	assert.Equal(t, res, fnc(ctx, input))

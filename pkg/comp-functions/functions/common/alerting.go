@@ -34,7 +34,7 @@ func AddUserAlerting(obj client.Object) func(ctx context.Context, svc *runtime.S
 
 		err := svc.GetObservedComposite(obj)
 		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("Can't get composite", err))
+			return runtime.NewFatalResult(fmt.Errorf("Can't get composite: %w", err))
 		}
 		alertConfig, ok := obj.(Alerter)
 		if !ok {

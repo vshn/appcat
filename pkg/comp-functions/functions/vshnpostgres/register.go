@@ -1,6 +1,7 @@
 package vshnpostgres
 
 import (
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
@@ -14,7 +15,7 @@ func init() {
 			},
 			{
 				Name:    "user-alerting",
-				Execute: AddUserAlerting,
+				Execute: common.AddUserAlerting(&vshnv1.VSHNPostgreSQL{}),
 			},
 			{
 				Name:    "restart",
@@ -34,7 +35,7 @@ func init() {
 			},
 			{
 				Name:    "mailgun-alerting",
-				Execute: MailgunAlerting,
+				Execute: common.MailgunAlerting(&vshnv1.VSHNPostgreSQL{}),
 			},
 			{
 				Name:    "extensions",

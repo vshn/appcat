@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	runtime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
@@ -16,18 +17,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func MailgunAlerting(obj client.Object) func(ctx context.Context, iof *runtime.Runtime) runtime.Result {
-	return func(ctx context.Context, iof *runtime.Runtime) runtime.Result {
+func MailgunAlerting(obj client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	return func(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 		log := controllerruntime.LoggerFrom(ctx)
 		log.Info("Starting mailgun-alerting function")
 
-		err := iof.Observed.GetComposite(ctx, obj)
+		err := svc.GetObservedComposite(obj)
 		if err != nil {
-			return runtime.NewFatalErr(ctx, "Can't get composite", err)
+			return runtime.NewFatalResult(fmt.Errorf("Can't get composite: %w", err))
 		}
 		alertConfig, ok := obj.(Alerter)
 		if !ok {
-			return runtime.NewWarning(ctx, fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
+			return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
 		}
 
 		email := alertConfig.GetVSHNMonitoring().Email
@@ -35,25 +36,25 @@ func MailgunAlerting(obj client.Object) func(ctx context.Context, iof *runtime.R
 		name := obj.GetName()
 
 		if email == "" {
-			return runtime.NewNormal()
+			return nil
 		}
-		if !mailAlertingEnabled(iof.Config) {
-			return runtime.NewWarning(ctx, "Email Alerting is not enabled")
+		if !mailAlertingEnabled(&svc.Config) {
+			return runtime.NewWarningResult("Email Alerting is not enabled")
 		}
 
 		log.Info("Deploying AlertmanagerConfig for mail alerting...")
-		err = deployAlertmanagerConfig(ctx, name, email, instanceNamespace, iof)
+		err = deployAlertmanagerConfig(ctx, name, email, instanceNamespace, svc)
 		if err != nil {
-			return runtime.NewFatalErr(ctx, "Can't deploy AlertmanagerConfig "+name+"-alertmanagerconfig-mailgun for mail alerting", err)
+			return runtime.NewFatalResult(fmt.Errorf("Can't deploy AlertmanagerConfig "+name+"-alertmanagerconfig-mailgun for mail alerting: %w", err))
 		}
 
 		log.Info("Finishing mailgun-alerting function with NewNormal")
 
-		return runtime.NewNormal()
+		return nil
 	}
 }
 
-func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespace string, iof *runtime.Runtime) error {
+func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespace string, svc *runtime.ServiceRuntime) error {
 	var alertManagerConfigName = name + "-alertmanagerconfig-mailgun"
 	var alertManagerConfigSecretName = name + "-alertmanagerconfig-mailgun-secret"
 	receiverName := "mailgun"
@@ -73,15 +74,15 @@ func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespac
 					EmailConfigs: []alertmanagerv1alpha1.EmailConfig{
 						{
 							To:           email,
-							From:         iof.Config.Data["emailAlertingSmtpFromAddress"],
-							AuthUsername: iof.Config.Data["emailAlertingSmtpUsername"],
+							From:         svc.Config.Data["emailAlertingSmtpFromAddress"],
+							AuthUsername: svc.Config.Data["emailAlertingSmtpUsername"],
 							AuthPassword: &v1.SecretKeySelector{
 								Key: "password",
 								LocalObjectReference: v1.LocalObjectReference{
 									Name: alertManagerConfigSecretName,
 								},
 							},
-							Smarthost:    iof.Config.Data["emailAlertingSmtpHost"],
+							Smarthost:    svc.Config.Data["emailAlertingSmtpHost"],
 							RequireTLS:   pointer.Bool(true),
 							SendResolved: pointer.Bool(true),
 						},
@@ -121,19 +122,19 @@ func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespac
 			DependsOn: xkube.DependsOn{
 				APIVersion: "v1",
 				Kind:       "Secret",
-				Namespace:  iof.Config.Data["emailAlertingSecretNamespace"],
-				Name:       iof.Config.Data["emailAlertingSecretName"],
+				Namespace:  svc.Config.Data["emailAlertingSecretNamespace"],
+				Name:       svc.Config.Data["emailAlertingSecretName"],
 			},
 			FieldPath: pointer.String("data.password"),
 		},
 		ToFieldPath: pointer.String("data.password"),
 	}
 
-	if err := iof.Desired.PutIntoObject(ctx, secret, alertManagerConfigSecretName, patchSecretWithOtherSecret); err != nil {
+	if err := svc.SetDesiredKubeObject(secret, alertManagerConfigSecretName, patchSecretWithOtherSecret); err != nil {
 		return err
 	}
 
-	return iof.Desired.PutIntoObject(ctx, ac, alertManagerConfigName, xRef)
+	return svc.SetDesiredKubeObject(ac, alertManagerConfigName, xRef)
 }
 
 func mailAlertingEnabled(config *v1.ConfigMap) bool {

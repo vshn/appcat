@@ -10,7 +10,9 @@ providerMap["kubernetes.crossplane.io"]="provider-kubernetes"
 providerMap["exoscale.crossplane.io"]="provider-exoscale"
 providerMap["cloudscale.crossplane.io"]="provider-cloudscale"
 
-kubectl --as cluster-admin apply -f hack/providers.yaml
+for provider in $(kubectl --as cluster-admin get providers --ignore-not-found --no-headers | cut -d " " -f 1); do
+  kubectl --as cluster-admin apply -f hack/"${provider}".yaml
+done
 
 # loop over each crd for each group
 for c in "${!providerMap[@]}"; do

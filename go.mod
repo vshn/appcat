@@ -2,8 +2,6 @@ module github.com/vshn/appcat/v4
 
 go 1.21
 
-toolchain go1.21.4
-
 replace github.com/deepmap/oapi-codegen => github.com/sljeff/oapi-codegen v1.5.1-0.20211207091501-bc20f55d338a
 
 require (

@@ -353,39 +353,32 @@
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>The runtime library helps to facilitate the implementation of transformation go functions.
-It allows to operate on underlying function-io resources and composites. There are 2 objects accessible
-from a runtime object:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>Observed</code> - the observed state of the XR and any existing composed resources.</p>
-</li>
-<li>
-<p><code>Desired</code> - the desired state of the XR and any composed resources.</p>
-</li>
-</ul>
+<p>The runtime library helps to facilitate the implementation of go functions.
+It allows to operate on underlying managed resources and composites.</p>
 </div>
 <div class="paragraph">
-<p>For more information on how function-io operates check the <a href="https://docs.crossplane.io/knowledge-base/guides/composition-functions/#functionio">documentation</a>
+<p>For more information on how composition functions operate check the <a href="https://docs.crossplane.io/knowledge-base/guides/composition-functions/">documentation</a>
 from Crossplane.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_desired_object"><a class="anchor" href="#_desired_object"></a>Desired Object</h2>
+<h2 id="_desired_objects"><a class="anchor" href="#_desired_objects"></a>Desired Objects</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The runtime desired object has methods to obtain and update desired resources from function-io.</p>
+<p>The desired objects are tracked in the <code>ServiceRuntime</code> until all steps finished.
+The <code>ServiceRuntime</code> will then generate the response GRPC object for Crossplane.All objects that have been added to the desired objects map will be applied by Crossplane.
+If an object is not added to the desired map, and it exists on the cluster, it will be removed.
+So always add all necessary objects on each reconcile.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_observed_object"><a class="anchor" href="#_observed_object"></a>Observed Object</h2>
+<h2 id="_observed_objects"><a class="anchor" href="#_observed_objects"></a>Observed Objects</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The runtime observed object has methods to obtain observed resources from function-io.</p>
+<p>Are the objects as applied to the cluster.
+They contain any external injected information, as well as the status object.</p>
 </div>
 </div>
 </div>
@@ -393,10 +386,16 @@ from Crossplane.</p>
 <h2 id="_result_object"><a class="anchor" href="#_result_object"></a>Result Object</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Any transformation go function expects a <code>runtime.Result</code> object. This object type wraps the Crossplane
-own Result type. The runtime library has simple functions that allows creation of <code>runtime.Result</code> objects
-in various states - <code>fatal</code>, <code>warning</code> or <code>normal</code>. To understand the difference between these states
-consult crossplane <a href="https://docs.crossplane.io/knowledge-base/guides/composition-functions/#functionio">documentation</a>.</p>
+<p>Any service step expects a <code>*xfnproto.Result</code> return object.
+This object type is Crossplane&#8217;s own Result type.
+The runtime library has simple functions that allows creation of <code>*xfnproto.Result</code> objects
+in various states - <code>fatal</code>, <code>warning</code> or <code>normal</code>.
+Please note that a fatal result will mark the whole composition as failed.
+It should only be used if the error is sever enough for the composition to actually work properly.</p>
+</div>
+<div class="paragraph">
+<p>For further information, please consult the Crossplane docs.
+consult crossplane <a href="https://docs.crossplane.io/knowledge-base/guides/composition-functions/">documentation</a>.</p>
 </div>
 </div>
 </div>

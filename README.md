@@ -157,71 +157,43 @@ To add a new function to PostgreSQL by VSHN:
 
 entrypoint to start working with gRPC server is to run:
 ```
-go run main.go --log-level 1 start grpc --network tcp --socket ':9547' --devmode
-
+go run main.go --log-level 1 functions --insecure
 ```
 
-This will start the GRPC server listening on a TCP port. Afterward you can configure the composition to use this connection:
+This will start the GRPC server listening on a TCP port. Afterward you can configure the composition to use this connection in the component:
 
 ```yaml
-### Macos:
-functions:
-  - container:
-      image: redis
-      imagePullPolicy: IfNotPresent
-      runner:
-        # HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway') # On kind MacOS/Windows
+# HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway') # On kind MacOS/Windows
         # HOSTIP=host.docker.internal # On Docker Desktop distributions
         # HOSTIP=host.lima.internal # On Lima backed Docker distributions
         # For Linux users: `ip -4 addr show dev docker0 | grep inet | awk -F' ' '{print $2}' | awk -F'/' '{print $1}'`
-        endpoint: $HOSTIP:9547  # edit in component-appcat or directly using
-                                # `k edit compositions.apiextensions.crossplane.io vshnpostgres.vshn.appcat.vshn.io`
-
+services:
+  vshn:
+    enabled: true
+    externalDatabaseConnectionsEnabled: true
+    emailAlerting:
+      enabled: true
+      smtpPassword: "whatever"
+    postgres:
+      grpcEndpoint: $HOSTIP:9547
+      proxyFunction: true
 ```
 
-It's also possible to trigger fake request to gRPC server by client (to imitate Crossplane):
-```
-cd test/grpc-client
-go run main.go start grpc
+Each service should have these params configured.
+
+If you prefer to set the proxy endpoint directly in the composition, it's passed via the `input.data.proxyEndpoint` field.
+
+Then install the function proxy in kind:
+
+```bash
+make install-proxy
 ```
 
-if You want to run gRPC server in local kind cluster, please use:
-1. [kindev](https://github.com/vshn/kindev). In makefile replace target:
-    1.
-    ```
-      $(crossplane_sentinel): export KUBECONFIG = $(KIND_KUBECONFIG)
-      $(crossplane_sentinel): kind-setup local-pv-setup
-      # below line loads image to kind
-	  kind load docker-image --name kindev ghcr.io/vshn/appcat-comp-functions
-	  helm repo add crossplane https://charts.crossplane.io/stable
-	  helm upgrade --install crossplane --create-namespace --namespace syn-crossplane crossplane/crossplane \
-	  --set "args[0]='--debug'" \
-	  --set "args[1]='--enable-composition-functions'" \
-	  --set "args[2]='--enable-environment-configs'" \
-	  --set "xfn.enabled=true" \
-	  --set "xfn.args={--debug}" \
-	  --set "xfn.image.repository=ghcr.io/vshn/appcat-comp-functions" \
-	  --set "xfn.image.tag=latest" \
-	  --wait
-	  @touch $@
-      ```
-2. [component-appcat](https://github.com/vshn/component-appcat) please append [file](https://github.com/vshn/appcat/blob/master/tests/golden/vshn/appcat/appcat/21_composition_vshn_postgres.yaml) with:
-    1.
-    ```
-        compositeTypeRef:
-          apiVersion: vshn.appcat.vshn.io/v1
-          kind: XVSHNPostgreSQL
-        # we have to add functions declaration to postgresql
-        functions:
-          - container:
-              image: postgresql
-              runner:
-                endpoint: unix-abstract:crossplane/fn/default.sock
-            name: pgsql-func
-            type: Container
-        resources:
-          - base:
-            apiVersion: kubernetes.crossplane.io/v1alpha1
-        ```
+It's also possible to trigger fake request to gRPC server via the crank renderer:
+```
+go run github.com/crossplane/crossplane/cmd/crank beta render xr.yaml composition.yaml functions.yaml -r
+```
+Crank will return a list of all the objects this specific request would have produced, including the result messages.
 
-That's all - You can now run Your claims. This documentation and above workaround is just temporary solution, it should disappear once we actually implement composition functions.
+Please have a look at the `hack/` folder for an example.
+

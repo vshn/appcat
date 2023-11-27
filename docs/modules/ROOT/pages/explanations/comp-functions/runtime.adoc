@@ -1,26 +1,31 @@
 = Runtime Library
 
-The runtime library helps to facilitate the implementation of transformation go functions.
-It allows to operate on underlying function-io resources and composites. There are 2 objects accessible
-from a runtime object:
+The runtime library helps to facilitate the implementation of go functions.
+It allows to operate on underlying managed resources and composites.
 
-- `Observed` - the observed state of the XR and any existing composed resources.
-- `Desired` - the desired state of the XR and any composed resources.
-
-For more information on how function-io operates check the https://docs.crossplane.io/knowledge-base/guides/composition-functions/#functionio[documentation]
+For more information on how composition functions operate check the https://docs.crossplane.io/knowledge-base/guides/composition-functions/[documentation]
 from Crossplane.
 
-== Desired Object
+== Desired Objects
 
-The runtime desired object has methods to obtain and update desired resources from function-io.
+The desired objects are tracked in the `ServiceRuntime` until all steps finished.
+The `ServiceRuntime` will then generate the response GRPC object for Crossplane.All objects that have been added to the desired objects map will be applied by Crossplane.
+If an object is not added to the desired map, and it exists on the cluster, it will be removed.
+So always add all necessary objects on each reconcile.
 
-== Observed Object
+== Observed Objects
 
-The runtime observed object has methods to obtain observed resources from function-io.
+Are the objects as applied to the cluster.
+They contain any external injected information, as well as the status object.
 
 == Result Object
 
-Any transformation go function expects a `runtime.Result` object. This object type wraps the Crossplane
-own Result type. The runtime library has simple functions that allows creation of `runtime.Result` objects
-in various states - `fatal`, `warning` or `normal`. To understand the difference between these states
-consult crossplane https://docs.crossplane.io/knowledge-base/guides/composition-functions/#functionio[documentation].
+Any service step expects a `*xfnproto.Result` return object.
+This object type is Crossplane's own Result type.
+The runtime library has simple functions that allows creation of `*xfnproto.Result` objects
+in various states - `fatal`, `warning` or `normal`.
+Please note that a fatal result will mark the whole composition as failed.
+It should only be used if the error is sever enough for the composition to actually work properly.
+
+For further information, please consult the Crossplane docs.
+consult crossplane https://docs.crossplane.io/knowledge-base/guides/composition-functions/[documentation].

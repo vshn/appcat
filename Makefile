@@ -190,3 +190,8 @@ clean:
 get-crds:
 	./hack/get_crds.sh https://github.com/vshn/provider-minio provider-minio apis/minio/v1 apis/minio
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-helm provider-helm apis/release apis/helm
+
+# API bootstrapping
+.PHONY: bootstrap
+bootstrap:
+	go run ./hack/bootstrap/template.go ${API_FILE}

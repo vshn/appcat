@@ -4,6 +4,6 @@ kind: Function
 metadata:
   name: function-appcat
 spec:
-  image: ghcr.io/vshn/appcat:latest
+  image: ghcr.io/vshn/appcat:feature_mariadb
   crossplane:
     version: ">=1.14.0"

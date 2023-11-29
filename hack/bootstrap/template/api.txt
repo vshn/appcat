@@ -1,0 +1,241 @@
+package v1
+
+import (
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	v1 "github.com/vshn/appcat/v4/apis/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// Workaround to make nested defaulting work.
+// kubebuilder is unable to set a {} default
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+
+// +kubebuilder:object:root=true
+
+// {{.Name}} is the API for creating {{.NameShort}} instances.
+type {{.Name}} struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec defines the desired state of a {{.Name}}.
+	Spec {{.Name}}Spec `json:"spec"`
+
+	// Status reflects the observed state of a {{.Name}}.
+	Status {{.Name}}Status `json:"status,omitempty"`
+}
+
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+type {{.Name}}List struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []{{.Name}} `json:"items,omitempty"`
+}
+
+// {{.Name}}Spec defines the desired state of a {{.Name}}.
+type {{.Name}}Spec struct {
+	// Parameters are the configurable fields of a {{.Name}}.
+	Parameters {{.Name}}Parameters `json:"parameters,omitempty"`
+
+	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
+	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+}
+
+// {{.Name}}Parameters are the configurable fields of a {{.Name}}.
+type {{.Name}}Parameters struct {
+	// Service contains {{.NameShort}} DBaaS specific properties
+	Service {{.Name}}ServiceSpec `json:"service,omitempty"`
+
+	// Size contains settings to control the sizing of a service.
+	Size VSHNSizeSpec `json:"size,omitempty"`
+
+	// Scheduling contains settings to control the scheduling of an instance.
+	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`
+{{- if .Tls}}
+
+	// TLS contains settings to control tls traffic of a service.
+	TLS {{.Name}}TLSSpec `json:"tls,omitempty"`
+{{- end -}}
+{{- if .Backup}}
+
+	// Backup contains settings to control how the instance should get backed up.
+	Backup K8upBackupSpec `json:"backup,omitempty"`
+{{- end -}}
+{{- if .Restore}}
+
+	// Restore contains settings to control the restore of an instance.
+	Restore K8upRestoreSpec `json:"restore,omitempty"`
+{{- end -}}
+{{- if .Maintenance}}
+
+	// Maintenance contains settings to control the maintenance of an instance.
+	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
+{{- end -}}
+}
+
+// {{.Name}}ServiceSpec contains {{.NameShort}} DBaaS specific properties
+type {{.Name}}ServiceSpec struct {
+	// +kubebuilder:validation:Enum=<TBD>
+	// +kubebuilder:default=<TBD>
+
+	// Version contains supported version of {{.NameShort}}.
+	// Multiple versions are supported. The latest version <TBD> is the default version.
+	Version string `json:"version,omitempty"`
+
+	// {{.SettingsKey | CamelCase}} contains additional {{.NameShort}} settings.
+	{{.SettingsKey | CamelCase}} string `json:"{{.SettingsKey}},omitempty"`
+
+	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
+	// +kubebuilder:default="besteffort"
+
+	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
+	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
+}
+
+// {{.Name}}SizeSpec contains settings to control the sizing of a service.
+type {{.Name}}SizeSpec struct {
+
+	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
+	CPURequests string `json:"cpuRequests,omitempty"`
+
+	// CPULimits defines the limits amount of Kubernetes CPUs for an instance.
+	CPULimits string `json:"cpuLimits,omitempty"`
+
+	// MemoryRequests defines the requests amount of memory in units of bytes for an instance.
+	MemoryRequests string `json:"memoryRequests,omitempty"`
+
+	// MemoryLimits defines the limits amount of memory in units of bytes for an instance.
+	MemoryLimits string `json:"memoryLimits,omitempty"`
+
+	// Disk defines the amount of disk space for an instance.
+	Disk string `json:"disk,omitempty"`
+
+	// Plan is the name of the resource plan that defines the compute resources.
+	Plan string `json:"plan,omitempty"`
+}
+
+{{if .Tls}}
+// {{.Name}}TLSSpec contains settings to control tls traffic of a service.
+type {{.Name}}TLSSpec struct {
+	// +kubebuilder:default=true
+
+	// TLSEnabled enables TLS traffic for the service
+	TLSEnabled bool `json:"enabled,omitempty"`
+
+	// +kubebuilder:default=true
+	// TLSAuthClients enables client authentication requirement
+	TLSAuthClients bool `json:"authClients,omitempty"`
+}
+{{end}}
+
+// {{.Name}}Status reflects the observed state of a {{.Name}}.
+type {{.Name}}Status struct {
+	NamespaceConditions         []v1.Condition `json:"namespaceConditions,omitempty"`
+	SelfSignedIssuerConditions  []v1.Condition `json:"selfSignedIssuerConditions,omitempty"`
+	LocalCAConditions           []v1.Condition `json:"localCAConditions,omitempty"`
+	CaCertificateConditions     []v1.Condition `json:"caCertificateConditions,omitempty"`
+	ServerCertificateConditions []v1.Condition `json:"serverCertificateConditions,omitempty"`
+	ClientCertificateConditions []v1.Condition `json:"clientCertificateConditions,omitempty"`
+	// InstanceNamespace contains the name of the namespace where the instance resides
+	InstanceNamespace string `json:"instanceNamespace,omitempty"`
+	// Schedules keeps track of random generated schedules, is overwriten by
+	// schedules set in the service's spec.
+	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
+}
+
+func (v *{{.Name}}) GetClaimNamespace() string {
+	return v.GetLabels()["crossplane.io/claim-namespace"]
+}
+
+func (v *{{.Name}}) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-{{.NameShort}}-%s", v.GetName())
+}
+
+
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+
+// X{{.Name}} represents the internal composite of this claim
+type X{{.Name}} struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   X{{.Name}}Spec   `json:"spec"`
+	Status X{{.Name}}Status `json:"status,omitempty"`
+}
+
+// X{{.Name}}Spec defines the desired state of a {{.Name}}.
+type X{{.Name}}Spec struct {
+	// Parameters are the configurable fields of a {{.Name}}.
+	Parameters {{.Name}}Parameters `json:"parameters,omitempty"`
+
+	xpv1.ResourceSpec `json:",inline"`
+}
+
+type X{{.Name}}Status struct {
+	{{.Name}}Status     `json:",inline"`
+	xpv1.ResourceStatus `json:",inline"`
+}
+
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+
+// X{{.Name}}List represents a list of composites
+type X{{.Name}}List struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []X{{.Name}} `json:"items"`
+}
+
+// GetMaintenanceDayOfWeek returns the currently set day of week
+func (n *{{.Name}}) GetMaintenanceDayOfWeek() string {
+	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
+		return n.Spec.Parameters.Maintenance.DayOfWeek
+	}
+	return n.Status.Schedules.Maintenance.DayOfWeek
+}
+
+// GetMaintenanceTimeOfDay returns the currently set time of day
+func (v *{{.Name}}) GetMaintenanceTimeOfDay() string {
+	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
+		return v.Spec.Parameters.Maintenance.TimeOfDay
+	}
+	return v.Status.Schedules.Maintenance.TimeOfDay
+}
+
+// SetMaintenanceDayOfWeek sets the day of week to the given value
+func (v *{{.Name}}) SetMaintenanceDayOfWeek(dow string) {
+	v.Status.Schedules.Maintenance.DayOfWeek = dow
+}
+
+// SetMaintenanceTimeOfDay sets the time of day to the given value
+func (v *{{.Name}}) SetMaintenanceTimeOfDay(tod string) {
+	v.Status.Schedules.Maintenance.TimeOfDay = tod
+}
+
+// GetBackupSchedule returns the current backup schedule
+func (v *{{.Name}}) GetBackupSchedule() string {
+	if v.Spec.Parameters.Backup.Schedule != "" {
+		return v.Spec.Parameters.Backup.Schedule
+	}
+	return v.Status.Schedules.Backup
+}
+
+// SetBackupSchedule overwrites the current backup schedule
+func (v *{{.Name}}) SetBackupSchedule(schedule string) {
+	v.Status.Schedules.Backup = schedule
+}
+
+// GetFullMaintenanceSchedule returns
+func (v *{{.Name}}) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
+	schedule := v.Spec.Parameters.Maintenance
+	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
+	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
+	return schedule
+}

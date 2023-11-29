@@ -5,7 +5,8 @@ input:
     defaultPlan: standard-1
     mariadbChartRepo: https://charts.bitnami.com/bitnami
     mariadbChartVersion: 10.1.3
-    plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true,
+    plans:
+      '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true,
       "memory": "1Gi"}}}'
     providerEnabled: "true"
   kind: ConfigMap
@@ -23,11 +24,10 @@ observed:
         annotations: null
         creationTimestamp: "2023-03-21T16:52:31Z"
         finalizers:
-        - composite.apiextensions.crossplane.io
+          - composite.apiextensions.crossplane.io
         generateName: mariadb-
         generation: 13
         labels:
-          appuio.io/organization: vshn
           crossplane.io/claim-name: mariadb
           crossplane.io/claim-namespace: unit-test
           crossplane.io/composite: mariadb-gc9x4
@@ -44,6 +44,28 @@ observed:
           name: vshnmariadb.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
   resources:
+    mariadb-gc9x4-claim-ns-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  appuio.io/organization: vshn
     mariadb-gc9x4-ns:
       resource:
         apiVersion: v1

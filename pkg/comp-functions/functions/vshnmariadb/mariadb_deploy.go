@@ -34,10 +34,24 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 		return runtime.NewFatalResult(err)
 	}
 
+	l.Info("creating namespace observer for mariadb claim namespace")
+	err = common.CreateNamespaceObserver(ctx, comp.GetClaimNamespace(), comp.GetName(), svc)
+	if err != nil {
+		err = fmt.Errorf("cannot create namespace observer for claim namespace: %w", err)
+		return runtime.NewFatalResult(err)
+	}
+
 	l.Info("Creating namespace for mariadb instance")
-	err = createObjectNamespace(ctx, comp, svc)
+	err = createInstanceNamespace(ctx, comp, svc)
 	if err != nil {
 		err = fmt.Errorf("cannot create mariadb namespace: %w", err)
+		return runtime.NewFatalResult(err)
+	}
+
+	l.Info("Creating rbac rules for mariadb instance")
+	err = common.CreateNamespacePermissions(ctx, comp.GetName(), svc)
+	if err != nil {
+		err = fmt.Errorf("cannot create rbac rules for mariadb instance: %w", err)
 		return runtime.NewFatalResult(err)
 	}
 
@@ -72,8 +86,9 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 }
 
 // Create the namespace for the mariadb instance
-func createObjectNamespace(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) error {
+func createInstanceNamespace(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) error {
 
+	org := common.GetOrg(comp.GetName(), svc)
 	ns := &corev1.Namespace{
 
 		ObjectMeta: metav1.ObjectMeta{
@@ -82,7 +97,9 @@ func createObjectNamespace(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *r
 				"appcat.vshn.io/servicename":     "mariadb-standalone",
 				"appcat.vshn.io/claim-namespace": comp.GetClaimNamespace(),
 				"appuio.io/no-rbac-creation":     "true",
-				"appuio.io/billing-name":         "appcat-mariadb"},
+				"appuio.io/billing-name":         "appcat-mariadb",
+				"appuio.io/organization":         org,
+			},
 		},
 	}
 

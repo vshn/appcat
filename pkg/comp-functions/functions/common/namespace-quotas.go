@@ -26,9 +26,13 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 		err := svc.GetObservedKubeObject(ns, namespaceKon)
 		if err != nil {
 			if err == runtime.ErrNotFound {
-				err = svc.GetObservedKubeObject(ns, namespaceKon)
+				err = svc.GetDesiredKubeObject(ns, namespaceKon)
 				if err != nil {
 					return runtime.NewFatalResult(fmt.Errorf("cannot get namespace: %w", err))
+				}
+				// Make sure we don't touch this, if there's no name in the namespace.
+				if ns.GetName() == "" {
+					return runtime.NewWarningResult("namespace doesn't yet have a name")
 				}
 			} else {
 				return runtime.NewFatalResult(fmt.Errorf("cannot get namespace: %w", err))
@@ -67,7 +71,7 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 		// We only act if either the quotas were missing or the organization label is not on the
 		// namespace. Otherwise we ignore updates. This is to prevent any unwanted overwriting.
 		if quotas.AddInitalNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind) || orgAdded {
-			err = svc.SetDesiredKubeObject(ns, namespaceKon)
+			err = svc.SetDesiredKubeObjectWithName(ns, ns.GetName(), namespaceKon)
 			if err != nil {
 				return runtime.NewFatalResult(fmt.Errorf("cannot save namespace quotas: %w", err))
 			}

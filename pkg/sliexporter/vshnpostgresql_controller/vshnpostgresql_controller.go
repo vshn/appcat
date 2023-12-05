@@ -84,7 +84,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if inst.Spec.WriteConnectionSecretToReference.Name == "" {
+	if inst.Spec.WriteConnectionSecretToReference == nil || inst.Spec.WriteConnectionSecretToReference.Name == "" {
 		l.Info("No connection secret requested. Skipping.")
 		return ctrl.Result{}, nil
 	}

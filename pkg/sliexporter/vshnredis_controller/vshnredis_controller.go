@@ -68,7 +68,7 @@ func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if inst.Spec.WriteConnectionSecretToReference.Name == "" {
+	if inst.Spec.WriteConnectionSecretToReference == nil || inst.Spec.WriteConnectionSecretToReference.Name == "" {
 		l.Info("No connection secret requested. Skipping.")
 		return ctrl.Result{}, nil
 	}

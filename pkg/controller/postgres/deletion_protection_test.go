@@ -40,45 +40,59 @@ func Test_Handle(t *testing.T) {
 	}{
 		"WhenRetentionDisableAndNoFinalizer_ThenNilPatch": {
 			ctx:           context.Background(),
-			obj:           getXVSHNPostgreSQL(false, nil),
+			obj:           getXVSHNPostgreSQL(0, nil),
 			enabled:       false,
 			retention:     0,
 			expectedPatch: nil,
 		},
 		"WhenRetentionDisableAndFinalizer_ThenRemoveOpPatch": {
 			ctx:           context.Background(),
-			obj:           getXVSHNPostgreSQL(true, nil),
+			obj:           getXVSHNPostgreSQL(1, nil),
 			enabled:       false,
 			retention:     0,
 			expectedPatch: getPatch(jsonpatch.JSONopRemove),
 		},
 		"WhenRetentionEnabledAndNoFinalizerAndNotDeleted_ThenAddOpPatch": {
 			ctx:           context.Background(),
-			obj:           getXVSHNPostgreSQL(false, nil),
+			obj:           getXVSHNPostgreSQL(0, nil),
 			enabled:       true,
 			retention:     0,
 			expectedPatch: getPatch(jsonpatch.JSONopAdd),
 		},
 		"WhenRetentionEnabledAndFinalizerAndDeletedAndRetentionNonZero_ThenNilPatch": {
 			ctx:           context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:           getXVSHNPostgreSQL(true, &previousDay),
+			obj:           getXVSHNPostgreSQL(1, &previousDay),
 			enabled:       true,
 			retention:     1,
 			expectedPatch: nil,
 		},
 		"WhenRetentionEnabledAndFinalizerAndDeletedAndRetentionZero_ThenNilPatch": {
 			ctx:           context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:           getXVSHNPostgreSQL(true, &previousDay),
+			obj:           getXVSHNPostgreSQL(1, &previousDay),
 			enabled:       true,
 			retention:     0,
 			expectedPatch: getPatch(jsonpatch.JSONopRemove),
 		},
 		"WhenRetentionEnabledAndFinalizerAndNotDeleted_ThenNilPatch": {
 			ctx:           context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:           getXVSHNPostgreSQL(true, nil),
+			obj:           getXVSHNPostgreSQL(1, nil),
 			enabled:       true,
 			retention:     0,
 			expectedPatch: nil,
+		},
+		"WhenMultipleFinalzers_ThenOnlyKeepOne": {
+			ctx:           context.Background(),
+			obj:           getXVSHNPostgreSQL(2, nil),
+			enabled:       true,
+			retention:     0,
+			expectedPatch: getRemovePatches(2),
+		},
+		"WhenMoreFinalzers_ThenOnlyKeepOne": {
+			ctx:           context.Background(),
+			obj:           getXVSHNPostgreSQL(3, nil),
+			enabled:       true,
+			retention:     0,
+			expectedPatch: getRemovePatches(3),
 		},
 	}
 	for name, tc := range tests {
@@ -106,31 +120,31 @@ func Test_CheckRetention(t *testing.T) {
 	}{
 		"WhenDeletionTimePlusRetentionTimeBeforeCurrentRuntime_ThenRemoveOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
+			obj:        getXVSHNPostgreSQL(1, &twoDaysBefore),
 			retention:  1,
 			expectedOp: jsonpatch.JSONopRemove,
 		},
 		"WhenDeletionTimeAndNoRetentionBeforeCurrentRuntime_ThenRemoveOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
+			obj:        getXVSHNPostgreSQL(1, &twoDaysBefore),
 			retention:  0,
 			expectedOp: jsonpatch.JSONopRemove,
 		},
 		"WhenDeletionTimePlusRetentionAfterCurrentRuntime_ThenNonOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:        getXVSHNPostgreSQL(true, &twoDaysBefore),
+			obj:        getXVSHNPostgreSQL(1, &twoDaysBefore),
 			retention:  5,
 			expectedOp: jsonpatch.JSONopNone,
 		},
 		"WhenDeletionTimeWithoutRetentionAfterCurrentRuntime_ThenNonOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:        getXVSHNPostgreSQL(true, &nextDay),
+			obj:        getXVSHNPostgreSQL(1, &nextDay),
 			retention:  5,
 			expectedOp: jsonpatch.JSONopNone,
 		},
 		"WhenDeletionTimeWithRetentionEqualsCurrentRuntime_ThenNonOp": {
 			ctx:        context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:        getXVSHNPostgreSQL(true, &previousDay),
+			obj:        getXVSHNPostgreSQL(1, &previousDay),
 			retention:  1,
 			expectedOp: jsonpatch.JSONopNone,
 		},
@@ -158,14 +172,14 @@ func Test_GetRequeueTime(t *testing.T) {
 	}{
 		"WhenNoDeletion_ThenReturnIn30Seconds": {
 			ctx:              context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:              getXVSHNPostgreSQL(true, nil),
+			obj:              getXVSHNPostgreSQL(1, nil),
 			deletionTime:     nil,
 			retention:        1,
 			expectedDuration: time.Second * 30,
 		},
 		"WhenDeletionTime_ThenCalculateDuration": {
 			ctx:              context.WithValue(context.Background(), currentTimeKey, getCurrentTime()),
-			obj:              getXVSHNPostgreSQL(true, &previousDay),
+			obj:              getXVSHNPostgreSQL(1, &previousDay),
 			deletionTime:     &previousDay,
 			retention:        2,
 			expectedDuration: time.Hour * 24,
@@ -193,22 +207,22 @@ func Test_GetPatchObjectFinalizer(t *testing.T) {
 		expectedPatch client.Patch
 	}{
 		"WhenOpNone_ThenNil": {
-			obj:           getXVSHNPostgreSQL(true, nil),
+			obj:           getXVSHNPostgreSQL(1, nil),
 			op:            jsonpatch.JSONopNone,
 			expectedPatch: nil,
 		},
 		"WhenOpRemove_ThenReturnPatch": {
-			obj:           getXVSHNPostgreSQL(true, nil),
+			obj:           getXVSHNPostgreSQL(1, nil),
 			op:            jsonpatch.JSONopRemove,
 			expectedPatch: getPatch(jsonpatch.JSONopRemove),
 		},
 		"WhenOpAdd_ThenReturnPatch": {
-			obj:           getXVSHNPostgreSQL(true, nil),
+			obj:           getXVSHNPostgreSQL(1, nil),
 			op:            jsonpatch.JSONopAdd,
 			expectedPatch: getPatch(jsonpatch.JSONopAdd),
 		},
 		"WhenOpReplace_ThenReturnPatch": {
-			obj:           getXVSHNPostgreSQL(true, nil),
+			obj:           getXVSHNPostgreSQL(1, nil),
 			op:            jsonpatch.JSONopReplace,
 			expectedPatch: getPatch(jsonpatch.JSONopReplace),
 		},
@@ -238,10 +252,10 @@ func transformToK8sTime(t *time.Time) *metav1.Time {
 	return nil
 }
 
-func getXVSHNPostgreSQL(addFinalizer bool, deletedTime *time.Time) vshnv1.XVSHNPostgreSQL {
+func getXVSHNPostgreSQL(addFinalizer int, deletedTime *time.Time) vshnv1.XVSHNPostgreSQL {
 	obj := vshnv1.XVSHNPostgreSQL{}
-	if addFinalizer {
-		obj.Finalizers = []string{finalizerName}
+	for i := 0; i < addFinalizer; i++ {
+		obj.Finalizers = append(obj.Finalizers, finalizerName)
 	}
 	if deletedTime != nil {
 		obj.SetDeletionTimestamp(&metav1.Time{Time: *deletedTime})
@@ -260,6 +274,21 @@ func getPatch(op jsonpatch.JSONop) client.Patch {
 			Path:  "/metadata/finalizers/" + strIndex,
 			Value: finalizerName,
 		},
+	}
+	patch, _ := json.Marshal(patchOps)
+	return client.RawPatch(types.JSONPatchType, patch)
+}
+
+func getRemovePatches(count int) client.Patch {
+	patchOps := []jsonpatch.JSONpatch{}
+	for i := count; i > 0; i-- {
+		if i == count {
+			continue
+		}
+		patchOps = append(patchOps, jsonpatch.JSONpatch{
+			Op:   jsonpatch.JSONopRemove,
+			Path: "/metadata/finalizers/" + strconv.Itoa(i),
+		})
 	}
 	patch, _ := json.Marshal(patchOps)
 	return client.RawPatch(types.JSONPatchType, patch)

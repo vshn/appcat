@@ -38,6 +38,17 @@ func (e *EventHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		log.Error(err, "Can't read the event", "event", event)
 		return ctrl.Result{}, err
 	}
+	// We might get events without a name. We don't care about those.
+	// Return and don't requeue
+	if strings.HasPrefix(event.Name, ".") {
+		return ctrl.Result{}, nil
+	}
+
+	// We don't care about events of events without a `Kind` or `apiVersion`
+	// Return and don't requeue
+	if event.InvolvedObject.Kind == "" || event.InvolvedObject.APIVersion == "" {
+		return ctrl.Result{}, nil
+	}
 
 	// Get the object the event is about
 	obj := &unstructured.Unstructured{}

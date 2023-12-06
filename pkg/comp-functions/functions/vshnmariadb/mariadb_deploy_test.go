@@ -29,14 +29,14 @@ func TestMariadbDeploy(t *testing.T) {
 	assert.Nil(t, DeployMariadb(ctx, svc))
 
 	ns := &corev1.Namespace{}
-	assert.NoError(t, svc.GetDesiredKubeObject(ns, comp.Name+"-ns"))
+	assert.NoError(t, svc.GetDesiredKubeObject(ns, comp.GetName()+"-instanceNs"))
 	assert.Equal(t, string("vshn"), ns.GetLabels()[utils.OrgLabelName])
 
 	r := &xhelmbeta1.Release{}
 	assert.NoError(t, svc.GetObservedComposedResource(r, comp.Name+"-release"))
 
 	roleBinding := &rbacv1.RoleBinding{}
-	assert.NoError(t, svc.GetDesiredKubeObject(roleBinding, comp.Name+"-services-read-rolebinding"))
+	assert.NoError(t, svc.GetDesiredKubeObject(roleBinding, "namespace-permissions"))
 
 	cd := svc.GetConnectionDetails()
 	assert.Equal(t, mariadbHost, string(cd["MARIADB_HOST"]))

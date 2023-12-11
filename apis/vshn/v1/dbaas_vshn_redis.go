@@ -144,6 +144,10 @@ type VSHNRedisStatus struct {
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 }
 
+func (v *VSHNRedis) GetClaimNamespace() string {
+	return v.GetLabels()["crossplane.io/claim-namespace"]
+}
+
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 

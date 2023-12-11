@@ -10,6 +10,10 @@ func init() {
 	runtime.RegisterService("postgresql", runtime.Service{
 		Steps: []runtime.Step{
 			{
+				Name:    "deploy",
+				Execute: DeployPostgreSQL,
+			},
+			{
 				Name:    "url-connection-details",
 				Execute: AddUrlToConnectionDetails,
 			},

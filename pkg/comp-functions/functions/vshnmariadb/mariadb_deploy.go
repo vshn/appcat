@@ -34,24 +34,10 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 		return runtime.NewFatalResult(err)
 	}
 
-	l.Info("creating namespace observer for mariadb claim namespace")
-	err = common.CreateNamespaceObserver(ctx, comp.GetClaimNamespace(), comp.GetName(), svc)
+	l.Info("Bootstrapping instance namespace and rbac rules")
+	err = common.BootstrapInstanceNs(ctx, comp.GetName(), "mariadb", comp.GetClaimNamespace(), comp.GetInstanceNamespace(), comp.GetName()+"-instanceNs", svc)
 	if err != nil {
-		err = fmt.Errorf("cannot create namespace observer for claim namespace: %w", err)
-		return runtime.NewFatalResult(err)
-	}
-
-	l.Info("Creating namespace for mariadb instance")
-	err = createInstanceNamespace(ctx, comp, svc)
-	if err != nil {
-		err = fmt.Errorf("cannot create mariadb namespace: %w", err)
-		return runtime.NewFatalResult(err)
-	}
-
-	l.Info("Creating rbac rules for mariadb instance")
-	err = common.CreateNamespacePermissions(ctx, comp.GetName(), svc)
-	if err != nil {
-		err = fmt.Errorf("cannot create rbac rules for mariadb instance: %w", err)
+		err = fmt.Errorf("cannot bootstrap instance namespace: %w", err)
 		return runtime.NewFatalResult(err)
 	}
 
@@ -83,27 +69,6 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	l.Info("Get connection details from secret")
 	getConnectionDetails(comp, svc)
 	return nil
-}
-
-// Create the namespace for the mariadb instance
-func createInstanceNamespace(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) error {
-
-	org := common.GetOrg(comp.GetName(), svc)
-	ns := &corev1.Namespace{
-
-		ObjectMeta: metav1.ObjectMeta{
-			Name: comp.GetInstanceNamespace(),
-			Labels: map[string]string{
-				"appcat.vshn.io/servicename":     "mariadb-standalone",
-				"appcat.vshn.io/claim-namespace": comp.GetClaimNamespace(),
-				"appuio.io/no-rbac-creation":     "true",
-				"appuio.io/billing-name":         "appcat-mariadb",
-				"appuio.io/organization":         org,
-			},
-		},
-	}
-
-	return svc.SetDesiredKubeObject(ns, comp.Name+"-ns")
 }
 
 // Create the helm release for the mariadb instance

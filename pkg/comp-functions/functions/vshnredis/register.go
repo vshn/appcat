@@ -10,6 +10,10 @@ func init() {
 	runtime.RegisterService("redis", runtime.Service{
 		Steps: []runtime.Step{
 			{
+				Name:    "deploy",
+				Execute: DeployRedis,
+			},
+			{
 				Name:    "manage-release",
 				Execute: ManageRelease,
 			},

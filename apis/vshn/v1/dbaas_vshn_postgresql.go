@@ -235,6 +235,10 @@ type VSHNPostgreSQLStatus struct {
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 }
 
+func (v *VSHNPostgreSQL) GetClaimNamespace() string {
+	return v.GetLabels()["crossplane.io/claim-namespace"]
+}
+
 // +kubebuilder:object:root=true
 
 // VSHNPostgreSQLList defines a list of VSHNPostgreSQL

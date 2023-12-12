@@ -1,0 +1,87 @@
+desired:
+  resources:
+    cluster:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-cluster
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: stackgres.io/v1
+              kind: SGCluster
+              metadata:
+                name: psql-gc9x4
+                namespace: vshn-postgresql-psql-gc9x4
+              spec:
+                configurations:
+                  backups:
+                  - cronSchedule: 44 20 * * *
+                    retention: 6
+                    sgObjectStorage: sgbackup-psql-gc9x4
+                  sgPostgresConfig: psql-gc9x4
+                instances: 1
+                nonProductionOptions:
+                  enableSetPatroniCpuRequests: true
+                  enableSetPatroniMemoryRequests: true
+                pods:
+                  persistentVolume:
+                    size: 20Gi
+                  scheduling:
+                    nodeSelector: {}
+                postgres:
+                  ssl:
+                    certificateSecretKeySelector:
+                      key: tls.crt
+                      name: tls-certificate
+                    enabled: true
+                    privateKeySecretKeySelector:
+                      key: tls.key
+                      name: tls-certificate
+                  version: "15"
+                sgInstanceProfile: psql-gc9x4
+          managementPolicy: Default
+          providerConfigRef:
+            name: kubernetes
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}

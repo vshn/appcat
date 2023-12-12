@@ -361,8 +361,12 @@ func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon st
 					Name: providerConfigRefName,
 				},
 			},
-			References: refs,
 		},
+	}
+
+	// Only set the refs if they are actually set.
+	if len(refs) > 0 {
+		ko.Spec.References = refs
 	}
 
 	if observeOnly {
@@ -688,4 +692,10 @@ func (s *ServiceRuntime) GetDesiredComposite(obj client.Object) error {
 	}
 
 	return json.Unmarshal(jsonBytes, obj)
+}
+
+// DeleteDesiredCompososedResource removes a composite resource from the desired objects.
+// If the object is existing on the cluster, it will be deleted!
+func (s *ServiceRuntime) DeleteDesiredCompososedResource(name string) {
+	delete(s.desirdResources, resource.Name(name))
 }

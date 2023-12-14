@@ -116,6 +116,9 @@ func createNamespacePermissions(ctx context.Context, instance string, instanceNs
 	}
 
 	org := getOrg(instance, svc)
+	if org == "" {
+		return nil
+	}
 
 	roleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{

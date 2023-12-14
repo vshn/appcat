@@ -21,7 +21,7 @@ func DeployPostgreSQL(ctx context.Context, svc *runtime.ServiceRuntime) *xfnprot
 	}
 
 	l.Info("Bootstrapping instance namespace and rbac rules")
-	err = common.BootstrapInstanceNs(ctx, comp.GetName(), "postgresql", comp.GetClaimNamespace(), comp.GetInstanceNamespace(), "namespace-conditions", svc)
+	err = common.BootstrapInstanceNs(ctx, comp, "postgresql", "namespace-conditions", svc)
 	if err != nil {
 		err = fmt.Errorf("cannot bootstrap instance namespace: %w", err)
 		return runtime.NewFatalResult(err)

@@ -35,7 +35,7 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	}
 
 	l.Info("Bootstrapping instance namespace and rbac rules")
-	err = common.BootstrapInstanceNs(ctx, comp.GetName(), "mariadb", comp.GetClaimNamespace(), comp.GetInstanceNamespace(), comp.GetName()+"-instanceNs", svc)
+	err = common.BootstrapInstanceNs(ctx, comp, "mariadb", comp.GetName()+"-instanceNs", svc)
 	if err != nil {
 		err = fmt.Errorf("cannot bootstrap instance namespace: %w", err)
 		return runtime.NewFatalResult(err)

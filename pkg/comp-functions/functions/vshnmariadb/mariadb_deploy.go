@@ -2,6 +2,8 @@ package vshnmariadb
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
@@ -48,6 +50,13 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 		return runtime.NewFatalResult(err)
 	}
 
+	l.Info("Create credentials secret")
+	err = createCredentialsSecret(ctx, comp, svc)
+	if err != nil {
+		err = fmt.Errorf("cannot create credentials secret; %w", err)
+		return runtime.NewFatalResult(err)
+	}
+
 	l.Info("Creating helm release for mariadb instance")
 	err = createObjectHelmRelease(ctx, comp, svc)
 	if err != nil {
@@ -67,7 +76,11 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	}
 
 	l.Info("Get connection details from secret")
-	getConnectionDetails(comp, svc)
+	err = getConnectionDetails(comp, svc)
+	if err != nil {
+		err = fmt.Errorf("Cannot get connection details: %w", err)
+		return runtime.NewFatalResult(err)
+	}
 	return nil
 }
 
@@ -85,6 +98,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 	reqMem, reqCPU, mem, cpu, disk := common.GetResources(&comp.Spec.Parameters.Size, resources)
 
 	values := map[string]interface{}{
+		"existingSecret":   comp.GetName(),
 		"fullnameOverride": comp.GetName(),
 		"replicaCount":     1,
 		"resources": map[string]interface{}{
@@ -167,16 +181,6 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 					ObjectReference: corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Secret",
-						Name:       comp.GetName(),
-						Namespace:  comp.GetInstanceNamespace(),
-						FieldPath:  "data.mariadb-root-password",
-					},
-					ToConnectionSecretKey: "MARIADB_PASSWORD",
-				},
-				{
-					ObjectReference: corev1.ObjectReference{
-						APIVersion: "v1",
-						Kind:       "Secret",
 						Name:       "tls-server-certificate",
 						Namespace:  comp.GetInstanceNamespace(),
 						FieldPath:  "data[ca.crt]",
@@ -196,12 +200,74 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 	return svc.SetDesiredComposedResourceWithName(r, comp.Name+"-release")
 }
 
-func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) {
+func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) error {
 	mariadbHost := comp.GetName() + ".vshn-mariadb-" + comp.GetName() + ".svc.cluster.local"
 	mariadbURL := fmt.Sprintf("mysql://%s:%s", mariadbHost, mariadbPort)
+
+	secret := &corev1.Secret{}
+
+	err := svc.GetObservedKubeObject(secret, comp.GetName()+"-credentials-secret")
+
+	if err != nil {
+		return nil
+	}
+	mariadbRootPw := secret.Data["mariadb-root-password"]
 
 	svc.SetConnectionDetail("MARIADB_HOST", []byte(mariadbHost))
 	svc.SetConnectionDetail("MARIADB_PORT", []byte(mariadbPort))
 	svc.SetConnectionDetail("MARIADB_USERNAME", []byte(mariadbUser))
 	svc.SetConnectionDetail("MARIADB_URL", []byte(mariadbURL))
+	svc.SetConnectionDetail("MARIADB_PASSWORD", mariadbRootPw)
+
+	return nil
+}
+
+func createCredentialsSecret(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) error {
+
+	secretObjectName := comp.GetName() + "-credentials-secret"
+	secret := &corev1.Secret{}
+	err := svc.GetObservedKubeObject(secret, secretObjectName)
+	if err == runtime.ErrNotFound {
+		// Secret doesn't exist yet. Auto-genering secret
+		mariadbGaleraBackupPw, err := generatePW()
+		if err != nil {
+			err = fmt.Errorf("cannot generate pw for mariadb-galera-backup: %w", err)
+			return err
+		}
+		mariadbPw, err := generatePW()
+		if err != nil {
+			err = fmt.Errorf("cannot generate pw for mariadb-password: %w", err)
+			return err
+		}
+		mariadbRootPw, err := generatePW()
+		if err != nil {
+			err = fmt.Errorf("cannot generate pw for mariadb-root-password: %w", err)
+			return err
+		}
+		secret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      comp.GetName(),
+				Namespace: comp.GetInstanceNamespace(),
+			},
+			StringData: map[string]string{
+				"mariadb-galera-mariabackup-password": mariadbGaleraBackupPw,
+				"mariadb-password":                    mariadbPw,
+				"mariadb-root-password":               mariadbRootPw,
+			},
+		}
+	}
+	if err != nil && err != runtime.ErrNotFound {
+		return err
+	}
+
+	return svc.SetDesiredKubeObject(secret, secretObjectName)
+}
+
+func generatePW() (string, error) {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b)[:32], nil
 }

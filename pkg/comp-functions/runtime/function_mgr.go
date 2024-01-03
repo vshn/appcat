@@ -215,7 +215,9 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 		return nil, err
 	}
 
-	comp, err := request.GetDesiredCompositeResource(req)
+	// We need the observed composition here, as otherwise the
+	// connectionDetails are always empty.
+	comp, err := request.GetObservedCompositeResource(req)
 	if err != nil {
 		return &ServiceRuntime{}, err
 	}

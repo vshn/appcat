@@ -10,6 +10,10 @@ func init() {
 				Name:    "deploy",
 				Execute: DeployMariadb,
 			},
+			{
+				Name:    "maintenance",
+				Execute: AddMaintenanceJob,
+			},
 		},
 	})
 }

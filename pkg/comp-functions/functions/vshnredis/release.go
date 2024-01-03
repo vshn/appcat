@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/blang/semver/v4"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -88,7 +88,7 @@ func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, desired *v1beta1
 	}
 
 	l.V(1).Info("Setting release version")
-	err = setReleaseVersion(ctx, comp, values, observedValues)
+	err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
 	if err != nil {
 		return nil, fmt.Errorf("cannot set redis version for release %s: %v", releaseName, err)
 	}
@@ -193,34 +193,4 @@ func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("cannot unmarshal values from release: %v", err)
 	}
 	return values, nil
-}
-
-// setReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
-func setReleaseVersion(ctx context.Context, comp *vshnv1.VSHNRedis, values map[string]interface{}, observed map[string]interface{}) error {
-	l := controllerruntime.LoggerFrom(ctx)
-
-	tag, _, err := unstructured.NestedString(observed, "image", "tag")
-	if err != nil {
-		return fmt.Errorf("cannot get image tag from values in release: %v", err)
-	}
-
-	desiredVersion, err := semver.ParseTolerant(comp.Spec.Parameters.Service.Version)
-	if err != nil {
-		l.Info("failed to parse desired redis version", "version", comp.Spec.Parameters.Service.Version)
-		return fmt.Errorf("invalid redis version %q", comp.Spec.Parameters.Service.Version)
-	}
-
-	observedVersion, err := semver.ParseTolerant(tag)
-	if err != nil {
-		l.Info("failed to parse observed redis version", "version", tag)
-		// If the observed version is not parsable, e.g. if it's empty, update to the desired version
-		return unstructured.SetNestedField(values, comp.Spec.Parameters.Service.Version, "image", "tag")
-	}
-
-	if observedVersion.GTE(desiredVersion) {
-		// In case the overved tag is valid and greater than the desired version, keep the observed version
-		return unstructured.SetNestedField(values, tag, "image", "tag")
-	}
-	// In case the observed tag is smaller than the desired version,  then set the version from the claim
-	return unstructured.SetNestedField(values, comp.Spec.Parameters.Service.Version, "image", "tag")
 }

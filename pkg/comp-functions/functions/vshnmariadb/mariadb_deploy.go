@@ -3,14 +3,18 @@ package vshnmariadb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	"github.com/sethvargo/go-password/password"
 	xhelmbeta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
+	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +35,13 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		err = fmt.Errorf("cannot get observed composite: %w", err)
+		return runtime.NewFatalResult(err)
+	}
+
+	l.Info("Create credentials secret")
+	err = createCredentialsSecret(comp, svc)
+	if err != nil {
+		err = fmt.Errorf("cannot create credentials secret; %w", err)
 		return runtime.NewFatalResult(err)
 	}
 
@@ -67,24 +78,118 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	}
 
 	l.Info("Get connection details from secret")
-	getConnectionDetails(comp, svc)
+	err = getConnectionDetails(comp, svc)
+	if err != nil {
+		err = fmt.Errorf("Cannot get connection details: %w", err)
+		return runtime.NewFatalResult(err)
+	}
 	return nil
 }
 
 // Create the helm release for the mariadb instance
 func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) error {
 
+	values, err := newValues(ctx, svc, comp)
+	if err != nil {
+		return err
+	}
+
+	observedValues, err := getObservedReleaseValues(svc, comp.GetName()+"-release")
+	if err != nil {
+		return fmt.Errorf("cannot get observed release values: %w", err)
+	}
+
+	err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	if err != nil {
+		return fmt.Errorf("cannot set mariadb version for release: %w", err)
+	}
+
+	vb, err := json.Marshal(values)
+	if err != nil {
+		err = fmt.Errorf("cannot marshal helm values: %w", err)
+		return err
+	}
+
+	r := newRelease(svc, vb, comp)
+
+	err = svc.AddObservedConnectionDetails(comp.Name + "-release")
+	if err != nil {
+		return err
+	}
+
+	return svc.SetDesiredComposedResourceWithName(r, comp.Name+"-release")
+}
+
+func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) error {
+	mariadbHost := comp.GetName() + ".vshn-mariadb-" + comp.GetName() + ".svc.cluster.local"
+	mariadbURL := fmt.Sprintf("mysql://%s:%s", mariadbHost, mariadbPort)
+
+	secret := &corev1.Secret{}
+
+	err := svc.GetObservedKubeObject(secret, comp.GetName()+"-credentials-secret")
+
+	if err != nil {
+		return nil
+	}
+	mariadbRootPw := secret.Data["mariadb-root-password"]
+
+	svc.SetConnectionDetail("MARIADB_HOST", []byte(mariadbHost))
+	svc.SetConnectionDetail("MARIADB_PORT", []byte(mariadbPort))
+	svc.SetConnectionDetail("MARIADB_USERNAME", []byte(mariadbUser))
+	svc.SetConnectionDetail("MARIADB_URL", []byte(mariadbURL))
+	svc.SetConnectionDetail("MARIADB_PASSWORD", mariadbRootPw)
+
+	return nil
+}
+
+func getObservedRelease(svc *runtime.ServiceRuntime, releaseName string) (*xhelmv1.Release, error) {
+	r := &xhelmv1.Release{}
+	err := svc.GetObservedComposedResource(r, releaseName)
+	if errors.Is(err, runtime.ErrNotFound) {
+		return nil, nil
+	}
+	return r, nil
+}
+
+func getObservedReleaseValues(svc *runtime.ServiceRuntime, releaseName string) (map[string]interface{}, error) {
+	values := map[string]interface{}{}
+
+	r, err := getObservedRelease(svc, releaseName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get observed release: %w", err)
+	}
+
+	if r == nil {
+		return values, nil
+	}
+
+	if r.Spec.ForProvider.Values.Raw == nil {
+		return values, nil
+	}
+	err = json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values)
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal values from release: %v", err)
+	}
+
+	return values, err
+}
+
+func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) (map[string]interface{}, error) {
+
+	values := map[string]interface{}{}
+
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
 	if err != nil {
 		err = fmt.Errorf("cannot fetch plans from the composition config, maybe they are not set: %w", err)
-		return err
+		return values, err
 	}
 
 	reqMem, reqCPU, mem, cpu, disk := common.GetResources(&comp.Spec.Parameters.Size, resources)
 
-	values := map[string]interface{}{
+	values = map[string]interface{}{
+		"existingSecret":   comp.GetName(),
 		"fullnameOverride": comp.GetName(),
 		"replicaCount":     1,
 		"resources": map[string]interface{}{
@@ -129,12 +234,10 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 		},
 	}
 
-	vb, err := json.Marshal(values)
-	if err != nil {
-		err = fmt.Errorf("cannot marshal helm values: %w", err)
-		return err
-	}
+	return values, nil
+}
 
+func newRelease(svc *runtime.ServiceRuntime, vb []byte, comp *vshnv1.VSHNMariaDB) *xhelmbeta1.Release {
 	r := &xhelmbeta1.Release{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName(),
@@ -167,16 +270,6 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 					ObjectReference: corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Secret",
-						Name:       comp.GetName(),
-						Namespace:  comp.GetInstanceNamespace(),
-						FieldPath:  "data.mariadb-root-password",
-					},
-					ToConnectionSecretKey: "MARIADB_PASSWORD",
-				},
-				{
-					ObjectReference: corev1.ObjectReference{
-						APIVersion: "v1",
-						Kind:       "Secret",
 						Name:       "tls-server-certificate",
 						Namespace:  comp.GetInstanceNamespace(),
 						FieldPath:  "data[ca.crt]",
@@ -188,20 +281,44 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 		},
 	}
 
-	err = svc.AddObservedConnectionDetails(comp.Name + "-release")
-	if err != nil {
+	return r
+}
+
+func createCredentialsSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) error {
+	secretObjectName := comp.GetName() + "-credentials-secret"
+	secret := &corev1.Secret{}
+	err := svc.GetObservedKubeObject(secret, secretObjectName)
+	if err == runtime.ErrNotFound {
+		// Secret doesn't exist yet. Auto-genering secret
+		mariadbGaleraBackupPw, err := password.Generate(16, 4, 4, false, true)
+		if err != nil {
+			err = fmt.Errorf("cannot generate pw for mariadb-galera-backup: %w", err)
+			return err
+		}
+		mariadbPw, err := password.Generate(16, 4, 4, false, true)
+		if err != nil {
+			err = fmt.Errorf("cannot generate pw for mariadb-password: %w", err)
+			return err
+		}
+		mariadbRootPw, err := password.Generate(16, 4, 4, false, true)
+		if err != nil {
+			err = fmt.Errorf("cannot generate pw for mariadb-root-password: %w", err)
+			return err
+		}
+		secret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      comp.GetName(),
+				Namespace: comp.GetInstanceNamespace(),
+			},
+			StringData: map[string]string{
+				"mariadb-galera-mariabackup-password": mariadbGaleraBackupPw,
+				"mariadb-password":                    mariadbPw,
+				"mariadb-root-password":               mariadbRootPw,
+			},
+		}
+	} else if err != nil {
 		return err
 	}
 
-	return svc.SetDesiredComposedResourceWithName(r, comp.Name+"-release")
-}
-
-func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) {
-	mariadbHost := comp.GetName() + ".vshn-mariadb-" + comp.GetName() + ".svc.cluster.local"
-	mariadbURL := fmt.Sprintf("mysql://%s:%s", mariadbHost, mariadbPort)
-
-	svc.SetConnectionDetail("MARIADB_HOST", []byte(mariadbHost))
-	svc.SetConnectionDetail("MARIADB_PORT", []byte(mariadbPort))
-	svc.SetConnectionDetail("MARIADB_USERNAME", []byte(mariadbUser))
-	svc.SetConnectionDetail("MARIADB_URL", []byte(mariadbURL))
+	return svc.SetDesiredKubeObject(secret, secretObjectName)
 }

@@ -129,7 +129,10 @@ func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime)
 	err := svc.GetObservedKubeObject(secret, comp.GetName()+"-credentials-secret")
 
 	if err != nil {
-		return nil
+		if err == runtime.ErrNotFound {
+			return nil
+		}
+		return err
 	}
 	mariadbRootPw := secret.Data["mariadb-root-password"]
 
@@ -290,17 +293,17 @@ func createCredentialsSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRunti
 	err := svc.GetObservedKubeObject(secret, secretObjectName)
 	if err == runtime.ErrNotFound {
 		// Secret doesn't exist yet. Auto-genering secret
-		mariadbGaleraBackupPw, err := password.Generate(16, 4, 4, false, true)
+		mariadbGaleraBackupPw, err := genPassword()
 		if err != nil {
 			err = fmt.Errorf("cannot generate pw for mariadb-galera-backup: %w", err)
 			return err
 		}
-		mariadbPw, err := password.Generate(16, 4, 4, false, true)
+		mariadbPw, err := genPassword()
 		if err != nil {
 			err = fmt.Errorf("cannot generate pw for mariadb-password: %w", err)
 			return err
 		}
-		mariadbRootPw, err := password.Generate(16, 4, 4, false, true)
+		mariadbRootPw, err := genPassword()
 		if err != nil {
 			err = fmt.Errorf("cannot generate pw for mariadb-root-password: %w", err)
 			return err
@@ -321,4 +324,15 @@ func createCredentialsSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRunti
 	}
 
 	return svc.SetDesiredKubeObject(secret, secretObjectName)
+}
+
+func genPassword() (string, error) {
+	gen, err := password.NewGenerator(&password.GeneratorInput{
+		Symbols: "!:@.,/+-=()",
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return gen.Generate(16, 4, 4, false, true)
 }

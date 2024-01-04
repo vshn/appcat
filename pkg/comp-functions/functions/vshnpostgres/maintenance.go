@@ -149,7 +149,7 @@ func createMaintenanceSecret(instanceNamespace, sgNamespace, resourceName string
 			DependsOn: xkubev1.DependsOn{
 				APIVersion: "v1",
 				Kind:       "Secret",
-				Name:       "stackgres-restapi",
+				Name:       "stackgres-restapi-admin",
 				Namespace:  sgNamespace,
 			},
 			FieldPath: ptr.To("data"),

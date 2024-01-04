@@ -118,7 +118,7 @@ build:
 
 .PHONY: test
 test: ## Run tests
-	go test ./...
+	go test ./... -count=1
 
 .PHONY: docker-build
 docker-build:

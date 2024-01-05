@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
-	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
+	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -41,10 +43,21 @@ func ManageRelease(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 
 	releaseName := desiredRelease.Name
 
+	l.Info("Creating password secret")
+	passwordSecret, err := common.AddCredentialsSecret(comp, svc, []string{"root-password"})
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create credential secret: %s", err))
+	}
+
 	l.Info("Updating helm values")
-	desiredRelease, err = updateRelease(ctx, comp, desiredRelease, observedRelease)
+	desiredRelease, err = updateRelease(ctx, comp, desiredRelease, observedRelease, passwordSecret)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot update redis release %q: %q: %w", releaseName, err.Error(), err))
+	}
+
+	err = svc.AddObservedConnectionDetails("release")
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add release's connection details: %s", err))
 	}
 
 	err = svc.SetDesiredComposedResourceWithName(desiredRelease, redisRelease)
@@ -55,8 +68,8 @@ func ManageRelease(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	return nil
 }
 
-func getRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*v1beta1.Release, error) {
-	r := &v1beta1.Release{}
+func getRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*xhelmv1.Release, error) {
+	r := &xhelmv1.Release{}
 	err := svc.GetDesiredComposedResourceByName(r, redisRelease)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
@@ -64,8 +77,8 @@ func getRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*v1beta1.Rele
 	return r, nil
 }
 
-func getObservedRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*v1beta1.Release, error) {
-	r := &v1beta1.Release{}
+func getObservedRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*xhelmv1.Release, error) {
+	r := &xhelmv1.Release{}
 	err := svc.GetObservedComposedResource(r, redisRelease)
 	if errors.Is(err, runtime.ErrNotFound) {
 		return r, nil
@@ -73,7 +86,7 @@ func getObservedRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*v1be
 	return r, err
 }
 
-func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, desired *v1beta1.Release, observed *v1beta1.Release) (*v1beta1.Release, error) {
+func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, desired *xhelmv1.Release, observed *xhelmv1.Release, passwordSecret string) (*xhelmv1.Release, error) {
 	l := controllerruntime.LoggerFrom(ctx)
 	l.Info("Getting helm values")
 	releaseName := desired.Name
@@ -110,6 +123,15 @@ func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, desired *v1beta1
 	if err != nil {
 		return nil, fmt.Errorf("cannot add configmap for release %s: %v", releaseName, err)
 	}
+
+	l.V(1).Info("Adding secret reference")
+	err = addPassword(values, passwordSecret)
+	if err != nil {
+		return nil, fmt.Errorf("cannot add password secret for release %s: %w", releaseName, err)
+	}
+
+	l.V(1).Info("Add connection details to release")
+	addConnectionDetails(desired, comp.GetInstanceNamespace(), passwordSecret)
 
 	l.V(1).Info("Final value map", "map", values)
 
@@ -183,7 +205,7 @@ func addBackupCM(valueMap map[string]any) error {
 	return nil
 }
 
-func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
+func getReleaseValues(r *xhelmv1.Release) (map[string]interface{}, error) {
 	values := map[string]interface{}{}
 	if r.Spec.ForProvider.Values.Raw == nil {
 		return values, nil
@@ -193,4 +215,67 @@ func getReleaseValues(r *v1beta1.Release) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("cannot unmarshal values from release: %v", err)
 	}
 	return values, nil
+}
+
+func addPassword(valueMap map[string]interface{}, secretName string) error {
+	err := unstructured.SetNestedField(valueMap, secretName, "auth", "existingSecret")
+	if err != nil {
+		return err
+	}
+	return unstructured.SetNestedField(valueMap, "root-password", "auth", "existingSecretPasswordKey")
+}
+
+func addConnectionDetails(release *xhelmv1.Release, namespace, secretName string) {
+	cd := []xhelmv1.ConnectionDetail{
+		{
+			ObjectReference: corev1.ObjectReference{
+				Kind:       "Secret",
+				APIVersion: "v1",
+				Namespace:  namespace,
+				Name:       secretName,
+				FieldPath:  "data.root-password",
+			},
+			ToConnectionSecretKey:  "REDIS_PASSWORD",
+			SkipPartOfReleaseCheck: true,
+		},
+		{
+			ObjectReference: corev1.ObjectReference{
+				Kind:       "Secret",
+				APIVersion: "v1",
+				Namespace:  namespace,
+				Name:       "tls-client-certificate",
+				FieldPath:  "data[ca.crt]",
+			},
+			ToConnectionSecretKey:  "ca.crt",
+			SkipPartOfReleaseCheck: true,
+		},
+		{
+			ObjectReference: corev1.ObjectReference{
+				Kind:       "Secret",
+				APIVersion: "v1",
+				Namespace:  namespace,
+				Name:       "tls-client-certificate",
+				FieldPath:  "data[tls.crt]",
+			},
+			ToConnectionSecretKey:  "tls.crt",
+			SkipPartOfReleaseCheck: true,
+		},
+		{
+			ObjectReference: corev1.ObjectReference{
+				Kind:       "Secret",
+				APIVersion: "v1",
+				Namespace:  namespace,
+				Name:       "tls-client-certificate",
+				FieldPath:  "data[tls.key]",
+			},
+			ToConnectionSecretKey:  "tls.key",
+			SkipPartOfReleaseCheck: true,
+		},
+	}
+
+	release.Spec.ResourceSpec.WriteConnectionSecretToReference = &xpv1.SecretReference{
+		Name:      "release-connection-details",
+		Namespace: namespace,
+	}
+	release.Spec.ConnectionDetails = cd
 }

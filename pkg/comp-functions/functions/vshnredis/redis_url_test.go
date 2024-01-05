@@ -2,143 +2,132 @@ package vshnredis
 
 import (
 	"testing"
-
-	v1 "k8s.io/api/core/v1"
 )
 
 // test getRedisURL function
 func Test_getRedisURL(t *testing.T) {
 	tests := []struct {
 		name string
-		s    *v1.Secret
+		s    map[string][]byte
+		host string
+		port string
+		user string
 		want string
 	}{
 		{
 			name: "getRedisURL",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte("redis"),
-					"REDIS_USERNAME": []byte("user"),
-					"REDIS_PASSWORD": []byte("pass"),
-					"REDIS_PORT":     []byte("6379"),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte("pass"),
 			},
+			host: "redis",
+			port: "6379",
+			user: "user",
 			want: "rediss://user:pass@redis:6379",
 		},
 		{
 			name: "getRedisURLWithEmptyPassword",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte("redis"),
-					"REDIS_USERNAME": []byte("user"),
-					"REDIS_PASSWORD": []byte(""),
-					"REDIS_PORT":     []byte("6379"),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte(""),
 			},
+
+			host: "redis",
+			port: "6379",
+			user: "user",
 			want: "",
 		},
 		{
 			name: "getRedisURLWithEmptyUsername",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte("redis"),
-					"REDIS_USERNAME": []byte(""),
-					"REDIS_PASSWORD": []byte("pass"),
-					"REDIS_PORT":     []byte("6379"),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte("pass"),
 			},
+
+			host: "redis",
+			port: "6379",
+			user: "",
 			want: "",
 		},
 		{
 			name: "getRedisURLWithEmptyPort",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte("redis"),
-					"REDIS_USERNAME": []byte("user"),
-					"REDIS_PASSWORD": []byte("pass"),
-					"REDIS_PORT":     []byte(""),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte("pass"),
 			},
+
+			host: "redis",
+			port: "",
+			user: "user",
 			want: "",
 		},
 		{
 			name: "getRedisURLWithEmptyHost",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte(""),
-					"REDIS_USERNAME": []byte("user"),
-					"REDIS_PASSWORD": []byte("pass"),
-					"REDIS_PORT":     []byte("6379"),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte("pass"),
+				"REDIS_PORT":     []byte("6379"),
 			},
+
+			host: "",
+			port: "6379",
+			user: "user",
 			want: "",
 		},
 		{
 			name: "getRedisURLWithEmptyHostAndPort",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte(""),
-					"REDIS_USERNAME": []byte("user"),
-					"REDIS_PASSWORD": []byte("pass"),
-					"REDIS_PORT":     []byte(""),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte("pass"),
 			},
+
+			host: "",
+			port: "",
+			user: "user",
 			want: "",
 		},
 		{
 			name: "getRedisURLWithEmptyHostAndPortAndUsername",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte(""),
-					"REDIS_USERNAME": []byte(""),
-					"REDIS_PASSWORD": []byte("pass"),
-					"REDIS_PORT":     []byte(""),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte("pass"),
 			},
+
+			host: "",
+			port: "",
+			user: "",
 			want: "",
 		},
 		{
 			name: "getRedisURLWithEmptyHostAndPortAndUsernameAndPassword",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte(""),
-					"REDIS_USERNAME": []byte(""),
-					"REDIS_PASSWORD": []byte(""),
-					"REDIS_PORT":     []byte(""),
-				},
-			},
+			s:    map[string][]byte{},
+
+			host: "",
+			port: "",
+			user: "",
 			want: "",
 		},
 		{
 			name: "getRedisURLWithEmptyHostAndPortAndUsernameAndPasswordAndExtra",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte(""),
-					"REDIS_USERNAME": []byte(""),
-					"REDIS_PASSWORD": []byte(""),
-					"REDIS_PORT":     []byte(""),
-					"EXTRA":          []byte("extra"),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte(""),
+				"EXTRA":          []byte("extra"),
 			},
+
+			host: "",
+			port: "",
+			user: "",
 			want: "",
 		},
 		{
 			name: "getRedisURLWithEmptyHostAndPortAndUsernameAndPasswordAndExtraAndRedisUrl",
-			s: &v1.Secret{
-				Data: map[string][]byte{
-					"REDIS_HOST":     []byte(""),
-					"REDIS_USERNAME": []byte(""),
-					"REDIS_PASSWORD": []byte(""),
-					"REDIS_PORT":     []byte(""),
-					"EXTRA":          []byte("extra"),
-					"REDIS_URL":      []byte("redis://user:pass@redis:6379"),
-				},
+			s: map[string][]byte{
+				"REDIS_PASSWORD": []byte(""),
+				"EXTRA":          []byte("extra"),
+				"REDIS_URL":      []byte("redis://user:pass@redis:6379"),
 			},
+
+			host: "",
+			port: "",
+			user: "",
 			want: "",
 		},
 	}
 	for _, tt := range tests {
-		ret := getRedisURL(tt.s)
+		ret := getRedisURL(tt.s, tt.host, tt.port, tt.user)
 		if ret != tt.want {
 			t.Errorf("getRedisURL() = %v, want %v", ret, tt.want)
 		}

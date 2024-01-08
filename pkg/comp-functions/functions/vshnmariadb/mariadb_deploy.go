@@ -114,9 +114,6 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 }
 
 func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, secretName string) error {
-	mariadbHost := comp.GetName() + ".vshn-mariadb-" + comp.GetName() + ".svc.cluster.local"
-	mariadbURL := fmt.Sprintf("mysql://%s:%s", mariadbHost, mariadbPort)
-
 	secret := &corev1.Secret{}
 
 	err := svc.GetObservedKubeObject(secret, secretName)
@@ -128,6 +125,9 @@ func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime,
 		return err
 	}
 	mariadbRootPw := secret.Data["mariadb-root-password"]
+
+	mariadbHost := comp.GetName() + ".vshn-mariadb-" + comp.GetName() + ".svc.cluster.local"
+	mariadbURL := fmt.Sprintf("mysql://%s:%s@%s:%s", mariadbUser, mariadbRootPw, mariadbHost, mariadbPort)
 
 	svc.SetConnectionDetail("MARIADB_HOST", []byte(mariadbHost))
 	svc.SetConnectionDetail("MARIADB_PORT", []byte(mariadbPort))

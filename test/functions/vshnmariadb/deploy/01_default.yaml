@@ -33,6 +33,9 @@ observed:
           crossplane.io/composite: mariadb-gc9x4
         name: mariadb-gc9x4
       spec:
+        parameters:
+          service:
+            version: "11.2"
         claimRef:
           apiVersion: vshn.appcat.vshn.io/v1
           kind: VSHNMariaDB
@@ -89,7 +92,6 @@ observed:
     mariadb-gc9x4-release:
       connection_details:
         MARIADB_USER: cm9vdA== #root
-        MARIADB_PASSWORD: bWFyaWFkYjEyMw== #mariadb123
       resource:
         apiVersion: helm.crossplane.io/v1beta1
         kind: Release
@@ -110,3 +112,18 @@ observed:
                 requests:
                   cpu: 1
                   memory: 1Gi
+    mariadb-gc9x4-credentials-secret:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: vshn-mariadb-mariadb-gc9x4
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: mariadb-gc9x4
+              data:
+                mariadb-root-password: bWFyaWFkYjEyMw==

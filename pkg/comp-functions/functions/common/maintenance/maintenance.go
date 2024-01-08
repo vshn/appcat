@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/blang/semver/v4"
 	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -13,7 +14,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -203,7 +205,7 @@ func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule str
 		},
 		Spec: batchv1.CronJobSpec{
 			Schedule:                   cronSchedule,
-			SuccessfulJobsHistoryLimit: pointer.Int32(0),
+			SuccessfulJobsHistoryLimit: ptr.To(int32(0)),
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
@@ -293,4 +295,34 @@ func (m *Maintenance) parseCron() (string, error) {
 	}
 
 	return fmt.Sprintf("%s %s * * %d", timeSlice[2], timeSlice[1], cronDayOfWeek), nil
+}
+
+// SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
+func SetReleaseVersion(ctx context.Context, version string, values map[string]interface{}, observed map[string]interface{}, fields []string) error {
+	l := controllerruntime.LoggerFrom(ctx)
+
+	tag, _, err := unstructured.NestedString(observed, fields...)
+	if err != nil {
+		return fmt.Errorf("cannot get image tag from values in release: %v", err)
+	}
+
+	desiredVersion, err := semver.ParseTolerant(version)
+	if err != nil {
+		l.Info("failed to parse desired service version", "version", version)
+		return fmt.Errorf("invalid service version %q", version)
+	}
+
+	observedVersion, err := semver.ParseTolerant(tag)
+	if err != nil {
+		l.Info("failed to parse observed service version", "version", tag)
+		// If the observed version is not parsable, e.g. if it's empty, update to the desired version
+		return unstructured.SetNestedField(values, version, fields...)
+	}
+
+	if observedVersion.GTE(desiredVersion) {
+		// In case the overved tag is valid and greater than the desired version, keep the observed version
+		return unstructured.SetNestedField(values, tag, fields...)
+	}
+	// In case the observed tag is smaller than the desired version,  then set the version from the claim
+	return unstructured.SetNestedField(values, version, fields...)
 }

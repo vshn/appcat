@@ -26,12 +26,14 @@ const (
 	postgresql
 	redis
 	minio
+	mariadb
 )
 
 var maintenanceServices = map[service][]string{
 	postgresql: {"postgresql"},
 	redis:      {"redis"},
 	minio:      {"minio"},
+	mariadb:    {"mariadb"},
 }
 
 var serviceName service
@@ -86,6 +88,10 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 
 	case minio:
 		m := maintenance.NewMinio(kubeClient, http.DefaultClient)
+		return m.DoMaintenance(cmd.Context())
+
+	case mariadb:
+		m := maintenance.NewMariaDB(kubeClient, http.DefaultClient)
 		return m.DoMaintenance(cmd.Context())
 	}
 

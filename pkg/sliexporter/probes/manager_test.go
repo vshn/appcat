@@ -11,12 +11,13 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
+	maintenancecontroller "github.com/vshn/appcat/v4/pkg/sliexporter/maintenance_controller"
 )
 
 func TestManger_Simple(t *testing.T) {
 	t.Parallel()
 
-	m := NewManager(logr.Discard())
+	m := NewManager(logr.Discard(), &maintenancecontroller.MaintenanceReconciler{})
 	observer := &fakeObserveVec{
 		observations: &[]observation{},
 		mu:           &sync.Mutex{},
@@ -55,7 +56,7 @@ func TestManger_Simple(t *testing.T) {
 func TestManger_Multi(t *testing.T) {
 	t.Parallel()
 
-	m := NewManager(logr.Discard())
+	m := NewManager(logr.Discard(), &maintenancecontroller.MaintenanceReconciler{})
 	tickerChan := make(chan chan time.Time)
 	m.newTicker = func() (<-chan time.Time, func()) {
 		return <-tickerChan, func() {}

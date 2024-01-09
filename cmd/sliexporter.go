@@ -8,6 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/vshn/appcat/v4/pkg"
+	maintenancecontroller "github.com/vshn/appcat/v4/pkg/sliexporter/maintenance_controller"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 	vshnminiocontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnminio_controller"
 	vshnpostgresqlcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnpostgresql_controller"
@@ -20,9 +21,9 @@ import (
 )
 
 type sliProber struct {
-	scheme                                                              *runtime.Scheme
-	metricsAddr, probeAddr                                              string
-	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis, enableVSHNMinio bool
+	scheme                                                                                       *runtime.Scheme
+	metricsAddr, probeAddr                                                                       string
+	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis, enableVSHNMinio, enableMaintenanceStatus bool
 }
 
 var s = sliProber{
@@ -47,6 +48,8 @@ func init() {
 		"Enable probing of VSHNRedis instances")
 	SLIProberCMD.Flags().BoolVar(&s.enableVSHNMinio, "vshn-minio", getEnvBool("APPCAT_SLI_VSHNMINIO"),
 		"Enable probing of VSHNMinio instances")
+	SLIProberCMD.Flags().BoolVar(&s.enableMaintenanceStatus, "vshn-track-oc-maintenance-status", getEnvBool("APPCAT_SLI_TRACK_OC_MAINTENANCE_STATUS"),
+		"Enable oc maintenance status observer. Will set the labels 'maintenance' accordingly.")
 }
 
 func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
@@ -66,7 +69,12 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 		log.Error(err, "unable to start manager")
 		return err
 	}
-	probeManager := probes.NewManager(log)
+
+	maintenanceRecociler := &maintenancecontroller.MaintenanceReconciler{
+		Client: mgr.GetClient(),
+	}
+
+	probeManager := probes.NewManager(log, maintenanceRecociler)
 
 	err = metrics.Registry.Register(probeManager.Collector())
 	if err != nil {
@@ -113,6 +121,15 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 	}
+
+	if s.enableMaintenanceStatus {
+		log.Info("Enable OC maintenance observer")
+		if err = maintenanceRecociler.SetupWithManager(mgr); err != nil {
+			log.Error(err, "unable to create controller", "controller", "Maintenance Observer")
+			return err
+		}
+	}
+
 	//+kubebuilder:scaffold:builder
 
 	if err = mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

@@ -231,6 +231,16 @@ func (v *VSHNRedis) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
 }
 
+// GetBackupRetention returns the retention definition for this backup.
+func (v *VSHNRedis) GetBackupRetention() K8upRetentionPolicy {
+	return v.Spec.Parameters.Backup.Retention
+}
+
+// GetServiceName returns the name of this service
+func (v *VSHNRedis) GetServiceName() string {
+	return "redis"
+}
+
 // GetFullMaintenanceSchedule returns
 func (v *VSHNRedis) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance

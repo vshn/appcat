@@ -10,6 +10,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	helmv1beta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -40,7 +41,7 @@ func ResizePVCs(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Resu
 		return runtime.NewFatalResult(fmt.Errorf("cannot get release: %w", err))
 	}
 
-	values, err := getReleaseValues(release)
+	values, err := common.GetReleaseValues(release)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot parse release values: %w", err))
 	}

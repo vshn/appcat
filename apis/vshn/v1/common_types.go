@@ -21,6 +21,11 @@ func (k *K8upBackupSpec) SetBackupSchedule(schedule string) {
 	k.Schedule = schedule
 }
 
+// GetBackupRetention returns the retention definition for this backup.
+func (k *K8upBackupSpec) GetBackupRetention() K8upRetentionPolicy {
+	return k.Retention
+}
+
 // K8upRetentionPolicy describes the retention configuration for a K8up backup.
 type K8upRetentionPolicy struct {
 	KeepLast   int `json:"keepLast,omitempty"`

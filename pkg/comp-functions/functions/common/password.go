@@ -9,12 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// InfoGetter will return the name of the given object.
-type InfoGetter interface {
-	GetName() string
-	GetInstanceNamespace() string
-}
-
 // AddCredentialsSecret creates secrets and passwords for use with helm based services.
 // This is to avoid issues with re-generating passwords if helm internal password generators are used.
 // The function accepts a list of fields that should be populated with passwords.

@@ -7,6 +7,7 @@ replace github.com/deepmap/oapi-codegen => github.com/sljeff/oapi-codegen v1.5.1
 require (
 	dario.cat/mergo v1.0.0
 	github.com/appuio/appuio-cloud-reporting v0.15.0
+	github.com/appuio/openshift-upgrade-controller v0.5.1
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cert-manager/cert-manager v1.13.2
 	github.com/crossplane-contrib/provider-kubernetes v0.10.0-rc.0.0.20230815142830-063004a06019
@@ -15,6 +16,7 @@ require (
 	github.com/crossplane/crossplane-tools v0.0.0-20230925130601-628280f8bf79
 	github.com/crossplane/function-sdk-go v0.1.0
 	github.com/deepmap/oapi-codegen v0.0.0-00010101000000-000000000000
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/go-logr/logr v1.3.0
 	github.com/go-logr/zapr v1.2.4
 	github.com/golang/mock v1.6.0
@@ -26,7 +28,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.63
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.63.0
-	github.com/prometheus/client_golang v1.16.0
+	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/common v0.44.0
 	github.com/sethvargo/go-password v0.2.0
 	github.com/spf13/cobra v1.7.0
@@ -94,7 +96,6 @@ require (
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/cli v24.0.6+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
-	github.com/docker/docker v24.0.7+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.0 // indirect
 	github.com/emicklei/dot v1.6.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
@@ -125,6 +126,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/openshift/api v0.0.0-20230213134911-7ba313770556 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -195,8 +197,8 @@ require (
 	github.com/opencontainers/runc v1.1.7 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_model v0.4.0 // indirect
-	github.com/prometheus/procfs v0.10.1 // indirect
+	github.com/prometheus/client_model v0.4.1-0.20230718164431-9a2bf3000d16 // indirect
+	github.com/prometheus/procfs v0.11.1 // indirect
 	github.com/redis/go-redis/v9 v9.0.5
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect

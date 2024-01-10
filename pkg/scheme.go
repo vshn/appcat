@@ -3,6 +3,7 @@ package pkg
 import (
 	xhelm "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 
+	managedupgradev1beta1 "github.com/appuio/openshift-upgrade-controller/api/v1beta1"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
@@ -45,4 +46,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = alertmanagerv1alpha1.AddToScheme(s)
 	_ = cmv1.SchemeBuilder.AddToScheme(s)
 	_ = netv1.AddToScheme(s)
+	_ = managedupgradev1beta1.AddToScheme(s)
 }

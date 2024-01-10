@@ -15,6 +15,7 @@ appcat
 .cache
 .public
 .vscode
+gen/
 
 # debug
 apiserver.local.config

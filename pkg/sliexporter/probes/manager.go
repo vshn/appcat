@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
+	maintenancecontroller "github.com/vshn/appcat/v4/pkg/sliexporter/maintenance_controller"
 )
 
 // Manager manages a collection of Probers the check connectivity to AppCat services.
@@ -19,8 +21,9 @@ type Manager struct {
 	hist prometheus.ObserverVec
 	log  logr.Logger
 
-	mu      *sync.Mutex
-	probers map[key]context.CancelFunc
+	mu                *sync.Mutex
+	probers           map[key]context.CancelFunc
+	maintenanceStatus maintenancecontroller.MaintenanceStatus
 
 	newTicker func() (<-chan time.Time, func())
 }
@@ -61,21 +64,24 @@ func getKey(pi ProbeInfo) key {
 	return key(fmt.Sprintf("%s; %s", pi.Service, pi.Name))
 }
 
+// ErrTimeout is the error thrown when the probe can't reach the endpoint for a longer period of time.
 var ErrTimeout = errors.New("probe timed out")
 
-func NewManager(l logr.Logger) Manager {
+// NewManager returns a new manager.
+func NewManager(l logr.Logger, maintenanceStatus maintenancecontroller.MaintenanceStatus) Manager {
 	hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "appcat_probes_seconds",
 		Help:    "Latency of probes to appact services",
 		Buckets: []float64{0.001, 0.002, 0.003, 0.004, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1, .5, 1},
-	}, []string{"service", "namespace", "name", "reason", "organization", "ha", "sla"})
+	}, []string{"service", "namespace", "name", "reason", "organization", "ha", "sla", "maintenance"})
 
 	return Manager{
-		hist:      hist,
-		log:       l,
-		mu:        &sync.Mutex{},
-		probers:   map[key]context.CancelFunc{},
-		newTicker: newTickerChan,
+		hist:              hist,
+		log:               l,
+		mu:                &sync.Mutex{},
+		probers:           map[key]context.CancelFunc{},
+		newTicker:         newTickerChan,
+		maintenanceStatus: maintenanceStatus,
 	}
 }
 
@@ -140,6 +146,8 @@ func (m Manager) runProbe(ctx context.Context, p Prober) {
 func (m Manager) sendProbe(ctx context.Context, p Prober) {
 
 	pi := p.GetInfo()
+	l := m.log.WithValues("service", pi.Service, "namespace", pi.Namespace, "name", pi.Name)
+
 	o, err := m.hist.CurryWith(prometheus.Labels{
 		"service":      pi.Service,
 		"namespace":    pi.Namespace,
@@ -147,12 +155,12 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 		"organization": pi.Organization,
 		"ha":           strconv.FormatBool(pi.HighAvailable),
 		"sla":          pi.ServiceLevel,
+		"maintenance":  strconv.FormatBool(m.maintenanceStatus.IsMaintenanceRunning()),
 	})
 	if err != nil {
-
+		l.Error(err, "failed to instanciate prmetheus histogram")
 		return
 	}
-	l := m.log.WithValues("service", pi.Service, "namespace", pi.Namespace, "name", pi.Name)
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

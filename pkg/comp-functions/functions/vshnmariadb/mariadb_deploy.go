@@ -83,6 +83,11 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 	}
 
 	reqMem, reqCPU, mem, cpu, disk := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
+
+	if err != nil {
+		err = fmt.Errorf("cannot fetch nodeSelector from the composition config: %w", err)
+	}
 
 	values := map[string]interface{}{
 		"fullnameOverride": comp.GetName(),
@@ -127,6 +132,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 		"podSecurityContext": map[string]interface{}{
 			"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
 		},
+		"nodeSelector": nodeSelector,
 	}
 
 	vb, err := json.Marshal(values)

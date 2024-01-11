@@ -149,12 +149,6 @@ type VSHNDBaaSPostgresExtension struct {
 	Name string `json:"name,omitempty"`
 }
 
-// VSHNDBaaSSchedulingSpec contains settings to control the scheduling of an instance.
-type VSHNDBaaSSchedulingSpec struct {
-	// NodeSelector is a selector which must match a node’s labels for the pod to be scheduled on that node
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-}
-
 type VSHNPostgreSQLBackup struct {
 	// +kubebuilder:validation:Pattern=^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
 	Schedule string `json:"schedule,omitempty"`

@@ -20,6 +20,9 @@ type plan struct {
 		Enabled bool   `json:"enabled"`
 		Memory  string `json:"memory"`
 	} `json:"Size"`
+	Scheduling struct {
+		NodeSelector map[string]string `json:"nodeSelector"`
+	} `json:"Scheduling"`
 }
 
 // FetchPlansFromCluster will fetch the plans from the current PLANS_NAMESPACE namespace and parse them into Resources.
@@ -56,6 +59,19 @@ func FetchPlansFromConfig(ctx context.Context, svc *runtime.ServiceRuntime, plan
 	r, err := convertPlanToResource(plan, *p)
 
 	return r, err
+}
+
+func FetchNodeSelectorFromConfig(ctx context.Context, svc *runtime.ServiceRuntime, plan string, nodeSelector map[string]string) (map[string]string, error) {
+	if nodeSelector != nil {
+		return nodeSelector, nil
+	}
+	p := Plans{}
+
+	err := json.Unmarshal([]byte(svc.Config.Data["plans"]), &p)
+	if err != nil {
+		return map[string]string{}, err
+	}
+	return p[plan].Scheduling.NodeSelector, nil
 }
 
 func convertPlanToResource(plan string, p Plans) (Resources, error) {

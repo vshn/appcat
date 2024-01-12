@@ -137,6 +137,12 @@ type VSHNDBaaSNetworkSpec struct {
 	ServiceType string `json:"serviceType,omitempty"`
 }
 
+// VSHNDBaaSSchedulingSpec contains settings to control the scheduling of an instance.
+type VSHNDBaaSSchedulingSpec struct {
+	// NodeSelector is a selector which must match a node’s labels for the pod to be scheduled on that node
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+}
+
 // VSHNMonitoring contains settings to configure monitoring aspects of databases managed by VSHN
 type VSHNMonitoring struct {
 	// AlertmanagerConfigRef contains the name of the AlertmanagerConfig that should be copied over to the

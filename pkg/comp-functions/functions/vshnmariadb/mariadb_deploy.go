@@ -183,6 +183,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	reqMem, reqCPU, mem, cpu, disk := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
+
+	if err != nil {
+		err = fmt.Errorf("cannot fetch nodeSelector from the composition config: %w", err)
+	}
 
 	values = map[string]interface{}{
 		"existingSecret":   secretName,
@@ -228,6 +233,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"podSecurityContext": map[string]interface{}{
 			"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
 		},
+		"nodeSelector": nodeSelector,
 	}
 
 	return values, nil

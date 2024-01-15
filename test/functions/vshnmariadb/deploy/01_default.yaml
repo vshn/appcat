@@ -1,4 +1,28 @@
-desired: {}
+desired:
+  resources:
+    mariadb-gc9x4-release:
+      connection_details:
+        MARIADB_USER: cm9vdA== #root
+      resource:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        spec:
+          forProvider:
+            chart:
+              name: mariadb-galera
+              repository: https://charts.bitnami.com/bitnami
+            values:
+              fullnameOverride: mariadb
+              persistence:
+                size: 50Gi
+              replicasCount: 1
+              resources:
+                limits:
+                  cpu: 1
+                  memory: 1Gi
+                requests:
+                  cpu: 1
+                  memory: 1Gi
 input:
   apiVersion: v1
   data:

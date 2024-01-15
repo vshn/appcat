@@ -207,6 +207,16 @@ func (v *VSHNMariaDB) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
 }
 
+// GetBackupRetention returns the retention definition for this backup.
+func (v *VSHNMariaDB) GetBackupRetention() K8upRetentionPolicy {
+	return v.Spec.Parameters.Backup.Retention
+}
+
+// GetServiceName returns the name of this service
+func (v *VSHNMariaDB) GetServiceName() string {
+	return "mariadb"
+}
+
 // GetFullMaintenanceSchedule returns
 func (v *VSHNMariaDB) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance

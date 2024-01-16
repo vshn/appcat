@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"fmt"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -230,6 +232,16 @@ func (v *{{.Name}}) GetBackupSchedule() string {
 // SetBackupSchedule overwrites the current backup schedule
 func (v *{{.Name}}) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
+}
+
+// GetBackupRetention returns the retention definition for this backup.
+func (v *{{.Name}}) GetBackupRetention() K8upRetentionPolicy {
+	return v.Spec.Parameters.Backup.Retention
+}
+
+// GetServiceName returns the name of this service
+func (v *{{.Name}}) GetServiceName() string {
+	return "{{.NameShort}}"
 }
 
 // GetFullMaintenanceSchedule returns

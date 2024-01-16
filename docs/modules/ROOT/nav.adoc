@@ -6,12 +6,12 @@
 
 .How To
 * xref:examples/vscode.adoc[]
+* xref:how-tos/bootstrap_api.adoc[Boostrap API]
 
 .Technical reference
 * xref:references/apiserver/env-variables.adoc[Env variables]
 
 .Explanation
-* xref:explanations/apiserver/boostrap.adoc[Boostrap]
 * xref:explanations/comp-functions/runtime.adoc[Runtime Library]
 * xref:explanations/comp-functions/vshn-postgres.adoc[VSHN Postgres Functions]
 * xref:explanations/boostrap_api.adoc[Bootstrap AppCat service API definition]

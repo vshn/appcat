@@ -134,16 +134,21 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 
 	sla := inst.Spec.Parameters.Service.ServiceLevel
 
-	certPair, err := tls.X509KeyPair(credentials.Data["tls.crt"], credentials.Data["tls.key"])
-	if err != nil {
-		return nil, err
-	}
-	tlsConfig := tls.Config{
-		Certificates: []tls.Certificate{certPair},
-		RootCAs:      x509.NewCertPool(),
-	}
+	tlsEnabled := inst.Spec.Parameters.TLS.TLSEnabled
 
-	tlsConfig.RootCAs.AppendCertsFromPEM(credentials.Data["ca.crt"])
+	tlsConfig := tls.Config{}
+	if tlsEnabled {
+		certPair, err := tls.X509KeyPair(credentials.Data["tls.crt"], credentials.Data["tls.key"])
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig = tls.Config{
+			Certificates: []tls.Certificate{certPair},
+			RootCAs:      x509.NewCertPool(),
+		}
+
+		tlsConfig.RootCAs.AppendCertsFromPEM(credentials.Data["ca.crt"])
+	}
 
 	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, string(sla), false, redis.Options{
 		Addr:      string(credentials.Data["REDIS_HOST"]) + ":" + string(credentials.Data["REDIS_PORT"]),

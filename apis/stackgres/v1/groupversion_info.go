@@ -28,5 +28,7 @@ func init() {
 		&SGClusterList{},
 		&SGPostgresConfig{},
 		&SGPostgesConfigList{},
+		&SGPoolingConfigList{},
+		&SGPoolingConfig{},
 	)
 }

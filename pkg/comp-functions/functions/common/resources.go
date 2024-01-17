@@ -5,7 +5,15 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 )
 
-func GetResources(size *vshnv1.VSHNSizeSpec, r utils.Resources) (string, string, string, string, string) {
+type Resources struct {
+	ReqMem string
+	ReqCPU string
+	Mem    string
+	CPU    string
+	Disk   string
+}
+
+func GetResources(size *vshnv1.VSHNSizeSpec, r utils.Resources) Resources {
 	reqMem := size.Requests.Memory
 	reqCPU := size.Requests.CPU
 	mem := size.Memory
@@ -27,5 +35,11 @@ func GetResources(size *vshnv1.VSHNSizeSpec, r utils.Resources) (string, string,
 	if disk == "" {
 		disk = r.Disk.String()
 	}
-	return reqMem, reqCPU, mem, cpu, disk
+	return Resources{
+		ReqMem: reqMem,
+		ReqCPU: reqCPU,
+		Mem:    mem,
+		CPU:    cpu,
+		Disk:   disk,
+	}
 }

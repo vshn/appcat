@@ -91,6 +91,12 @@ generate-stackgres-crds:
 	go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sgcluster.gen.go apis/stackgres/v1/sgcluster.yaml
 	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgcluster.gen.go
 
+	# curl ${STACKGRES_CRD_URL}/SGPoolingConfig.yaml?inline=false -o apis/stackgres/v1/sgpoolconfigs_crd.yaml
+	# yq -i e apis/stackgres/v1/sgpoolconfigs.yaml --expression ".components.schemas.SGPoolingConfigSpec=load(\"apis/stackgres/v1/sgpoolconfigs_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	# yq -i e apis/stackgres/v1/sgpoolconfigs.yaml --expression ".components.schemas.SGPoolingConfigStatus=load(\"apis/stackgres/v1/sgpoolconfigs_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.status"
+	# go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sgpoolconfigs.gen.go apis/stackgres/v1/sgpoolconfigs.yaml
+	# perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgpoolconfigs.gen.go
+
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1/...
 	rm apis/stackgres/v1/*_crd.yaml
 

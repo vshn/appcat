@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -140,6 +141,9 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
+
+	// PgBouncerSettings passes additional configuration to the pgBouncer instance.
+	PgBouncerSettings *sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni `json:"pgBouncerSettings,omitempty"`
 }
 
 // VSHNDBaaSPostgresExtension contains the name of a single extension.
@@ -325,5 +329,9 @@ type XVSHNPostgreSQLList struct {
 }
 
 func (pg *VSHNPostgreSQL) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
+}
+
+func (pg *XVSHNPostgreSQL) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
 }

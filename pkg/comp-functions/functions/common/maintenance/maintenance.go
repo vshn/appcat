@@ -129,7 +129,7 @@ func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 	}
 
 	for _, extraR := range m.extraResources {
-		err = m.svc.SetDesiredKubeObject(extraR.Resource, extraR.Name, extraR.Refs...)
+		err = m.svc.SetDesiredKubeObject(extraR.Resource, extraR.Name, runtime.KubeOptionAddRefs(extraR.Refs...))
 		if err != nil {
 			return runtime.NewFatalResult(err)
 		}
@@ -298,10 +298,10 @@ func (m *Maintenance) parseCron() (string, error) {
 }
 
 // SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
-func SetReleaseVersion(ctx context.Context, version string, values map[string]interface{}, observed map[string]interface{}, fields []string) error {
+func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string) error {
 	l := controllerruntime.LoggerFrom(ctx)
 
-	tag, _, err := unstructured.NestedString(observed, fields...)
+	tag, _, err := unstructured.NestedString(observedValues, fields...)
 	if err != nil {
 		return fmt.Errorf("cannot get image tag from values in release: %v", err)
 	}
@@ -316,13 +316,13 @@ func SetReleaseVersion(ctx context.Context, version string, values map[string]in
 	if err != nil {
 		l.Info("failed to parse observed service version", "version", tag)
 		// If the observed version is not parsable, e.g. if it's empty, update to the desired version
-		return unstructured.SetNestedField(values, version, fields...)
+		return unstructured.SetNestedField(desiredValues, version, fields...)
 	}
 
 	if observedVersion.GTE(desiredVersion) {
 		// In case the overved tag is valid and greater than the desired version, keep the observed version
-		return unstructured.SetNestedField(values, tag, fields...)
+		return unstructured.SetNestedField(desiredValues, tag, fields...)
 	}
 	// In case the observed tag is smaller than the desired version,  then set the version from the claim
-	return unstructured.SetNestedField(values, version, fields...)
+	return unstructured.SetNestedField(desiredValues, version, fields...)
 }

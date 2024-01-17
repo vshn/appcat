@@ -16,7 +16,6 @@ require (
 	github.com/crossplane/crossplane-tools v0.0.0-20230925130601-628280f8bf79
 	github.com/crossplane/function-sdk-go v0.1.0
 	github.com/deepmap/oapi-codegen v0.0.0-00010101000000-000000000000
-	github.com/docker/docker v24.0.7+incompatible
 	github.com/go-logr/logr v1.3.0
 	github.com/go-logr/zapr v1.2.4
 	github.com/golang/mock v1.6.0
@@ -96,6 +95,7 @@ require (
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/cli v24.0.6+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
+	github.com/docker/docker v24.0.7+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.0 // indirect
 	github.com/emicklei/dot v1.6.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect

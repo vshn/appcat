@@ -90,7 +90,7 @@ func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// Create a pobe that will always fail
-		probe, err = probes.NewFailingPostgreSQL(vshnRedisServiceKey, inst.Name, inst.Namespace)
+		probe, err = probes.NewFailingProbe(vshnRedisServiceKey, inst.Name, inst.Namespace, err)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

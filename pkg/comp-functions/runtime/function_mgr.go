@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -130,6 +131,8 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequ
 		return errResp, err
 	}
 
+	ctx = controllerruntime.LoggerInto(ctx, sr.Log)
+
 	for _, step := range function.Steps {
 
 		m.log.Info("Running step", "name", step.Name)
@@ -220,6 +223,16 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 	comp, err := request.GetObservedCompositeResource(req)
 	if err != nil {
 		return &ServiceRuntime{}, err
+	}
+
+	l = l.WithValues(
+		"resource", comp.Resource.GetName(),
+	)
+
+	if comp.Resource.GetClaimReference() != nil {
+		l = l.WithValues(
+			"claimNamespace", comp.Resource.GetClaimReference().Namespace,
+			"claimName", comp.Resource.GetClaimReference().Name)
 	}
 
 	return &ServiceRuntime{

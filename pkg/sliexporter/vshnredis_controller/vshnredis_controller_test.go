@@ -346,8 +346,6 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		tlsConfig := tls.Config{
 			Certificates: []tls.Certificate{certPair},
 			RootCAs:      x509.NewCertPool(),
-			// this line must be set to true otherwise probe fails with:
-			// "failed to verify certificate: x509: certificate is valid for vshn.appcat.vshn.ch, not redis-headless.instance-name.svc.cluster.local"
 		}
 
 		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
@@ -355,6 +353,113 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 			Username:  string(cred.Data["REDIS_USERNAME"]),
 			Password:  string(cred.Data["REDIS_PASSWORD"]),
 			TLSConfig: &tlsConfig,
+		})
+	}
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name: "foo",
+		},
+	}
+	pi := probes.ProbeInfo{
+		Service:   "VSHNRedis",
+		Name:      "foo",
+		Namespace: "bar",
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	require.NoError(t, client.Delete(context.TODO(), db))
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNRedis_Tls(t *testing.T) {
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
+	cred := newTestVSHNRedisCred("bar", "creds")
+	cred.Data = map[string][]byte{
+		"REDIS_USER":     []byte("userfoo"),
+		"REDIS_PASSWORD": []byte("password"),
+		"REDIS_HOST":     []byte("foo.bar"),
+		"REDIS_PORT":     []byte("5433"),
+		"REDIS_DB":       []byte("pg"),
+		"ca.crt":         ca_crt,
+		"tls.key":        tls_key,
+		"tls.crt":        tls_crt,
+	}
+	r, manager, client := setupVSHNRedisTest(t,
+		ns, db, claim,
+		cred,
+	)
+	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+		certPair, err := tls.X509KeyPair(cred.Data["tls.crt"], cred.Data["tls.key"])
+		if err != nil {
+			return nil, err
+		}
+		assert.Equal(t, certPair.Certificate, opts.TLSConfig.Certificates[0].Certificate)
+		assert.Equal(t, certPair.PrivateKey, opts.TLSConfig.Certificates[0].PrivateKey)
+
+		tlsConfig := tls.Config{
+			Certificates: []tls.Certificate{certPair},
+			RootCAs:      x509.NewCertPool(),
+		}
+
+		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
+			Addr:      string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
+			Username:  string(cred.Data["REDIS_USERNAME"]),
+			Password:  string(cred.Data["REDIS_PASSWORD"]),
+			TLSConfig: &tlsConfig,
+		})
+	}
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name: "foo",
+		},
+	}
+	pi := probes.ProbeInfo{
+		Service:   "VSHNRedis",
+		Name:      "foo",
+		Namespace: "bar",
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	require.NoError(t, client.Delete(context.TODO(), db))
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNRedis_NoTls(t *testing.T) {
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", false)
+	cred := newTestVSHNRedisCred("bar", "creds")
+	cred.Data = map[string][]byte{
+		"REDIS_USER":     []byte("userfoo"),
+		"REDIS_PASSWORD": []byte("password"),
+		"REDIS_HOST":     []byte("foo.bar"),
+		"REDIS_PORT":     []byte("5433"),
+		"REDIS_DB":       []byte("pg"),
+		"ca.crt":         ca_crt,
+		"tls.key":        tls_key,
+		"tls.crt":        tls_crt,
+	}
+	r, manager, client := setupVSHNRedisTest(t,
+		ns, db, claim,
+		cred,
+	)
+	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+
+		assert.Equal(t, []tls.Certificate(nil), opts.TLSConfig.Certificates)
+		assert.Equal(t, []tls.Certificate(nil), opts.TLSConfig.Certificates)
+
+		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
+			Addr:     string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
+			Username: string(cred.Data["REDIS_USERNAME"]),
+			Password: string(cred.Data["REDIS_PASSWORD"]),
 		})
 	}
 	req := ctrl.Request{

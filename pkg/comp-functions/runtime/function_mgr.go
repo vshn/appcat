@@ -296,7 +296,7 @@ func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Manag
 // adds it to the desired composed resources.
 func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName string, refs ...xkube.Reference) error {
 
-	kobj, err := s.putIntoObject(false, obj, objectName, refs...)
+	kobj, err := s.putIntoObject(false, obj, objectName, objectName, refs...)
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName stri
 // This should be used if manipulating objects that are declared in the P+T composition.
 func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectName, resourceName string, refs ...xkube.Reference) error {
 
-	kobj, err := s.putIntoObject(false, obj, objectName, refs...)
+	kobj, err := s.putIntoObject(false, obj, objectName, resourceName, refs...)
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectN
 // adds it to the desired composed resources.
 func (s *ServiceRuntime) SetDesiredKubeObserveObject(obj client.Object, objectName string, refs ...xkube.Reference) error {
 
-	kobj, err := s.putIntoObject(true, obj, objectName, refs...)
+	kobj, err := s.putIntoObject(true, obj, objectName, objectName, refs...)
 	if err != nil {
 		return err
 	}
@@ -330,7 +330,7 @@ func (s *ServiceRuntime) SetDesiredKubeObserveObject(obj client.Object, objectNa
 }
 
 // putIntoObject adds or updates the desired resource into its kube object
-func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon string, refs ...xkube.Reference) (*xkube.Object, error) {
+func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon, resourceName string, refs ...xkube.Reference) (*xkube.Object, error) {
 
 	kind, _, err := composed.Scheme.ObjectKinds(o)
 	if err != nil {
@@ -349,21 +349,35 @@ func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon st
 		o.SetAnnotations(annotations)
 	}
 
-	ko := &xkube.Object{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       xkube.ObjectKind,
-			APIVersion: xkube.ObjectKindAPIVersion,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: kon,
-		},
-		Spec: xkube.ObjectSpec{
+	// We check if there's already an object for this resource name.
+	// It there's one we take it's spec and add it to the new object we want to apply.
+	// This way we don't override anything, if the object contains other changes outside of `Spec.ForProvider.Manifest`.
+	tmpKo := &xkube.Object{}
+	koSpec := xkube.ObjectSpec{}
+	err = s.GetDesiredComposedResourceByName(tmpKo, resourceName)
+	if err != nil && err != ErrNotFound {
+		return tmpKo, err
+	} else if err == ErrNotFound {
+		koSpec = xkube.ObjectSpec{
 			ResourceSpec: xkube.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: providerConfigRefName,
 				},
 			},
+		}
+	} else if err == nil {
+		koSpec = tmpKo.Spec
+	}
+
+	ko := &xkube.Object{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: kon,
 		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       xkube.ObjectKind,
+			APIVersion: xkube.ObjectKindAPIVersion,
+		},
+		Spec: koSpec,
 	}
 
 	// Only set the refs if they are actually set.

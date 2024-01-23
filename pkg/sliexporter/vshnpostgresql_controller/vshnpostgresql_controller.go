@@ -99,13 +99,13 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		res.Requeue = true
 		res.RequeueAfter = 30 * time.Second
 
-		if time.Now().Sub(inst.GetCreationTimestamp().Time) < r.StartupGracePeriod {
+		if time.Since(inst.GetCreationTimestamp().Time) < r.StartupGracePeriod {
 			// Instance is starting up. Postpone probing until ready.
 			return res, nil
 		}
 
 		// Create a pobe that will always fail
-		probe, err = probes.NewFailingPostgreSQL(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel])
+		probe, err = probes.NewFailingProbe(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], err)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

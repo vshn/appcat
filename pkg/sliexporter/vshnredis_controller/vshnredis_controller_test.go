@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	v1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
@@ -153,16 +154,16 @@ nrfsBwoJpAcOmKDb/zOwtqOiSeZ4ef4DULUpz61vNmKch4N2fDDdcjuHCXo0tA==
 `)
 
 func TestVSHNRedis_StartStop(t *testing.T) {
-	db := newTestVSHNRedis("bar", "foo", "creds")
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
 	r, manager, client := setupVSHNRedisTest(t,
-		db,
+		ns, db, claim,
 		newTestVSHNRedisCred("bar", "creds"),
 	)
 
 	req := ctrl.Request{
+
 		NamespacedName: types.NamespacedName{
-			Namespace: "bar",
-			Name:      "foo",
+			Name: "foo",
 		},
 	}
 	pi := probes.ProbeInfo{
@@ -182,17 +183,16 @@ func TestVSHNRedis_StartStop(t *testing.T) {
 }
 
 func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
-	db := newTestVSHNRedis("bar", "foo", "creds")
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.SetFinalizers([]string{"foobar.vshn.io"})
 	r, manager, client := setupVSHNRedisTest(t,
-		db,
+		ns, db, claim,
 		newTestVSHNRedisCred("bar", "creds"),
 	)
 
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: "bar",
-			Name:      "foo",
+			Name: "foo",
 		},
 	}
 	pi := probes.ProbeInfo{
@@ -212,15 +212,15 @@ func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
 }
 
 func TestVSHNRedis_Multi(t *testing.T) {
-	dbBar := newTestVSHNRedis("bar", "foo", "creds")
-	dbBarer := newTestVSHNRedis("bar", "fooer", "credentials")
-	dbBuzz := newTestVSHNRedis("buzz", "fooz", "creds")
+	nsBar, dbBar, claimBar := newTestVSHNRedis("bar", "foo", "creds", true)
+	nsBarer, dbBarer, claimBarer := newTestVSHNRedis("barer", "fooer", "credentials", true)
+	nsBuzz, dbBuzz, claimBuzz := newTestVSHNRedis("buzz", "fooz", "creds", true)
 	r, manager, c := setupVSHNRedisTest(t,
-		dbBar,
+		nsBar, dbBar, claimBar,
 		newTestVSHNRedisCred("bar", "creds"),
-		dbBarer,
-		newTestVSHNRedisCred("bar", "credentials"),
-		dbBuzz,
+		nsBarer, dbBarer, claimBarer,
+		newTestVSHNRedisCred("barer", "credentials"),
+		nsBuzz, dbBuzz, claimBuzz,
 		newTestVSHNRedisCred("buzz", "creds"),
 	)
 
@@ -232,7 +232,7 @@ func TestVSHNRedis_Multi(t *testing.T) {
 	barerPi := probes.ProbeInfo{
 		Service:   "VSHNRedis",
 		Name:      "fooer",
-		Namespace: "bar",
+		Namespace: "barer",
 	}
 	buzzPi := probes.ProbeInfo{
 		Service:   "VSHNRedis",
@@ -240,9 +240,9 @@ func TestVSHNRedis_Multi(t *testing.T) {
 		Namespace: "buzz",
 	}
 
-	_, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
+	_, err := r.Reconcile(context.TODO(), recReq("", "foo"))
 	assert.NoError(t, err)
-	_, err = r.Reconcile(context.TODO(), recReq("bar", "fooer"))
+	_, err = r.Reconcile(context.TODO(), recReq("", "fooer"))
 	assert.NoError(t, err)
 
 	assert.True(t, manager.probers[getFakeKey(barPi)])
@@ -250,9 +250,9 @@ func TestVSHNRedis_Multi(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(buzzPi)])
 
 	require.NoError(t, c.Delete(context.TODO(), dbBar))
-	_, err = r.Reconcile(context.TODO(), recReq("bar", "foo"))
+	_, err = r.Reconcile(context.TODO(), recReq("", "foo"))
 	assert.NoError(t, err)
-	_, err = r.Reconcile(context.TODO(), recReq("buzz", "fooz"))
+	_, err = r.Reconcile(context.TODO(), recReq("", "fooz"))
 	assert.NoError(t, err)
 
 	assert.True(t, manager.probers[getFakeKey(barPi)])
@@ -261,10 +261,10 @@ func TestVSHNRedis_Multi(t *testing.T) {
 }
 
 func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
-	db := newTestVSHNRedis("bar", "foo", "creds")
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.SetCreationTimestamp(metav1.Now())
 	r, manager, _ := setupVSHNRedisTest(t,
-		db,
+		ns, db, claim,
 	)
 	pi := probes.ProbeInfo{
 		Service:   "VSHNRedis",
@@ -272,7 +272,7 @@ func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
 		Namespace: "bar",
 	}
 
-	res, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
+	res, err := r.Reconcile(context.TODO(), recReq("", "foo"))
 	assert.NoError(t, err)
 	assert.Greater(t, res.RequeueAfter.Microseconds(), int64(0))
 
@@ -280,10 +280,10 @@ func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
 }
 
 func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
-	db := newTestVSHNRedis("bar", "foo", "creds")
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.Spec.WriteConnectionSecretToReference.Name = ""
 	r, manager, _ := setupVSHNRedisTest(t,
-		db,
+		ns, db, claim,
 	)
 	pi := probes.ProbeInfo{
 		Service:   "VSHNRedis",
@@ -291,16 +291,16 @@ func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
 		Namespace: "bar",
 	}
 
-	_, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
+	_, err := r.Reconcile(context.TODO(), recReq("", "foo"))
 	assert.NoError(t, err)
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
-	db := newTestVSHNRedis("bar", "foo", "creds")
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.SetCreationTimestamp(metav1.Time{Time: time.Now().Add(-1 * time.Hour)})
 	r, manager, _ := setupVSHNRedisTest(t,
-		db,
+		ns, db, claim,
 	)
 	pi := probes.ProbeInfo{
 		Service:   "VSHNRedis",
@@ -308,7 +308,7 @@ func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
 		Namespace: "bar",
 	}
 
-	res, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
+	res, err := r.Reconcile(context.TODO(), recReq("", "foo"))
 	assert.NoError(t, err)
 	assert.Greater(t, res.RequeueAfter.Microseconds(), int64(0))
 
@@ -316,7 +316,7 @@ func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
 }
 
 func TestVSHNRedis_PassCerdentials(t *testing.T) {
-	db := newTestVSHNRedis("bar", "foo", "creds")
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
 	cred := newTestVSHNRedisCred("bar", "creds")
 	cred.Data = map[string][]byte{
 		"REDIS_USER":     []byte("userfoo"),
@@ -329,17 +329,8 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		"tls.crt":        tls_crt,
 	}
 	r, manager, client := setupVSHNRedisTest(t,
-		db,
+		ns, db, claim,
 		cred,
-		&corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "bar",
-				Labels: map[string]string{
-					utils.OrgLabelName:   "bar",
-					"appcat.vshn.io/sla": "besteffort",
-				},
-			},
-		},
 	)
 	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 
@@ -355,9 +346,6 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		tlsConfig := tls.Config{
 			Certificates: []tls.Certificate{certPair},
 			RootCAs:      x509.NewCertPool(),
-			// this line must be set to true otherwise probe fails with:
-			// "failed to verify certificate: x509: certificate is valid for vshn.appcat.vshn.ch, not redis-headless.instance-name.svc.cluster.local"
-			InsecureSkipVerify: true,
 		}
 
 		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
@@ -369,8 +357,114 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 	}
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: "bar",
-			Name:      "foo",
+			Name: "foo",
+		},
+	}
+	pi := probes.ProbeInfo{
+		Service:   "VSHNRedis",
+		Name:      "foo",
+		Namespace: "bar",
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	require.NoError(t, client.Delete(context.TODO(), db))
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNRedis_Tls(t *testing.T) {
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
+	cred := newTestVSHNRedisCred("bar", "creds")
+	cred.Data = map[string][]byte{
+		"REDIS_USER":     []byte("userfoo"),
+		"REDIS_PASSWORD": []byte("password"),
+		"REDIS_HOST":     []byte("foo.bar"),
+		"REDIS_PORT":     []byte("5433"),
+		"REDIS_DB":       []byte("pg"),
+		"ca.crt":         ca_crt,
+		"tls.key":        tls_key,
+		"tls.crt":        tls_crt,
+	}
+	r, manager, client := setupVSHNRedisTest(t,
+		ns, db, claim,
+		cred,
+	)
+	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+		certPair, err := tls.X509KeyPair(cred.Data["tls.crt"], cred.Data["tls.key"])
+		if err != nil {
+			return nil, err
+		}
+		assert.Equal(t, certPair.Certificate, opts.TLSConfig.Certificates[0].Certificate)
+		assert.Equal(t, certPair.PrivateKey, opts.TLSConfig.Certificates[0].PrivateKey)
+
+		tlsConfig := tls.Config{
+			Certificates: []tls.Certificate{certPair},
+			RootCAs:      x509.NewCertPool(),
+		}
+
+		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
+			Addr:      string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
+			Username:  string(cred.Data["REDIS_USERNAME"]),
+			Password:  string(cred.Data["REDIS_PASSWORD"]),
+			TLSConfig: &tlsConfig,
+		})
+	}
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name: "foo",
+		},
+	}
+	pi := probes.ProbeInfo{
+		Service:   "VSHNRedis",
+		Name:      "foo",
+		Namespace: "bar",
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	require.NoError(t, client.Delete(context.TODO(), db))
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNRedis_NoTls(t *testing.T) {
+	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", false)
+	cred := newTestVSHNRedisCred("bar", "creds")
+	cred.Data = map[string][]byte{
+		"REDIS_USER":     []byte("userfoo"),
+		"REDIS_PASSWORD": []byte("password"),
+		"REDIS_HOST":     []byte("foo.bar"),
+		"REDIS_PORT":     []byte("5433"),
+		"REDIS_DB":       []byte("pg"),
+		"ca.crt":         ca_crt,
+		"tls.key":        tls_key,
+		"tls.crt":        tls_crt,
+	}
+	r, manager, client := setupVSHNRedisTest(t,
+		ns, db, claim,
+		cred,
+	)
+	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+
+		assert.Equal(t, []tls.Certificate(nil), opts.TLSConfig.Certificates)
+		assert.Equal(t, []tls.Certificate(nil), opts.TLSConfig.Certificates)
+
+		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
+			Addr:     string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
+			Username: string(cred.Data["REDIS_USERNAME"]),
+			Password: string(cred.Data["REDIS_PASSWORD"]),
+		})
+	}
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name: "foo",
 		},
 	}
 	pi := probes.ProbeInfo{
@@ -449,13 +543,30 @@ func setupVSHNRedisTest(t *testing.T, objs ...client.Object) (VSHNRedisReconcile
 	return r, manager, client
 }
 
-func newTestVSHNRedis(namespace, name, cred string) *vshnv1.XVSHNRedis {
-	return &vshnv1.XVSHNRedis{
+func newTestVSHNRedis(namespace, name, cred string, tlsEnabled bool) (*corev1.Namespace, *vshnv1.XVSHNRedis, *vshnv1.VSHNRedis) {
+	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name: namespace,
+			Labels: map[string]string{
+				utils.OrgLabelName: namespace,
+			},
+		},
+	}
+	db := &vshnv1.XVSHNRedis{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"crossplane.io/claim-name":      name,
+				"crossplane.io/claim-namespace": namespace,
+			},
 		},
 		Spec: vshnv1.XVSHNRedisSpec{
+			Parameters: vshnv1.VSHNRedisParameters{
+				TLS: vshnv1.VSHNRedisTLSSpec{
+					TLSEnabled:     tlsEnabled,
+					TLSAuthClients: tlsEnabled,
+				},
+			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Name: cred,
@@ -463,6 +574,25 @@ func newTestVSHNRedis(namespace, name, cred string) *vshnv1.XVSHNRedis {
 			},
 		},
 	}
+	claim := &vshnv1.VSHNRedis{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: vshnv1.VSHNRedisSpec{
+			Parameters: vshnv1.VSHNRedisParameters{
+				TLS: vshnv1.VSHNRedisTLSSpec{
+					TLSEnabled:     tlsEnabled,
+					TLSAuthClients: tlsEnabled,
+				},
+			},
+			WriteConnectionSecretToRef: v1.LocalObjectReference{
+				Name:      cred,
+				Namespace: namespace,
+			},
+		},
+	}
+	return ns, db, claim
 }
 func newTestVSHNRedisCred(namespace, name string) *corev1.Secret {
 	return &corev1.Secret{

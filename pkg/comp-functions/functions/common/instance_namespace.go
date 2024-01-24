@@ -59,14 +59,14 @@ func BootstrapInstanceNs(ctx context.Context, comp InstanceNamespaceInfo, servic
 	return nil
 }
 
-func getOrg(instance string, svc *runtime.ServiceRuntime) string {
+func getOrg(instance string, svc *runtime.ServiceRuntime) (string, error) {
 	ns := &corev1.Namespace{}
 
 	err := svc.GetObservedKubeObject(ns, instance+claimNsObserverSuffix)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return ns.GetLabels()[utils.OrgLabelName]
+	return ns.GetLabels()[utils.OrgLabelName], nil
 }
 
 func createNamespaceObserver(ctx context.Context, claimNs string, instance string, svc *runtime.ServiceRuntime) error {
@@ -82,7 +82,11 @@ func createNamespaceObserver(ctx context.Context, claimNs string, instance strin
 // Create the namespace for the service instance
 func createInstanceNamespace(ctx context.Context, serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName string, svc *runtime.ServiceRuntime) error {
 
-	org := getOrg(compName, svc)
+	org, err := getOrg(compName, svc)
+	if err != nil {
+		return fmt.Errorf("cannot get claim namespace: %w", err)
+	}
+
 	ns := &corev1.Namespace{
 
 		ObjectMeta: metav1.ObjectMeta{
@@ -115,7 +119,11 @@ func createNamespacePermissions(ctx context.Context, instance string, instanceNs
 		}
 	}
 
-	org := getOrg(instance, svc)
+	org, err := getOrg(instance, svc)
+	if err != nil {
+		return fmt.Errorf("cannot get claim namespace: %w", err)
+	}
+
 	if org == "" {
 		return nil
 	}

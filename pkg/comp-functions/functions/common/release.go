@@ -16,9 +16,14 @@ import (
 // GetReleaseValues returns the parsed values from the given release.
 func GetReleaseValues(r *xhelmv1.Release) (map[string]interface{}, error) {
 	values := map[string]interface{}{}
+	if r == nil {
+		return values, nil
+	}
+
 	if r.Spec.ForProvider.Values.Raw == nil {
 		return values, nil
 	}
+
 	err := json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal values from release: %v", err)
@@ -28,26 +33,12 @@ func GetReleaseValues(r *xhelmv1.Release) (map[string]interface{}, error) {
 
 // GetObservedReleaseValues returns the observed releaseValues for the given release name.
 func GetObservedReleaseValues(svc *runtime.ServiceRuntime, releaseName string) (map[string]interface{}, error) {
-	values := map[string]interface{}{}
-
 	r, err := getObservedRelease(svc, releaseName)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get observed release: %w", err)
 	}
 
-	if r == nil {
-		return values, nil
-	}
-
-	if r.Spec.ForProvider.Values.Raw == nil {
-		return values, nil
-	}
-	err = json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal values from release: %v", err)
-	}
-
-	return values, err
+	return GetReleaseValues(r)
 }
 
 func getObservedRelease(svc *runtime.ServiceRuntime, releaseName string) (*xhelmv1.Release, error) {

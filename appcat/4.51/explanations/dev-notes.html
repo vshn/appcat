@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en" prefix="og: http://ogp.me/ns/website#">
+  <head itemscope itemtype="http://schema.org/WebSite">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Dev Notes for Composition Functions :: Application Catalog</title>
+    <meta property="og:title" itemprop="name" content="Dev Notes for Composition Functions">
+    <meta name="twitter:title" content="Dev Notes for Composition Functions">
+    <link rel="canonical" href="https://vshn.github.io/appcat/appcat/explanations/dev-notes.html">
+    <meta property="og:url" content="https://vshn.github.io/appcat/appcat/explanations/dev-notes.html">
+    <meta name="generator" content="Antora 3.1.4">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Application Catalog" />
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="vshn_ch">
+    <meta property="og:locale" content="en_US" />
+    <script>var uiRootPath = '../../../_'</script>
+    <script type="text/javascript" id="hs-script-loader" async defer src="//js.hs-scripts.com/7105834.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="apple-touch-icon" sizes="152x152" href="/_/img/favicon-152x152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/_/img/favicon-167x167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/_/img/favicon-180x180.png">
+
+<link rel="icon" type="image/png" href="/_/img/favicon-196x196.png" sizes="196x196">
+<link rel="icon" type="image/png" href="/_/img/favicon-192x192.png" sizes="192x192">
+<link rel="icon" type="image/png" href="/_/img/favicon-96x96.png" sizes="96x96">
+<link rel="icon" type="image/png" href="/_/img/favicon-16x16.png" sizes="16x16">
+<link rel="icon" type="image/png" href="/_/img/favicon-32x32.png" sizes="32x32">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="navbar-item">
+        <div class="vshn_logo"></div>
+        <a href="https://vshn.github.io/appcat">Application Catalog
+           –
+          v4.51</a>
+      </div>
+      <button class="navbar-burger" data-target="topbar-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">VSHN</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" target="_blank" href="https://www.vshn.ch/">Main website</a>
+            <a class="navbar-item" target="_blank" href="https://handbook.vshn.ch/">Handbook</a>
+            <a class="navbar-item" target="_blank" href="https://kb.vshn.ch/">Knowledge Base</a>
+            <a class="navbar-item" target="_blank" href="https://products.docs.vshn.ch/">Products</a>
+            <a class="navbar-item" target="_blank" href="https://legal.docs.vshn.ch/">Legal</a>
+            <a class="navbar-item" target="_blank" href="https://control.docs.vshn.ch/">Portal Help</a>
+            <a class="navbar-item" target="_blank" href="https://docs.appuio.cloud/">APPUiO Cloud Docs</a>
+            <a class="navbar-item" target="_blank" href="https://syn.tools/">Project Syn</a>
+            <a class="navbar-item" target="_blank" href="https://k8up.io/">K8up</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <div class="search-field">
+            <input id="search-input" class="search-input" type="search" placeholder="Search">
+            <button type="submit" class="search-button">
+              <i class="fa fa-search"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="appcat" data-version="4.51">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <h3 class="title"><a href="../index.html">Application Catalog</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Introduction</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <span class="nav-text"><a href="https://github.com/vshn/appcat/releases" target="_blank" rel="noopener">Changelog</a> 🔗</span>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">How To</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../examples/vscode.html">VSCode Launch Configs</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../how-tos/bootstrap_api.html">Boostrap API</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Technical reference</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../references/apiserver/env-variables.html">Env variables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="0">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Explanation</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="comp-functions/runtime.html">Runtime Library</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="comp-functions/vshn-postgres.html">VSHN Postgres Functions</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="#explanations/boostrap_api.adoc">Bootstrap AppCat service API definition</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="slareports.html">SLA Reports</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <a class="nav-link" href="dev-notes.html">Dev Notes for Composition Functions</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="comp-functions/debug.html">Debugging</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="comp-functions/redis-pvc-resize.html">Redis PVC resize</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="webhooks.html">Webhooks</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="connectiondetails.html">Connection Details</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="helm-maintenance.html">Helm Maintenance</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Application Catalog</span>
+    <span class="version">4.51</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <a class="title" href="../../index.html">Application Catalog</a>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../index.html">master</a>
+        </li>
+        <li class="version is-current">
+          <a href="../index.html">4.51</a>
+        </li>
+        <li class="version">
+          <a href="../../4.50/index.html">4.50</a>
+        </li>
+        <li class="version">
+          <a href="../../4.49/index.html">4.49</a>
+        </li>
+        <li class="version">
+          <a href="../../4.48/index.html">4.48</a>
+        </li>
+        <li class="version">
+          <a href="../../4.47/index.html">4.47</a>
+        </li>
+        <li class="version">
+          <a href="../../4.46/index.html">4.46</a>
+        </li>
+        <li class="version">
+          <a href="../../4.45/index.html">4.45</a>
+        </li>
+        <li class="version">
+          <a href="../../4.44/index.html">4.44</a>
+        </li>
+        <li class="version">
+          <a href="../../4.43/index.html">4.43</a>
+        </li>
+        <li class="version">
+          <a href="../../4.42/index.html">4.42</a>
+        </li>
+        <li class="version">
+          <a href="../../4.41/index.html">4.41</a>
+        </li>
+        <li class="version">
+          <a href="../../4.40/index.html">4.40</a>
+        </li>
+        <li class="version">
+          <a href="../../4.39/index.html">4.39</a>
+        </li>
+        <li class="version">
+          <a href="../../4.38/index.html">4.38</a>
+        </li>
+        <li class="version">
+          <a href="../../4.37/index.html">4.37</a>
+        </li>
+        <li class="version">
+          <a href="../../4.36/index.html">4.36</a>
+        </li>
+        <li class="version">
+          <a href="../../4.35/index.html">4.35</a>
+        </li>
+        <li class="version">
+          <a href="../../4.34/index.html">4.34</a>
+        </li>
+        <li class="version">
+          <a href="../../4.33/index.html">4.33</a>
+        </li>
+        <li class="version">
+          <a href="../../4.32/index.html">4.32</a>
+        </li>
+        <li class="version">
+          <a href="../../4.31/index.html">4.31</a>
+        </li>
+        <li class="version">
+          <a href="../../4.30/index.html">4.30</a>
+        </li>
+        <li class="version">
+          <a href="../../4.29/index.html">4.29</a>
+        </li>
+        <li class="version">
+          <a href="../../4.28/index.html">4.28</a>
+        </li>
+        <li class="version">
+          <a href="../../4.27/index.html">4.27</a>
+        </li>
+        <li class="version">
+          <a href="../../4.26/index.html">4.26</a>
+        </li>
+        <li class="version">
+          <a href="../../4.25/index.html">4.25</a>
+        </li>
+        <li class="version">
+          <a href="../../4.24/index.html">4.24</a>
+        </li>
+        <li class="version">
+          <a href="../../4.23/index.html">4.23</a>
+        </li>
+        <li class="version">
+          <a href="../../4.22/index.html">4.22</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <a class="title" href="../../../go-bootstrap/index.html">Go Bootstrap</a>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../go-bootstrap/index.html">master</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.21/index.html">4.21</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.20/index.html">4.20</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.19/index.html">4.19</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.18/index.html">4.18</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.17/index.html">4.17</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.16/index.html">4.16</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.15/index.html">4.15</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.14/index.html">4.14</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.13/index.html">4.13</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.12/index.html">4.12</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.11/index.html">4.11</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.10/index.html">4.10</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.9/index.html">4.9</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.8/index.html">4.8</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.7/index.html">4.7</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.6/index.html">4.6</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.5/index.html">4.5</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.4/index.html">4.4</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.3/index.html">4.3</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.2/index.html">4.2</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.1/index.html">4.1</a>
+        </li>
+        <li class="version">
+          <a href="../../../go-bootstrap/4.0/index.html">4.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Application Catalog</a></li>
+    <li>Explanation</li>
+    <li><a href="dev-notes.html">Dev Notes for Composition Functions</a></li>
+  </ul>
+</nav>
+<div class="page-versions">
+  <button class="version-menu-toggle" title="Show other versions of page">4.51</button>
+  <div class="version-menu">
+    <a class="version" href="../../explanations/dev-notes.html">master</a>
+    <a class="version is-current" href="dev-notes.html">4.51</a>
+    <a class="version" href="../../4.50/explanations/dev-notes.html">4.50</a>
+    <a class="version" href="../../4.49/explanations/dev-notes.html">4.49</a>
+    <a class="version" href="../../4.48/explanations/dev-notes.html">4.48</a>
+    <a class="version" href="../../4.47/explanations/dev-notes.html">4.47</a>
+    <a class="version" href="../../4.46/explanations/dev-notes.html">4.46</a>
+    <a class="version" href="../../4.45/explanations/dev-notes.html">4.45</a>
+    <a class="version" href="../../4.44/explanations/dev-notes.html">4.44</a>
+    <a class="version" href="../../4.43/explanations/dev-notes.html">4.43</a>
+    <a class="version" href="../../4.42/explanations/dev-notes.html">4.42</a>
+    <a class="version" href="../../4.41/explanations/dev-notes.html">4.41</a>
+    <a class="version" href="../../4.40/explanations/dev-notes.html">4.40</a>
+    <a class="version" href="../../4.39/explanations/dev-notes.html">4.39</a>
+    <a class="version" href="../../4.38/explanations/dev-notes.html">4.38</a>
+    <a class="version" href="../../4.37/explanations/dev-notes.html">4.37</a>
+    <a class="version" href="../../4.36/explanations/dev-notes.html">4.36</a>
+    <a class="version" href="../../4.35/explanations/dev-notes.html">4.35</a>
+    <a class="version" href="../../4.34/explanations/dev-notes.html">4.34</a>
+    <a class="version" href="../../4.33/explanations/dev-notes.html">4.33</a>
+    <a class="version" href="../../4.32/explanations/dev-notes.html">4.32</a>
+    <a class="version" href="../../4.31/explanations/dev-notes.html">4.31</a>
+    <a class="version" href="../../4.30/explanations/dev-notes.html">4.30</a>
+    <a class="version" href="../../4.29/explanations/dev-notes.html">4.29</a>
+    <a class="version" href="../../4.28/explanations/dev-notes.html">4.28</a>
+    <a class="version" href="../../4.27/explanations/dev-notes.html">4.27</a>
+    <a class="version" href="../../4.26/explanations/dev-notes.html">4.26</a>
+    <a class="version" href="../../4.25/explanations/dev-notes.html">4.25</a>
+    <a class="version" href="../../4.24/explanations/dev-notes.html">4.24</a>
+    <a class="version" href="../../4.23/explanations/dev-notes.html">4.23</a>
+    <a class="version" href="../../4.22/explanations/dev-notes.html">4.22</a>
+  </div>
+</div>
+  <div class="edit-this-page"><a href="https://github.com/vshn/appcat/edit/docs/v4.51/docs/modules/ROOT/pages/explanations/dev-notes.adoc">Edit this Page</a></div>
+  </div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Dev Notes for Composition Functions</h1>
+<div class="sect1">
+<h2 id="_read_from_desired_vs_observed"><a class="anchor" href="#_read_from_desired_vs_observed"></a>Read from Desired vs Observed</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>It may not be easy to determine when to read from the desired or observed resources in the composition function.</p>
+</div>
+<div class="paragraph">
+<p>On the very first run of the composition functions, the observe array will always be empty.
+To ensure that you always get a valid object in that case, you can first try to read from observed, and if that fails, read from desired.</p>
+</div>
+<div class="sect2">
+<h3 id="_desired"><a class="anchor" href="#_desired"></a>Desired</h3>
+<div class="paragraph">
+<p>Contains the list of resource that will be applied after the function has run.
+They are the sum of the P+T composition and the composition functions.</p>
+</div>
+<div class="paragraph">
+<p>Read from this if:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>you manipulate the same resources as a previous step, otherwise you could overwrite resources</p>
+</li>
+<li>
+<p>you don&#8217;t need to know how the resource currently looks like but how it should look like after the function has run</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_observed"><a class="anchor" href="#_observed"></a>Observed</h3>
+<div class="paragraph">
+<p>The observed array contains resources as they are on the cluster right before the composition function triggered.</p>
+</div>
+<div class="paragraph">
+<p>Read from this if:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>you need access to the status</p>
+</li>
+<li>
+<p>you want to read secrets</p>
+</li>
+<li>
+<p>an outside actor changes values of the resource (for example maintenance jobs)</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_how_to_read_unmanaged_secrets"><a class="anchor" href="#_how_to_read_unmanaged_secrets"></a>How to read unmanaged secrets</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>There are cases where you need to read a secret that was created by an operator or helm chart, for example to add them to the connection details.</p>
+</div>
+<div class="paragraph">
+<p>To read unmanaged secrets, you need to:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>create an observe kube object that references the given secret</p>
+</li>
+<li>
+<p>then get the secret through this observe kube object during the next reconcile</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When doing it this way the secret values are available in plaintext and NOT in base64.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_how_to_not_delete_resources_in_the_composition_function"><a class="anchor" href="#_how_to_not_delete_resources_in_the_composition_function"></a>How to (not) delete resources in the composition function</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>For crossplane, if a given resource was in the desired map during the previous reconcile, but is missing in the current reconcile, then it will be removed.
+If, for any reason, the resource name in the map changes, even though it&#8217;s still the same object, crossplane will delete and re-create it.
+That&#8217;s because for crossplane it&#8217;s a new object in that case, as it uses the resource name to identify the resources.
+The resource name of important resources (releases, deployments, pvcs, etc.) should never change, or expect unhappy users.</p>
+</div>
+<div class="paragraph">
+<p>If an object should not get deleted, then it has to be actively be added to the desired array on every reconcile.
+On the flip side, deleting an object is easily achieved by not adding it to the desired array.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_when_to_use_composition_functions_jobs_and_cronjobs"><a class="anchor" href="#_when_to_use_composition_functions_jobs_and_cronjobs"></a>When to use Composition functions, jobs and cronjobs</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The general rule is to keep the composition functions as simple as possible.
+They should be used mainly to create and observe objects related to the instances.</p>
+</div>
+<div class="paragraph">
+<p>If there&#8217;s a need for more complex one time operations, please consider putting them into a separate job that is deployed via the composition function.
+Example for such a job is the restore of a backup.
+Try to make those jobs idempotent if possible.</p>
+</div>
+<div class="paragraph">
+<p>If there&#8217;s a need for more complex operations on a schedule, please consider putting them into a cronjob that is deployed via the composition function.
+Examples for such cronjobs are maintenance and backups.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>Copyright © VSHN 2021 – All Rights Reserved. <a href="https://vshn.ch/en/privacy-policy/">Privacy Policy</a>, <a href="https://vshn.ch/en/imprint/">Imprint</a>, and <a href="https://vshn.ch/en/contact/">Contact</a>.</p>
+</footer>
+<script src="../../../_/js/site.js"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.6/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  messageStyle: "none",
+  tex2jax: {
+    inlineMath: [["\\(", "\\)"]],
+    displayMath: [["\\[", "\\]"]],
+    ignoreClass: "nostem|nolatexmath"
+  },
+  asciimath2jax: {
+    delimiters: [["\\$", "\\$"]],
+    ignoreClass: "nostem|noasciimath"
+  },
+  TeX: { equationNumbers: { autoNumber: "none" } }
+});
+</script>
+  </body>
+</html>

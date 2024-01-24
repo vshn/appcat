@@ -14,8 +14,8 @@ func init() {
 				Execute: DeployPostgreSQL,
 			},
 			{
-				Name:    "url-connection-details",
-				Execute: AddUrlToConnectionDetails,
+				Name:    "connectiondetails",
+				Execute: AddConnectionDetails,
 			},
 			{
 				Name:    "user-alerting",

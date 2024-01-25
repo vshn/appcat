@@ -28,39 +28,22 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 			if err == runtime.ErrNotFound {
 				err = svc.GetDesiredKubeObject(ns, namespaceKon)
 				if err != nil {
-					return runtime.NewFatalResult(fmt.Errorf("cannot get namespace: %w", err))
+					return runtime.NewWarningResult(fmt.Sprintf("cannot get namespace: %s", err))
 				}
 				// Make sure we don't touch this, if there's no name in the namespace.
 				if ns.GetName() == "" {
 					return runtime.NewWarningResult("namespace doesn't yet have a name")
 				}
 			} else {
-				return runtime.NewFatalResult(fmt.Errorf("cannot get namespace: %w", err))
+				return runtime.NewWarningResult(fmt.Sprintf("cannot get namespace: %s", err))
 			}
 		}
 
-		orgAdded := false
 		objectMeta := &metadata.MetadataOnlyObject{}
 
 		err = svc.GetObservedComposite(objectMeta)
 		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("cannot get composite meta: %w", err))
-		}
-
-		if value, ok := ns.GetLabels()[utils.OrgLabelName]; !ok || value == "" {
-			objectMeta := &metadata.MetadataOnlyObject{}
-
-			err := svc.GetObservedComposite(objectMeta)
-			if err != nil {
-				return runtime.NewFatalResult(fmt.Errorf("cannot get composite meta: %w", err))
-			}
-
-			if ns.Labels == nil {
-				ns.Labels = map[string]string{}
-			}
-
-			ns.Labels[utils.OrgLabelName] = objectMeta.GetLabels()[utils.OrgLabelName]
-			orgAdded = true
+			return runtime.NewWarningResult(fmt.Sprintf("cannot get composite meta: %s", err))
 		}
 
 		s, err := utils.FetchSidecarsFromConfig(ctx, svc)
@@ -70,10 +53,10 @@ func AddInitialNamespaceQuotas(namespaceKon string) func(context.Context, *runti
 
 		// We only act if either the quotas were missing or the organization label is not on the
 		// namespace. Otherwise we ignore updates. This is to prevent any unwanted overwriting.
-		if quotas.AddInitalNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind) || orgAdded {
+		if quotas.AddInitalNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind) {
 			err = svc.SetDesiredKubeObjectWithName(ns, ns.GetName(), namespaceKon)
 			if err != nil {
-				return runtime.NewFatalResult(fmt.Errorf("cannot save namespace quotas: %w", err))
+				return runtime.NewWarningResult(fmt.Sprintf("cannot save namespace quotas: %s", err))
 			}
 		}
 

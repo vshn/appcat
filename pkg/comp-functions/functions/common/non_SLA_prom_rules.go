@@ -26,6 +26,7 @@ var (
 )
 
 type InstanceNamespacer interface {
+	GetName() string
 	GetInstanceNamespace() string
 	GetInstanceNamespaceRegex() (string, []string, error)
 }
@@ -52,7 +53,7 @@ func GenerateNonSLAPromRules(obj client.Object) func(ctx context.Context, svc *r
 			return runtime.NewWarningResult("Instance namespace looks broken, " + err.Error())
 		}
 
-		err = generatePromeRules(elem.GetInstanceNamespace(), instanceNamespaceRegex, MEMORY_CONTAINERS[instanceNamespaceSplitted[1]], svc)
+		err = generatePromeRules(elem.GetName(), elem.GetInstanceNamespace(), instanceNamespaceRegex, MEMORY_CONTAINERS[instanceNamespaceSplitted[1]], svc)
 		if err != nil {
 			return runtime.NewFatalResult(err)
 		}
@@ -61,7 +62,7 @@ func GenerateNonSLAPromRules(obj client.Object) func(ctx context.Context, svc *r
 	}
 }
 
-func generatePromeRules(namespace, namespaceRegex, serviceName string, svc *runtime.ServiceRuntime) error {
+func generatePromeRules(name, namespace, namespaceRegex, serviceName string, svc *runtime.ServiceRuntime) error {
 	var minuteInterval, hourInterval, twoHourInterval promV1.Duration
 	minuteInterval = "1m"
 	hourInterval = "1h"
@@ -69,12 +70,13 @@ func generatePromeRules(namespace, namespaceRegex, serviceName string, svc *runt
 
 	prometheusRules := &promV1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "nonSLORules",
+			Name:      serviceName + "-non-slo-rules",
 			Namespace: namespace,
 		},
 		Spec: promV1.PrometheusRuleSpec{
 			Groups: []promV1.RuleGroup{
 				promV1.RuleGroup{
+					Name: serviceName + "-non-slo-rules",
 					Rules: []promV1.Rule{
 						promV1.Rule{
 							Alert: serviceName + "PersistentVolumeFillingUp",
@@ -102,7 +104,7 @@ func generatePromeRules(namespace, namespaceRegex, serviceName string, svc *runt
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}[6h], 4 * 24 * 3600) < 0  unlesson(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"%s\")", namespaceRegex),
+								StrVal: fmt.Sprintf("label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"%s\")", namespaceRegex),
 							},
 							For: hourInterval,
 							Labels: map[string]string{
@@ -133,5 +135,5 @@ func generatePromeRules(namespace, namespaceRegex, serviceName string, svc *runt
 		},
 	}
 
-	return svc.SetDesiredKubeObject(prometheusRules, "non_sla_alerts")
+	return svc.SetDesiredKubeObject(prometheusRules, name+"-non-sla-alerts")
 }

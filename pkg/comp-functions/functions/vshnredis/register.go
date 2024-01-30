@@ -49,6 +49,10 @@ func init() {
 				Name:    "user-alerting",
 				Execute: common.AddUserAlerting(&vshnv1.VSHNRedis{}),
 			},
+			{
+				Name:    "non-sla-prometheus-rules",
+				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNRedis{}),
+			},
 		},
 	})
 }

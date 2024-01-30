@@ -61,6 +61,10 @@ func init() {
 				Name:    "delay-cluster-deployment",
 				Execute: DelayClusterDeployment,
 			},
+			{
+				Name:    "non-sla-prometheus-rules",
+				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNPostgreSQL{}),
+			},
 		},
 	})
 }

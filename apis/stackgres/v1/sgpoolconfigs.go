@@ -11,10 +11,10 @@ type SGPoolingConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec defines the desired state of a VSHNPostgreSQL.
+	// Spec contains the custom configurations for the pgbouncer.
 	Spec SGPoolingConfigSpec `json:"spec"`
 
-	// Status reflects the observed state of a VSHNPostgreSQL.
+	// Status contains the default settings for the pgbouncer.
 	Status SGPoolingConfigStatus `json:"status,omitempty"`
 }
 

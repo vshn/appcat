@@ -93,6 +93,21 @@ func (m *Maintenance) WithExtraEnvs(extraEnvs ...corev1.EnvVar) *Maintenance {
 	return m
 }
 
+func (m *Maintenance) WithRegistryAuth(username, password string) *Maintenance {
+	envVars := []corev1.EnvVar{
+		{
+			Name:  "REGISTRY_USERNAME",
+			Value: username,
+		},
+		{
+			Name:  "REGISTRY_PASSWORD",
+			Value: password,
+		},
+	}
+	m.extraEnvs = envVars
+	return m
+}
+
 // WithExtraResources adds extra resources to the desired composition function
 func (m *Maintenance) WithExtraResources(extraResources ...ExtraResource) *Maintenance {
 	m.extraResources = extraResources
@@ -298,31 +313,32 @@ func (m *Maintenance) parseCron() (string, error) {
 }
 
 // SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
-func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string) error {
+// It will return the concrete observed version as well.
+func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string) (string, error) {
 	l := controllerruntime.LoggerFrom(ctx)
 
 	tag, _, err := unstructured.NestedString(observedValues, fields...)
 	if err != nil {
-		return fmt.Errorf("cannot get image tag from values in release: %v", err)
+		return "", fmt.Errorf("cannot get image tag from values in release: %v", err)
 	}
 
 	desiredVersion, err := semver.ParseTolerant(version)
 	if err != nil {
 		l.Info("failed to parse desired service version", "version", version)
-		return fmt.Errorf("invalid service version %q", version)
+		return "", fmt.Errorf("invalid service version %q", version)
 	}
 
 	observedVersion, err := semver.ParseTolerant(tag)
 	if err != nil {
 		l.Info("failed to parse observed service version", "version", tag)
 		// If the observed version is not parsable, e.g. if it's empty, update to the desired version
-		return unstructured.SetNestedField(desiredValues, version, fields...)
+		return version, unstructured.SetNestedField(desiredValues, version, fields...)
 	}
 
 	if observedVersion.GTE(desiredVersion) {
 		// In case the overved tag is valid and greater than the desired version, keep the observed version
-		return unstructured.SetNestedField(desiredValues, tag, fields...)
+		return observedVersion.String(), unstructured.SetNestedField(desiredValues, tag, fields...)
 	}
 	// In case the observed tag is smaller than the desired version,  then set the version from the claim
-	return unstructured.SetNestedField(desiredValues, version, fields...)
+	return version, unstructured.SetNestedField(desiredValues, version, fields...)
 }

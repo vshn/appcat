@@ -31,5 +31,5 @@ func NewMariaDB(c client.Client, hc *http.Client) MariaDB {
 func (r *MariaDB) DoMaintenance(ctx context.Context) error {
 	patcher := helm.NewImagePatcher(r.k8sClient, r.httpClient, logr.FromContextOrDiscard(ctx).WithValues("type", "mariadb"))
 
-	return patcher.DoMaintenance(ctx, mariaDBURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly)
+	return patcher.DoMaintenance(ctx, mariaDBURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
 }

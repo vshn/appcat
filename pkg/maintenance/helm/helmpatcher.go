@@ -51,6 +51,11 @@ type ValuePath struct {
 	path []string
 }
 
+// VersionLister provides a list of viable versions to compare against.
+type VersionLister interface {
+	GetVersions() []string
+}
+
 // GetJSONPatchPath returns the representation of the path as used in for patching the release
 func (h *ValuePath) GetJSONPatchPath() string {
 	return "/spec/forProvider/values/" + strings.Join(h.path, "/")
@@ -73,6 +78,28 @@ type Payload struct {
 	Results []Result `json:"results,omitempty"`
 }
 
+// GetVersions returns all found image tags from the payload
+func (p *Payload) GetVersions() []string {
+	versions := []string{}
+	for _, v := range p.Results {
+		if v.TagStatus == ActiveTagStatus && v.ContentType == ImageContentType {
+			versions = append(versions, v.Name)
+		}
+	}
+	return versions
+}
+
+// RegistryResult contains the result for querying a v2 docker registry
+type RegistryResult struct {
+	Name string   `json:"name,omitempty"`
+	Tags []string `json:"tags,omitempty"`
+}
+
+// GetVersions returns the underlying list of versions
+func (v RegistryResult) GetVersions() []string {
+	return v.Tags
+}
+
 // Result is the object that has details of a docker image tag
 type Result struct {
 	// Name is the tag
@@ -85,7 +112,7 @@ type Result struct {
 
 // VersionComparisonStrategy is a function that actually determines if a given release needs to be updated
 // The returned string should contain the latest version, or the same version, if there's no latest.
-type VersionComparisonStrategy func([]Result, string) (string, error)
+type VersionComparisonStrategy func(VersionLister, string) (string, error)
 
 // DoMaintenance will run a helm semver maintenance script.
 // tagURL should be the url of the docker repository where the image resides. It has to be publicly available.
@@ -192,7 +219,32 @@ func GetRelease(ctx context.Context, k8sClient client.Client, instanceNamespace 
 	return &release, nil
 }
 
-func (h *ImagePatcher) getVersions(imageURL string) ([]Result, error) {
+func (h *ImagePatcher) getVersions(imageURL string) (VersionLister, error) {
+	// We're using docker hub's rich api to list the image tags, if it's on docker hub.
+	if strings.Contains(imageURL, "http://hub.docker.com") {
+		return h.getHubVersions(imageURL)
+	}
+	// For the rest we use the default registry API.
+	return h.getRegistryVersions(imageURL)
+}
+
+func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, error) {
+	results := &RegistryResult{}
+
+	resp, err := h.httpClient.Get(imageURL)
+	if err != nil {
+		return nil, fmt.Errorf("cannot access registry: %w", err)
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(results)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode docker registry resuls: %w", err)
+	}
+
+	return results, nil
+}
+
+func (h *ImagePatcher) getHubVersions(imageURL string) (VersionLister, error) {
 	results := make([]Result, 0)
 	page := 1
 	for {
@@ -213,7 +265,7 @@ func (h *ImagePatcher) getVersions(imageURL string) ([]Result, error) {
 		page++
 	}
 
-	return results, nil
+	return &Payload{Results: results}, nil
 }
 
 func (h *ImagePatcher) configure() error {
@@ -227,26 +279,30 @@ func (h *ImagePatcher) configure() error {
 
 // SemVerPatchesOnly is a VersionComparisonStrategy that will determine if the latest version as long as it adheres to semver
 // It will only update the patch part of the version, it will not consider the Major or Minor version.
-func SemVerPatchesOnly(results []Result, currentTag string) (string, error) {
-	currentV, err := semver.ParseTolerant(currentTag)
-	if err != nil {
-		return "", fmt.Errorf("current version %s of release is not sem ver: %v", currentTag, err)
-	}
+// It's able to either ignore the build information appended to the semver version, or not.
+func SemVerPatchesOnly(ignoreBuild bool) func(results VersionLister, currentTag string) (string, error) {
+	return func(results VersionLister, currentTag string) (string, error) {
+		currentV, err := semver.ParseTolerant(currentTag)
+		if err != nil {
+			return "", fmt.Errorf("current version %s of release is not sem ver: %v", currentTag, err)
+		}
 
-	newV := currentV
-	for _, res := range results {
-		if res.TagStatus == ActiveTagStatus && res.ContentType == ImageContentType {
-			v, err := semver.New(res.Name)
+		newV := currentV
+		for _, res := range results.GetVersions() {
+			v, err := semver.New(res)
 			if err != nil {
 				continue
 			}
-			if v.Major == newV.Major && v.Minor == newV.Minor && v.Patch > newV.Patch && v.Pre == nil {
-				newV.Patch = v.Patch
+			if v.Major == newV.Major && v.Minor == newV.Minor && v.Patch > newV.Patch {
+				if ignoreBuild && v.Pre != nil {
+					continue
+				}
+				newV = *v
 			}
 		}
+		if currentV.EQ(newV) {
+			return currentV.String(), nil
+		}
+		return newV.String(), nil
 	}
-	if currentV.EQ(newV) {
-		return currentV.String(), nil
-	}
-	return newV.String(), nil
 }

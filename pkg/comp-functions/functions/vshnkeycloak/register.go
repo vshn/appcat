@@ -10,6 +10,10 @@ func init() {
 				Name:    "deploy",
 				Execute: DeployKeycloak,
 			},
+			{
+				Name:    "maintenance",
+				Execute: AddMaintenanceJob,
+			},
 		},
 	})
 }

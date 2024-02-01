@@ -57,7 +57,7 @@ func (m *Minio) DoMaintenance(ctx context.Context) error {
 // Minio has a pretty unique rolling release cycle which is based on the date.
 // Each Minio image tag contains the date when it was created.
 // The form of the tags is like this: `RELEASE.2023-09-16T01-01-47Z`
-func compareMinioVersions(results []helm.Result, currentTag string) (string, error) {
+func compareMinioVersions(results helm.VersionLister, currentTag string) (string, error) {
 
 	if currentTag == "" {
 		currentTag = minioTagPrefix + earliestTag
@@ -73,15 +73,13 @@ func compareMinioVersions(results []helm.Result, currentTag string) (string, err
 
 	newDate := currentDate
 
-	for _, res := range results {
-		if res.TagStatus == helm.ActiveTagStatus && res.ContentType == helm.ImageContentType {
-			v, err := parseMinioDate(res.Name)
-			if err != nil {
-				continue
-			}
-			if newDate.Before(v) {
-				newDate = v
-			}
+	for _, res := range results.GetVersions() {
+		v, err := parseMinioDate(res)
+		if err != nil {
+			continue
+		}
+		if newDate.Before(v) {
+			newDate = v
 		}
 	}
 

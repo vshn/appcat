@@ -25,12 +25,6 @@ var (
 	}
 )
 
-type InstanceNamespacer interface {
-	GetName() string
-	GetInstanceNamespace() string
-	GetInstanceNamespaceRegex() (string, []string, error)
-}
-
 func GenerateNonSLAPromRules(obj client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 	return func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 
@@ -43,7 +37,7 @@ func GenerateNonSLAPromRules(obj client.Object) func(ctx context.Context, svc *r
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("Can't get composite: %w", err))
 		}
-		elem, ok := obj.(InstanceNamespacer)
+		elem, ok := obj.(InfoGetter)
 		if !ok {
 			return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
 		}
@@ -55,7 +49,7 @@ func GenerateNonSLAPromRules(obj client.Object) func(ctx context.Context, svc *r
 
 		err = generatePromeRules(elem.GetName(), elem.GetInstanceNamespace(), instanceNamespaceRegex, MEMORY_CONTAINERS[instanceNamespaceSplitted[1]], svc)
 		if err != nil {
-			return runtime.NewFatalResult(err)
+			return runtime.NewWarningResult("can't create prometheus rules: " + err.Error())
 		}
 
 		return nil

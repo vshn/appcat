@@ -138,7 +138,7 @@ func generatePromeRules(elem InfoGetter, svc *runtime.ServiceRuntime) error {
 	return svc.SetDesiredKubeObject(prometheusRules, name+"-non-sla-alerts")
 }
 
-// Get InstanceNamespaceRegex returns regex for prometheus rules, splitted insatnce namespace and error if necessary
+// Get InstanceNamespaceRegex returns regex for prometheus rules, splitted instance namespace and error if necessary
 func getInstanceNamespaceRegex(instanceNamespace string) (string, []string, error) {
 	// from instance namespace, f.e. vshn-postgresql-customer-namespace-whatever
 	// make vshn-postgresql-(.+)-.+

@@ -18,15 +18,6 @@ const (
 	claimNameLabel        = "crossplane.io/claim-name"
 )
 
-// InstanceNamespaceInfo provides all the necessary information to create
-// an instance namespace.
-type InstanceNamespaceInfo interface {
-	GetName() string
-	GetClaimNamespace() string
-	GetInstanceNamespace() string
-	GetLabels() map[string]string
-}
-
 func BootstrapInstanceNs(ctx context.Context, comp InstanceNamespaceInfo, serviceName, namespaceResName string, svc *runtime.ServiceRuntime) error {
 	l := svc.Log
 

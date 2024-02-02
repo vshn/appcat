@@ -40,7 +40,7 @@ func AddSaWithRole(ctx context.Context, svc *runtime.ServiceRuntime, policies []
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(role, compName+"-"+suffix+"-role", saReference)
+	err = svc.SetDesiredKubeObject(role, compName+"-"+suffix+"-role", runtime.KubeOptionAddRefs(saReference))
 	if err != nil {
 		return err
 	}
@@ -70,5 +70,5 @@ func AddSaWithRole(ctx context.Context, svc *runtime.ServiceRuntime, policies []
 		},
 	}
 
-	return svc.SetDesiredKubeObject(roleBinding, compName+"-"+suffix+"-rolebinding", roleReference, saReference)
+	return svc.SetDesiredKubeObject(roleBinding, compName+"-"+suffix+"-rolebinding", runtime.KubeOptionAddRefs(roleReference, saReference))
 }

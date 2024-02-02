@@ -15,7 +15,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 type Alerter interface {
@@ -102,12 +102,12 @@ func deployAlertmanagerFromRef(ctx context.Context, AlertmanagerConfigSecretRef,
 				Namespace:  claimNamespace,
 				Name:       AlertmanagerConfigSecretRef,
 			},
-			FieldPath: pointer.String("spec"),
+			FieldPath: ptr.To("spec"),
 		},
-		ToFieldPath: pointer.String("spec"),
+		ToFieldPath: ptr.To("spec"),
 	}
 
-	return svc.SetDesiredKubeObject(ac, name+"-alertmanagerconfig", xRef)
+	return svc.SetDesiredKubeObject(ac, name+"-alertmanagerconfig", runtime.KubeOptionAddRefs(xRef))
 }
 
 func deployAlertmanagerFromTemplate(ctx context.Context, AlertmanagerConfigSecretRef, claimNamespace, name, instanceNamespace string, AlertmanagerConfigSpecTemplate *alertmanagerv1alpha1.AlertmanagerConfigSpec, svc *runtime.ServiceRuntime) error {
@@ -137,10 +137,10 @@ func deploySecretRef(ctx context.Context, AlertmanagerConfigSecretRef, claimName
 				Namespace:  claimNamespace,
 				Name:       AlertmanagerConfigSecretRef,
 			},
-			FieldPath: pointer.String("data"),
+			FieldPath: ptr.To("data"),
 		},
-		ToFieldPath: pointer.String("data"),
+		ToFieldPath: ptr.To("data"),
 	}
 
-	return svc.SetDesiredKubeObject(s, name+"-alertmanagerconfigsecret", xRef)
+	return svc.SetDesiredKubeObject(s, name+"-alertmanagerconfigsecret", runtime.KubeOptionAddRefs(xRef))
 }

@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -75,6 +76,8 @@ type Manager struct {
 	proxyMode bool
 	fnv1beta1.UnimplementedFunctionRunnerServiceServer
 }
+
+type KubeObjectOption func(obj *xkube.Object)
 
 // RegisterService will register a service to the map of all services.
 func RegisterService(name string, function Service) {
@@ -129,6 +132,8 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequ
 	if err != nil {
 		return errResp, err
 	}
+
+	ctx = controllerruntime.LoggerInto(ctx, sr.Log)
 
 	for _, step := range function.Steps {
 
@@ -222,6 +227,16 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 		return &ServiceRuntime{}, err
 	}
 
+	l = l.WithValues(
+		"resource", comp.Resource.GetName(),
+	)
+
+	if comp.Resource.GetClaimReference() != nil {
+		l = l.WithValues(
+			"claimNamespace", comp.Resource.GetClaimReference().Namespace,
+			"claimName", comp.Resource.GetClaimReference().Name)
+	}
+
 	return &ServiceRuntime{
 		Log:               l,
 		Config:            config,
@@ -293,12 +308,16 @@ func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Manag
 }
 
 // SetDesiredKubeObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
-// adds it to the desired composed resources.
-func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName string, refs ...xkube.Reference) error {
+// adds it to the desired composed resources. It takes options to manipulate the resulting kubec object before applying.
+func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName string, opts ...KubeObjectOption) error {
 
-	kobj, err := s.putIntoObject(false, obj, objectName, objectName, refs...)
+	kobj, err := s.putIntoObject(false, obj, objectName, objectName)
 	if err != nil {
 		return err
+	}
+
+	for _, o := range opts {
+		o(kobj)
 	}
 
 	return s.SetDesiredComposedResourceWithName(kobj, objectName)
@@ -307,14 +326,38 @@ func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName stri
 // SetDesiredKubeObjectWithName takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
 // adds it to the desired composed resources with the specified resource name.
 // This should be used if manipulating objects that are declared in the P+T composition.
-func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectName, resourceName string, refs ...xkube.Reference) error {
+func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectName, resourceName string, opts ...KubeObjectOption) error {
 
-	kobj, err := s.putIntoObject(false, obj, objectName, resourceName, refs...)
+	kobj, err := s.putIntoObject(false, obj, objectName, resourceName)
 	if err != nil {
 		return err
 	}
 
+	for _, o := range opts {
+		o(kobj)
+	}
+
 	return s.SetDesiredComposedResourceWithName(kobj, resourceName)
+}
+
+// KubeOptionAddRefs adds the given references to the kube object.
+func KubeOptionAddRefs(refs ...xkube.Reference) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		obj.Spec.References = refs
+	}
+}
+
+// KubeOptionAddConnectionDetails adds the given connection details to the kube object.
+// DestNamespace speficies the namespace where the associated secret should be saved.
+// The associated secret will have the UID of the parent object as the name.
+func KubeOptionAddConnectionDetails(destNamespace string, cd ...xkube.ConnectionDetail) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		obj.Spec.ConnectionDetails = cd
+		obj.Spec.WriteConnectionSecretToReference = &xpv1.SecretReference{
+			Name:      obj.GetName() + "-cd",
+			Namespace: destNamespace,
+		}
+	}
 }
 
 // SetDesiredKubeObserveObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
@@ -714,4 +757,95 @@ func (s *ServiceRuntime) GetDesiredComposite(obj client.Object) error {
 // If the object is existing on the cluster, it will be deleted!
 func (s *ServiceRuntime) DeleteDesiredCompososedResource(name string) {
 	delete(s.desirdResources, resource.Name(name))
+}
+
+// isResourceSyncedAndReady checks if the given resource is synced and ready.
+func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
+	obj, ok := s.req.Observed.Resources[name]
+	if !ok {
+		return false
+	}
+
+	unstruct := obj.GetResource().AsMap()
+
+	rawStatus, found, err := unstructured.NestedMap(unstruct, "status")
+	if err != nil || !found {
+		return false
+	}
+
+	status := struct {
+		Conditions []xpv1.Condition
+	}{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(rawStatus, &status)
+	if err != nil {
+		return false
+	}
+
+	for _, cond := range status.Conditions {
+		if cond.Type == xpv1.TypeSynced && cond.Status == "false" {
+			return false
+		}
+		if cond.Type == xpv1.TypeReady && cond.Status == "false" {
+			return false
+		}
+	}
+
+	return true
+}
+
+// areResourcesReady checks if all of the given resources are ready or not.
+func (s *ServiceRuntime) areResourcesReady(names []string) bool {
+	for _, name := range names {
+		ok := s.isResourceSyncedAndReady(name)
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// WaitForDependencies takes two arguments, the name of the main resource, which should be deployed after the dependencies.
+// It also takes a list of names for objects to depend on. It does NOT deploy any objects, but check for their existence.
+// If true is returned it is safe to continue with adding your main object to the desired resources.
+// If the main resource already exists in the observed state it will always return true.
+func (s *ServiceRuntime) WaitForDependencies(mainResource string, dependencies ...string) bool {
+	if _, ok := s.req.Observed.Resources[mainResource]; ok {
+		return true
+	}
+
+	if !s.areResourcesReady(dependencies) {
+		return false
+	}
+
+	return true
+}
+
+// WaitForDependenciesWithConnectionDetails does the same as WaitForDependencies but additionally also checks the given list of fields against the
+// available connection details.
+// objectCDMap should contain a map where the key is the name of the dependeny and the string slice the necessary connection detail fields.
+func (s *ServiceRuntime) WaitForDependenciesWithConnectionDetails(mainResource string, objectCDMap map[string][]string) (bool, error) {
+	// If the main resource already exists we're done here
+	if _, ok := s.req.Observed.Resources[mainResource]; ok {
+		return true, nil
+	}
+
+	for dep, cds := range objectCDMap {
+		ready := s.WaitForDependencies(mainResource, dep)
+		if !ready {
+			return false, nil
+		}
+
+		cd, err := s.GetObservedComposedResourceConnectionDetails(dep)
+		if err != nil {
+			return false, err
+		}
+
+		for _, field := range cds {
+			if _, ok := cd[field]; !ok {
+				return false, nil
+			}
+		}
+	}
+
+	return true, nil
 }

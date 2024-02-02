@@ -1,0 +1,75 @@
+openapi: "3.0.2"
+paths:
+  "/spec":
+    get:
+      responses:
+        "200":
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/SGPoolingConfigSpec"
+  "/status":
+    get:
+      responses:
+        "200":
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/SGPoolingConfigStatus"
+components:
+  schemas:
+    SGPoolingConfigSpec:
+      type: object
+      properties:
+        pgBouncer:
+          type: object
+          description: |
+            Connection pooling configuration based on PgBouncer.
+          properties:
+            pgbouncer.ini:
+              type: object
+              description: |
+                The `pgbouncer.ini` parameters the configuration contains, represented as an object where the keys are valid names for the `pgbouncer.ini` configuration file parameters.
+
+                Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#generic-settings) for more information about supported parameters.
+              properties:
+                pgbouncer:
+                  type: object
+                  additionalProperties: true
+                  description: |
+                    The `pgbouncer.ini` (Section [pgbouncer]) parameters the configuration contains, represented as an object where the keys are valid names for the `pgbouncer.ini` configuration file parameters.
+
+                    Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#generic-settings) for more information about supported parameters
+                databases:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties: true
+                  description: |
+                    The `pgbouncer.ini` (Section [databases]) parameters the configuration contains, represented as an object where the keys are valid names for the `pgbouncer.ini` configuration file parameters.
+
+                    Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#section-databases) for more information about supported parameters.
+                users:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties: true
+                  description: |
+                    The `pgbouncer.ini` (Section [users]) parameters the configuration contains, represented as an object where the keys are valid names for the `pgbouncer.ini` configuration file parameters.
+
+                    Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#section-users) for more information about supported parameters.
+    SGPoolingConfigStatus:
+      type: object
+      properties:
+        pgBouncer:
+          type: object
+          description: |
+            Connection pooling configuration status based on PgBouncer.
+          properties:
+            defaultParameters:
+              type: object
+              additionalProperties:
+                type: string
+              description: |
+                The `pgbouncer.ini` default parameters parameters which are used if not set.
+          required: ["defaultParameters"]

@@ -3,6 +3,7 @@ package common
 import (
 	"testing"
 
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
@@ -29,4 +30,11 @@ func TestAddCredentialsSecret(t *testing.T) {
 	assert.Len(t, secret.StringData, 2)
 	assert.NotEmpty(t, secret.StringData["mytest"])
 	assert.NotEmpty(t, secret.StringData["mypw"])
+
+	obj := &xkube.Object{}
+
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(obj, res))
+	assert.NotEmpty(t, obj.Spec.ConnectionDetails)
+	assert.Len(t, obj.Spec.ConnectionDetails, 2)
+
 }

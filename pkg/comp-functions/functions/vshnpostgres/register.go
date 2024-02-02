@@ -61,6 +61,10 @@ func init() {
 				Name:    "delay-cluster-deployment",
 				Execute: DelayClusterDeployment,
 			},
+			{
+				Name:    "pgbouncer-settings",
+				Execute: addPGBouncerSettings,
+			},
 		},
 	})
 }

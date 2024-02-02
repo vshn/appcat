@@ -12,7 +12,7 @@ import (
 	runtime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -83,8 +83,8 @@ func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespac
 								},
 							},
 							Smarthost:    svc.Config.Data["emailAlertingSmtpHost"],
-							RequireTLS:   pointer.Bool(true),
-							SendResolved: pointer.Bool(true),
+							RequireTLS:   ptr.To(true),
+							SendResolved: ptr.To(true),
 						},
 					},
 				},
@@ -125,16 +125,16 @@ func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespac
 				Namespace:  svc.Config.Data["emailAlertingSecretNamespace"],
 				Name:       svc.Config.Data["emailAlertingSecretName"],
 			},
-			FieldPath: pointer.String("data.password"),
+			FieldPath: ptr.To("data.password"),
 		},
-		ToFieldPath: pointer.String("data.password"),
+		ToFieldPath: ptr.To("data.password"),
 	}
 
-	if err := svc.SetDesiredKubeObject(secret, alertManagerConfigSecretName, patchSecretWithOtherSecret); err != nil {
+	if err := svc.SetDesiredKubeObject(secret, alertManagerConfigSecretName, runtime.KubeOptionAddRefs(patchSecretWithOtherSecret)); err != nil {
 		return err
 	}
 
-	return svc.SetDesiredKubeObject(ac, alertManagerConfigName, xRef)
+	return svc.SetDesiredKubeObject(ac, alertManagerConfigName, runtime.KubeOptionAddRefs(xRef))
 }
 
 func mailAlertingEnabled(config *v1.ConfigMap) bool {

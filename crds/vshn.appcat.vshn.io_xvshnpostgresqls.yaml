@@ -5040,6 +5040,35 @@ spec:
                         - "14"
                         - "15"
                         type: string
+                      pgBouncerSettings:
+                        description: PgBouncerSettings passes additional configuration
+                          to the pgBouncer instance.
+                        properties:
+                          databases:
+                            description: "The `pgbouncer.ini` (Section [databases])
+                              parameters the configuration contains, represented as
+                              an object where the keys are valid names for the `pgbouncer.ini`
+                              configuration file parameters. \n Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#section-databases)
+                              for more information about supported parameters."
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          pgbouncer:
+                            description: "The `pgbouncer.ini` (Section [pgbouncer])
+                              parameters the configuration contains, represented as
+                              an object where the keys are valid names for the `pgbouncer.ini`
+                              configuration file parameters. \n Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#generic-settings)
+                              for more information about supported parameters"
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          users:
+                            description: "The `pgbouncer.ini` (Section [users]) parameters
+                              the configuration contains, represented as an object
+                              where the keys are valid names for the `pgbouncer.ini`
+                              configuration file parameters. \n Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#section-users)
+                              for more information about supported parameters."
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        type: object
                       pgSettings:
                         description: PGSettings contains additional PostgreSQL settings.
                         type: object

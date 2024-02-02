@@ -2,22 +2,16 @@ package vshnmariadb
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmbeta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
-	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -66,7 +60,7 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	if svc.GetBoolFromCompositionConfig("slosEnabled") {
 		sourceNs = append(sourceNs, svc.Config.Data["slosNs"])
 	}
-	err = common.CreateNetworkPolicy(ctx, sourceNs, comp.GetInstanceNamespace(), comp.GetName(), svc)
+	err = common.CreateNetworkPolicy(sourceNs, comp.GetInstanceNamespace(), comp.GetName(), svc)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create helm release: %w", err))
 	}
@@ -87,7 +81,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 		return err
 	}
 
-	observedValues, err := getObservedReleaseValues(svc, comp.GetName()+"-release")
+	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName()+"-release")
 	if err != nil {
 		return fmt.Errorf("cannot get observed release values: %w", err)
 	}
@@ -97,13 +91,10 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 		return fmt.Errorf("cannot set mariadb version for release: %w", err)
 	}
 
-	vb, err := json.Marshal(values)
+	r, err := newRelease(ctx, svc, values, comp)
 	if err != nil {
-		err = fmt.Errorf("cannot marshal helm values: %w", err)
 		return err
 	}
-
-	r := newRelease(svc, vb, comp)
 
 	err = svc.AddObservedConnectionDetails(comp.Name + "-release")
 	if err != nil {
@@ -138,38 +129,6 @@ func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime,
 	return nil
 }
 
-func getObservedRelease(svc *runtime.ServiceRuntime, releaseName string) (*xhelmv1.Release, error) {
-	r := &xhelmv1.Release{}
-	err := svc.GetObservedComposedResource(r, releaseName)
-	if errors.Is(err, runtime.ErrNotFound) {
-		return nil, nil
-	}
-	return r, nil
-}
-
-func getObservedReleaseValues(svc *runtime.ServiceRuntime, releaseName string) (map[string]interface{}, error) {
-	values := map[string]interface{}{}
-
-	r, err := getObservedRelease(svc, releaseName)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get observed release: %w", err)
-	}
-
-	if r == nil {
-		return values, nil
-	}
-
-	if r.Spec.ForProvider.Values.Raw == nil {
-		return values, nil
-	}
-	err = json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal values from release: %v", err)
-	}
-
-	return values, err
-}
-
 func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB, secretName string) (map[string]interface{}, error) {
 
 	values := map[string]interface{}{}
@@ -182,11 +141,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return values, err
 	}
 
-	reqMem, reqCPU, mem, cpu, disk := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
 	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
 
 	if err != nil {
-		err = fmt.Errorf("cannot fetch nodeSelector from the composition config: %w", err)
+		return values, fmt.Errorf("cannot fetch nodeSelector from the composition config: %w", err)
 	}
 
 	values = map[string]interface{}{
@@ -195,12 +154,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"replicaCount":     1,
 		"resources": map[string]interface{}{
 			"requests": map[string]interface{}{
-				"memory": reqMem,
-				"cpu":    reqCPU,
+				"memory": res.ReqMem,
+				"cpu":    res.ReqCPU,
 			},
 			"limits": map[string]interface{}{
-				"memory": mem,
-				"cpu":    cpu,
+				"memory": res.Mem,
+				"cpu":    res.CPU,
 			},
 		},
 		"tls": map[string]interface{}{
@@ -212,7 +171,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"mariadbConfiguration": comp.Spec.Parameters.Service.MariadbSettings,
 		"persistence": map[string]interface{}{
-			"size":         disk,
+			"size":         res.Disk,
 			"storageClass": comp.Spec.Parameters.StorageClass,
 		},
 		"startupProbe": map[string]interface{}{
@@ -239,49 +198,20 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	return values, nil
 }
 
-func newRelease(svc *runtime.ServiceRuntime, vb []byte, comp *vshnv1.VSHNMariaDB) *xhelmbeta1.Release {
-	r := &xhelmbeta1.Release{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: comp.GetName(),
-		},
-		Spec: xhelmbeta1.ReleaseSpec{
-			ForProvider: xhelmbeta1.ReleaseParameters{
-				Chart: xhelmbeta1.ChartSpec{
-					Repository: svc.Config.Data["chartRepository"],
-					Version:    svc.Config.Data["chartVersion"],
-					Name:       "mariadb-galera",
-				},
-				Namespace: comp.GetInstanceNamespace(),
-				ValuesSpec: xhelmbeta1.ValuesSpec{
-					Values: k8sruntime.RawExtension{
-						Raw: vb,
-					},
-				},
+func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[string]any, comp *vshnv1.VSHNMariaDB) (*xhelmbeta1.Release, error) {
+	cd := []xhelmbeta1.ConnectionDetail{
+		{
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Name:       "tls-server-certificate",
+				Namespace:  comp.GetInstanceNamespace(),
+				FieldPath:  "data[ca.crt]",
 			},
-			ResourceSpec: xpv1.ResourceSpec{
-				ProviderConfigReference: &xpv1.Reference{
-					Name: "helm",
-				},
-				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      comp.GetName() + "-connection",
-					Namespace: comp.GetInstanceNamespace(),
-				},
-			},
-			ConnectionDetails: []xhelmbeta1.ConnectionDetail{
-				{
-					ObjectReference: corev1.ObjectReference{
-						APIVersion: "v1",
-						Kind:       "Secret",
-						Name:       "tls-server-certificate",
-						Namespace:  comp.GetInstanceNamespace(),
-						FieldPath:  "data[ca.crt]",
-					},
-					ToConnectionSecretKey:  "ca.crt",
-					SkipPartOfReleaseCheck: true,
-				},
-			},
+			ToConnectionSecretKey:  "ca.crt",
+			SkipPartOfReleaseCheck: true,
 		},
 	}
 
-	return r
+	return common.NewRelease(ctx, svc, comp, values, cd...)
 }

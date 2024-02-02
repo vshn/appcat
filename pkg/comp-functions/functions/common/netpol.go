@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -9,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func CreateNetworkPolicy(ctx context.Context, sourceNs []string, instanceNs string, instance string, svc *runtime.ServiceRuntime) error {
+func CreateNetworkPolicy(sourceNs []string, instanceNs string, instance string, svc *runtime.ServiceRuntime) error {
 
 	netPolPeer := []netv1.NetworkPolicyPeer{}
 	for _, ns := range sourceNs {

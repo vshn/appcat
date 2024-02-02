@@ -10,97 +10,103 @@ import (
 
 // Workaround to make nested defaulting work.
 // kubebuilder is unable to set a {} default
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 
 // +kubebuilder:object:root=true
 
-// {{.Name}} is the API for creating {{.NameShort}} instances.
-type {{.Name}} struct {
+// VSHNKeycloak is the API for creating keycloak instances.
+type VSHNKeycloak struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec defines the desired state of a {{.Name}}.
-	Spec {{.Name}}Spec `json:"spec"`
+	// Spec defines the desired state of a VSHNKeycloak.
+	Spec VSHNKeycloakSpec `json:"spec"`
 
-	// Status reflects the observed state of a {{.Name}}.
-	Status {{.Name}}Status `json:"status,omitempty"`
+	// Status reflects the observed state of a VSHNKeycloak.
+	Status VSHNKeycloakStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
-type {{.Name}}List struct {
+type VSHNKeycloakList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []{{.Name}} `json:"items,omitempty"`
+	Items []VSHNKeycloak `json:"items,omitempty"`
 }
 
-// {{.Name}}Spec defines the desired state of a {{.Name}}.
-type {{.Name}}Spec struct {
-	// Parameters are the configurable fields of a {{.Name}}.
-	Parameters {{.Name}}Parameters `json:"parameters,omitempty"`
+// VSHNKeycloakSpec defines the desired state of a VSHNKeycloak.
+type VSHNKeycloakSpec struct {
+	// Parameters are the configurable fields of a VSHNKeycloak.
+	Parameters VSHNKeycloakParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
 	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
-// {{.Name}}Parameters are the configurable fields of a {{.Name}}.
-type {{.Name}}Parameters struct {
-	// Service contains {{.NameShort}} DBaaS specific properties
-	Service {{.Name}}ServiceSpec `json:"service,omitempty"`
+// VSHNKeycloakParameters are the configurable fields of a VSHNKeycloak.
+type VSHNKeycloakParameters struct {
+	// Service contains keycloak DBaaS specific properties
+	Service VSHNKeycloakServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
 	Size VSHNSizeSpec `json:"size,omitempty"`
 
 	// Scheduling contains settings to control the scheduling of an instance.
 	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`
-{{- if .Tls}}
 
 	// TLS contains settings to control tls traffic of a service.
-	TLS {{.Name}}TLSSpec `json:"tls,omitempty"`
-{{- end -}}
-{{- if .Backup}}
+	TLS VSHNKeycloakTLSSpec `json:"tls,omitempty"`
 
 	// Backup contains settings to control how the instance should get backed up.
 	Backup K8upBackupSpec `json:"backup,omitempty"`
-{{- end -}}
-{{- if .Restore}}
 
 	// Restore contains settings to control the restore of an instance.
 	Restore K8upRestoreSpec `json:"restore,omitempty"`
-{{- end -}}
-{{- if .Maintenance}}
 
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
-{{- end -}}
 }
 
-// {{.Name}}ServiceSpec contains {{.NameShort}} DBaaS specific properties
-type {{.Name}}ServiceSpec struct {
-	// +kubebuilder:validation:Enum=<TBD>
-	// +kubebuilder:default=<TBD>
+// VSHNKeycloakServiceSpec contains keycloak DBaaS specific properties
+type VSHNKeycloakServiceSpec struct {
+	// FQDN contains the FQDN which will be used for the ingress.
+	// If it's not set, no ingress will be deployed.
+	// This also enables strict hostname checking for this FQDN.
+	FQDN string `json:"fqdn,omitempty"`
 
-	// Version contains supported version of {{.NameShort}}.
-	// Multiple versions are supported. The latest version <TBD> is the default version.
+	// RelativePath on which Keycloak will listen.
+	// +kubebuilder:default="/"
+	RelativePath string `json:"relativePath,omitempty"`
+
+	// +kubebuilder:validation:Enum="23"
+	// +kubebuilder:default="23"
+
+	// Version contains supported version of keycloak.
+	// Multiple versions are supported. The latest version 22 is the default version.
 	Version string `json:"version,omitempty"`
-
-	// {{.SettingsKey | CamelCase}} contains additional {{.NameShort}} settings.
-	{{.SettingsKey | CamelCase}} string `json:"{{.SettingsKey}},omitempty"`
 
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
 	// +kubebuilder:default="besteffort"
 
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
+
+	// PostgreSQLParameters can be used to set any supported setting in the
+	// underlying PostgreSQL instance.
+	PostgreSQLParameters *VSHNPostgreSQLParameters `json:"postgreSQLParameters,omitempty"`
 }
 
-// {{.Name}}SizeSpec contains settings to control the sizing of a service.
-type {{.Name}}SizeSpec struct {
+// VSHNKeycloakSettings contains Keycloak specific settings.
+type VSHNKeycloakSettings struct{}
+
+// VSHNKeycloakSizeSpec contains settings to control the sizing of a service.
+type VSHNKeycloakSizeSpec struct {
 
 	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
 	CPURequests string `json:"cpuRequests,omitempty"`
@@ -121,9 +127,8 @@ type {{.Name}}SizeSpec struct {
 	Plan string `json:"plan,omitempty"`
 }
 
-{{if .Tls}}
-// {{.Name}}TLSSpec contains settings to control tls traffic of a service.
-type {{.Name}}TLSSpec struct {
+// VSHNKeycloakTLSSpec contains settings to control tls traffic of a service.
+type VSHNKeycloakTLSSpec struct {
 	// +kubebuilder:default=true
 
 	// TLSEnabled enables TLS traffic for the service
@@ -133,10 +138,9 @@ type {{.Name}}TLSSpec struct {
 	// TLSAuthClients enables client authentication requirement
 	TLSAuthClients bool `json:"authClients,omitempty"`
 }
-{{end}}
 
-// {{.Name}}Status reflects the observed state of a {{.Name}}.
-type {{.Name}}Status struct {
+// VSHNKeycloakStatus reflects the observed state of a VSHNKeycloak.
+type VSHNKeycloakStatus struct {
 	NamespaceConditions         []v1.Condition `json:"namespaceConditions,omitempty"`
 	SelfSignedIssuerConditions  []v1.Condition `json:"selfSignedIssuerConditions,omitempty"`
 	LocalCAConditions           []v1.Condition `json:"localCAConditions,omitempty"`
@@ -150,53 +154,52 @@ type {{.Name}}Status struct {
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 }
 
-func (v *{{.Name}}) GetClaimNamespace() string {
+func (v *VSHNKeycloak) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
-func (v *{{.Name}}) GetInstanceNamespace() string {
-	return fmt.Sprintf("vshn-{{.NameShort}}-%s", v.GetName())
+func (v *VSHNKeycloak) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-keycloak-%s", v.GetName())
 }
-
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
-// X{{.Name}} represents the internal composite of this claim
-type X{{.Name}} struct {
+// XVSHNKeycloak represents the internal composite of this claim
+type XVSHNKeycloak struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   X{{.Name}}Spec   `json:"spec"`
-	Status X{{.Name}}Status `json:"status,omitempty"`
+	Spec   XVSHNKeycloakSpec   `json:"spec"`
+	Status XVSHNKeycloakStatus `json:"status,omitempty"`
 }
 
-// X{{.Name}}Spec defines the desired state of a {{.Name}}.
-type X{{.Name}}Spec struct {
-	// Parameters are the configurable fields of a {{.Name}}.
-	Parameters {{.Name}}Parameters `json:"parameters,omitempty"`
+// XVSHNKeycloakSpec defines the desired state of a VSHNKeycloak.
+type XVSHNKeycloakSpec struct {
+	// Parameters are the configurable fields of a VSHNKeycloak.
+	Parameters VSHNKeycloakParameters `json:"parameters,omitempty"`
 
 	xpv1.ResourceSpec `json:",inline"`
 }
 
-type X{{.Name}}Status struct {
-	{{.Name}}Status     `json:",inline"`
+type XVSHNKeycloakStatus struct {
+	VSHNKeycloakStatus  `json:",inline"`
 	xpv1.ResourceStatus `json:",inline"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
-// X{{.Name}}List represents a list of composites
-type X{{.Name}}List struct {
+// XVSHNKeycloakList represents a list of composites
+type XVSHNKeycloakList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []X{{.Name}} `json:"items"`
+	Items []XVSHNKeycloak `json:"items"`
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
-func (n *{{.Name}}) GetMaintenanceDayOfWeek() string {
+func (n *VSHNKeycloak) GetMaintenanceDayOfWeek() string {
 	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
 		return n.Spec.Parameters.Maintenance.DayOfWeek
 	}
@@ -204,7 +207,7 @@ func (n *{{.Name}}) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *{{.Name}}) GetMaintenanceTimeOfDay() string {
+func (v *VSHNKeycloak) GetMaintenanceTimeOfDay() string {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
 		return v.Spec.Parameters.Maintenance.TimeOfDay
 	}
@@ -212,17 +215,17 @@ func (v *{{.Name}}) GetMaintenanceTimeOfDay() string {
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
-func (v *{{.Name}}) SetMaintenanceDayOfWeek(dow string) {
+func (v *VSHNKeycloak) SetMaintenanceDayOfWeek(dow string) {
 	v.Status.Schedules.Maintenance.DayOfWeek = dow
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (v *{{.Name}}) SetMaintenanceTimeOfDay(tod string) {
+func (v *VSHNKeycloak) SetMaintenanceTimeOfDay(tod string) {
 	v.Status.Schedules.Maintenance.TimeOfDay = tod
 }
 
 // GetBackupSchedule returns the current backup schedule
-func (v *{{.Name}}) GetBackupSchedule() string {
+func (v *VSHNKeycloak) GetBackupSchedule() string {
 	if v.Spec.Parameters.Backup.Schedule != "" {
 		return v.Spec.Parameters.Backup.Schedule
 	}
@@ -230,22 +233,22 @@ func (v *{{.Name}}) GetBackupSchedule() string {
 }
 
 // SetBackupSchedule overwrites the current backup schedule
-func (v *{{.Name}}) SetBackupSchedule(schedule string) {
+func (v *VSHNKeycloak) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
 }
 
 // GetBackupRetention returns the retention definition for this backup.
-func (v *{{.Name}}) GetBackupRetention() K8upRetentionPolicy {
+func (v *VSHNKeycloak) GetBackupRetention() K8upRetentionPolicy {
 	return v.Spec.Parameters.Backup.Retention
 }
 
 // GetServiceName returns the name of this service
-func (v *{{.Name}}) GetServiceName() string {
-	return "{{.NameShort}}"
+func (v *VSHNKeycloak) GetServiceName() string {
+	return "keycloak"
 }
 
 // GetFullMaintenanceSchedule returns
-func (v *{{.Name}}) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
+func (v *VSHNKeycloak) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
 	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()

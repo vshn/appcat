@@ -867,7 +867,7 @@ desired:
               apiVersion: v1
               fieldPath: data
               kind: Secret
-              name: stackgres-restapi
+              name: stackgres-restapi-admin
               namespace: stackgres
             toFieldPath: data
         status:
@@ -4577,7 +4577,7 @@ observed:
               apiVersion: v1
               fieldPath: data
               kind: Secret
-              name: stackgres-restapi
+              name: stackgres-restapi-admin
               namespace: stackgres
             toFieldPath: data
         status:

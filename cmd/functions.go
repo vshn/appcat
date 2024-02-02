@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/miniobucket"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnkeycloak"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnminio"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"

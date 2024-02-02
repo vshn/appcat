@@ -34,5 +34,9 @@ func init() {
 		&XVSHNRedisList{},
 		&XVSHNMinio{},
 		&XVSHNMinioList{},
+		&XVSHNKeycloak{},
+		&XVSHNKeycloakList{},
+		&VSHNKeycloakList{},
+		&VSHNKeycloak{},
 	)
 }

@@ -1,0 +1,20 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    defaultPlan: standard-2
+    plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled":
+            true, "memory": "2Gi"}}, "standard-4": {"size": {"cpu": "1", "disk": "16Gi",
+            "enabled": true, "memory": "4Gi"}}, "standard-8": {"size": {"cpu": "2",
+            "disk": "16Gi", "enabled": true, "memory": "8Gi"}}}'
+observed:
+  resources:
+    mycloak-pg:
+      connection_details:
+        foo: YmFyCg==

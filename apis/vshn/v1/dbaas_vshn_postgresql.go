@@ -332,6 +332,9 @@ func (pg *VSHNPostgreSQL) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
 }
 
+func (pg *XVSHNPostgreSQL) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
+}
 
 // GetBackupRetention returns the retention definition for this backup.
 // !!! This is just a placeholder to satisfy InfoGetter interface

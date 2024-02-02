@@ -5,6 +5,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -100,6 +101,19 @@ type VSHNKeycloakServiceSpec struct {
 	// PostgreSQLParameters can be used to set any supported setting in the
 	// underlying PostgreSQL instance.
 	PostgreSQLParameters *VSHNPostgreSQLParameters `json:"postgreSQLParameters,omitempty"`
+
+	// CustomizationImage can be used to provide an image with custom themes and providers.
+	// The themes need to be be placed in the `/themes` directory of the custom image.
+	// the providers need to be placed in the `/providers` directory of the custom image.
+	CustomizationImage VSHNKeycloakCustomizationImage `json:"customizationImage,omitempty"`
+}
+
+type VSHNKeycloakCustomizationImage struct {
+	// Path to a valid image
+	Image string `json:"image,omitempty"`
+
+	// Reference to an imagePullSecret
+	ImagePullSecretRef corev1.SecretReference `json:"imagePullSecretRef,omitempty"`
 }
 
 // VSHNKeycloakSettings contains Keycloak specific settings.

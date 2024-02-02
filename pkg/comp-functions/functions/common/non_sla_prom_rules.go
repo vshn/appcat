@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
@@ -30,7 +29,7 @@ func GenerateNonSLAPromRules(obj client.Object) func(ctx context.Context, svc *r
 	return func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 
 		log := controllerruntime.LoggerFrom(ctx)
-		log.Info("adding non SLA prometheus rules")
+		log.Info("Satrting non SLA prometheus rules")
 
 		log.V(1).Info("Transforming", "obj", svc)
 
@@ -40,13 +39,16 @@ func GenerateNonSLAPromRules(obj client.Object) func(ctx context.Context, svc *r
 		}
 		elem, ok := obj.(InfoGetter)
 		if !ok {
-			return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
+			return runtime.NewFatalResult(err)
 		}
 
 		err = generatePromeRules(elem, svc)
 		if err != nil {
+			log.Info("broken addition")
 			return runtime.NewWarningResult("can't create prometheus rules: " + err.Error())
 		}
+
+		log.Info("\n\n\n\nRules added successfully = " + elem.GetInstanceNamespace())
 
 		return nil
 	}

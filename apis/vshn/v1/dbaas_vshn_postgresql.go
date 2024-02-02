@@ -327,3 +327,14 @@ type XVSHNPostgreSQLList struct {
 func (pg *VSHNPostgreSQL) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
 }
+
+// GetBackupRetention returns the retention definition for this backup.
+// !!! This is just a placeholder to satisfy InfoGetter interface
+func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
+	return K8upRetentionPolicy{}
+}
+
+// GetServiceName returns the name of this service
+func (v *VSHNPostgreSQL) GetServiceName() string {
+	return "postgresql"
+}

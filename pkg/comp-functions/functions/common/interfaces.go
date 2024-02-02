@@ -9,5 +9,4 @@ type InfoGetter interface {
 	GetBackupSchedule() string
 	GetBackupRetention() vshnv1.K8upRetentionPolicy
 	GetServiceName() string
-	GetInstanceNamespaceRegex() (string, []string, error)
 }

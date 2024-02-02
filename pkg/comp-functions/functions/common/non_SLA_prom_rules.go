@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	promV1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -35,14 +36,14 @@ func GenerateNonSLAPromRules(obj client.Object) func(ctx context.Context, svc *r
 
 		err := svc.GetObservedComposite(obj)
 		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("Can't get composite: %w", err))
+			return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 		}
 		elem, ok := obj.(InfoGetter)
 		if !ok {
 			return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
 		}
 
-		instanceNamespaceRegex, instanceNamespaceSplitted, err := elem.GetInstanceNamespaceRegex()
+		instanceNamespaceRegex, instanceNamespaceSplitted, err := getInstanceNamespaceRegex(elem.GetInstanceNamespace())
 		if err != nil {
 			return runtime.NewWarningResult("Instance namespace looks broken, " + err.Error())
 		}
@@ -130,4 +131,32 @@ func generatePromeRules(name, namespace, namespaceRegex, serviceName string, svc
 	}
 
 	return svc.SetDesiredKubeObject(prometheusRules, name+"-non-sla-alerts")
+}
+
+// Get InstanceNamespaceRegex returns regex for prometheus rules, splitted insatnce namespace and error if necessary
+func getInstanceNamespaceRegex(instanceNamespace string) (string, []string, error) {
+	// from instance namespace, f.e. vshn-postgresql-customer-namespace-whatever
+	// make vshn-postgresql-(.+)-.+
+	//		vshn-redis-(.+)-.+
+	//		vshn-minio-(.+)-.+
+	// required for Prometheus queries
+
+	// vshn- <- takes 5 letters, anything shorter that 7 makes no sense
+	if len(instanceNamespace) < 7 {
+		return "", nil, fmt.Errorf("GetInstanceNamespaceRegex: instance namespace is way too short")
+	}
+
+	splitted := strings.Split(instanceNamespace, "-")
+	// at least [vshn, serviceName] should be present
+	if len(splitted) < 3 {
+		return "", nil, fmt.Errorf("GetInstanceNamespaceRegex: instance namespace broken during splitting")
+	}
+
+	for _, val := range splitted {
+		if len(val) == 0 {
+			return "", nil, fmt.Errorf("GetInstanceNamespaceRegex: broken instance namespace, name ending with hyphen: %s", val)
+		}
+	}
+
+	return fmt.Sprintf("%s-%s-(.+)-.+", splitted[0], splitted[1]), splitted, nil
 }

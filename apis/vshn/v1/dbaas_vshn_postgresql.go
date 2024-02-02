@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
@@ -327,24 +326,4 @@ type XVSHNPostgreSQLList struct {
 
 func (pg *VSHNPostgreSQL) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
-}
-
-// Get InstanceNamespaceRegex returns regex for prometheus rules, splitted insatnce namespace and error if necessary
-func (pg *VSHNPostgreSQL) GetInstanceNamespaceRegex() (string, []string, error) {
-	// from vshn-postgresql-customer-namespace-whatever
-	// make vshn-postgresql-(.+)-.+
-	// required for Prometheus queries
-	instanceNamespace := pg.GetInstanceNamespace()
-	// vshn- <- takes 5 letters, anything shorter that 7 makes no sense
-	if len(instanceNamespace) < 7 {
-		return "", nil, fmt.Errorf("giveMeNamespaceRegex: instance namespace is way too short")
-	}
-
-	splitted := strings.Split(instanceNamespace, "-")
-	// at least [vshn, serviceName] should be present
-	if len(instanceNamespace) < 2 {
-		return "", nil, fmt.Errorf("giveMeNamespaceRegex: instance namespace broken during splitting")
-	}
-
-	return fmt.Sprintf("%s-%s-(.+)-.+", splitted[0], splitted[1]), splitted, nil
 }

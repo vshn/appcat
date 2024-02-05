@@ -186,3 +186,14 @@ func (v *VSHNMinio) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpe
 	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
 	return schedule
 }
+
+// GetBackupRetention returns the retention definition for this backup.
+// !!! This is just a placeholder to satisfy InfoGetter interface !!!
+func (v *VSHNMinio) GetBackupRetention() K8upRetentionPolicy {
+	return K8upRetentionPolicy{}
+}
+
+// GetServiceName returns the name of this service
+func (v *VSHNMinio) GetServiceName() string {
+	return "minio"
+}

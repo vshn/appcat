@@ -24,7 +24,7 @@ func DeployRedis(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Res
 	err = common.BootstrapInstanceNs(ctx, comp, "redis", "namespace-conditions", svc)
 	if err != nil {
 		err = fmt.Errorf("cannot bootstrap instance namespace: %w", err)
-		return runtime.NewFatalResult(err)
+		return runtime.NewWarningResult(err.Error())
 	}
 
 	return nil

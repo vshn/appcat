@@ -40,6 +40,7 @@ var (
 	vshnpostgresqlsServiceKey = "VSHNPostgreSQL"
 	claimNamespaceLabel       = "crossplane.io/claim-namespace"
 	claimNameLabel            = "crossplane.io/claim-name"
+	errNotReady               = fmt.Errorf("Resource is not yet ready")
 )
 
 // VSHNPostgreSQLReconciler reconciles a VSHNPostgreSQL object
@@ -89,26 +90,30 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	probe, err := r.fetchProberFor(ctx, inst)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return ctrl.Result{}, err
+	if time.Since(inst.GetCreationTimestamp().Time) < r.StartupGracePeriod {
+		retry := r.StartupGracePeriod - time.Since(inst.GetCreationTimestamp().Time)
+		l.Info(fmt.Sprintf("Instance is starting up. Postpone probing until ready, retry in %s", retry.String()))
+		res.Requeue = true
+		res.RequeueAfter = retry
+		return res, nil
 	}
-	if apierrors.IsNotFound(err) {
+
+	probe, err := r.fetchProberFor(ctx, inst)
+	// By using the composite the credential secret is available instantly, but initially empty.
+	// TODO: we might want to rethink and generalize this whole reconciler logic in the future.
+	if err != nil && (apierrors.IsNotFound(err) || err == errNotReady) {
 		l.WithValues("credentials", inst.Spec.WriteConnectionSecretToReference.Name, "error", err.Error()).
 			Info("Failed to find credentials. Backing off")
 		res.Requeue = true
 		res.RequeueAfter = 30 * time.Second
-
-		if time.Since(inst.GetCreationTimestamp().Time) < r.StartupGracePeriod {
-			// Instance is starting up. Postpone probing until ready.
-			return res, nil
-		}
 
 		// Create a pobe that will always fail
 		probe, err = probes.NewFailingProbe(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], err)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+	} else if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	l.Info("Starting Probe")
@@ -117,24 +122,19 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) (probes.Prober, error) {
-	instance := &vshnv1.VSHNPostgreSQL{}
+	credSecret := corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{
-		Name:      inst.ObjectMeta.Labels[claimNameLabel],
-		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
-	}, instance)
+		Name:      inst.Spec.WriteConnectionSecretToReference.Name,
+		Namespace: inst.Spec.WriteConnectionSecretToReference.Namespace,
+	}, &credSecret)
 
 	if err != nil {
 		return nil, err
 	}
 
-	credSecret := corev1.Secret{}
-	err = r.Get(ctx, types.NamespacedName{
-		Name:      instance.Spec.WriteConnectionSecretToReference.Name,
-		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
-	}, &credSecret)
-
-	if err != nil {
-		return nil, err
+	ready := r.areCredentialsAvailable(&credSecret)
+	if !ready {
+		return nil, errNotReady
 	}
 
 	ns := &corev1.Namespace{}
@@ -175,4 +175,34 @@ func (r *VSHNPostgreSQLReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vshnv1.XVSHNPostgreSQL{}).
 		Complete(r)
+}
+
+func (r *VSHNPostgreSQLReconciler) areCredentialsAvailable(secret *corev1.Secret) bool {
+
+	_, ok := secret.Data["POSTGRESQL_USER"]
+	if !ok {
+		return false
+	}
+	_, ok = secret.Data["POSTGRESQL_PASSWORD"]
+	if !ok {
+		return false
+	}
+	_, ok = secret.Data["POSTGRESQL_HOST"]
+	if !ok {
+		return false
+	}
+	_, ok = secret.Data["POSTGRESQL_PORT"]
+	if !ok {
+		return false
+	}
+	_, ok = secret.Data["POSTGRESQL_DB"]
+	if !ok {
+		return false
+	}
+	_, ok = secret.Data["ca.crt"]
+	if !ok {
+		return false
+	}
+
+	return ok
 }

@@ -130,7 +130,8 @@ func TestVSHNPostgreSQL_Multi(t *testing.T) {
 
 func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
 	db := newTestVSHNPostgres("bar", "foo", "creds", 1)
-	db.SetCreationTimestamp(metav1.Now())
+	cd := metav1.Now().Add(time.Minute * -6)
+	db.SetCreationTimestamp(metav1.Time{Time: cd})
 	r, manager, _ := setupVSHNPostgreTest(t,
 		db,
 	)
@@ -144,7 +145,9 @@ func TestVSHNPostgreSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Greater(t, res.RequeueAfter.Microseconds(), int64(0))
 
-	assert.False(t, manager.probers[getFakeKey(pi)])
+	// we now get a failing probe as the composite will always have
+	// connection details
+	assert.True(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {

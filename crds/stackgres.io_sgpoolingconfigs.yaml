@@ -32,7 +32,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: Spec defines the desired state of a VSHNPostgreSQL.
+            description: Spec contains the custom configurations for the pgbouncer.
             properties:
               pgBouncer:
                 description: Connection pooling configuration based on PgBouncer.
@@ -72,7 +72,7 @@ spec:
                 type: object
             type: object
           status:
-            description: Status reflects the observed state of a VSHNPostgreSQL.
+            description: Status contains the default settings for the pgbouncer.
             properties:
               pgBouncer:
                 description: Connection pooling configuration status based on PgBouncer.

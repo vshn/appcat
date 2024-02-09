@@ -136,8 +136,14 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 
 	tlsEnabled := inst.Spec.Parameters.TLS.TLSEnabled
 
-	tlsConfig := tls.Config{}
+	redisOptions := redis.Options{
+		Addr:     string(credentials.Data["REDIS_HOST"]) + ":" + string(credentials.Data["REDIS_PORT"]),
+		Username: string(credentials.Data["REDIS_USERNAME"]),
+		Password: string(credentials.Data["REDIS_PASSWORD"]),
+	}
+
 	if tlsEnabled {
+		tlsConfig := tls.Config{}
 		certPair, err := tls.X509KeyPair(credentials.Data["tls.crt"], credentials.Data["tls.key"])
 		if err != nil {
 			return nil, err
@@ -148,14 +154,10 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 		}
 
 		tlsConfig.RootCAs.AppendCertsFromPEM(credentials.Data["ca.crt"])
+		redisOptions.TLSConfig = &tlsConfig
 	}
 
-	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, string(sla), false, redis.Options{
-		Addr:      string(credentials.Data["REDIS_HOST"]) + ":" + string(credentials.Data["REDIS_PORT"]),
-		Username:  string(credentials.Data["REDIS_USERNAME"]),
-		Password:  string(credentials.Data["REDIS_PASSWORD"]),
-		TLSConfig: &tlsConfig,
-	})
+	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, string(sla), false, redisOptions)
 	if err != nil {
 		return nil, err
 	}

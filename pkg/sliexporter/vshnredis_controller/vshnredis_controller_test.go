@@ -453,8 +453,7 @@ func TestVSHNRedis_NoTls(t *testing.T) {
 	)
 	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 
-		assert.Equal(t, []tls.Certificate(nil), opts.TLSConfig.Certificates)
-		assert.Equal(t, []tls.Certificate(nil), opts.TLSConfig.Certificates)
+		assert.Nil(t, opts.TLSConfig, "TLS config MUST be nil")
 
 		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
 			Addr:     string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),

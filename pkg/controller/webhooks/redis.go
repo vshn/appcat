@@ -47,17 +47,44 @@ func SetupRedisWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-
+	allErrs := field.ErrorList{}
 	redis, ok := obj.(*vshnv1.VSHNRedis)
 	if !ok {
-		return nil, fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
+		return nil, fmt.Errorf("provided manifest is not a valid VSHNRedis object")
 	}
 
 	if r.withQuota {
-		err := r.checkQuotas(ctx, redis, true)
-		if err != nil {
-			return nil, err
+		quotaErrs := r.checkQuotas(ctx, redis, true)
+		if quotaErrs != nil {
+			allErrs = append(allErrs, &field.Error{
+				Field: "quota",
+				Detail: fmt.Sprintf("quota check failed: %s",
+					quotaErrs.Error()),
+				BadValue: "*your namespace quota*",
+				Type:     field.ErrorTypeForbidden,
+			})
 		}
+	}
+	err := r.validateResourceNameLength(redis.GetName())
+	if err != nil {
+		allErrs = append(allErrs, &field.Error{
+			Field: ".metadata.name",
+			Detail: fmt.Sprintf("Please shorten Redis name, currently it is: %s",
+				err.Error()),
+			BadValue: redis.GetName(),
+			Type:     field.ErrorTypeTooLong,
+		})
+	}
+
+	// We aggregate and return all errors at the same time.
+	// So the user is aware of all broken parameters.
+	// But at the same time, if any of these fail we cannot do proper quota checks anymore.
+	if len(allErrs) != 0 {
+		return nil, apierrors.NewInvalid(
+			redisGK,
+			redis.GetName(),
+			allErrs,
+		)
 	}
 
 	return nil, nil
@@ -65,10 +92,10 @@ func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Ob
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-
+	allErrs := field.ErrorList{}
 	redis, ok := newObj.(*vshnv1.VSHNRedis)
 	if !ok {
-		return nil, fmt.Errorf("Provided manifest is not a valid VSHNRedis object")
+		return nil, fmt.Errorf("provided manifest is not a valid VSHNRedis object")
 	}
 
 	if redis.DeletionTimestamp != nil {
@@ -76,10 +103,38 @@ func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj
 	}
 
 	if r.withQuota {
-		err := r.checkQuotas(ctx, redis, false)
-		if err != nil {
-			return nil, err
+		quotaErrs := r.checkQuotas(ctx, redis, true)
+		if quotaErrs != nil {
+			allErrs = append(allErrs, &field.Error{
+				Field: "quota",
+				Detail: fmt.Sprintf("quota check failed: %s",
+					quotaErrs.Error()),
+				BadValue: "*your namespace quota*",
+				Type:     field.ErrorTypeForbidden,
+			})
 		}
+	}
+
+	err := r.validateResourceNameLength(redis.GetName())
+	if err != nil {
+		allErrs = append(allErrs, &field.Error{
+			Field: ".metadata.name",
+			Detail: fmt.Sprintf("Please shorten Redis name, currently it is: %s",
+				err.Error()),
+			BadValue: redis.GetName(),
+			Type:     field.ErrorTypeTooLong,
+		})
+	}
+
+	// We aggregate and return all errors at the same time.
+	// So the user is aware of all broken parameters.
+	// But at the same time, if any of these fail we cannot do proper quota checks anymore.
+	if len(allErrs) != 0 {
+		return nil, apierrors.NewInvalid(
+			redisGK,
+			redis.GetName(),
+			allErrs,
+		)
 	}
 
 	return nil, nil
@@ -182,4 +237,13 @@ func (r *RedisWebhookHandler) addPathsToResources(res *utils.Resources) {
 	res.MemoryLimitsPath = basePath.Child("memoryLimits")
 	res.MemoryRequestsPath = basePath.Child("memoryLimits")
 	res.DiskPath = basePath.Child("disk")
+}
+
+// k8s limitation is 52 characters, our longest postfix we add is 15 character, therefore 37 chracters is the maximum length
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
+func (r *RedisWebhookHandler) validateResourceNameLength(name string) error {
+	if len(name) > 37 {
+		return fmt.Errorf("%d/37 chars.\n\tWe add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name))
+	}
+	return nil
 }

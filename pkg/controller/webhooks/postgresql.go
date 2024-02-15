@@ -82,6 +82,17 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 
 	allErrs = append(allErrs, instancesError...)
 
+	err := p.validateResourceNameLength(pg.GetName())
+	if err != nil {
+		allErrs = append(allErrs, &field.Error{
+			Field: ".metadata.name",
+			Detail: fmt.Sprintf("Please shorten PostgreSQL name, currently it is: %s",
+				err.Error()),
+			BadValue: pg.GetName(),
+			Type:     field.ErrorTypeTooLong,
+		})
+	}
+
 	if len(allErrs) != 0 {
 		return nil, apierrors.NewInvalid(
 			pgGK,
@@ -122,6 +133,17 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 	instancesError := p.checkGuaranteedAvailability(ctx, pg)
 
 	allErrs = append(allErrs, instancesError...)
+
+	err := p.validateResourceNameLength(pg.GetName())
+	if err != nil {
+		allErrs = append(allErrs, &field.Error{
+			Field: ".metadata.name",
+			Detail: fmt.Sprintf("Please shorten PostgreSQL name, currently it is: %s",
+				err.Error()),
+			BadValue: pg.GetName(),
+			Type:     field.ErrorTypeTooLong,
+		})
+	}
 
 	// We aggregate and return all errors at the same time.
 	// So the user is aware of all broken parameters.
@@ -250,4 +272,13 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Conte
 		})
 	}
 	return fieldErrs
+}
+
+// k8s limitation is 52 characters, our longest postfix we add is 15 character, therefore 37 chracters is the maximum length
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
+func (r *PostgreSQLWebhookHandler) validateResourceNameLength(name string) error {
+	if len(name) > 37 {
+		return fmt.Errorf("name is too long: %d. We add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name))
+	}
+	return nil
 }

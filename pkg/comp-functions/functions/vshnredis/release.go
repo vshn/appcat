@@ -101,7 +101,7 @@ func updateRelease(ctx context.Context, comp *vshnv1.VSHNRedis, desired *xhelmv1
 	}
 
 	l.V(1).Info("Setting release version")
-	err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
 	if err != nil {
 		return nil, fmt.Errorf("cannot set redis version for release %s: %v", releaseName, err)
 	}

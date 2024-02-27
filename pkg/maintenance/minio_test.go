@@ -82,7 +82,7 @@ func Test_compareMinioVersions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tag, err := compareMinioVersions(tt.args.results, tt.args.currentTag)
+			tag, err := compareMinioVersions(&helm.Payload{Results: tt.args.results}, tt.args.currentTag)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

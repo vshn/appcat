@@ -10,6 +10,7 @@ import (
 	"github.com/thediveo/enumflag/v2"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/maintenance"
+	"github.com/vshn/appcat/v4/pkg/maintenance/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -27,6 +28,7 @@ const (
 	redis
 	minio
 	mariadb
+	keycloak
 )
 
 var maintenanceServices = map[service][]string{
@@ -34,6 +36,7 @@ var maintenanceServices = map[service][]string{
 	redis:      {"redis"},
 	minio:      {"minio"},
 	mariadb:    {"mariadb"},
+	keycloak:   {"keycloak"},
 }
 
 var serviceName service
@@ -83,17 +86,30 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		}
 		return pg.DoMaintenance(cmd.Context())
 	case redis:
-		r := maintenance.NewRedis(kubeClient, http.DefaultClient)
+		r := maintenance.NewRedis(kubeClient, getHTTPClient())
 		return r.DoMaintenance(cmd.Context())
 
 	case minio:
-		m := maintenance.NewMinio(kubeClient, http.DefaultClient)
+		m := maintenance.NewMinio(kubeClient, getHTTPClient())
 		return m.DoMaintenance(cmd.Context())
 
 	case mariadb:
-		m := maintenance.NewMariaDB(kubeClient, http.DefaultClient)
+		m := maintenance.NewMariaDB(kubeClient, getHTTPClient())
 		return m.DoMaintenance(cmd.Context())
+
+	case keycloak:
+		k := maintenance.NewKeycloak(kubeClient, getHTTPClient())
+		return k.DoMaintenance(cmd.Context())
 	}
 
 	return nil
+}
+
+func getHTTPClient() *http.Client {
+	if viper.GetString("REGISTRY_USERNAME") == "" || viper.GetString("REGISTRY_PASSWORD") == "" {
+		return &http.Client{
+			Timeout: 30 * time.Second,
+		}
+	}
+	return auth.GetAuthHTTPClient(viper.GetString("REGISTRY_USERNAME"), viper.GetString("REGISTRY_PASSWORD"))
 }

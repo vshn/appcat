@@ -52,6 +52,13 @@ func Test_addRelease(t *testing.T) {
 			Name:      "mycloak",
 			Namespace: "default",
 		},
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					Version: "23",
+				},
+			},
+		},
 	}
 
 	assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret"))

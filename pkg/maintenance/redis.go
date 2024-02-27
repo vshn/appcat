@@ -31,5 +31,5 @@ func NewRedis(c client.Client, hc *http.Client) Redis {
 func (r *Redis) DoMaintenance(ctx context.Context) error {
 	patcher := helm.NewImagePatcher(r.k8sClient, r.httpClient, logr.FromContextOrDiscard(ctx).WithValues("type", "redis"))
 
-	return patcher.DoMaintenance(ctx, redisURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly)
+	return patcher.DoMaintenance(ctx, redisURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
 }

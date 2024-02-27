@@ -212,7 +212,6 @@ func Test_compareSemanticVersion(t *testing.T) {
 				getResult("6.6.4", "inactive", "image"),
 				getResult("6.8", "active", "image"),
 				getResult("7.0", "active", "image"),
-				getResult("7.0.1", "active", "registry"),
 				getResult("7.1.4", "active", "image"),
 				getResult("7.2.4", "inactive", "image"),
 				getResult("7.1.12-alpha", "active", "image"),
@@ -281,7 +280,7 @@ func Test_compareSemanticVersion(t *testing.T) {
 			// WHEN
 			tag, err := r.getCurrentTagFromRelease(tt.release, []string{"image", "tag"})
 			assert.NoError(t, err)
-			version, err := SemVerPatchesOnly(tt.results, tag)
+			version, err := SemVerPatchesOnly(true)(&Payload{Results: tt.results}, tag)
 
 			// THEN
 			if tt.expectedErr != "" {
@@ -399,12 +398,12 @@ func Test_GetRelease(t *testing.T) {
 	}
 }
 
-func Test_GetVersions(t *testing.T) {
+func Test_GetHubVersions(t *testing.T) {
 	tests := []struct {
 		name              string
 		instanceNamespace string
 		server            *httptest.Server
-		expectedResults   []Result
+		expectedResults   *Payload
 	}{
 		{
 			name:              "WhenRelease_ThenReturnRelease",
@@ -423,9 +422,10 @@ func Test_GetVersions(t *testing.T) {
 				_, err = w.Write(payload)
 				assert.NoError(t, err)
 			})),
-			expectedResults: []Result{
+			expectedResults: &Payload{Results: []Result{
 				getResult("1.0.0", "active", "image"),
 				getResult("2.0.0", "inactive", "image"),
+			},
 			},
 		},
 	}
@@ -442,7 +442,7 @@ func Test_GetVersions(t *testing.T) {
 			defer tt.server.Close()
 
 			// WHEN
-			res, err := r.getVersions(tt.server.URL + "?size=100&")
+			res, err := r.getHubVersions(tt.server.URL + "?size=100&")
 
 			// THEN
 			assert.NoError(t, err)

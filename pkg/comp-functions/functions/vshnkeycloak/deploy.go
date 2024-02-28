@@ -7,7 +7,9 @@ import (
 	"fmt"
 
 	"dario.cat/mergo"
+	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
@@ -20,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -36,6 +39,7 @@ const (
 	registryURL                   = "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
 	providerInitName              = "copy-original-providers"
 	realmInitName                 = "copy-original-realm-setup"
+	customImagePullsecretName     = "customimagepullsecret"
 )
 
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
@@ -266,6 +270,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"emptyDir": nil,
 		},
 		{
+			"name":     "custom-themes",
+			"emptyDir": nil,
+		},
+		{
 			"name":     "custom-setup",
 			"emptyDir": nil,
 		},
@@ -290,6 +298,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		{
 			"name":      "custom-providers",
 			"mountPath": "/opt/keycloak/providers",
+		},
+		{
+			"name":      "custom-themes",
+			"mountPath": "/opt/keycloak/themes",
 		},
 		{
 			"name":      "custom-setup",
@@ -331,14 +343,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"database": string(cd[vshnpostgres.PostgresqlDb]),
 			"username": string(cd[vshnpostgres.PostgresqlUser]),
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
-		},
-		"serviceAccount": map[string]any{
-			"automountServiceAccountToken": "false",
-			"imagePullSecrets": []map[string]any{
-				{
-					"name": pullsecretName,
-				},
-			},
 		},
 		"resources": map[string]any{
 			"requests": map[string]any{
@@ -395,7 +399,12 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
 	}
 
-	err = addInitContainer(values, observedVersion)
+	err = addInitContainer(comp, svc, values, observedVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	err = addServiceAccount(comp, svc, values)
 	if err != nil {
 		return nil, err
 	}
@@ -410,6 +419,30 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 func toYAML(obj any) (string, error) {
 	yamlBytes, err := yaml.Marshal(obj)
 	return string(yamlBytes), err
+}
+
+func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	secretInstance := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      customImagePullsecretName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+	}
+	secretClaimRef := xkubev1.Reference{
+		PatchesFrom: &xkubev1.PatchesFrom{
+			DependsOn: xkubev1.DependsOn{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.DeepCopy().Namespace,
+				Name:       comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.Name,
+			},
+			FieldPath: ptr.To("data"),
+		},
+		ToFieldPath: ptr.To("data"),
+	}
+
+	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-custom-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef))
 }
 
 func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
@@ -449,7 +482,34 @@ func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error
 	return svc.SetDesiredKubeObject(secret, comp.GetName()+"-pull-secret")
 }
 
-func addInitContainer(values map[string]any, version string) error {
+func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, values map[string]any) error {
+
+	pullSecrets := []map[string]any{
+		{
+			"name": pullsecretName,
+		},
+	}
+
+	if comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.Name != "" {
+		err := copyCustomImagePullSecret(comp, svc)
+		if err != nil {
+			return err
+		}
+		customImagePullSecret := map[string]any{
+			"name": customImagePullsecretName,
+		}
+		pullSecrets = append(pullSecrets, customImagePullSecret)
+	}
+
+	values["serviceAccount"] = map[string]any{
+		"automountServiceAccountToken": "false",
+		"imagePullSecrets":             pullSecrets,
+	}
+
+	return nil
+}
+
+func addInitContainer(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, values map[string]any, version string) error {
 	extraInitContainersMap := []map[string]any{
 		{
 			"name":            providerInitName,
@@ -492,6 +552,10 @@ ls -lh /custom-setup`,
 			},
 		},
 	}
+	extraInitContainersMap, err := addCustomInitContainer(comp, svc, extraInitContainersMap)
+	if err != nil {
+		return err
+	}
 
 	extraInitContainers, err := toYAML(extraInitContainersMap)
 	if err != nil {
@@ -501,4 +565,38 @@ ls -lh /custom-setup`,
 	values["extraInitContainers"] = extraInitContainers
 
 	return nil
+}
+
+func addCustomInitContainer(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, extraInitContainersMap []map[string]any) ([]map[string]any, error) {
+	if comp.Spec.Parameters.Service.CustomizationImage.Image != "" {
+
+		extraInitContainersThemeProvidersMap := map[string]any{
+			"name":            "copy-custom-themes-providers",
+			"image":           comp.Spec.Parameters.Service.CustomizationImage.Image,
+			"imagePullPolicy": "Always",
+			"command": []string{
+				"sh",
+			},
+			"args": []string{
+				"-c",
+				`echo "Copying custom themes..."
+cp -Rv /themes/*  /custom-themes
+echo "Copying custom providers..."
+cp -Rv /providers/* /custom-providers
+exit 0`,
+			},
+			"volumeMounts": []map[string]any{
+				{
+					"name":      "custom-providers",
+					"mountPath": "/custom-providers",
+				},
+				{
+					"name":      "custom-themes",
+					"mountPath": "/custom-themes",
+				},
+			},
+		}
+		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
+	}
+	return extraInitContainersMap, nil
 }

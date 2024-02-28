@@ -99,6 +99,24 @@ spec:
                     service:
                       description: Service contains keycloak DBaaS specific properties
                       properties:
+                        customizationImage:
+                          description: CustomizationImage can be used to provide an image with custom themes and providers. The themes need to be be placed in the `/themes` directory of the custom image. the providers need to be placed in the `/providers` directory of the custom image.
+                          properties:
+                            image:
+                              description: Path to a valid image
+                              type: string
+                            imagePullSecretRef:
+                              description: Reference to an imagePullSecret
+                              properties:
+                                name:
+                                  description: name is unique within a namespace to reference a secret resource.
+                                  type: string
+                                namespace:
+                                  description: namespace defines the space within which the secret name must be unique.
+                                  type: string
+                              type: object
+                              x-kubernetes-map-type: atomic
+                          type: object
                         fqdn:
                           description: FQDN contains the FQDN which will be used for the ingress. If it's not set, no ingress will be deployed. This also enables strict hostname checking for this FQDN.
                           type: string

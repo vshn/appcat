@@ -63,11 +63,12 @@ const (
 
 var (
 	// Now all the permutations for the annotations
-	CpuRequestAnnotation    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPURequests)
-	CpuLimitAnnotation      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPULimits)
-	MemoryRequestAnnotation = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
-	MemoryLimitAnnotation   = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
-	DiskAnnotation          = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
+	CpuRequestAnnotation       = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPURequests)
+	CpuLimitAnnotation         = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPULimits)
+	MemoryRequestAnnotation    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
+	MemoryLimitAnnotation      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
+	DiskAnnotation             = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
+	CpuRequestTerminationQuota = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceCPURequests)
 
 	ErrNSLimitReached = fmt.Errorf("creating a new instance will violate the namespace quota." +
 		"Please contact VSHN support to increase the amounts of namespaces you can create.")

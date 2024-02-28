@@ -185,6 +185,11 @@ func AddInitalNamespaceQuotas(ctx context.Context, ns *corev1.Namespace, s *util
 		added = true
 	}
 
+	if _, ok := annotations[utils.CpuRequestTerminationQuota]; !ok {
+		annotations[utils.CpuRequestTerminationQuota] = "1000m"
+		added = true
+	}
+
 	ns.SetAnnotations(annotations)
 	return added
 }

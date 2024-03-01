@@ -337,7 +337,7 @@ func SetReleaseVersion(ctx context.Context, version string, desiredValues map[st
 
 	if observedVersion.GTE(desiredVersion) {
 		// In case the overved tag is valid and greater than the desired version, keep the observed version
-		return observedVersion.String(), unstructured.SetNestedField(desiredValues, tag, fields...)
+		return tag, unstructured.SetNestedField(desiredValues, tag, fields...)
 	}
 	// In case the observed tag is smaller than the desired version,  then set the version from the claim
 	return version, unstructured.SetNestedField(desiredValues, version, fields...)

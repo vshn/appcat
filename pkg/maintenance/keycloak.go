@@ -35,5 +35,5 @@ func (m *Keycloak) DoMaintenance(ctx context.Context) error {
 
 	valuesPath := helm.NewValuePath("image", "tag")
 
-	return patcher.DoMaintenance(ctx, keycloakURL, valuesPath, helm.SemVerPatchesOnly(false))
+	return patcher.DoMaintenance(ctx, keycloakURL, valuesPath, helm.SemVerPatchesOnly(true))
 }

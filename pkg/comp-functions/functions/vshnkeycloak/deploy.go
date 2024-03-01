@@ -27,9 +27,13 @@ import (
 )
 
 const (
-	pgInstanceNameSuffix          = "-pg"
-	pgSecretName                  = "pg-creds"
-	adminPWSecretField            = "password"
+	pgInstanceNameSuffix = "-pg"
+	pgSecretName         = "pg-creds"
+	// Each instance has two admin accounts by default.
+	// One that's exposed to the user and one that's kept internally.
+	// The internal one is used for scripts within the keycloak image to handle various configurations.
+	internalAdminPWSecretField    = "internalAdminPassword"
+	adminPWSecretField            = "adminPassword"
 	adminPWConnectionDetailsField = "KEYCLOAK_PASSWORD"
 	adminConnectionDetailsField   = "KEYCLOAK_USERNAME"
 	hostConnectionDetailsField    = "KEYCLOAK_HOST"
@@ -91,7 +95,7 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 
 	svc.Log.Info("Adding release")
 
-	adminSecret, err := common.AddCredentialsSecret(comp, svc, []string{adminPWSecretField})
+	adminSecret, err := common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField})
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin secret: %s", err))
 	}
@@ -237,10 +241,23 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	extraEnvMap := []map[string]any{
 		{
 			"name":  "KEYCLOAK_ADMIN",
-			"value": "admin",
+			"value": "internaladmin",
 		},
 		{
 			"name": "KEYCLOAK_ADMIN_PASSWORD",
+			"valueFrom": map[string]any{
+				"secretKeyRef": map[string]any{
+					"name": adminSecret,
+					"key":  internalAdminPWSecretField,
+				},
+			},
+		},
+		{
+			"name":  "KEYCLOAK_MANAGED",
+			"value": "admin",
+		},
+		{
+			"name": "KEYCLOAK_MANAGED_PASSWORD",
 			"valueFrom": map[string]any{
 				"secretKeyRef": map[string]any{
 					"name": adminSecret,

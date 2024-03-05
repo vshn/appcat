@@ -13,7 +13,7 @@ import (
 
 func Test_addPostgreSQL(t *testing.T) {
 
-	svc := commontest.LoadRuntimeFromFile(t, "empty.yaml")
+	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/empty.yaml")
 
 	comp := &vshnv1.VSHNKeycloak{}
 

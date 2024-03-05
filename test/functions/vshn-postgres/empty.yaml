@@ -1,0 +1,12 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    controlNamespace: appcat-control
+observed: {}

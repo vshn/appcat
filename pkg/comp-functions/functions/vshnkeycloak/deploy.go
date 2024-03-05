@@ -189,6 +189,11 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 		return err
 	}
 
+	err = common.DisableBilling(pg.GetInstanceNamespace(), svc)
+	if err != nil {
+		return err
+	}
+
 	return svc.SetDesiredComposedResource(pg)
 }
 

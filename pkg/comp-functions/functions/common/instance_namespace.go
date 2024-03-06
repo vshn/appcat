@@ -16,6 +16,7 @@ const (
 	roleBindingName       = "appcat:services:read"
 	claimNsObserverSuffix = "-claim-ns-observer"
 	claimNameLabel        = "crossplane.io/claim-name"
+	billingCMKey          = "billingDisabled"
 )
 
 func BootstrapInstanceNs(ctx context.Context, comp InstanceNamespaceInfo, serviceName, namespaceResName string, svc *runtime.ServiceRuntime) error {
@@ -93,6 +94,19 @@ func createInstanceNamespace(ctx context.Context, serviceName, compName, claimNa
 		},
 	}
 
+	controlNS, ok := svc.Config.Data["controlNamespace"]
+	if !ok {
+		return fmt.Errorf("controlNamespace not specified")
+	}
+
+	disabled, err := isBillingDisabled(controlNS, instanceNamespace, compName, svc)
+	if err != nil {
+		return err
+	}
+	if disabled {
+		ns.ObjectMeta.Labels["appuio.io/billing-name"] = ""
+	}
+
 	return svc.SetDesiredKubeObjectWithName(ns, instanceNamespace, namespaceResName)
 }
 
@@ -138,4 +152,71 @@ func createNamespacePermissions(ctx context.Context, instance string, instanceNs
 		},
 	}
 	return svc.SetDesiredKubeObjectWithName(roleBinding, instance+"-service-rolebinding", "namespace-permissions")
+}
+
+// DisableBilling deploys a special config map to the appcat control namespace.
+// This configMap contains a key that specifies if a given namespace should be billed or not.
+// The configMap can also be used for other configurations in the future.
+func DisableBilling(instanceNamespace string, svc *runtime.ServiceRuntime) error {
+	controlNS, ok := svc.Config.Data["controlNamespace"]
+	if !ok {
+		return fmt.Errorf("controlNamespace not specified in composition input")
+	}
+
+	objName := instanceNamespace + "-config"
+
+	checkCM := &corev1.ConfigMap{}
+	err := svc.GetDesiredKubeObject(checkCM, objName)
+	if err != nil && err != runtime.ErrNotFound {
+		return err
+	}
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instanceNamespace,
+			Namespace: controlNS,
+		},
+		Data: map[string]string{
+			billingCMKey: "true",
+		},
+	}
+
+	err = svc.SetDesiredKubeObject(cm, objName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// isBillingDisabled checks the given namespace for the configMap and key that disable billing.
+func isBillingDisabled(controlNS, instanceNamespace, compName string, svc *runtime.ServiceRuntime) (bool, error) {
+
+	objSuffix := "-ns-conf-observer"
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instanceNamespace,
+			Namespace: controlNS,
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(cm, compName+objSuffix)
+	if err != nil {
+		return false, err
+	}
+
+	err = svc.GetObservedKubeObject(cm, compName+objSuffix)
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+
+	if _, ok := cm.Data[billingCMKey]; ok {
+		return true, nil
+	}
+
+	return false, nil
 }

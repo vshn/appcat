@@ -161,15 +161,11 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 	}
 
 	if comp.Spec.Parameters.Service.PostgreSQLParameters != nil {
-		err := mergo.Merge(params, comp.Spec.Parameters.Service.PostgreSQLParameters, mergo.WithOverride)
+		// Mergo currently has a bug with merging bools: https://github.com/darccio/mergo/issues/249
+		// We need to pass `mergo.WithOverwriteWithEmptyValue` to override a boolean from true to false.
+		err := mergo.Merge(params, comp.Spec.Parameters.Service.PostgreSQLParameters, mergo.WithOverwriteWithEmptyValue)
 		if err != nil {
 			return err
-		}
-
-		// Mergo currently has a bug with merging bools: https://github.com/darccio/mergo/issues/249
-		// It's not possible to override true with false, so it won't merge this if the users disables it.
-		if !comp.Spec.Parameters.Service.PostgreSQLParameters.Backup.DeletionProtection {
-			params.Backup.DeletionProtection = false
 		}
 	}
 
@@ -189,6 +185,11 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 	}
 
 	err = common.CreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-keycloak", svc)
+	if err != nil {
+		return err
+	}
+
+	err = common.DisableBilling(pg.GetInstanceNamespace(), svc)
 	if err != nil {
 		return err
 	}

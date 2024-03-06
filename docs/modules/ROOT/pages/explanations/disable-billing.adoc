@@ -1,0 +1,23 @@
+= How Disabling Billing Works
+
+For services that depend on other services, like Keycloak -> PostgreSQL, we don't want to bill the customer with both services.
+
+In order to achieve that, we need a mechanism with which we can disable the billing for any given service, but in such a way that it's not possible for the user to manipulate it.
+
+As all settings between the claim and the composite are synced, we can't expose any configuration regarding this in the claim. Otherwise, the user would be able to simply disable the billing for any service. In order to prevent that, the configuration to disable billing should be passed via means that are inaccessible for the end-user but accessible to the composition functions.
+
+There's already a namespace for such things: `appcat-control`. That's a namespace specifically used for things that the end-user should not be able to see or manipulate.
+
+== Flow
+
+When a dependency service is deployed, which should not have any billing, then the service depending on it should deploy a specific config map at the same time. This config map should have the same name as the instance namespace of the dependency service. It should also be deployed in the `appcat-control` namespace. This config map should contain a key called billingDisabled. If that key is not set, the billing is enabled as usual.
+
+*Note:* due to some limitations of Crossplane, each service will always create an empty such config map. Because it's not possible to determine if an object exists or not via provider-kubernetes.
+
+image::disable-billing-flow.drawio.svg[]
+
+== Code
+
+There's a function `DisableBilling(namespace string, svc *runtime.ServiceRuntime)` which will create the config map for the given instance namespace. This needs to be called by the parent composition function, in the example above Keycloak, at the same time the dependency (PostgreSQL) composite is applied.
+
+On the dependency side, in our example PostgreSQL, nothing special needs to be done. The `BootstrapInstanceNs()` automatically determines if the config map exists and if the key to disable the billing is set. If the config map doesn't exist it will be automatically created. This ensures that provider-kubernetes can actually resolve the observed object.

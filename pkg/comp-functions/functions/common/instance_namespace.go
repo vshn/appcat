@@ -16,7 +16,7 @@ const (
 	roleBindingName       = "appcat:services:read"
 	claimNsObserverSuffix = "-claim-ns-observer"
 	claimNameLabel        = "crossplane.io/claim-name"
-	billingCMKey          = "billingDisabled"
+	disableBillingCMKey   = "billingDisabled"
 )
 
 func BootstrapInstanceNs(ctx context.Context, comp InstanceNamespaceInfo, serviceName, namespaceResName string, svc *runtime.ServiceRuntime) error {
@@ -177,7 +177,7 @@ func DisableBilling(instanceNamespace string, svc *runtime.ServiceRuntime) error
 			Namespace: controlNS,
 		},
 		Data: map[string]string{
-			billingCMKey: "true",
+			disableBillingCMKey: "true",
 		},
 	}
 
@@ -214,7 +214,7 @@ func isBillingDisabled(controlNS, instanceNamespace, compName string, svc *runti
 		return false, err
 	}
 
-	if _, ok := cm.Data[billingCMKey]; ok {
+	if _, ok := cm.Data[disableBillingCMKey]; ok {
 		return true, nil
 	}
 

@@ -10,6 +10,7 @@ import (
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
@@ -42,7 +43,8 @@ func AddExtensions(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 
 	// ensure pg_repack is always enabled
 	extensionsMap["pg_repack"] = stackgresv1.SGClusterSpecPostgresExtensionsItem{
-		Name: "pg_repack",
+		Name:    "pg_repack",
+		Version: ptr.To("1.5.0"),
 	}
 
 	if _, ok := extensionsMap["timescaledb"]; ok {

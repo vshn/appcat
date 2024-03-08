@@ -101,7 +101,9 @@ func createInstanceNamespace(ctx context.Context, serviceName, compName, claimNa
 
 	disabled, err := isBillingDisabled(controlNS, instanceNamespace, compName, svc)
 	if err != nil {
-		return err
+		// we don't return here, otherwise we risk the namespace getting deleted
+		svc.Log.Error(err, "cannot determine billing status of the service")
+		svc.AddResult(runtime.NewWarningResult("cannot determine billing status of the service"))
 	}
 	if disabled {
 		ns.ObjectMeta.Labels["appuio.io/billing-name"] = ""
@@ -208,9 +210,9 @@ func isBillingDisabled(controlNS, instanceNamespace, compName string, svc *runti
 
 	err = svc.GetObservedKubeObject(cm, compName+objSuffix)
 	if err != nil {
-		// if err == runtime.ErrNotFound {
-		// 	return false, nil
-		// }
+		if err == runtime.ErrNotFound {
+			return false, nil
+		}
 		return false, err
 	}
 

@@ -76,7 +76,8 @@ func createInstanceNamespace(ctx context.Context, serviceName, compName, claimNa
 
 	org, err := getOrg(compName, svc)
 	if err != nil {
-		return fmt.Errorf("cannot get claim namespace: %w", err)
+		svc.Log.Info("cannot get claim namespace")
+		svc.AddResult(runtime.NewWarningResult("cannot get claim namespace"))
 	}
 
 	ns := &corev1.Namespace{
@@ -96,12 +97,15 @@ func createInstanceNamespace(ctx context.Context, serviceName, compName, claimNa
 
 	controlNS, ok := svc.Config.Data["controlNamespace"]
 	if !ok {
-		return fmt.Errorf("controlNamespace not specified")
+		svc.Log.Info("no control namespace defined, please make sure that it's defined in the composition inputs")
+		svc.AddResult(runtime.NewWarningResult("no control namespace defined, please make sure that it's defined in the composition inputs"))
 	}
 
 	disabled, err := isBillingDisabled(controlNS, instanceNamespace, compName, svc)
 	if err != nil {
-		return err
+		// we don't return here, otherwise we risk the namespace getting deleted
+		svc.Log.Error(err, "cannot determine billing status of the service")
+		svc.AddResult(runtime.NewWarningResult("cannot determine billing status of the service"))
 	}
 	if disabled {
 		ns.ObjectMeta.Labels["appuio.io/billing-name"] = ""

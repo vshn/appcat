@@ -374,11 +374,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"nodeSelector": nodeSelector,
 		"dbchecker": map[string]any{
-			"enabled": true,
+			"enabled":         true,
+			"securityContext": nil,
 		},
 		// See https://github.com/keycloak/keycloak/issues/11286
 		// readOnlyRootFilesystem: true
 		"securityContext": map[string]any{
+			"runAsUser":                nil,
 			"allowPrivilegeEscalation": false,
 			"capabilities": map[string]any{
 				"drop": []string{
@@ -389,6 +391,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"http": map[string]any{
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
 		},
+		"podSecurityContext": nil,
 	}
 
 	fqdn := comp.Spec.Parameters.Service.FQDN

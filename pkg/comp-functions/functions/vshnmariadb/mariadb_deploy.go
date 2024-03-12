@@ -34,25 +34,25 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	fieldList := []string{"mariadb-galera-mariabackup-password", "mariadb-password", "mariadb-root-password"}
 	passwordSecret, err := common.AddCredentialsSecret(comp, svc, fieldList)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create credentials secret; %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot create credentials secret; %w", err).Error())
 	}
 
 	l.Info("Bootstrapping instance namespace and rbac rules")
 	err = common.BootstrapInstanceNs(ctx, comp, "mariadb", comp.GetName()+"-instanceNs", svc)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
 
 	l.Info("Creating tls certificate for mariadb instance")
 	err = common.CreateTlsCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create tls certificate: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
 	}
 
 	l.Info("Creating helm release for mariadb instance")
 	err = createObjectHelmRelease(ctx, comp, svc, passwordSecret)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create helm release: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot create helm release: %w", err).Error())
 	}
 
 	l.Info("Creating network policies mariadb instance")
@@ -62,13 +62,13 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	}
 	err = common.CreateNetworkPolicy(sourceNs, comp.GetInstanceNamespace(), comp.GetName(), svc)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create helm release: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot create helm release: %w", err).Error())
 	}
 
 	l.Info("Get connection details from secret")
 	err = getConnectionDetails(comp, svc, passwordSecret)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("Cannot get connection details: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot get connection details: %w", err).Error())
 	}
 	return nil
 }
@@ -162,6 +162,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"cpu":    res.CPU,
 			},
 		},
+		"networkPolicy": map[string]interface{}{
+			"enabled": false,
+		},
 		"tls": map[string]interface{}{
 			"enabled":            true,
 			"certificatesSecret": "tls-server-certificate",
@@ -212,6 +215,8 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 			SkipPartOfReleaseCheck: true,
 		},
 	}
+	rel, err := common.NewRelease(ctx, svc, comp, values, cd...)
+	rel.Spec.ForProvider.Chart.Name = comp.GetServiceName() + "-galera"
 
-	return common.NewRelease(ctx, svc, comp, values, cd...)
+	return rel, err
 }

@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: vshnmariadbs.vshn.appcat.vshn.io
 spec:
   group: vshn.appcat.vshn.io
@@ -20,10 +20,19 @@ spec:
           description: VSHNMariaDB is the API for creating MariaDB instances.
           properties:
             apiVersion:
-              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
               type: string
             kind:
-              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
               type: string
             metadata:
               type: object
@@ -62,7 +71,9 @@ spec:
                       description: Maintenance contains settings to control the maintenance of an instance.
                       properties:
                         dayOfWeek:
-                          description: DayOfWeek specifies at which weekday the maintenance is held place. Allowed values are [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+                          description: |-
+                            DayOfWeek specifies at which weekday the maintenance is held place.
+                            Allowed values are [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
                           enum:
                             - monday
                             - tuesday
@@ -73,7 +84,9 @@ spec:
                             - sunday
                           type: string
                         timeOfDay:
-                          description: 'TimeOfDay for installing updates in UTC. Format: "hh:mm:ss".'
+                          description: |-
+                            TimeOfDay for installing updates in UTC.
+                            Format: "hh:mm:ss".
                           pattern: ^([0-1]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$
                           type: string
                       type: object
@@ -84,7 +97,9 @@ spec:
                           description: BackupName is the name of the specific backup you want to restore.
                           type: string
                         claimName:
-                          description: ClaimName specifies the name of the instance you want to restore from. The claim has to be in the same namespace as this new instance.
+                          description: |-
+                            ClaimName specifies the name of the instance you want to restore from.
+                            The claim has to be in the same namespace as this new instance.
                           type: string
                       type: object
                     scheduling:
@@ -111,7 +126,9 @@ spec:
                           type: string
                         version:
                           default: "11.2"
-                          description: Version contains supported version of MariaDB. Multiple versions are supported. The latest version "11.2" is the default version.
+                          description: |-
+                            Version contains supported version of MariaDB.
+                            Multiple versions are supported. The latest version "11.2" is the default version.
                           enum:
                             - "10.4"
                             - "10.5"
@@ -174,7 +191,9 @@ spec:
                   description: WriteConnectionSecretToRef references a secret to which the connection details will be written.
                   properties:
                     name:
-                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                      description: |-
+                        Name of the referent.
+                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                       type: string
                     namespace:
                       type: string
@@ -196,7 +215,9 @@ spec:
                         maxLength: 32768
                         type: string
                       observedGeneration:
-                        description: ObservedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
                         format: int64
                         minimum: 0
                         type: integer
@@ -231,7 +252,9 @@ spec:
                         maxLength: 32768
                         type: string
                       observedGeneration:
-                        description: ObservedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
                         format: int64
                         minimum: 0
                         type: integer
@@ -269,7 +292,9 @@ spec:
                         maxLength: 32768
                         type: string
                       observedGeneration:
-                        description: ObservedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
                         format: int64
                         minimum: 0
                         type: integer
@@ -304,7 +329,9 @@ spec:
                         maxLength: 32768
                         type: string
                       observedGeneration:
-                        description: ObservedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
                         format: int64
                         minimum: 0
                         type: integer
@@ -328,7 +355,9 @@ spec:
                     type: object
                   type: array
                 schedules:
-                  description: Schedules keeps track of random generated schedules, is overwriten by schedules set in the service's spec.
+                  description: |-
+                    Schedules keeps track of random generated schedules, is overwriten by
+                    schedules set in the service's spec.
                   properties:
                     backup:
                       description: Backup keeps track of the backup schedule.
@@ -337,7 +366,9 @@ spec:
                       description: Maintenance keeps track of the maintenance schedule.
                       properties:
                         dayOfWeek:
-                          description: DayOfWeek specifies at which weekday the maintenance is held place. Allowed values are [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+                          description: |-
+                            DayOfWeek specifies at which weekday the maintenance is held place.
+                            Allowed values are [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
                           enum:
                             - monday
                             - tuesday
@@ -348,7 +379,9 @@ spec:
                             - sunday
                           type: string
                         timeOfDay:
-                          description: 'TimeOfDay for installing updates in UTC. Format: "hh:mm:ss".'
+                          description: |-
+                            TimeOfDay for installing updates in UTC.
+                            Format: "hh:mm:ss".
                           pattern: ^([0-1]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$
                           type: string
                       type: object
@@ -365,7 +398,9 @@ spec:
                         maxLength: 32768
                         type: string
                       observedGeneration:
-                        description: ObservedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
                         format: int64
                         minimum: 0
                         type: integer
@@ -400,7 +435,9 @@ spec:
                         maxLength: 32768
                         type: string
                       observedGeneration:
-                        description: ObservedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
                         format: int64
                         minimum: 0
                         type: integer

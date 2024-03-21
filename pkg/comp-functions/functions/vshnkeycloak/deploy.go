@@ -124,6 +124,12 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create release: %s", err))
 	}
 
+	svc.Log.Info("Creating Keycloak TLS certs")
+	err = common.CreateTlsCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add tls certificate: %s", err))
+	}
+
 	return nil
 }
 
@@ -268,12 +274,20 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		{
 			"name":  "KC_DB_URL_PROPERTIES",
-			"value": "?sslmode=verify-full&sslrootcert=/certs/ca.crt",
+			"value": "?sslmode=verify-full&sslrootcert=/certs/pg/ca.crt",
 		},
 		{
 			"name": "JAVA_OPTS_APPEND",
 			"value": `-Djava.awt.headless=true
 -Djgroups.dns.query={{ include "keycloak.fullname" . }}-headless`,
+		},
+		{
+			"name":  "KC_HTTPS_CERTIFICATE_FILE",
+			"value": "/certs/keycloak/tls.crt",
+		},
+		{
+			"name":  "KC_HTTPS_CERTIFICATE_KEY_FILE",
+			"value": "/certs/keycloak/tls.key",
 		},
 	}
 
@@ -305,6 +319,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"defaultMode": 420,
 			},
 		},
+		{
+			"name": "keycloak-certs",
+			"secret": map[string]any{
+				"secretName":  "tls-server-certificate",
+				"defaultMode": 420,
+			},
+		},
 	}
 
 	extraVolumes, err := toYAML(extraVolumesMap)
@@ -327,7 +348,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		{
 			"name":      "postgresql-certs",
-			"mountPath": "/certs/",
+			"mountPath": "/certs/pg",
+		},
+		{
+			"name":      "keycloak-certs",
+			"mountPath": "/certs/keycloak",
 		},
 	}
 
@@ -392,13 +417,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
 		},
 		"podSecurityContext": nil,
-	}
-
-	fqdn := comp.Spec.Parameters.Service.FQDN
-	if fqdn != "" {
-		values["ingress"] = map[string]any{
-			"hostname": fqdn,
-		}
 	}
 
 	return values, nil

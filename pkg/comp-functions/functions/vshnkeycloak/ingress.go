@@ -58,37 +58,35 @@ func AddIngress(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result
 func enableIngresValues(comp *vshnv1.VSHNKeycloak, values map[string]any) {
 	fqdn := comp.Spec.Parameters.Service.FQDN
 
-	if fqdn != "" {
-		relPath := `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`
-		if comp.Spec.Parameters.Service.RelativePath == "/" {
-			relPath = "/"
-		}
+	relPath := `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`
+	if comp.Spec.Parameters.Service.RelativePath == "/" {
+		relPath = "/"
+	}
 
-		values["ingress"] = map[string]any{
-			"enabled":     true,
-			"servicePort": "https",
-			"annotations": map[string]string{
-				// This forces tls between nginx and keycloak
-				"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-			},
-			"rules": []map[string]any{
-				{
-					"host": fqdn,
-					"paths": []map[string]any{
-						{
-							"path":     relPath,
-							"pathType": "Prefix",
-						},
+	values["ingress"] = map[string]any{
+		"enabled":     true,
+		"servicePort": "https",
+		"annotations": map[string]string{
+			// This forces tls between nginx and keycloak
+			"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+		},
+		"rules": []map[string]any{
+			{
+				"host": fqdn,
+				"paths": []map[string]any{
+					{
+						"path":     relPath,
+						"pathType": "Prefix",
 					},
 				},
 			},
-			"tls": []map[string]any{
-				{
-					"hosts": []string{
-						fqdn,
-					},
+		},
+		"tls": []map[string]any{
+			{
+				"hosts": []string{
+					fqdn,
 				},
 			},
-		}
+		},
 	}
 }

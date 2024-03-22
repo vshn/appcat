@@ -77,7 +77,31 @@ func TestEnableIngresValues(t *testing.T) {
 				},
 				values: map[string]any{},
 			},
-			want: map[string]any{},
+			want: map[string]any{
+				"ingress": map[string]any{
+					"enabled":     true,
+					"servicePort": "https",
+					"annotations": map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+					},
+					"rules": []map[string]any{
+						{
+							"host": "",
+							"paths": []map[string]any{
+								{
+									"path":     `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`,
+									"pathType": "Prefix",
+								},
+							},
+						},
+					},
+					"tls": []map[string]any{
+						{
+							"hosts": []string{""},
+						},
+					},
+				},
+			},
 		},
 	}
 

@@ -65,6 +65,6 @@ func Test_addRelease(t *testing.T) {
 
 	release := &xhelmv1.Release{}
 
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release"))
 
 }

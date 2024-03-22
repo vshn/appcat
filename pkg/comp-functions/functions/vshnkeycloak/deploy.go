@@ -209,7 +209,7 @@ func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return err
 	}
 
-	return svc.SetDesiredComposedResource(release)
+	return svc.SetDesiredComposedResourceWithName(release, comp.GetName()+"-release")
 }
 
 func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) (common.Resources, error) {
@@ -428,7 +428,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, err
 	}
 
-	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName())
+	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName()+"-release")
 	if err != nil {
 		return nil, fmt.Errorf("cannot get observed release values: %w", err)
 	}

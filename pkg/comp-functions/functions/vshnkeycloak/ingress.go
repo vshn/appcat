@@ -13,7 +13,7 @@ import (
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
-func AddIngress(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddIngress(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	comp := &vshnv1.VSHNKeycloak{}
 
@@ -26,16 +26,16 @@ func AddIngress(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Resu
 		return nil
 	}
 
-	values, err := common.GetDesiredReleaseValues(svc, comp.GetName())
+	values, err := common.GetDesiredReleaseValues(svc, comp.GetName()+"-release")
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get desired release values: %s", err))
 	}
 
 	svc.Log.Info("Enable ingress for release")
-	enableIngresValues(svc, comp, values)
+	enableIngresValues(comp, values)
 
 	release := &xhelmv1.Release{}
-	err = svc.GetDesiredComposedResourceByName(release, comp.GetName())
+	err = svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get desired release: %s", err))
 	}
@@ -47,7 +47,7 @@ func AddIngress(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Resu
 
 	release.Spec.ForProvider.Values.Raw = vb
 
-	err = svc.SetDesiredComposedResource(release)
+	err = svc.SetDesiredComposedResourceWithName(release, comp.GetName()+"-release")
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot set desired release: %s", err))
 	}
@@ -55,10 +55,10 @@ func AddIngress(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Resu
 	return nil
 }
 
-func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, values map[string]any) {
+func enableIngresValues(comp *vshnv1.VSHNKeycloak, values map[string]any) {
 	fqdn := comp.Spec.Parameters.Service.FQDN
-	if fqdn != "" {
 
+	if fqdn != "" {
 		relPath := `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`
 		if comp.Spec.Parameters.Service.RelativePath == "/" {
 			relPath = "/"
@@ -68,6 +68,7 @@ func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, 
 			"enabled":     true,
 			"servicePort": "https",
 			"annotations": map[string]string{
+				// This forces tls between nginx and keycloak
 				"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 			},
 			"rules": []map[string]any{
@@ -90,5 +91,4 @@ func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, 
 			},
 		}
 	}
-
 }

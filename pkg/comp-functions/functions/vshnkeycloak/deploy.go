@@ -124,6 +124,18 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create release: %s", err))
 	}
 
+	svc.Log.Info("Creating Keycloak TLS certs")
+	err = common.CreateTlsCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add tls certificate: %s", err))
+	}
+
+	svc.Log.Info("Populating instanceNamespace status field")
+	err = setInstanceNamespaceStatus(svc, comp)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot set status on composite: %s", err))
+	}
+
 	return nil
 }
 
@@ -203,7 +215,7 @@ func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return err
 	}
 
-	return svc.SetDesiredComposedResource(release)
+	return svc.SetDesiredComposedResourceWithName(release, comp.GetName()+"-release")
 }
 
 func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) (common.Resources, error) {
@@ -268,12 +280,20 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		{
 			"name":  "KC_DB_URL_PROPERTIES",
-			"value": "?sslmode=verify-full&sslrootcert=/certs/ca.crt",
+			"value": "?sslmode=verify-full&sslrootcert=/certs/pg/ca.crt",
 		},
 		{
 			"name": "JAVA_OPTS_APPEND",
 			"value": `-Djava.awt.headless=true
 -Djgroups.dns.query={{ include "keycloak.fullname" . }}-headless`,
+		},
+		{
+			"name":  "KC_HTTPS_CERTIFICATE_FILE",
+			"value": "/certs/keycloak/tls.crt",
+		},
+		{
+			"name":  "KC_HTTPS_CERTIFICATE_KEY_FILE",
+			"value": "/certs/keycloak/tls.key",
 		},
 	}
 
@@ -305,6 +325,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"defaultMode": 420,
 			},
 		},
+		{
+			"name": "keycloak-certs",
+			"secret": map[string]any{
+				"secretName":  "tls-server-certificate",
+				"defaultMode": 420,
+			},
+		},
 	}
 
 	extraVolumes, err := toYAML(extraVolumesMap)
@@ -327,7 +354,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		{
 			"name":      "postgresql-certs",
-			"mountPath": "/certs/",
+			"mountPath": "/certs/pg",
+		},
+		{
+			"name":      "keycloak-certs",
+			"mountPath": "/certs/keycloak",
 		},
 	}
 
@@ -394,13 +425,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"podSecurityContext": nil,
 	}
 
-	fqdn := comp.Spec.Parameters.Service.FQDN
-	if fqdn != "" {
-		values["ingress"] = map[string]any{
-			"hostname": fqdn,
-		}
-	}
-
 	return values, nil
 }
 
@@ -410,7 +434,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, err
 	}
 
-	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName())
+	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName()+"-release")
 	if err != nil {
 		return nil, fmt.Errorf("cannot get observed release values: %w", err)
 	}
@@ -620,4 +644,10 @@ exit 0`,
 		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
 	}
 	return extraInitContainersMap, nil
+}
+
+func setInstanceNamespaceStatus(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error {
+	comp.Status.InstanceNamespace = comp.GetInstanceNamespace()
+
+	return svc.SetDesiredCompositeStatus(comp)
 }

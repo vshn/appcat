@@ -41,9 +41,28 @@ func GetObservedReleaseValues(svc *runtime.ServiceRuntime, releaseName string) (
 	return GetReleaseValues(r)
 }
 
+// GetDesiredReleaseValues returns the desired releaseValues for the given release name.
+func GetDesiredReleaseValues(svc *runtime.ServiceRuntime, releaseName string) (map[string]interface{}, error) {
+	r, err := getDesiredRelease(svc, releaseName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get desired release: %w", err)
+	}
+
+	return GetReleaseValues(r)
+}
+
 func getObservedRelease(svc *runtime.ServiceRuntime, releaseName string) (*xhelmv1.Release, error) {
 	r := &xhelmv1.Release{}
 	err := svc.GetObservedComposedResource(r, releaseName)
+	if errors.Is(err, runtime.ErrNotFound) {
+		return nil, nil
+	}
+	return r, nil
+}
+
+func getDesiredRelease(svc *runtime.ServiceRuntime, releaseName string) (*xhelmv1.Release, error) {
+	r := &xhelmv1.Release{}
+	err := svc.GetDesiredComposedResourceByName(r, releaseName)
 	if errors.Is(err, runtime.ErrNotFound) {
 		return nil, nil
 	}

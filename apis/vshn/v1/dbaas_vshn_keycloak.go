@@ -155,12 +155,6 @@ type VSHNKeycloakTLSSpec struct {
 
 // VSHNKeycloakStatus reflects the observed state of a VSHNKeycloak.
 type VSHNKeycloakStatus struct {
-	NamespaceConditions         []v1.Condition `json:"namespaceConditions,omitempty"`
-	SelfSignedIssuerConditions  []v1.Condition `json:"selfSignedIssuerConditions,omitempty"`
-	LocalCAConditions           []v1.Condition `json:"localCAConditions,omitempty"`
-	CaCertificateConditions     []v1.Condition `json:"caCertificateConditions,omitempty"`
-	ServerCertificateConditions []v1.Condition `json:"serverCertificateConditions,omitempty"`
-	ClientCertificateConditions []v1.Condition `json:"clientCertificateConditions,omitempty"`
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

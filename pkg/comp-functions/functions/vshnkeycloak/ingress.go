@@ -32,7 +32,7 @@ func AddIngress(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result
 	}
 
 	svc.Log.Info("Enable ingress for release")
-	enableIngresValues(comp, values)
+	enableIngresValues(svc, comp, values)
 
 	release := &xhelmv1.Release{}
 	err = svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
@@ -55,7 +55,7 @@ func AddIngress(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result
 	return nil
 }
 
-func enableIngresValues(comp *vshnv1.VSHNKeycloak, values map[string]any) {
+func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, values map[string]any) {
 	fqdn := comp.Spec.Parameters.Service.FQDN
 
 	relPath := `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`
@@ -66,10 +66,7 @@ func enableIngresValues(comp *vshnv1.VSHNKeycloak, values map[string]any) {
 	values["ingress"] = map[string]any{
 		"enabled":     true,
 		"servicePort": "https",
-		"annotations": map[string]string{
-			// This forces tls between nginx and keycloak
-			"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-		},
+
 		"rules": []map[string]any{
 			{
 				"host": fqdn,
@@ -89,4 +86,15 @@ func enableIngresValues(comp *vshnv1.VSHNKeycloak, values map[string]any) {
 			},
 		},
 	}
+
+	annotations := map[string]string{
+		// This forces tls between nginx and keycloak
+		"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+	}
+
+	if svc.Config.Data["issuer_name"] != "" {
+		annotations["cert-manager.io/cluster-issuer"] = svc.Config.Data["issuer_name"]
+	}
+
+	values["annotations"] = annotations
 }

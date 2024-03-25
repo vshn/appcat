@@ -121,7 +121,7 @@ type XVSHNMinioSpec struct {
 	// Parameters are the configurable fields of a VSHNMinio.
 	Parameters VSHNMinioParameters `json:"parameters,omitempty"`
 
-	xpv1.ResourceSpec `json:"spec"`
+	xpv1.ResourceSpec `json:",inline"`
 }
 
 type XVSHNMinioStatus struct {

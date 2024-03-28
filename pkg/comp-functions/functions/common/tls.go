@@ -11,11 +11,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func CreateTlsCerts(ctx context.Context, ns string, instance string, svc *runtime.ServiceRuntime) error {
+func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *runtime.ServiceRuntime) error {
 
 	selfSignedIssuer := &cmv1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance + "-selfsigned",
+			Name:      serviceName + "-selfsigned",
 			Namespace: ns,
 		},
 		Spec: cmv1.IssuerSpec{
@@ -27,7 +27,7 @@ func CreateTlsCerts(ctx context.Context, ns string, instance string, svc *runtim
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(selfSignedIssuer, instance+"-selfsigned-issuer")
+	err := svc.SetDesiredKubeObject(selfSignedIssuer, serviceName+"-selfsigned-issuer")
 	if err != nil {
 		err = fmt.Errorf("cannot create selfSignedIssuer object: %w", err)
 		return err
@@ -36,7 +36,7 @@ func CreateTlsCerts(ctx context.Context, ns string, instance string, svc *runtim
 	caCert := &cmv1.Certificate{
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance + "-ca",
+			Name:      serviceName + "-ca",
 			Namespace: ns,
 		},
 		Spec: cmv1.CertificateSpec{
@@ -58,16 +58,16 @@ func CreateTlsCerts(ctx context.Context, ns string, instance string, svc *runtim
 				Encoding:  cmv1.PKCS1,
 				Size:      256,
 			},
-			CommonName: instance + "-ca",
+			CommonName: serviceName + "-ca",
 			IssuerRef: v1.ObjectReference{
-				Name:  instance + "-selfsigned",
+				Name:  serviceName + "-selfsigned",
 				Kind:  "Issuer",
 				Group: "cert-manager.io",
 			},
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(caCert, instance+"-ca-cert")
+	err = svc.SetDesiredKubeObject(caCert, serviceName+"-ca-cert")
 	if err != nil {
 		err = fmt.Errorf("cannot create caCert object: %w", err)
 		return err
@@ -75,7 +75,7 @@ func CreateTlsCerts(ctx context.Context, ns string, instance string, svc *runtim
 
 	caIssuer := &cmv1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance + "-ca",
+			Name:      serviceName + "-ca",
 			Namespace: ns,
 		},
 		Spec: cmv1.IssuerSpec{
@@ -87,7 +87,7 @@ func CreateTlsCerts(ctx context.Context, ns string, instance string, svc *runtim
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(caIssuer, instance+"-ca-issuer")
+	err = svc.SetDesiredKubeObject(caIssuer, serviceName+"-ca-issuer")
 	if err != nil {
 		err = fmt.Errorf("cannot create caIssuer object: %w", err)
 		return err
@@ -95,7 +95,7 @@ func CreateTlsCerts(ctx context.Context, ns string, instance string, svc *runtim
 
 	serverCert := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance + "-server",
+			Name:      serviceName + "-server",
 			Namespace: ns,
 		},
 		Spec: cmv1.CertificateSpec{
@@ -119,18 +119,18 @@ func CreateTlsCerts(ctx context.Context, ns string, instance string, svc *runtim
 			},
 			Usages: []cmv1.KeyUsage{"server auth", "client auth"},
 			DNSNames: []string{
-				instance + "." + ns + ".svc.cluster.local",
-				instance + "." + ns + ".svc",
+				serviceName + "." + ns + ".svc.cluster.local",
+				serviceName + "." + ns + ".svc",
 			},
 			IssuerRef: v1.ObjectReference{
-				Name:  instance + "-ca",
+				Name:  serviceName + "-ca",
 				Kind:  "Issuer",
 				Group: "cert-manager.io",
 			},
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(serverCert, instance+"-server-cert")
+	err = svc.SetDesiredKubeObject(serverCert, serviceName+"-server-cert")
 	if err != nil {
 		err = fmt.Errorf("cannot create serverCert object: %w", err)
 		return err

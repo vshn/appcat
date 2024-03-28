@@ -125,7 +125,8 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 	}
 
 	svc.Log.Info("Creating Keycloak TLS certs")
-	err = common.CreateTlsCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc)
+	// The helm chart appends `-keycloakx-http` to the http service.
+	err = common.CreateTlsCerts(ctx, comp.GetInstanceNamespace(), comp.GetName()+"-keycloakx-http", svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add tls certificate: %s", err))
 	}

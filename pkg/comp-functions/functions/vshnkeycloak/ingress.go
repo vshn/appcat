@@ -10,6 +10,8 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
@@ -83,18 +85,21 @@ func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, 
 				"hosts": []string{
 					fqdn,
 				},
+				"secretName": "keycloak-ingress-cert",
 			},
 		},
 	}
 
-	annotations := map[string]string{
-		// This forces tls between nginx and keycloak
-		"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+	if svc.Config.Data["ingress_annotations"] != "" {
+		annotations := map[string]any{}
+
+		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), annotations)
+		if err != nil {
+			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
+		}
+
+		unstructured.SetNestedMap(values, annotations, "ingress", "annotations")
 	}
 
-	if svc.Config.Data["issuer_name"] != "" {
-		annotations["cert-manager.io/cluster-issuer"] = svc.Config.Data["issuer_name"]
-	}
-
-	values["annotations"] = annotations
 }

@@ -44,6 +44,7 @@ const (
 	providerInitName              = "copy-original-providers"
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"
+	cdCertsSuffix                 = "-keycloakx-http-server-cert"
 )
 
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
@@ -129,6 +130,14 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 	err = common.CreateTlsCerts(ctx, comp.GetInstanceNamespace(), comp.GetName()+"-keycloakx-http", svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add tls certificate: %s", err))
+	}
+
+	cdObjectName := comp.GetName() + cdCertsSuffix
+
+	err = svc.AddObservedConnectionDetails(cdObjectName)
+	if err != nil {
+		svc.Log.Error(err, "cannot set connection details")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set connection details: %s", err)))
 	}
 
 	svc.Log.Info("Populating instanceNamespace status field")

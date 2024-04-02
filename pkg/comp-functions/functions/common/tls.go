@@ -6,8 +6,10 @@ import (
 	"time"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	v1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	certmgrv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -59,7 +61,7 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 				Size:      256,
 			},
 			CommonName: serviceName + "-ca",
-			IssuerRef: v1.ObjectReference{
+			IssuerRef: certmgrv1.ObjectReference{
 				Name:  serviceName + "-selfsigned",
 				Kind:  "Issuer",
 				Group: "cert-manager.io",
@@ -122,7 +124,7 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 				serviceName + "." + ns + ".svc.cluster.local",
 				serviceName + "." + ns + ".svc",
 			},
-			IssuerRef: v1.ObjectReference{
+			IssuerRef: certmgrv1.ObjectReference{
 				Name:  serviceName + "-ca",
 				Kind:  "Issuer",
 				Group: "cert-manager.io",
@@ -130,7 +132,40 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(serverCert, serviceName+"-server-cert")
+	cd := []xkube.ConnectionDetail{
+		{
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  ns,
+				Name:       "tls-server-certificate",
+				FieldPath:  "data[ca.crt]",
+			},
+			ToConnectionSecretKey: "ca.crt",
+		},
+		{
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  ns,
+				Name:       "tls-server-certificate",
+				FieldPath:  "data[tls.crt]",
+			},
+			ToConnectionSecretKey: "tls.crt",
+		},
+		{
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  ns,
+				Name:       "tls-server-certificate",
+				FieldPath:  "data[tls.key]",
+			},
+			ToConnectionSecretKey: "tls.key",
+		},
+	}
+
+	err = svc.SetDesiredKubeObject(serverCert, serviceName+"-server-cert", runtime.KubeOptionAddConnectionDetails(ns, cd...))
 	if err != nil {
 		err = fmt.Errorf("cannot create serverCert object: %w", err)
 		return err

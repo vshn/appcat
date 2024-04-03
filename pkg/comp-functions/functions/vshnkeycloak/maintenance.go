@@ -29,6 +29,11 @@ func AddMaintenanceJob(ctx context.Context, svc *runtime.ServiceRuntime) *xfnpro
 	username := svc.Config.Data["registry_username"]
 	password := svc.Config.Data["registry_password"]
 
+	err = svc.SetDesiredCompositeStatus(comp)
+	if err != nil {
+		svc.Log.Error(err, "cannot set schedules in the composite status")
+	}
+
 	return maintenance.New(comp, svc, schedule, instanceNamespace, comp.GetServiceName()).
 		WithHelmBasedService().
 		WithExtraEnvs([]corev1.EnvVar{

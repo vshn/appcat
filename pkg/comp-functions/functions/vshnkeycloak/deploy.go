@@ -167,8 +167,9 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 	}
 
 	params := &vshnv1.VSHNPostgreSQLParameters{
-		Size:      comp.Spec.Parameters.Size,
-		Instances: 1,
+		Size:        comp.Spec.Parameters.Size,
+		Instances:   1,
+		Maintenance: comp.GetFullMaintenanceSchedule(),
 		Backup: vshnv1.VSHNPostgreSQLBackup{
 			Retention:          retention,
 			DeletionProtection: ptr.To(true),

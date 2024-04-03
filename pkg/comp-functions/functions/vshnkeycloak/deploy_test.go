@@ -9,6 +9,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 func Test_addPostgreSQL(t *testing.T) {
@@ -24,14 +25,14 @@ func Test_addPostgreSQL(t *testing.T) {
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
 
 	// Assert default values
-	assert.True(t, pg.Spec.Parameters.Backup.DeletionProtection)
+	assert.True(t, *pg.Spec.Parameters.Backup.DeletionProtection)
 	assert.Equal(t, 1, pg.Spec.Parameters.Instances)
 	assert.Equal(t, 6, pg.Spec.Parameters.Backup.Retention)
 
 	// Assert default overrides
 	comp.Spec.Parameters.Service.PostgreSQLParameters = &vshnv1.VSHNPostgreSQLParameters{
 		Backup: vshnv1.VSHNPostgreSQLBackup{
-			DeletionProtection: false,
+			DeletionProtection: ptr.To(false),
 			Retention:          1,
 		},
 		Instances: 2,
@@ -39,7 +40,7 @@ func Test_addPostgreSQL(t *testing.T) {
 
 	assert.NoError(t, addPostgreSQL(svc, comp))
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
-	assert.False(t, pg.Spec.Parameters.Backup.DeletionProtection)
+	assert.False(t, *pg.Spec.Parameters.Backup.DeletionProtection)
 	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
 	assert.Equal(t, 1, pg.Spec.Parameters.Backup.Retention)
 }

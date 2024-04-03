@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -55,7 +56,7 @@ func Test_Reconcile(t *testing.T) {
 				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: true,
+							DeletionProtection: ptr.To(true),
 						},
 					},
 				},
@@ -87,7 +88,7 @@ func Test_Reconcile(t *testing.T) {
 				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: true,
+							DeletionProtection: ptr.To(true),
 						},
 					},
 				},
@@ -120,7 +121,7 @@ func Test_Reconcile(t *testing.T) {
 				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: true,
+							DeletionProtection: ptr.To(true),
 							DeletionRetention:  2,
 						},
 					},
@@ -156,7 +157,7 @@ func Test_Reconcile(t *testing.T) {
 				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: true,
+							DeletionProtection: ptr.To(true),
 							DeletionRetention:  2,
 						},
 					},
@@ -191,7 +192,7 @@ func Test_Reconcile(t *testing.T) {
 				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: true,
+							DeletionProtection: ptr.To(true),
 							DeletionRetention:  0,
 						},
 					},
@@ -223,7 +224,7 @@ func Test_Reconcile(t *testing.T) {
 				Spec: v1.XVSHNPostgreSQLSpec{
 					Parameters: v1.VSHNPostgreSQLParameters{
 						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: true,
+							DeletionProtection: ptr.To(true),
 							DeletionRetention:  0,
 						},
 					},

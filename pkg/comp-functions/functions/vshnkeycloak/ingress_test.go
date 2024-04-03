@@ -44,9 +44,6 @@ func TestEnableIngresValues(t *testing.T) {
 				"ingress": map[string]any{
 					"enabled":     true,
 					"servicePort": "https",
-					"annotations": map[string]string{
-						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-					},
 					"rules": []map[string]any{
 						{
 							"host": "example.com",
@@ -60,7 +57,8 @@ func TestEnableIngresValues(t *testing.T) {
 					},
 					"tls": []map[string]any{
 						{
-							"hosts": []string{"example.com"},
+							"hosts":      []string{"example.com"},
+							"secretName": "keycloak-ingress-cert",
 						},
 					},
 				},
@@ -81,9 +79,6 @@ func TestEnableIngresValues(t *testing.T) {
 				"ingress": map[string]any{
 					"enabled":     true,
 					"servicePort": "https",
-					"annotations": map[string]string{
-						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-					},
 					"rules": []map[string]any{
 						{
 							"host": "",
@@ -97,7 +92,8 @@ func TestEnableIngresValues(t *testing.T) {
 					},
 					"tls": []map[string]any{
 						{
-							"hosts": []string{""},
+							"hosts":      []string{""},
+							"secretName": "keycloak-ingress-cert",
 						},
 					},
 				},
@@ -107,7 +103,8 @@ func TestEnableIngresValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			enableIngresValues(tt.args.comp, tt.args.values)
+			svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+			enableIngresValues(svc, tt.args.comp, tt.args.values)
 			assert.Equal(t, tt.want, tt.args.values)
 		})
 	}

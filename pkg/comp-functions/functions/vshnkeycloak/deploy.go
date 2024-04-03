@@ -44,6 +44,7 @@ const (
 	providerInitName              = "copy-original-providers"
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"
+	cdCertsSuffix                 = "-keycloakx-http-server-cert"
 )
 
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
@@ -125,9 +126,18 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 	}
 
 	svc.Log.Info("Creating Keycloak TLS certs")
-	err = common.CreateTlsCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc)
+	// The helm chart appends `-keycloakx-http` to the http service.
+	err = common.CreateTlsCerts(ctx, comp.GetInstanceNamespace(), comp.GetName()+"-keycloakx-http", svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add tls certificate: %s", err))
+	}
+
+	cdObjectName := comp.GetName() + cdCertsSuffix
+
+	err = svc.AddObservedConnectionDetails(cdObjectName)
+	if err != nil {
+		svc.Log.Error(err, "cannot set connection details")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set connection details: %s", err)))
 	}
 
 	svc.Log.Info("Populating instanceNamespace status field")
@@ -157,11 +167,13 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 	}
 
 	params := &vshnv1.VSHNPostgreSQLParameters{
-		Size:      comp.Spec.Parameters.Size,
-		Instances: 1,
+		Size:        comp.Spec.Parameters.Size,
+		Instances:   1,
+		Maintenance: comp.GetFullMaintenanceSchedule(),
 		Backup: vshnv1.VSHNPostgreSQLBackup{
 			Retention:          retention,
-			DeletionProtection: true,
+			DeletionProtection: ptr.To(true),
+			DeletionRetention:  7,
 		},
 		Service: vshnv1.VSHNPostgreSQLServiceSpec{
 			PgBouncerSettings: &sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni{
@@ -173,11 +185,18 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 	}
 
 	if comp.Spec.Parameters.Service.PostgreSQLParameters != nil {
-		// Mergo currently has a bug with merging bools: https://github.com/darccio/mergo/issues/249
-		// We need to pass `mergo.WithOverwriteWithEmptyValue` to override a boolean from true to false.
-		err := mergo.Merge(params, comp.Spec.Parameters.Service.PostgreSQLParameters, mergo.WithOverwriteWithEmptyValue)
+		err := mergo.Merge(params, comp.Spec.Parameters.Service.PostgreSQLParameters, mergo.WithOverride)
 		if err != nil {
 			return err
+		}
+
+		// Mergo doesn't override non-default values with default values. So
+		// changing true to false is not possible with a merge.
+		// This is a small hack to fix this.
+		// `mergo.WithOverwriteWithEmptyValue` opens a new can of worms, so it's
+		// not used here. https://github.com/darccio/mergo/issues/249
+		if comp.Spec.Parameters.Service.PostgreSQLParameters.Backup.DeletionProtection != nil {
+			params.Backup.DeletionProtection = comp.Spec.Parameters.Service.PostgreSQLParameters.Backup.DeletionProtection
 		}
 	}
 

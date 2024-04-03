@@ -63,13 +63,13 @@ func (p *XPostgreSQLReconciler) handleDeletionProtection(ctx context.Context, in
 		},
 	}
 
-	patch, err := handle(ctx, inst, protectionEnabled, retention)
+	patch, err := handle(ctx, inst, *protectionEnabled, retention)
 
 	if err != nil {
 		return errors.Wrap(err, "cannot return patch operation object")
 	}
 
-	overridePatch, err := getInstanceNamespaceOverride(ctx, inst, protectionEnabled, p.Client)
+	overridePatch, err := getInstanceNamespaceOverride(ctx, inst, *protectionEnabled, p.Client)
 	if err != nil {
 		return errors.Wrap(err, "can't determine patch for namespace override")
 	}

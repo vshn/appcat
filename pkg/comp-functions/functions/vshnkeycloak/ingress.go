@@ -10,6 +10,10 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
@@ -32,7 +36,7 @@ func AddIngress(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result
 	}
 
 	svc.Log.Info("Enable ingress for release")
-	enableIngresValues(comp, values)
+	enableIngresValues(svc, comp, values)
 
 	release := &xhelmv1.Release{}
 	err = svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
@@ -55,7 +59,7 @@ func AddIngress(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result
 	return nil
 }
 
-func enableIngresValues(comp *vshnv1.VSHNKeycloak, values map[string]any) {
+func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, values map[string]any) {
 	fqdn := comp.Spec.Parameters.Service.FQDN
 
 	relPath := `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`
@@ -66,10 +70,7 @@ func enableIngresValues(comp *vshnv1.VSHNKeycloak, values map[string]any) {
 	values["ingress"] = map[string]any{
 		"enabled":     true,
 		"servicePort": "https",
-		"annotations": map[string]string{
-			// This forces tls between nginx and keycloak
-			"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-		},
+
 		"rules": []map[string]any{
 			{
 				"host": fqdn,
@@ -86,7 +87,58 @@ func enableIngresValues(comp *vshnv1.VSHNKeycloak, values map[string]any) {
 				"hosts": []string{
 					fqdn,
 				},
+				"secretName": "keycloak-ingress-cert",
 			},
 		},
 	}
+
+	if svc.Config.Data["ingress_annotations"] != "" {
+		annotations := map[string]any{}
+
+		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), annotations)
+		if err != nil {
+			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
+		}
+
+		unstructured.SetNestedMap(values, annotations, "ingress", "annotations")
+	}
+
+	if svc.GetBoolFromCompositionConfig("isOpenshift") {
+		err := addOpenShiftCa(svc, comp)
+		if err != nil {
+			svc.Log.Error(err, "cannot add openshift ca secret")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot add openshift ca secret: %s", err)))
+		}
+	}
+
+}
+
+// addOpenShiftCa creates a separate secret just with the ca in it.
+// This is required so that the ca on the route is properly set.
+// For some reason openshift doesn't take the CA certificate from the ca.crt
+// field of a tls secret... So we create a separate one which contains the CA
+// cert in each mandatory field.
+func addOpenShiftCa(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error {
+	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + cdCertsSuffix)
+	if err != nil {
+		return err
+	}
+
+	keyName := "ca.crt"
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "route-ca",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			keyName:   cd[keyName],
+			"tls.crt": cd[keyName],
+			"tls.key": cd[keyName],
+		},
+	}
+
+	return svc.SetDesiredKubeObject(secret, comp.GetName()+"-route-ca")
 }

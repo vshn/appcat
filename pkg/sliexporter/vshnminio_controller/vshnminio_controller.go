@@ -9,9 +9,9 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
+	slireconciler "github.com/vshn/appcat/v4/pkg/sliexporter/sli_reconciler"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -39,8 +39,7 @@ type VSHNMinioReconciler struct {
 }
 
 type probeManager interface {
-	StartProbe(p probes.Prober)
-	StopProbe(p probes.ProbeInfo)
+	slireconciler.ProbeManager
 }
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnminios,verbs=get;list;watch
@@ -53,54 +52,23 @@ type probeManager interface {
 
 func (r *VSHNMinioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	l := log.FromContext(ctx).WithValues("namespace", req.Namespace, "instance", req.Name)
-	l.Info("Reconciling VSHNRedis")
+	l.Info("Reconciling XVSHNMinio")
 
 	inst := &vshnv1.XVSHNMinio{}
 	err = r.Get(ctx, req.NamespacedName, inst)
 
-	if apierrors.IsNotFound(err) || inst.DeletionTimestamp != nil {
-		l.Info("Stopping Probe")
-		r.ProbeManager.StopProbe(probes.ProbeInfo{
-			Service:   vshnMinioServiceKey,
-			Name:      req.Name,
-			Namespace: req.Namespace,
-		})
-		return ctrl.Result{}, nil
-	}
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnMinioServiceKey, req.NamespacedName, err, r.StartupGracePeriod, r.getMinioProber)
 
-	if inst.Spec.WriteConnectionSecretToReference == nil || inst.Spec.WriteConnectionSecretToReference.Name == "" {
-		l.Info("No connection secret requested. Skipping.")
-		return ctrl.Result{}, nil
-	}
-
-	probe, err := r.getMinioProber(ctx, inst)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
-
-	if apierrors.IsNotFound(err) {
-		l.WithValues("credentials", inst.Spec.WriteConnectionSecretToReference.Name, "error", err.Error()).
-			Info("Failed to find credentials. Backing off")
-		res.Requeue = true
-		res.RequeueAfter = 30 * time.Second
-
-		if time.Since(inst.GetCreationTimestamp().Time) < r.StartupGracePeriod {
-			// Instance is starting up. Postpone probing until ready.
-			return res, nil
-		}
-	}
-
-	l.Info("Starting Probe")
-
-	r.ProbeManager.StartProbe(probe)
-	return res, nil
+	return reconciler.Reconcile(ctx)
 
 }
 
-func (r VSHNMinioReconciler) getMinioProber(ctx context.Context, inst *vshnv1.XVSHNMinio) (prober probes.Prober, err error) {
+func (r VSHNMinioReconciler) getMinioProber(ctx context.Context, obj slireconciler.Service) (prober probes.Prober, err error) {
+	inst, ok := obj.(*vshnv1.XVSHNMinio)
+	if !ok {
+		return nil, fmt.Errorf("cannot start probe, object not a valid VSHNRedis")
+	}
+
 	l := log.FromContext(ctx).WithValues("namespace", inst.ObjectMeta.Labels[claimNamespaceLabel], "instance", inst.ObjectMeta.Labels[claimNameLabel])
 
 	creds := corev1.Secret{}

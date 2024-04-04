@@ -23,10 +23,11 @@ import (
 
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
+	slireconciler "github.com/vshn/appcat/v4/pkg/sliexporter/sli_reconciler"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,8 +39,6 @@ import (
 
 var (
 	vshnpostgresqlsServiceKey = "VSHNPostgreSQL"
-	claimNamespaceLabel       = "crossplane.io/claim-namespace"
-	claimNameLabel            = "crossplane.io/claim-name"
 	errNotReady               = fmt.Errorf("Resource is not yet ready")
 )
 
@@ -54,8 +53,7 @@ type VSHNPostgreSQLReconciler struct {
 }
 
 type probeManager interface {
-	StartProbe(p probes.Prober)
-	StopProbe(p probes.ProbeInfo)
+	slireconciler.ProbeManager
 }
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,verbs=get;list;watch
@@ -70,62 +68,26 @@ type probeManager interface {
 // Will only probe an instance once it is ready or after the StartupGracePeriod.
 func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx).WithValues("namespace", req.Namespace, "instance", req.Name)
-	res := ctrl.Result{}
 
 	inst := &vshnv1.XVSHNPostgreSQL{}
 	nn := req.NamespacedName
 	err := r.Get(ctx, nn, inst)
 
-	if apierrors.IsNotFound(err) || inst.DeletionTimestamp != nil {
-		l.Info("Stopping Probe")
-		r.ProbeManager.StopProbe(probes.NewProbeInfo(vshnpostgresqlsServiceKey, nn, inst))
-		return ctrl.Result{}, nil
-	}
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnpostgresqlsServiceKey, nn, err, r.StartupGracePeriod, r.fetchProberFor)
 
-	if inst.Spec.WriteConnectionSecretToReference == nil || inst.Spec.WriteConnectionSecretToReference.Name == "" {
-		l.Info("No connection secret requested. Skipping.")
-		return ctrl.Result{}, nil
-	}
-
-	if time.Since(inst.GetCreationTimestamp().Time) < r.StartupGracePeriod {
-		retry := r.StartupGracePeriod - time.Since(inst.GetCreationTimestamp().Time)
-		l.Info(fmt.Sprintf("Instance is starting up. Postpone probing until ready, retry in %s", retry.String()))
-		res.Requeue = true
-		res.RequeueAfter = retry
-		return res, nil
-	}
-
-	probe, err := r.fetchProberFor(ctx, inst)
-	// By using the composite the credential secret is available instantly, but initially empty.
-	// TODO: we might want to rethink and generalize this whole reconciler logic in the future.
-	if err != nil && (apierrors.IsNotFound(err) || err == errNotReady) {
-		l.WithValues("credentials", inst.Spec.WriteConnectionSecretToReference.Name, "error", err.Error()).
-			Info("Failed to find credentials. Backing off")
-		res.Requeue = true
-		res.RequeueAfter = 30 * time.Second
-
-		// Create a pobe that will always fail
-		probe, err = probes.NewFailingProbe(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], err)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	} else if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	l.Info("Starting Probe")
-	r.ProbeManager.StartProbe(probe)
-	return res, nil
+	return reconciler.Reconcile(ctx)
 }
 
-func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) (probes.Prober, error) {
+func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, obj slireconciler.Service) (probes.Prober, error) {
+	inst, ok := obj.(*vshnv1.XVSHNPostgreSQL)
+	if !ok {
+		return nil, fmt.Errorf("cannot start probe, object not a valid VSHNPostgreSQL")
+	}
+
 	credSecret := corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{
-		Name:      inst.Spec.WriteConnectionSecretToReference.Name,
-		Namespace: inst.Spec.WriteConnectionSecretToReference.Namespace,
+		Name:      inst.GetWriteConnectionSecretToReference().Name,
+		Namespace: inst.GetWriteConnectionSecretToReference().Namespace,
 	}, &credSecret)
 
 	if err != nil {
@@ -138,7 +100,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 	}
 
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels[claimNamespaceLabel]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: inst.GetLabels()[slireconciler.ClaimNamespaceLabel]}, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +116,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, inst *vshn
 		ha = false
 	}
 
-	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel],
+	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.GetName(), inst.GetLabels()[slireconciler.ClaimNamespaceLabel],
 		fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=verify-ca",
 			credSecret.Data["POSTGRESQL_USER"],

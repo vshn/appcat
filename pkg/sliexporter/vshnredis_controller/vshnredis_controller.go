@@ -4,16 +4,17 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
+	slireconciler "github.com/vshn/appcat/v4/pkg/sliexporter/sli_reconciler"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -23,10 +24,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
+const (
 	vshnRedisServiceKey = "VSHNRedis"
-	claimNamespaceLabel = "crossplane.io/claim-namespace"
-	claimNameLabel      = "crossplane.io/claim-name"
 )
 
 type VSHNRedisReconciler struct {
@@ -39,8 +38,7 @@ type VSHNRedisReconciler struct {
 }
 
 type probeManager interface {
-	StartProbe(p probes.Prober)
-	StopProbe(p probes.ProbeInfo)
+	slireconciler.ProbeManager
 }
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnredis,verbs=get;list;watch
@@ -59,65 +57,23 @@ func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	nn := req.NamespacedName
 	err = r.Get(ctx, nn, inst)
 
-	if apierrors.IsNotFound(err) || inst.DeletionTimestamp != nil {
-		l.Info("Stopping Probe")
-		r.ProbeManager.StopProbe(probes.NewProbeInfo(vshnRedisServiceKey, nn, inst))
-		return ctrl.Result{}, nil
-	}
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnRedisServiceKey, nn, err, r.StartupGracePeriod, r.getRedisProber)
 
-	if inst.Spec.WriteConnectionSecretToReference == nil || inst.Spec.WriteConnectionSecretToReference.Name == "" {
-		l.Info("No connection secret requested. Skipping.")
-		return ctrl.Result{}, nil
-	}
-
-	probe, err := r.getRedisProber(ctx, inst)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
-
-	if apierrors.IsNotFound(err) {
-		l.WithValues("credentials", inst.Spec.WriteConnectionSecretToReference.Name, "error", err.Error()).
-			Info("Failed to find credentials. Backing off")
-		res.Requeue = true
-		res.RequeueAfter = 30 * time.Second
-
-		if time.Since(inst.GetCreationTimestamp().Time) < r.StartupGracePeriod {
-			// Instance is starting up. Postpone probing until ready.
-			return res, nil
-		}
-
-		// Create a pobe that will always fail
-		probe, err = probes.NewFailingProbe(vshnRedisServiceKey, inst.Name, inst.Namespace, err)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
-	l.Info("Starting Probe")
-	r.ProbeManager.StartProbe(probe)
-	return res, nil
+	return reconciler.Reconcile(ctx)
 
 }
 
-func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XVSHNRedis) (prober probes.Prober, err error) {
-	instance := &vshnv1.VSHNRedis{}
-	err = r.Get(ctx, types.NamespacedName{
-		Name:      inst.ObjectMeta.Labels[claimNameLabel],
-		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
-	}, instance)
-
-	if err != nil {
-		return nil, err
+func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, obj slireconciler.Service) (prober probes.Prober, err error) {
+	inst, ok := obj.(*vshnv1.XVSHNRedis)
+	if !ok {
+		return nil, fmt.Errorf("cannot start probe, object not a valid VSHNRedis")
 	}
 
 	credentials := v1.Secret{}
 
 	err = r.Get(ctx, types.NamespacedName{
-		Name:      instance.Spec.WriteConnectionSecretToRef.Name,
-		Namespace: inst.ObjectMeta.Labels[claimNamespaceLabel],
+		Name:      inst.GetWriteConnectionSecretToReference().Name,
+		Namespace: inst.GetWriteConnectionSecretToReference().Namespace,
 	}, &credentials)
 
 	if err != nil {
@@ -125,7 +81,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 	}
 
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels[claimNamespaceLabel]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel]}, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +113,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, inst *vshnv1.XV
 		redisOptions.TLSConfig = &tlsConfig
 	}
 
-	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[claimNamespaceLabel], org, string(sla), false, redisOptions)
+	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel], org, string(sla), false, redisOptions)
 	if err != nil {
 		return nil, err
 	}

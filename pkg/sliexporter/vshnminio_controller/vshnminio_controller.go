@@ -22,10 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
+const (
 	vshnMinioServiceKey = "VSHNMinio"
-	claimNamespaceLabel = "crossplane.io/claim-namespace"
-	claimNameLabel      = "crossplane.io/claim-name"
 	SLIBucketName       = "vshn-test-bucket-for-sli"
 )
 
@@ -69,11 +67,11 @@ func (r VSHNMinioReconciler) getMinioProber(ctx context.Context, obj slireconcil
 		return nil, fmt.Errorf("cannot start probe, object not a valid VSHNRedis")
 	}
 
-	l := log.FromContext(ctx).WithValues("namespace", inst.ObjectMeta.Labels[claimNamespaceLabel], "instance", inst.ObjectMeta.Labels[claimNameLabel])
+	l := log.FromContext(ctx).WithValues("namespace", inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel], "instance", inst.ObjectMeta.Labels[slireconciler.ClaimNameLabel])
 
 	creds := corev1.Secret{}
 
-	fmt.Println("looking for secret: ", SLIBucketName, " in namespace: ", "vshn-minio-"+inst.Name)
+	l.Info("looking for secret:"+SLIBucketName, "namespace", "vshn-minio-"+inst.Name)
 
 	err = r.Get(ctx, types.NamespacedName{
 		Name:      SLIBucketName,
@@ -93,7 +91,7 @@ func (r VSHNMinioReconciler) getMinioProber(ctx context.Context, obj slireconcil
 	prober, err = r.MinioDialer(
 		vshnMinioServiceKey,
 		inst.Name,
-		inst.ObjectMeta.Labels[claimNamespaceLabel],
+		inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel],
 		inst.GetLabels()[utils.OrgLabelName],
 		string(sla),
 		string(creds.Data["ENDPOINT"]),

@@ -112,3 +112,17 @@ rules:
   - xvshnredis/status
   verbs:
   - get
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvsnkeycloaks
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvsnkeycloaks/status
+  verbs:
+  - get

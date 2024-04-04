@@ -72,6 +72,14 @@ type VSHNKeycloakParameters struct {
 
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
+
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=3
+
+	// Instances configures the number of Keycloak instances for the cluster.
+	// Each instance contains one Keycloak server.
+	Instances int `json:"instances,omitempty"`
 }
 
 // VSHNKeycloakServiceSpec contains keycloak DBaaS specific properties

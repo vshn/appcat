@@ -2,6 +2,8 @@ package vshnkeycloakcontroller
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"time"
 
@@ -84,12 +86,18 @@ func (r VSHNKeycloakReconciler) getKeycloakProber(ctx context.Context, obj slire
 
 	url := "https://" + string(host) + ":8443/health"
 
-	cacert, ok := credentials.Data["ca.crt"]
+	rawCACert, ok := credentials.Data["ca.crt"]
 	if !ok {
 		return nil, fmt.Errorf("secret does not contain ca certificate")
 	}
 
-	return probes.NewHTTP(url, true, cacert, vshnKeycloakServiceKey, inst.GetName(), inst.GetNamespace(), org, string(sla), ha), nil
+	parsedCa, _ := pem.Decode(rawCACert)
+	cert, err := x509.ParseCertificate(parsedCa.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse certificate: %w", err)
+	}
+
+	return probes.NewHTTP(url, true, cert, vshnKeycloakServiceKey, inst.GetName(), inst.GetNamespace(), org, string(sla), ha), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

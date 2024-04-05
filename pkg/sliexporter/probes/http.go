@@ -18,11 +18,11 @@ type HTTP struct {
 	ProbeInfo
 }
 
-func NewHTTP(url string, tlsEnabled bool, cacert []byte, service, name, namespace, organization, servicelevel string, ha bool) *HTTP {
+func NewHTTP(url string, tlsEnabled bool, cacert *x509.Certificate, service, name, namespace, organization, servicelevel string, ha bool) *HTTP {
 	transport := http.DefaultTransport
 	if tlsEnabled {
 		caPool := x509.NewCertPool()
-		caPool.AppendCertsFromPEM(cacert)
+		caPool.AddCert(cacert)
 		transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: caPool,

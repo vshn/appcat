@@ -54,10 +54,7 @@ func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	l.Info("Reconciling VSHNRedis")
 	inst := &vshnv1.XVSHNRedis{}
 
-	nn := req.NamespacedName
-	err = r.Get(ctx, nn, inst)
-
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnRedisServiceKey, nn, err, r.StartupGracePeriod, r.getRedisProber)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnRedisServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getRedisProber)
 
 	return reconciler.Reconcile(ctx)
 

@@ -10,6 +10,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -28,21 +29,21 @@ type Reconciler struct {
 	pm                 ProbeManager
 	serviceKey         string
 	nn                 types.NamespacedName
-	err                error
 	startupGracePeriod time.Duration
 	fetchProberFor     func(context.Context, Service) (probes.Prober, error)
+	client             client.Client
 }
 
 // New returns a new Reconciler
 func New(inst Service, l logr.Logger, pm ProbeManager, serviceKey string, nn types.NamespacedName,
-	err error, startupGracePeriod time.Duration, fetchProberFor func(context.Context, Service) (probes.Prober, error)) *Reconciler {
+	client client.Client, startupGracePeriod time.Duration, fetchProberFor func(context.Context, Service) (probes.Prober, error)) *Reconciler {
 	return &Reconciler{
 		inst:               inst,
 		l:                  l,
 		pm:                 pm,
 		serviceKey:         serviceKey,
 		nn:                 nn,
-		err:                err,
+		client:             client,
 		startupGracePeriod: startupGracePeriod,
 		fetchProberFor:     fetchProberFor,
 	}
@@ -54,7 +55,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 
 	res := ctrl.Result{}
 
-	if apierrors.IsNotFound(r.err) || r.inst.GetDeletionTimestamp() != nil {
+	err := r.client.Get(ctx, r.nn, r.inst)
+
+	if apierrors.IsNotFound(err) || r.inst.GetDeletionTimestamp() != nil {
 		r.l.Info("Stopping Probe")
 		// r.pm.StopProbe(probes.NewProbeInfo(r.serviceKey, r.nn, r.inst))
 		r.pm.StopProbe(probes.ProbeInfo{
@@ -64,8 +67,8 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		})
 		return ctrl.Result{}, nil
 	}
-	if r.err != nil {
-		return ctrl.Result{}, r.err
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if r.inst.GetWriteConnectionSecretToReference() == nil || r.inst.GetWriteConnectionSecretToReference().Name == "" {

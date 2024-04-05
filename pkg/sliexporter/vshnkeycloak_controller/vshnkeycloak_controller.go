@@ -49,9 +49,8 @@ func (r *VSHNKeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	l.Info("Reconciling XVSHNKeycloak")
 
 	inst := &vshnv1.XVSHNKeycloak{}
-	err = r.Get(ctx, req.NamespacedName, inst)
 
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnKeycloakServiceKey, req.NamespacedName, err, r.StartupGracePeriod, r.getKeycloakProber)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnKeycloakServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getKeycloakProber)
 
 	return reconciler.Reconcile(ctx)
 

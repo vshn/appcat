@@ -70,10 +70,8 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	l := log.FromContext(ctx).WithValues("namespace", req.Namespace, "instance", req.Name)
 
 	inst := &vshnv1.XVSHNPostgreSQL{}
-	nn := req.NamespacedName
-	err := r.Get(ctx, nn, inst)
 
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnpostgresqlsServiceKey, nn, err, r.StartupGracePeriod, r.fetchProberFor)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnpostgresqlsServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.fetchProberFor)
 
 	return reconciler.Reconcile(ctx)
 }

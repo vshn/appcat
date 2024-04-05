@@ -53,9 +53,8 @@ func (r *VSHNMinioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	l.Info("Reconciling XVSHNMinio")
 
 	inst := &vshnv1.XVSHNMinio{}
-	err = r.Get(ctx, req.NamespacedName, inst)
 
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnMinioServiceKey, req.NamespacedName, err, r.StartupGracePeriod, r.getMinioProber)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnMinioServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getMinioProber)
 
 	return reconciler.Reconcile(ctx)
 

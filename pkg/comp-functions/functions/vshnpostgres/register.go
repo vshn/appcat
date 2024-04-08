@@ -69,6 +69,10 @@ func init() {
 				Name:    "pgbouncer-settings",
 				Execute: addPGBouncerSettings,
 			},
+			{
+				Name:    "pg-exporter-Workaround",
+				Execute: PgExporterConfig,
+			},
 		},
 	})
 }

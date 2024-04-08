@@ -71,7 +71,7 @@ func init() {
 			},
 			{
 				Name:    "pg-exporter-Workaround",
-				Execute: PgExporterWorkaround,
+				Execute: PgExporterConfig,
 			},
 		},
 	})

@@ -141,11 +141,11 @@ type XVSHNMinioList struct {
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
-func (n *VSHNMinio) GetMaintenanceDayOfWeek() string {
-	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
-		return n.Spec.Parameters.Maintenance.DayOfWeek
+func (v *VSHNMinio) GetMaintenanceDayOfWeek() string {
+	if v.Spec.Parameters.Maintenance.DayOfWeek != "" {
+		return v.Spec.Parameters.Maintenance.DayOfWeek
 	}
-	return n.Status.Schedules.Maintenance.DayOfWeek
+	return v.Status.Schedules.Maintenance.DayOfWeek
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day

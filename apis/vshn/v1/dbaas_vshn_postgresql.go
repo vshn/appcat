@@ -174,13 +174,13 @@ type VSHNPostgreSQLBackup struct {
 }
 
 // GetBackupSchedule gets the currently set schedule
-func (p *VSHNPostgreSQLBackup) GetBackupSchedule() string {
-	return p.Schedule
+func (v *VSHNPostgreSQLBackup) GetBackupSchedule() string {
+	return v.Schedule
 }
 
 // SetBackupSchedule sets the schedule to the given value
-func (p *VSHNPostgreSQLBackup) SetBackupSchedule(schedule string) {
-	p.Schedule = schedule
+func (v *VSHNPostgreSQLBackup) SetBackupSchedule(schedule string) {
+	v.Schedule = schedule
 }
 
 // VSHNPostgreSQLRestore contains restore specific parameters.
@@ -199,8 +199,8 @@ type VSHNPostgreSQLRestore struct {
 	RecoveryTimeStamp string `json:"recoveryTimeStamp,omitempty"`
 }
 
-func (p *VSHNPostgreSQL) GetVSHNMonitoring() VSHNMonitoring {
-	return p.Spec.Parameters.Monitoring
+func (v *VSHNPostgreSQL) GetVSHNMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
 }
 
 // VSHNPostgreSQLEncryption contains storage encryption specific parameters
@@ -248,49 +248,49 @@ type VSHNPostgreSQLList struct {
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
-func (n *VSHNPostgreSQL) GetMaintenanceDayOfWeek() string {
-	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
-		return n.Spec.Parameters.Maintenance.DayOfWeek
+func (v *VSHNPostgreSQL) GetMaintenanceDayOfWeek() string {
+	if v.Spec.Parameters.Maintenance.DayOfWeek != "" {
+		return v.Spec.Parameters.Maintenance.DayOfWeek
 	}
-	return n.Status.Schedules.Maintenance.DayOfWeek
+	return v.Status.Schedules.Maintenance.DayOfWeek
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (n *VSHNPostgreSQL) GetMaintenanceTimeOfDay() string {
-	if n.Spec.Parameters.Maintenance.TimeOfDay != "" {
-		return n.Spec.Parameters.Maintenance.TimeOfDay
+func (v *VSHNPostgreSQL) GetMaintenanceTimeOfDay() string {
+	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
+		return v.Spec.Parameters.Maintenance.TimeOfDay
 	}
-	return n.Status.Schedules.Maintenance.TimeOfDay
+	return v.Status.Schedules.Maintenance.TimeOfDay
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
-func (n *VSHNPostgreSQL) SetMaintenanceDayOfWeek(dow string) {
-	n.Status.Schedules.Maintenance.DayOfWeek = dow
+func (v *VSHNPostgreSQL) SetMaintenanceDayOfWeek(dow string) {
+	v.Status.Schedules.Maintenance.DayOfWeek = dow
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (n *VSHNPostgreSQL) SetMaintenanceTimeOfDay(tod string) {
-	n.Status.Schedules.Maintenance.TimeOfDay = tod
+func (v *VSHNPostgreSQL) SetMaintenanceTimeOfDay(tod string) {
+	v.Status.Schedules.Maintenance.TimeOfDay = tod
 }
 
 // GetBackupSchedule returns the current backup schedule
-func (n *VSHNPostgreSQL) GetBackupSchedule() string {
-	if n.Spec.Parameters.Backup.Schedule != "" {
-		return n.Spec.Parameters.Backup.Schedule
+func (v *VSHNPostgreSQL) GetBackupSchedule() string {
+	if v.Spec.Parameters.Backup.Schedule != "" {
+		return v.Spec.Parameters.Backup.Schedule
 	}
-	return n.Status.Schedules.Backup
+	return v.Status.Schedules.Backup
 }
 
 // SetBackupSchedule overwrites the current backup schedule
-func (n *VSHNPostgreSQL) SetBackupSchedule(schedule string) {
-	n.Status.Schedules.Backup = schedule
+func (v *VSHNPostgreSQL) SetBackupSchedule(schedule string) {
+	v.Status.Schedules.Backup = schedule
 }
 
 // GetFullMaintenanceSchedule returns
-func (n *VSHNPostgreSQL) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
-	schedule := n.Spec.Parameters.Maintenance
-	schedule.DayOfWeek = n.GetMaintenanceDayOfWeek()
-	schedule.TimeOfDay = n.GetMaintenanceTimeOfDay()
+func (v *VSHNPostgreSQL) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
+	schedule := v.Spec.Parameters.Maintenance
+	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
+	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
 	return schedule
 }
 
@@ -328,12 +328,16 @@ type XVSHNPostgreSQLList struct {
 	Items []XVSHNPostgreSQL `json:"items"`
 }
 
-func (pg *VSHNPostgreSQL) GetInstanceNamespace() string {
-	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
+func (v *VSHNPostgreSQL) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-postgresql-%s", v.GetName())
 }
 
-func (pg *XVSHNPostgreSQL) GetInstanceNamespace() string {
-	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
+func (v *VSHNPostgreSQL) SetInstanceNamespaceStatus() {
+	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
+func (v *XVSHNPostgreSQL) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-postgresql-%s", v.GetName())
 }
 
 // GetBackupRetention returns the retention definition for this backup.

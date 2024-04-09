@@ -132,6 +132,10 @@ func (v *VSHNMariaDB) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-mariadb-%s", v.GetName())
 }
 
+func (v *VSHNMariaDB) SetInstanceNamespaceStatus() {
+	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
@@ -169,11 +173,11 @@ type XVSHNMariaDBList struct {
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
-func (n *VSHNMariaDB) GetMaintenanceDayOfWeek() string {
-	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
-		return n.Spec.Parameters.Maintenance.DayOfWeek
+func (v *VSHNMariaDB) GetMaintenanceDayOfWeek() string {
+	if v.Spec.Parameters.Maintenance.DayOfWeek != "" {
+		return v.Spec.Parameters.Maintenance.DayOfWeek
 	}
-	return n.Status.Schedules.Maintenance.DayOfWeek
+	return v.Status.Schedules.Maintenance.DayOfWeek
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day

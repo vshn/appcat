@@ -184,24 +184,24 @@ type XVSHNRedisList struct {
 	Items []XVSHNRedis `json:"items"`
 }
 
-func (redis *VSHNRedis) GetVSHNMonitoring() VSHNMonitoring {
-	return redis.Spec.Parameters.Monitoring
+func (v *VSHNRedis) GetVSHNMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
 }
 
-func (redis *VSHNRedis) GetInstanceNamespace() string {
-	return fmt.Sprintf("vshn-redis-%s", redis.GetName())
+func (v *VSHNRedis) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-redis-%s", v.GetName())
 	// GetMaintenanceDayOfWeek returns the currently set day of week
 }
 
-func (redis *VSHNRedis) SetInstanceNamespaceStatus() {
-	redis.Status.InstanceNamespace = redis.GetInstanceNamespace()
+func (v *VSHNRedis) SetInstanceNamespaceStatus() {
+	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
-func (n *VSHNRedis) GetMaintenanceDayOfWeek() string {
-	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
-		return n.Spec.Parameters.Maintenance.DayOfWeek
+func (v *VSHNRedis) GetMaintenanceDayOfWeek() string {
+	if v.Spec.Parameters.Maintenance.DayOfWeek != "" {
+		return v.Spec.Parameters.Maintenance.DayOfWeek
 	}
-	return n.Status.Schedules.Maintenance.DayOfWeek
+	return v.Status.Schedules.Maintenance.DayOfWeek
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day

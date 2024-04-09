@@ -67,6 +67,14 @@ spec:
                           type: string
                       type: object
                       default: {}
+                    instances:
+                      default: 1
+                      description: |-
+                        Instances configures the number of Keycloak instances for the cluster.
+                        Each instance contains one Keycloak server.
+                      maximum: 3
+                      minimum: 1
+                      type: integer
                     maintenance:
                       description: Maintenance contains settings to control the maintenance of an instance.
                       properties:

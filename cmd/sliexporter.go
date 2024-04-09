@@ -10,6 +10,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg"
 	maintenancecontroller "github.com/vshn/appcat/v4/pkg/sliexporter/maintenance_controller"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
+	vshnkeycloakcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnkeycloak_controller"
 	vshnminiocontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnminio_controller"
 	vshnpostgresqlcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnpostgresql_controller"
 	vshnrediscontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnredis_controller"
@@ -21,9 +22,9 @@ import (
 )
 
 type sliProber struct {
-	scheme                                                                                       *runtime.Scheme
-	metricsAddr, probeAddr                                                                       string
-	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis, enableVSHNMinio, enableMaintenanceStatus bool
+	scheme                                                                                                       *runtime.Scheme
+	metricsAddr, probeAddr                                                                                       string
+	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis, enableVSHNMinio, enableMaintenanceStatus, enableKeycloak bool
 }
 
 var s = sliProber{
@@ -50,6 +51,7 @@ func init() {
 		"Enable probing of VSHNMinio instances")
 	SLIProberCMD.Flags().BoolVar(&s.enableMaintenanceStatus, "vshn-track-oc-maintenance-status", getEnvBool("APPCAT_SLI_TRACK_OC_MAINTENANCE_STATUS"),
 		"Enable oc maintenance status observer. Will set the labels 'maintenance' accordingly.")
+	SLIProberCMD.Flags().BoolVar(&s.enableKeycloak, "vshn-keycloak", getEnvBool("APPCAT_SLI_VSHNKEYCLOAK"), "Enable probing of VSHNKeycloak instances")
 }
 
 func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
@@ -118,6 +120,19 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 			MinioDialer:        probes.NewMinio,
 		}).SetupWithManager(mgr); err != nil {
 			log.Error(err, "unable to create controller", "controller", "VSHNRedis")
+			return err
+		}
+	}
+
+	if s.enableKeycloak {
+		log.Info("Enablign VSHNKeycloak controller")
+		if err = (&vshnkeycloakcontroller.VSHNKeycloakReconciler{
+			Client:             mgr.GetClient(),
+			Scheme:             mgr.GetScheme(),
+			ProbeManager:       &probeManager,
+			StartupGracePeriod: 10 * time.Minute,
+		}).SetupWithManager(mgr); err != nil {
+			log.Error(err, "unable to create controller", "controller", "VSHNKeycloak")
 			return err
 		}
 	}

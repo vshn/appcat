@@ -179,7 +179,7 @@ func TestVSHNRedis_StartStop(t *testing.T) {
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.True(t, manager.probers[getFakeKey(pi)])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
@@ -255,7 +255,7 @@ func TestVSHNRedis_Multi(t *testing.T) {
 	_, err = r.Reconcile(context.TODO(), recReq("", "fooz"))
 	assert.NoError(t, err)
 
-	assert.True(t, manager.probers[getFakeKey(barPi)])
+	assert.False(t, manager.probers[getFakeKey(barPi)])
 	assert.True(t, manager.probers[getFakeKey(barerPi)])
 	assert.True(t, manager.probers[getFakeKey(buzzPi)])
 }
@@ -373,7 +373,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.True(t, manager.probers[getFakeKey(pi)])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNRedis_Tls(t *testing.T) {
@@ -431,7 +431,7 @@ func TestVSHNRedis_Tls(t *testing.T) {
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.True(t, manager.probers[getFakeKey(pi)])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func TestVSHNRedis_NoTls(t *testing.T) {
@@ -479,7 +479,7 @@ func TestVSHNRedis_NoTls(t *testing.T) {
 	require.NoError(t, client.Delete(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.True(t, manager.probers[getFakeKey(pi)])
+	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
 func fakeRedisDialer(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {

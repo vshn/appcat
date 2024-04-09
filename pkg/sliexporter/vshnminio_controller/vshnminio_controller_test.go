@@ -57,6 +57,9 @@ func getFakeKey(pi probes.ProbeInfo) key {
 func TestReconciler(t *testing.T) {
 	minio := giveMeMinio(bucketName, namespace)
 
+	ct := metav1.Now().Add(-20 * time.Minute)
+	minio.CreationTimestamp = metav1.Time{Time: ct}
+
 	r, manager, client := setupVSHNMinioTest(t,
 		minio,
 		newTestVSHNMinioCred(bucketName, namespace),
@@ -86,7 +89,7 @@ func TestReconciler(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(probeInfo)])
 }
 
-func TestVSHNMinioSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
+func TestVSHNMinio_Startup_NoCreds_Dont_Probe(t *testing.T) {
 	minio := giveMeMinio(bucketName, namespace)
 
 	r, manager, _ := setupVSHNMinioTest(t,
@@ -113,7 +116,7 @@ func TestVSHNMinioSQL_Startup_NoCreds_Dont_Probe(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(probeInfo)])
 }
 
-func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
+func TestVSHNMinio_NoRef_Dont_Probe(t *testing.T) {
 	db := giveMeMinio("bar", "foo")
 	db.Spec.WriteConnectionSecretToReference.Name = ""
 	r, manager, _ := setupVSHNMinioTest(t,

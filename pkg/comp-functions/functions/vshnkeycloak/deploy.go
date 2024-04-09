@@ -406,6 +406,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"username": string(cd[vshnpostgres.PostgresqlUser]),
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
 		},
+		"metrics": map[string]any{
+			"enabled": true,
+		},
+		"serviceMonitor": map[string]any{
+			"enabled": true,
+		},
 		"resources": map[string]any{
 			"requests": map[string]any{
 				"memory": res.ReqMem,

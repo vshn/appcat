@@ -140,12 +140,6 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set connection details: %s", err)))
 	}
 
-	svc.Log.Info("Populating instanceNamespace status field")
-	err = setInstanceNamespaceStatus(svc, comp)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot set status on composite: %s", err))
-	}
-
 	return nil
 }
 
@@ -663,10 +657,4 @@ exit 0`,
 		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
 	}
 	return extraInitContainersMap, nil
-}
-
-func setInstanceNamespaceStatus(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error {
-	comp.Status.InstanceNamespace = comp.GetInstanceNamespace()
-
-	return svc.SetDesiredCompositeStatus(comp)
 }

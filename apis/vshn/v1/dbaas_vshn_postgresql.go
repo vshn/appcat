@@ -332,6 +332,10 @@ func (pg *VSHNPostgreSQL) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
 }
 
+func (v *VSHNPostgreSQL) SetInstanceNamespaceStatus() {
+	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
 func (pg *XVSHNPostgreSQL) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", pg.GetName())
 }

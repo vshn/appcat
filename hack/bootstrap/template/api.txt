@@ -158,6 +158,10 @@ func (v *{{.Name}}) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-{{.NameShort}}-%s", v.GetName())
 }
 
+func (v *{{.Name}}) SetInstanceNamespaceStatus() {
+	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true

@@ -19,7 +19,7 @@ const (
 	disableBillingCMKey   = "billingDisabled"
 )
 
-func BootstrapInstanceNs(ctx context.Context, comp InstanceNamespaceInfo, serviceName, namespaceResName string, svc *runtime.ServiceRuntime) error {
+func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, namespaceResName string, svc *runtime.ServiceRuntime) error {
 	l := svc.Log
 
 	claimNs := comp.GetClaimNamespace()
@@ -46,6 +46,12 @@ func BootstrapInstanceNs(ctx context.Context, comp InstanceNamespaceInfo, servic
 	err = createNamespacePermissions(ctx, compositionName, instanceNs, namespaceResName, svc)
 	if err != nil {
 		return fmt.Errorf("cannot create rbac rules for %s instance: %w", serviceName, err)
+	}
+
+	l.Info("Add instance namespace to status")
+	err = setInstanceNamespaceStatus(svc, comp)
+	if err != nil {
+		return fmt.Errorf("cannot add instance namespace to composite status: %w", err)
 	}
 
 	return nil
@@ -223,4 +229,10 @@ func isBillingDisabled(controlNS, instanceNamespace, compName string, svc *runti
 	}
 
 	return false, nil
+}
+
+func setInstanceNamespaceStatus(svc *runtime.ServiceRuntime, comp Composite) error {
+	comp.SetInstanceNamespaceStatus()
+
+	return svc.SetDesiredCompositeStatus(comp)
 }

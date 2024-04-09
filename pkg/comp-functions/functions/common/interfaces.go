@@ -1,6 +1,9 @@
 package common
 
-import vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+import (
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
 
 // InfoGetter will return various information about the given AppCat composite.
 type InfoGetter interface {
@@ -18,4 +21,11 @@ type InstanceNamespaceInfo interface {
 	GetClaimNamespace() string
 	GetInstanceNamespace() string
 	GetLabels() map[string]string
+}
+
+// Composite can get and set the relevant information on a given composite.
+type Composite interface {
+	InfoGetter
+	client.Object
+	SetInstanceNamespaceStatus()
 }

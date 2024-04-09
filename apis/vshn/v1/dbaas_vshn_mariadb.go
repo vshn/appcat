@@ -132,6 +132,10 @@ func (v *VSHNMariaDB) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-mariadb-%s", v.GetName())
 }
 
+func (v *VSHNMariaDB) SetInstanceNamespaceStatus() {
+	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 

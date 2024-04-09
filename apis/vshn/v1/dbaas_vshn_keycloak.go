@@ -178,6 +178,10 @@ func (v *VSHNKeycloak) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-keycloak-%s", v.GetName())
 }
 
+func (v *VSHNKeycloak) SetInstanceNamespaceStatus() {
+	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 

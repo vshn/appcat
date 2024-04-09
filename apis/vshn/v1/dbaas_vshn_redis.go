@@ -193,6 +193,10 @@ func (redis *VSHNRedis) GetInstanceNamespace() string {
 	// GetMaintenanceDayOfWeek returns the currently set day of week
 }
 
+func (redis *VSHNRedis) SetInstanceNamespaceStatus() {
+	redis.Status.InstanceNamespace = redis.GetInstanceNamespace()
+}
+
 func (n *VSHNRedis) GetMaintenanceDayOfWeek() string {
 	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
 		return n.Spec.Parameters.Maintenance.DayOfWeek

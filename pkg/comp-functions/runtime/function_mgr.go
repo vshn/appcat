@@ -39,6 +39,12 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
+const (
+	OwnerKindAnnotation    = "appcat.vshn.io/ownerkind"
+	OwnerVersionAnnotation = "appcat.vshn.io/ownerapiversion"
+	OwnerGroupAnnotation   = "appcat.vshn.io/ownergroup"
+)
+
 // Step describes a single change within a service.
 // It's essentially what was previously called a TransformFunc.
 type Step struct {
@@ -62,6 +68,7 @@ type ServiceRuntime struct {
 	connectionDetails resource.ConnectionDetails
 	results           []*xfnproto.Result
 	desiredComposite  *composite.Unstructured
+	observedComposite *composite.Unstructured
 }
 
 // Service contains all steps necessary to provide the service (except the legacy P+T portion).
@@ -220,6 +227,11 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 		return nil, err
 	}
 
+	observedComposite, err := request.GetObservedCompositeResource(req)
+	if err != nil {
+		return nil, err
+	}
+
 	// We need the observed composition here, as otherwise the
 	// connectionDetails are always empty.
 	comp, err := request.GetObservedCompositeResource(req)
@@ -245,6 +257,7 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 		connectionDetails: comp.ConnectionDetails,
 		results:           []*xfnproto.Result{},
 		desiredComposite:  desiredComposite.Resource,
+		observedComposite: observedComposite.Resource,
 	}, nil
 }
 
@@ -296,7 +309,10 @@ func (s *ServiceRuntime) SetDesiredComposedResource(obj xpresource.Managed) erro
 // SetDesiredComposedResourceWithName adds the given object to the desired resources, it needs to be a proper
 // crossplane Managed Resource. Additionally provide a name, if it's not derived from the object name.
 // Usually needed for objects that where migrated from P+T compositions with a static name.
+// Additionally it injects the claim-name, claim-namespace and the composite name as a label.
 func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Managed, name string) error {
+
+	s.addOwnerReferenceAnnotation(obj, true)
 
 	unstructuredObj, err := composed.From(obj)
 	if err != nil {
@@ -373,7 +389,10 @@ func (s *ServiceRuntime) SetDesiredKubeObserveObject(obj client.Object, objectNa
 }
 
 // putIntoObject adds or updates the desired resource into its kube object
+// It will inject the same labels as any managed resource gets.
 func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon, resourceName string, refs ...xkube.Reference) (*xkube.Object, error) {
+
+	s.addOwnerReferenceAnnotation(o, false)
 
 	kind, _, err := composed.Scheme.ObjectKinds(o)
 	if err != nil {
@@ -848,4 +867,23 @@ func (s *ServiceRuntime) WaitForDependenciesWithConnectionDetails(mainResource s
 	}
 
 	return true, nil
+}
+
+// addOwnerReferenceAnnotation encodes the composite's gvk as a json in the annotations
+func (s *ServiceRuntime) addOwnerReferenceAnnotation(obj client.Object, composedResource bool) {
+	labels := obj.GetLabels()
+
+	if labels == nil {
+		labels = map[string]string{}
+	}
+
+	labels[OwnerKindAnnotation] = s.Config.Data["ownerKind"]
+	labels[OwnerVersionAnnotation] = s.Config.Data["ownerVersion"]
+	labels[OwnerGroupAnnotation] = s.Config.Data["ownerGroup"]
+
+	if !composedResource {
+		labels["crossplane.io/composite"] = s.observedComposite.GetLabels()["crossplane.io/composite"]
+	}
+
+	obj.SetLabels(labels)
 }

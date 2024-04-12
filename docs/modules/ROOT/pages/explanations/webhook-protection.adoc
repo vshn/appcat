@@ -1,0 +1,45 @@
+= Webhook based deletion protection
+
+In order to protect some objects from accidental deletion, we added a webhook based deletion protection.
+This deletion protection currently protects "backend" objects from being deleted while the composite still exists.
+This does not (yet) protect the claims from accidental deletion.
+
+It currently protects these objects:
+
+* Instance namespaces
+* PVCs within those namespaces
+* XObjectBuckets belonging to an instance
+
+The protection can be toggled by using `.spec.parameters.backup.deletionProtection` in the top parent composite.
+
+image::protection.drawio.svg[]
+
+By binding the protection to the topmost composite in any given nested service, we ensure that the protection cannot be circumvented by composition-functions.
+The topmost composite is always the one that belongs to a claim.
+Within composition functions it's only possible to manipulate the `.status` field of that composite.
+It cannot be deleted from within the composition functions, so it's the ideal anchor to fixate the protection.
+
+== Implementation
+
+The implementation can protect objects in two cases:
+
+* It's directly managed by Crossplane, either by being a managed resource, or by being deployed via provider-kubernetes
+* An object that's not managed, but resides in a protected namespace
+
+In the first case, Composition functions ensures that all objects deployed by Crossplane or provider-kubernetes contain labels about the composite it belongs to.
+That information is then used during the Webhook to figure out if the composite is in a deleted state or not.
+If it's not in a deleted state, and the protection toggle is true, then it will block the deletion.
+To avoid any deadlocks, as soon as the composite is either not found, or has `.metadata.deletionTimestamp` not nil, it will disengage the protection.
+
+The second case is very similar.
+The webhook reads the namespace the object belongs to and then uses the namespace with the logic for managed objects to determine the state of the protection.
+
+If deletion protection needs to be added to a PnT managed objects, please ensure that the labels are set.
+
+=== Why are we not using ownerReferences to determine the parent composite?
+
+The answer has multiple aspects:
+
+* Provider-kubernetes doesn't set ownerRefs on its managed objects. This is due to the fact that ownerRefs have some limitations.The owners need to be either namespace scoped, or reside in the same namespace. As provider-kubernetes can manage remote clusters, the composite might not even be on the same cluster. Same applies to provider-helm.
+* Only Managed resources have ownerRefs to their composite.
+* For nested services, like Keycloak, the ownerReferences only point to the next composite in the chain. If for any reason one of the parent composites is missing, we can't get to the parent anymore.

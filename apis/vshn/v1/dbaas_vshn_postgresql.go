@@ -306,6 +306,11 @@ type XVSHNPostgreSQL struct {
 	Status XVSHNPostgreSQLStatus `json:"status,omitempty"`
 }
 
+// IsDeletionProtected returns the current state of the deletion protection.
+func (v *XVSHNPostgreSQL) IsDeletionProtected() bool {
+	return *v.Spec.Parameters.Backup.DeletionProtection
+}
+
 type XVSHNPostgreSQLStatus struct {
 	VSHNPostgreSQLStatus `json:",inline"`
 	xpv1.ResourceStatus  `json:",inline"`

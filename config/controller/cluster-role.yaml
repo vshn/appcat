@@ -6,8 +6,7 @@ rules:
   - apiGroups:
       - vshn.appcat.vshn.io
     resources:
-      - xvshnpostgresqls
-      - xvshnpostgresqls/finalizers
+      - "*"
     verbs:
       - get
       - list
@@ -68,11 +67,5 @@ rules:
     resources:
       - pods
       - services
-    verbs:
-      - get
-  - apiGroups:
-      - vshn.appcat.vshn.io
-    resources:
-      - "*"
     verbs:
       - get

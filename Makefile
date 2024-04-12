@@ -176,19 +176,30 @@ webhook_service_name = host.docker.internal
 
 webhook-debug: $(webhook_cert) ## Creates certificates, patches the webhook registrations and applies everything to the given kube cluster
 webhook-debug:
+	# PG
 	kubectl -n syn-appcat scale deployment appcat-controller --replicas 0
 	cabundle=$$(cat .work/webhook/tls.crt | base64) && \
-	HOSTIP=$(webhook_service_name) && \
 	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-pg-validation cert-manager.io/inject-ca-from- && \
 	kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io appcat-pg-validation -oyaml | \
-	yq e "del(.webhooks[0].clientConfig.service) | .webhooks[0].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[0].clientConfig.url |= \"https://$$HOSTIP:9443/validate-vshn-appcat-vshn-io-v1-vshnpostgresql\"" - | \
-	kubectl apply -f - && \
+	yq e "del(.webhooks[0].clientConfig.service) | .webhooks[0].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[0].clientConfig.url |= \"https://$(webhook_service_name):9443/validate-vshn-appcat-vshn-io-v1-vshnpostgresql\"" - | \
+	kubectl apply -f -
+
+	#Redis
+	cabundle=$$(cat .work/webhook/tls.crt | base64) && \
 	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-redis-validation cert-manager.io/inject-ca-from- && \
 	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-pg-validation kubectl.kubernetes.io/last-applied-configuration- && \
 	kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io appcat-redis-validation -oyaml | \
-	yq e "del(.webhooks[0].clientConfig.service) | .webhooks[0].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[0].clientConfig.url |= \"https://$$HOSTIP:9443/validate-vshn-appcat-vshn-io-v1-vshnredis\"" - | \
+	yq e "del(.webhooks[0].clientConfig.service) | .webhooks[0].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[0].clientConfig.url |= \"https://$(webhook_service_name):9443/validate-vshn-appcat-vshn-io-v1-vshnredis\"" - | \
+	kubectl apply -f -
+
+	# protection
+	cabundle=$$(cat .work/webhook/tls.crt | base64) && \
+	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-redis-validation kubectl.kubernetes.io/last-applied-configuration- && \
+	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-protection-validation cert-manager.io/inject-ca-from- && \
+	kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io appcat-protection-validation -oyaml | \
+	yq e "with(.webhooks[]; .clientConfig.caBundle = \"$$cabundle\") | with(.webhooks[]; .clientConfig.url = \"https://$(webhook_service_name):9443\" + .clientConfig.service.path) | with(.webhooks[]; del(.clientConfig.service))" - | \
 	kubectl apply -f - && \
-	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-redis-validation kubectl.kubernetes.io/last-applied-configuration-
+	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-protection-validation kubectl.kubernetes.io/last-applied-configuration-
 
 .PHONY: clean
 clean:

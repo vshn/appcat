@@ -160,6 +160,11 @@ type XVSHNRedis struct {
 	Status XVSHNRedisStatus `json:"status,omitempty"`
 }
 
+// IsDeletionProtected returns the current state of the deletion protection.
+func (v *XVSHNRedis) IsDeletionProtected() bool {
+	return *v.Spec.Parameters.Backup.DeletionProtection
+}
+
 // XVSHNRedisSpec defines the desired state of a VSHNRedis.
 type XVSHNRedisSpec struct {
 	// Parameters are the configurable fields of a VSHNRedis.

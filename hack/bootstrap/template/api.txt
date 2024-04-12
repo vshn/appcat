@@ -175,6 +175,11 @@ type X{{.Name}} struct {
 	Status X{{.Name}}Status `json:"status,omitempty"`
 }
 
+// IsDeletionProtected returns the current state of the deletion protection.
+func (v *X{{.Name}} ) IsDeletionProtected() bool {
+	return *v.Spec.Parameters.Backup.DeletionProtection
+}
+
 // X{{.Name}}Spec defines the desired state of a {{.Name}}.
 type X{{.Name}}Spec struct {
 	// Parameters are the configurable fields of a {{.Name}}.

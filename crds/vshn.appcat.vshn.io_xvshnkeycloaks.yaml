@@ -5609,6 +5609,7 @@ spec:
                           Multiple versions are supported. The latest version 23 is the default version.
                         enum:
                         - "23"
+                        - "24"
                         type: string
                     type: object
                   size:

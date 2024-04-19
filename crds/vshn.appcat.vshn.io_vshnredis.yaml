@@ -48,7 +48,7 @@ spec:
                         deletionProtection:
                           default: true
                           description: |-
-                            DeletionProtection will protect the instance from being deleted while the composite or claim still exists.
+                            DeletionProtection will protect the instance's data from being deleted while the composite or claim still exists.
                             This is enabled by default.
                           type: boolean
                         retention:

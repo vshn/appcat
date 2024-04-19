@@ -29,6 +29,13 @@ import (
 // See https://book.kubebuilder.io/reference/markers/webhook for docs
 //+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=postgresqls,versions=v1,name=postgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
+//RBAC
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls/status,verbs=get;list;watch;patch;update
+
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;patch;update;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;patch;update;delete
+
 var (
 	pgGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNPostgreSQL"}
 	pgGR = schema.GroupResource{Group: pgGK.Group, Resource: "vshnpostgresqls"}

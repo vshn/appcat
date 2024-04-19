@@ -18,6 +18,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnredis,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnredis/status,verbs=get;list;watch;patch;update
+
 var (
 	redisGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNRedis"}
 	redisGR = schema.GroupResource{Group: redisGK.Group, Resource: "vshnredis"}

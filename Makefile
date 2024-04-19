@@ -76,6 +76,7 @@ generate: $(protoc_bin) get-crds generate-stackgres-crds ## Generate code with c
 	find apis/generated/ -exec $(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' {} \;
 	rm -rf crds && cp -r apis/generated crds
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-sli-exporter paths="{./pkg/sliexporter/...}" output:artifacts:config=config/sliexporter/rbac
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-controller paths="{./pkg/controller/...}" output:rbac:stdout > config/controller/cluster-role.yaml
 
 .PHONY: generate-stackgres-crds
 generate-stackgres-crds:

@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=*,verbs=get;list;watch
+
 var (
 	errNoOwnerRefAnnotation = fmt.Errorf("ownerReference annotation not specified")
 )

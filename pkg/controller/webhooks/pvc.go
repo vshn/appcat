@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+//+kubebuilder:webhook:verbs=delete,path=/validate--v1-persistentvolumeclaim,mutating=false,failurePolicy=fail,groups="",resources=persistenvolumeclaims,versions=v1,name=pvc.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+
 var _ webhook.CustomValidator = &PVCDeletionProtectionHandler{}
 
 // PVCDeletionProtectionHandler

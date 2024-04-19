@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+//+kubebuilder:webhook:verbs=delete,path=/validate--v1-namespace,mutating=false,failurePolicy=fail,groups="",resources=namespaces,versions=v1,name=namespace.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+
 var _ webhook.CustomValidator = &NamespaceDeletionProtectionHandler{}
 
 // NamespaceDeletionProtectionHandler

@@ -1,0 +1,103 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate--v1-namespace
+  failurePolicy: Fail
+  name: namespace.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - DELETE
+    resources:
+    - namespaces
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-vshnpostgresql
+  failurePolicy: Fail
+  name: postgresql.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - postgresqls
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate--v1-persistentvolumeclaim
+  failurePolicy: Fail
+  name: pvc.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - DELETE
+    resources:
+    - persistenvolumeclaims
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-vshnredis
+  failurePolicy: Fail
+  name: vshnredis.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - DELETE
+    resources:
+    - vshnredis
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-appcat-vshn-io-v1-xobjectbucket
+  failurePolicy: Fail
+  name: xobjectbuckets.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - DELETE
+    resources:
+    - xobjectbuckets
+  sideEffects: None

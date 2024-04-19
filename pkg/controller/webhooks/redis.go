@@ -18,6 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+//+kubebuilder:webhook:verbs=delete,path=/validate-vshn-appcat-vshn-io-v1-vshnredis,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnredis,versions=v1,name=vshnredis.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnredis,verbs=get;list;watch;patch;update
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnredis/status,verbs=get;list;watch;patch;update
 

@@ -107,7 +107,7 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 
 // checkUnmanagedObject tries to get the composite information about objects that are not directly managed by Crossplane.
 // It checks if the namespace it belongs to is managed by a composite, if that's the case it uses the same logic to
-// determine the state of the deletionprotection.
+// determine the state of the deletion protection.
 // Such objects would be: any helm generated object, pvcs for sts and any other 3rd party managed objects.
 func checkUnmanagedObject(ctx context.Context, obj client.Object, c client.Client, l logr.Logger) (compositeInfo, error) {
 	namespace := &corev1.Namespace{}

@@ -37,25 +37,25 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 
 	ownerKind, ok := obj.GetLabels()[runtime.OwnerKindAnnotation]
 	if !ok || ownerKind == "" {
-		l.V(1).Info("ownerKind label not set, skipping")
+		l.Info(runtime.OwnerKindAnnotation + " label not set, skipping evaluation")
 		return compositeInfo{Exists: false}, nil
 	}
 
 	ownerVersion, ok := obj.GetLabels()[runtime.OwnerVersionAnnotation]
 	if !ok || ownerVersion == "" {
-		l.V(1).Info("ownerVersion label not found, skipping")
+		l.Info(runtime.OwnerVersionAnnotation + " label not found, skipping evaluation")
 		return compositeInfo{Exists: false}, nil
 	}
 
 	onwerGroup, ok := obj.GetLabels()[runtime.OwnerGroupAnnotation]
 	if !ok || onwerGroup == "" {
-		l.V(1).Info("ownerGroup label not found, skipping")
+		l.Info(runtime.OwnerGroupAnnotation + " label not found, skipping evaluation")
 		return compositeInfo{Exists: false}, nil
 	}
 
 	ownerName, ok := obj.GetLabels()["crossplane.io/composite"]
 	if !ok || ownerName == "" {
-		l.V(1).Info("crossplane.io/composite label not found, skipping")
+		l.Info("crossplane.io/composite label not found, skipping evaluation")
 		return compositeInfo{Exists: false}, nil
 	}
 

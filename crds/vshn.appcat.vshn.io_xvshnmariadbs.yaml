@@ -87,12 +87,6 @@ spec:
                     description: Backup contains settings to control how the instance
                       should get backed up.
                     properties:
-                      deletionProtection:
-                        default: true
-                        description: |-
-                          DeletionProtection will protect the instance's data from being deleted while the composite or claim still exists.
-                          This is enabled by default.
-                        type: boolean
                       retention:
                         description: K8upRetentionPolicy describes the retention configuration
                           for a K8up backup.

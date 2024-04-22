@@ -11,7 +11,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -50,13 +49,7 @@ func Test_checkManagedObject(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "redis",
 			},
-			Spec: vshnv1.XVSHNRedisSpec{
-				Parameters: vshnv1.VSHNRedisParameters{
-					Backup: vshnv1.K8upBackupSpec{
-						DeletionProtection: ptr.To(true),
-					},
-				},
-			},
+			Spec: vshnv1.XVSHNRedisSpec{},
 		},
 		&appcatv1.XObjectBucket{
 			TypeMeta: typeMeta,

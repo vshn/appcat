@@ -9,11 +9,6 @@ type K8upBackupSpec struct {
 	Schedule string `json:"schedule,omitempty"`
 
 	Retention K8upRetentionPolicy `json:"retention,omitempty"`
-
-	// DeletionProtection will protect the instance's data from being deleted while the composite or claim still exists.
-	// This is enabled by default.
-	// +kubebuilder:default=true
-	DeletionProtection *bool `json:"deletionProtection,omitempty"`
 }
 
 // GetBackupSchedule returns the currently set schedule for this backup config

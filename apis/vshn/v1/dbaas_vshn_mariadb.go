@@ -148,11 +148,6 @@ type XVSHNMariaDB struct {
 	Status XVSHNMariaDBStatus `json:"status,omitempty"`
 }
 
-// IsDeletionProtected returns the current state of the deletion protection.
-func (v *XVSHNMariaDB) IsDeletionProtected() bool {
-	return *v.Spec.Parameters.Backup.DeletionProtection
-}
-
 // XVSHNMariaDBSpec defines the desired state of a VSHNMariaDB.
 type XVSHNMariaDBSpec struct {
 	// Parameters are the configurable fields of a VSHNMariaDB.

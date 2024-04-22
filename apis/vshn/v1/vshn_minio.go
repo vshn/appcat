@@ -116,11 +116,6 @@ type XVSHNMinio struct {
 	Status XVSHNMinioStatus `json:"status,omitempty"`
 }
 
-// IsDeletionProtected returns the current state of the deletion protection.
-func (v *XVSHNMinio) IsDeletionProtected() bool {
-	return *v.Spec.Parameters.Backup.DeletionProtection
-}
-
 // XVSHNMinioSpec defines the desired state of a VSHNMinio.
 type XVSHNMinioSpec struct {
 	// Parameters are the configurable fields of a VSHNMinio.

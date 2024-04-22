@@ -97,12 +97,7 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 		return compositeInfo{Exists: false, Name: ownerName}, nil
 	}
 
-	dpi, ok := comp.(DeletionProtectionInfo)
-	if !ok {
-		return compositeInfo{Exists: false, Name: ownerName}, fmt.Errorf("cannot determine deletion protection state of: %s", ownerName)
-	}
-
-	return compositeInfo{Exists: dpi.IsDeletionProtected(), Name: ownerName}, nil
+	return compositeInfo{Exists: true, Name: ownerName}, nil
 }
 
 // checkUnmanagedObject tries to get the composite information about objects that are not directly managed by Crossplane.

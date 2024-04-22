@@ -194,11 +194,6 @@ type XVSHNKeycloak struct {
 	Status XVSHNKeycloakStatus `json:"status,omitempty"`
 }
 
-// IsDeletionProtected returns the current state of the deletion protection.
-func (v *XVSHNKeycloak) IsDeletionProtected() bool {
-	return *v.Spec.Parameters.Backup.DeletionProtection
-}
-
 // XVSHNKeycloakSpec defines the desired state of a VSHNKeycloak.
 type XVSHNKeycloakSpec struct {
 	// Parameters are the configurable fields of a VSHNKeycloak.

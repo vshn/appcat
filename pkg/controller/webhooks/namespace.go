@@ -55,7 +55,7 @@ func (p *NamespaceDeletionProtectionHandler) ValidateDelete(ctx context.Context,
 		return nil, fmt.Errorf("object is not valid")
 	}
 
-	l := p.log.WithValues("object", ns.GetName(), "namespace", ns.GetNamespace(), "kind", ns.GetObjectKind())
+	l := p.log.WithValues("object", ns.GetName(), "namespace", ns.GetNamespace(), "GVK", ns.GetObjectKind().GroupVersionKind().String())
 
 	compInfo, err := checkManagedObject(ctx, ns, p.client, l)
 	if err != nil {

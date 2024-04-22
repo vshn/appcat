@@ -61,7 +61,7 @@ webhooks:
     operations:
     - DELETE
     resources:
-    - persistenvolumeclaims
+    - persistentvolumeclaims
   sideEffects: None
 - admissionReviewVersions:
   - v1

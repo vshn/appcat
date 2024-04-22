@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-//+kubebuilder:webhook:verbs=delete,path=/validate--v1-persistentvolumeclaim,mutating=false,failurePolicy=fail,groups="",resources=persistenvolumeclaims,versions=v1,name=pvc.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+//+kubebuilder:webhook:verbs=delete,path=/validate--v1-persistentvolumeclaim,mutating=false,failurePolicy=fail,groups="",resources=persistentvolumeclaims,versions=v1,name=pvc.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
 var _ webhook.CustomValidator = &PVCDeletionProtectionHandler{}
 
@@ -55,7 +55,7 @@ func (p *PVCDeletionProtectionHandler) ValidateDelete(ctx context.Context, obj r
 		return nil, fmt.Errorf("object is not valid")
 	}
 
-	l := p.log.WithValues("object", pvc.GetName(), "namespace", pvc.GetNamespace(), "kind", pvc.GetObjectKind())
+	l := p.log.WithValues("object", pvc.GetName(), "namespace", pvc.GetNamespace(), "GVK", pvc.GetObjectKind().GroupVersionKind().String())
 
 	compInfo, err := checkUnmanagedObject(ctx, pvc, p.client, l)
 	if err != nil {

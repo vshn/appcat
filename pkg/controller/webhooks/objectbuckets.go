@@ -55,7 +55,7 @@ func (p *ObjectbucketDeletionProtectionHandler) ValidateDelete(ctx context.Conte
 		return nil, fmt.Errorf("object is not valid")
 	}
 
-	l := p.log.WithValues("object", bucket.GetName(), "namespace", bucket.GetNamespace(), "kind", bucket.GetObjectKind())
+	l := p.log.WithValues("object", bucket.GetName(), "namespace", bucket.GetNamespace(), "GVK", bucket.GetObjectKind().GroupVersionKind().String())
 
 	compInfo, err := checkManagedObject(ctx, bucket, p.client, l)
 	if err != nil {

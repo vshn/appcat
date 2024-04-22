@@ -63,8 +63,11 @@ func (p *PVCDeletionProtectionHandler) ValidateDelete(ctx context.Context, obj r
 	}
 
 	if compInfo.Exists {
+		l.Info("Blocking deletion of PVC")
 		return nil, fmt.Errorf("composite %s still exists and has deletion protection enabled, pvc is protected", compInfo.Name)
 	}
+
+	l.Info("Allowing deletion of PVC")
 
 	return nil, nil
 }

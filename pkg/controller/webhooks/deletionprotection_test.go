@@ -89,4 +89,13 @@ func Test_checkManagedObject(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, compositeInfo{Exists: true, Name: "redis"}, compInfo)
 
+	// Given deletion override
+	labels := obj.GetLabels()
+	labels[ProtectionOverrideLabel] = "true"
+	obj.SetLabels(labels)
+
+	// Then don't expect parent
+	compInfo, err = checkManagedObject(context.TODO(), obj, c, logr.Discard())
+	assert.NoError(t, err)
+	assert.Equal(t, compositeInfo{Exists: false, Name: "redis"}, compInfo)
 }

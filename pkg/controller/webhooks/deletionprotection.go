@@ -13,7 +13,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=*,verbs=get;list;watch
+// +kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=*,verbs=get;list;watch
+const (
+	ProtectionOverrideLabel = "appcat.vshn.io/webhook-allowdeletion"
+)
 
 var (
 	errNoOwnerRefAnnotation = fmt.Errorf("ownerReference annotation not specified")
@@ -97,7 +100,7 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 		return compositeInfo{Exists: false, Name: ownerName}, nil
 	}
 
-	return compositeInfo{Exists: true, Name: ownerName}, nil
+	return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName}, nil
 }
 
 // checkUnmanagedObject tries to get the composite information about objects that are not directly managed by Crossplane.
@@ -117,4 +120,19 @@ func checkUnmanagedObject(ctx context.Context, obj client.Object, c client.Clien
 
 	return checkManagedObject(ctx, namespace, c, l)
 
+}
+
+// isDeletionProtected checks the protection override label
+// and determines if the object should be protected or not.
+// If the label is not set, the protection is active.
+// If the label contains any other value than "true", then the
+// protection is active.
+func isDeletionProtected(obj client.Object) bool {
+	val, ok := obj.GetLabels()[ProtectionOverrideLabel]
+	// If the label is not there, the protection is enabled.
+	if !ok {
+		return true
+	}
+	// If the value is "true" the protection is disabled.
+	return !(val == "true")
 }

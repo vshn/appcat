@@ -43,3 +43,14 @@ The answer has multiple aspects:
 * Provider-kubernetes doesn't set ownerRefs on its managed objects. This is due to the fact that ownerRefs have some limitations.The owners need to be either namespace scoped, or reside in the same namespace. As provider-kubernetes can manage remote clusters, the composite might not even be on the same cluster. Same applies to provider-helm.
 * Only Managed resources have ownerRefs to their composite.
 * For nested services, like Keycloak, the ownerReferences only point to the next composite in the chain. If for any reason one of the parent composites is missing, we can't get to the parent anymore.
+
+=== Override deletion protection
+Sometimes it's necessary to delete some PVC even if the instance still exists.
+For example if one node of a Galera cluster gets corrupted and needs to be re-initialized.
+
+To achieve this, following label has to be set on that object.
+That label will override the protection for exactly that object.
+
+`appcat.vshn.io/webhook-allowdeletion: "true"`
+
+The value has to be `"true"` or else it will not trigger the override.

@@ -39,6 +39,12 @@ rules:
   - update
   - watch
 - apiGroups:
+  - kubernetes.crossplane.io
+  resources:
+  - objects
+  verbs:
+  - delete
+- apiGroups:
   - vshn.appcat.vshn.io
   resources:
   - '*'

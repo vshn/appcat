@@ -10,6 +10,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -98,4 +99,46 @@ func Test_checkManagedObject(t *testing.T) {
 	compInfo, err = checkManagedObject(context.TODO(), obj, c, logr.Discard())
 	assert.NoError(t, err)
 	assert.Equal(t, compositeInfo{Exists: false, Name: "redis"}, compInfo)
+
+	// Given unmanaged object
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Labels: map[string]string{
+				runtime.OwnerKindAnnotation:    kind,
+				runtime.OwnerGroupAnnotation:   vshnv1.GroupVersion.Group,
+				runtime.OwnerVersionAnnotation: vshnv1.GroupVersion.Version,
+				"crossplane.io/composite":      "redis",
+			},
+		},
+	}
+
+	err = c.Create(context.TODO(), ns)
+	assert.NoError(t, err)
+
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mypvc",
+			Namespace: "test",
+		},
+	}
+
+	err = c.Create(context.TODO(), pvc)
+	assert.NoError(t, err)
+
+	// Then expect parent
+	compInfo, err = checkUnmanagedObject(context.TODO(), pvc, c, logr.Discard())
+	assert.NoError(t, err)
+	assert.Equal(t, compositeInfo{Exists: true, Name: "redis"}, compInfo)
+
+	// Given override
+	labels = map[string]string{}
+	labels[ProtectionOverrideLabel] = "true"
+	pvc.SetLabels(labels)
+
+	// Then expect no parent
+	compInfo, err = checkUnmanagedObject(context.TODO(), pvc, c, logr.Discard())
+	assert.NoError(t, err)
+	assert.Equal(t, compositeInfo{Exists: false, Name: "redis"}, compInfo)
+
 }

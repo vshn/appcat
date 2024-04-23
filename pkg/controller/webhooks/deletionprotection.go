@@ -119,7 +119,14 @@ func checkUnmanagedObject(ctx context.Context, obj client.Object, c client.Clien
 		return compositeInfo{Exists: false}, err
 	}
 
-	return checkManagedObject(ctx, namespace, c, l)
+	compInfo, err := checkManagedObject(ctx, namespace, c, l)
+	if err != nil {
+		return compositeInfo{}, err
+	}
+
+	compInfo.Exists = compInfo.Exists && isDeletionProtected(obj)
+
+	return compInfo, nil
 
 }
 

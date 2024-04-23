@@ -18,6 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+//+kubebuilder:rbac:groups="",resources=events,verbs=get;update;list;watch;delete;create;patch
+
 type EventHandler struct {
 	client.Client
 	Scheme *runtime.Scheme

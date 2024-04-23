@@ -126,5 +126,15 @@ func setupWebhooks(mgr manager.Manager, withQuota bool) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	err = webhooks.SetupNamespaceDeletionProtectionHandlerWithManager(mgr)
+	if err != nil {
+		return err
+	}
+
+	err = webhooks.SetupObjectbucketCDeletionProtectionHandlerWithManager(mgr)
+	if err != nil {
+		return err
+	}
+
+	return webhooks.SetupPVCDeletionProtectionHandlerWithManager(mgr)
 }

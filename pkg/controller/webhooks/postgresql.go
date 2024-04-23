@@ -19,15 +19,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// This go generate and kube builder marker are only here for completeness sake.
-// Unfortunately the webhook generator is not very configurable yet and some
-// values cannot be changed. This will clash if/when more webhooks are generated.
-
-// Generate the webhook manifest from the marker comment
-// //go:generate go run -tags generate sigs.k8s.io/controller-tools/cmd/controller-gen webhook paths=./... output:dir=../../../config/controller/pg-webhooks
-
 // See https://book.kubebuilder.io/reference/markers/webhook for docs
 //+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=postgresqls,versions=v1,name=postgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+
+//RBAC
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls/status,verbs=get;list;watch;patch;update
+
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;patch;update;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;patch;update;delete
 
 var (
 	pgGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNPostgreSQL"}

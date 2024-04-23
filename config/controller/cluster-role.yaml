@@ -47,6 +47,14 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
   - xvshnpostgresqls
   verbs:
   - get

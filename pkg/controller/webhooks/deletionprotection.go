@@ -14,6 +14,7 @@ import (
 )
 
 // +kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=*,verbs=get;list;watch
+
 const (
 	ProtectionOverrideLabel = "appcat.vshn.io/webhook-allowdeletion"
 )

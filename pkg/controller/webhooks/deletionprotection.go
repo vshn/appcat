@@ -17,6 +17,7 @@ import (
 
 const (
 	ProtectionOverrideLabel = "appcat.vshn.io/webhook-allowdeletion"
+	protectedMessage        = "%s is part of a VSHN AppCat service and protected from deletions. Either Delete the the claim for composite %s or set this label on the object: 'appcat.vshn.io/webhook-allowdeletion: \"true\"'"
 )
 
 var (

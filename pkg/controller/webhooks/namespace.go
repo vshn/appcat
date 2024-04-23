@@ -64,7 +64,7 @@ func (p *NamespaceDeletionProtectionHandler) ValidateDelete(ctx context.Context,
 
 	if compInfo.Exists {
 		l.Info("Blocking deletion of namespace", "parent", compInfo.Name)
-		return nil, fmt.Errorf("composite %s still exists, namespace is protected", compInfo.Name)
+		return nil, fmt.Errorf(protectedMessage, "namespace", compInfo.Name)
 	}
 
 	l.Info("Allowing deletion of namespace", "parent", compInfo.Name)

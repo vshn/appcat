@@ -146,7 +146,7 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 	}
-	if true {
+	if s.enableMariaDB {
 		log.Info("Enabling VSHNMariaDB controller")
 		if err = (&vshnmariadbcontroller.VSHNMariaDBReconciler{
 			Client:             mgr.GetClient(),

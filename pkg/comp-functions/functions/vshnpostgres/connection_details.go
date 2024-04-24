@@ -32,12 +32,6 @@ const (
 	defaultDB     = "postgres"
 )
 
-// connectionSecretResourceName is the resource name defined in the composition
-// This name is different from metadata.name of the same resource
-// The value is hardcoded in the composition for each resource and due to crossplane limitation
-// it cannot be matched to the metadata.name
-var connectionSecretResourceName = "connection"
-
 // AddConnectionDetails changes the desired state of a FunctionIO
 func AddConnectionDetails(ctx context.Context, svc *runtime.ServiceRuntime) *v1beta1.Result {
 	log := controllerruntime.LoggerFrom(ctx)

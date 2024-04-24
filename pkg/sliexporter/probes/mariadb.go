@@ -2,8 +2,13 @@ package probes
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
+	"fmt"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 var _ Prober = MariaDB{}
@@ -51,8 +56,22 @@ func (p MariaDB) Probe(ctx context.Context) error {
 }
 
 // NewMariaDB connects to the provided dsn and returns a prober
-func NewMariaDB(service, name, namespace, dsn, organization, serviceLevel string, ha bool) (*MariaDB, error) {
+func NewMariaDB(service, name, namespace, dsn, organization, caCRT, serviceLevel string, ha, TLSEnabled bool) (*MariaDB, error) {
+	// regardless of the TLS setting, ca.crt is present in connection secret, therefore, it's safe to keep self-signed cert in a pool
+	rootCAs := x509.NewCertPool()
 	// open connection to MariaDB
+	if ok := rootCAs.AppendCertsFromPEM([]byte(caCRT)); !ok {
+		return nil, fmt.Errorf("failed to append PEM")
+	}
+
+	mysql.RegisterTLSConfig(name, &tls.Config{
+		RootCAs: rootCAs,
+	})
+	if TLSEnabled {
+		// tls must be set to custom name, not into "custom" as it's not supported by the driver
+		// name is unique, so collision is impossible
+		dsn = dsn + "?tls=" + name
+	}
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -78,27 +97,3 @@ func NewFailingMariaDB(service, name, namespace string) (*MariaDB, error) {
 		Namespace: namespace,
 	}, nil
 }
-
-// // PGWithCA adds the provided CA to the rootCAs of the pgxpool.
-// func MariaDBWithCA(ca []byte) func(*pgxpool.Config) error {
-// 	return func(conf *pgxpool.Config) error {
-// 		if conf.ConnConfig.TLSConfig == nil {
-// 			conf.ConnConfig.TLSConfig = &tls.Config{
-// 				RootCAs: x509.NewCertPool(),
-// 			}
-// 		}
-
-// 		if conf.ConnConfig.TLSConfig.RootCAs == nil {
-// 			conf.ConnConfig.TLSConfig.RootCAs = x509.NewCertPool()
-// 		}
-
-// 		if ca == nil {
-// 			return errors.New("got nil CA")
-// 		}
-
-// 		if !conf.ConnConfig.TLSConfig.RootCAs.AppendCertsFromPEM(ca) {
-// 			return errors.New("cannot append root CA certificates")
-// 		}
-// 		return nil
-// 	}
-// }

@@ -2,13 +2,9 @@ package vshnmariadbcontroller
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"sync"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
@@ -35,12 +31,12 @@ type probeManager interface {
 // VSHNMariaDBReconciler reconciles a VSHNMariaDB object
 type VSHNMariaDBReconciler struct {
 	client.Client
-	Scheme  *runtime.Scheme
-	rootCAs *x509.CertPool
+	Scheme *runtime.Scheme
+	//rootCAs *x509.CertPool
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	MariaDBDialer      func(service, name, namespace, dsn, organization, serviceLevel string, ha bool) (*probes.MariaDB, error)
+	MariaDBDialer      func(service, name, namespace, dsn, organization, serviceLevel, caCRT string, ha, TLSEnabled bool) (*probes.MariaDB, error)
 }
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnmariadbs,verbs=get;list;watch
@@ -64,7 +60,6 @@ func (r *VSHNMariaDBReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r VSHNMariaDBReconciler) fetchProberFor(ctx context.Context, obj slireconciler.Service) (probes.Prober, error) {
-	mu := &sync.Mutex{}
 	inst, ok := obj.(*vshnv1.XVSHNMariaDB)
 	if !ok {
 		return nil, fmt.Errorf("fetchProberFor: object is not a VSHNMariaDB")
@@ -92,28 +87,17 @@ func (r VSHNMariaDBReconciler) fetchProberFor(ctx context.Context, obj slireconc
 	}
 
 	org := ns.GetLabels()[utils.OrgLabelName]
+	if org == "" {
+		org = "unknown"
+	}
 	sla := inst.Spec.Parameters.Service.ServiceLevel
 	if sla == "" {
 		sla = vshnv1.BestEffort
 	}
 
-	mu.Lock()
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", credSecret.Data["MARIADB_USERNAME"], credSecret.Data["MARIADB_PASSWORD"], credSecret.Data["MARIADB_HOST"], credSecret.Data["MARIADB_PORT"], "mysql")
 
-	if ok := r.rootCAs.AppendCertsFromPEM(credSecret.Data["ca.crt"]); !ok {
-		return nil, fmt.Errorf("failed to append PEM")
-	}
-
-	mysql.RegisterTLSConfig(inst.GetGenerateName(), &tls.Config{
-		RootCAs: r.rootCAs,
-	})
-	// print how many certs are in the pool
-	fmt.Println("Number of certs in the pool: ", r.rootCAs.Subjects())
-	mu.Unlock()
-
-	// make connection string to mariadb
-	dsn := credSecret.Data["MARIADB_URL"]
-
-	probe, err := r.MariaDBDialer(vshnMariadbServiceKey, inst.Name, inst.GetLabels()[slireconciler.ClaimNamespaceLabel], string(dsn), org, string(sla), false)
+	probe, err := r.MariaDBDialer(vshnMariadbServiceKey, inst.Name, inst.GetNamespace(), dsn, org, string(credSecret.Data["ca.crt"]), string(sla), false, inst.Spec.Parameters.TLS.TLSEnabled)
 	if err != nil {
 		return nil, err
 	}

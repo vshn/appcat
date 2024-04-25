@@ -97,7 +97,7 @@ func (r VSHNMariaDBReconciler) fetchProberFor(ctx context.Context, obj slireconc
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", credSecret.Data["MARIADB_USERNAME"], credSecret.Data["MARIADB_PASSWORD"], credSecret.Data["MARIADB_HOST"], credSecret.Data["MARIADB_PORT"], "mysql")
 
-	probe, err := r.MariaDBDialer(vshnMariadbServiceKey, inst.Name, inst.GetNamespace(), dsn, org, string(credSecret.Data["ca.crt"]), string(sla), false, inst.Spec.Parameters.TLS.TLSEnabled)
+	probe, err := r.MariaDBDialer(vshnMariadbServiceKey, inst.Name, inst.GetLabels()[slireconciler.ClaimNamespaceLabel], dsn, org, string(credSecret.Data["ca.crt"]), string(sla), false, inst.Spec.Parameters.TLS.TLSEnabled)
 	if err != nil {
 		return nil, err
 	}

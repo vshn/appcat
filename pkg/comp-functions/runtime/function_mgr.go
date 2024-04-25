@@ -376,6 +376,12 @@ func KubeOptionAddConnectionDetails(destNamespace string, cd ...xkube.Connection
 	}
 }
 
+// KubeOptionObserveCreateUpdate sets the object to only create and update.
+// Provider-kubernetes will not delete it.
+func KubeOptionObserveCreateUpdate(obj *xkube.Object) {
+	obj.Spec.ManagementPolicy = xkube.ObserveCreateUpdate
+}
+
 // SetDesiredKubeObserveObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
 // adds it to the desired composed resources.
 func (s *ServiceRuntime) SetDesiredKubeObserveObject(obj client.Object, objectName string, refs ...xkube.Reference) error {

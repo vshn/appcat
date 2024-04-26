@@ -42,6 +42,8 @@ type Maintenance struct {
 	extraEnvs []corev1.EnvVar
 	// extraResources are extra resources to be added to the default list of resources created by this maintenance
 	extraResources []ExtraResource
+	// extra clusterRoles are extra clusterRoles to be added to the default list of resources created by this maintenance
+	extraClusterRoles []rbacv1.PolicyRule
 }
 
 // ExtraResource is an extra resource to be added to the desired state of a Crossplane Function IO
@@ -120,6 +122,11 @@ func (m *Maintenance) WithRole(role string) *Maintenance {
 	return m
 }
 
+func (m *Maintenance) WithClusterRole(policyRules []rbacv1.PolicyRule) *Maintenance {
+	m.extraClusterRoles = policyRules
+	return m
+}
+
 // Run generates k8s resources for maintenance
 func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
@@ -141,6 +148,18 @@ func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 		if err != nil {
 			return runtime.NewFatalResult(err)
 		}
+	}
+
+	if len(m.extraClusterRoles) > 0 {
+		err = m.createClusterMaintenanceRole()
+		if err != nil {
+			return runtime.NewFatalResult(err)
+		}
+		err = m.createMaintenanceClusterRolebinding()
+		if err != nil {
+			return runtime.NewFatalResult(err)
+		}
+
 	}
 
 	for _, extraR := range m.extraResources {
@@ -281,6 +300,41 @@ func (m *Maintenance) createMaintenanceRole(ctx context.Context) error {
 	}
 
 	return m.svc.SetDesiredKubeObject(role, m.resource.GetName()+"-maintenance-role")
+}
+
+func (m *Maintenance) createMaintenanceClusterRolebinding() error {
+	roleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      m.mainRole,
+			Namespace: m.instanceNamespace,
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     m.mainRole,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      maintServiceAccountName,
+				Namespace: m.instanceNamespace,
+			},
+		},
+	}
+
+	return m.svc.SetDesiredKubeObject(roleBinding, m.resource.GetName()+"-maintenance-cluster-rolebinding")
+}
+
+func (m *Maintenance) createClusterMaintenanceRole() error {
+	role := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      m.mainRole,
+			Namespace: m.instanceNamespace,
+		},
+		Rules: m.extraClusterRoles,
+	}
+
+	return m.svc.SetDesiredKubeObject(role, m.resource.GetName()+"-maintenance-cluster-role")
 }
 
 func (m *Maintenance) createMaintenanceServiceAccount(ctx context.Context) error {

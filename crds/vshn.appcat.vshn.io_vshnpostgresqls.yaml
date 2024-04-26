@@ -4370,6 +4370,12 @@ spec:
                           description: PGSettings contains additional PostgreSQL settings.
                           type: object
                           x-kubernetes-preserve-unknown-fields: true
+                        repackEnabled:
+                          default: true
+                          enum:
+                            - true
+                            - false
+                          type: boolean
                         serviceLevel:
                           default: besteffort
                           description: ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
@@ -4377,6 +4383,12 @@ spec:
                             - besteffort
                             - guaranteed
                           type: string
+                        vacuumEnabled:
+                          default: false
+                          enum:
+                            - true
+                            - false
+                          type: boolean
                       type: object
                       default: {}
                     size:

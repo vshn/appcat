@@ -147,6 +147,13 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// PgBouncerSettings passes additional configuration to the pgBouncer instance.
 	PgBouncerSettings *sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni `json:"pgBouncerSettings,omitempty"`
+
+	// +kubebuilder:validation:Enum=true;false
+	// +kubebuilder:default=true
+	RepackEnabled bool `json:"repackEnabled,omitempty"`
+	// +kubebuilder:validation:Enum=true;false
+	// +kubebuilder:default=false
+	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
 }
 
 // VSHNDBaaSPostgresExtension contains the name of a single extension.

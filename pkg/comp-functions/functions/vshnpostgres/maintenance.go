@@ -61,6 +61,20 @@ var (
 			},
 		},
 	}
+	clusterPolicyRules = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{
+				"vshn.appcat.vshn.io",
+			},
+			Resources: []string{
+				"vshnpostgresqls",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+			},
+		},
+	}
 	extraEnvVars = []corev1.EnvVar{
 		{
 			Name: "SG_NAMESPACE",
@@ -130,6 +144,7 @@ func addSchedules(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Re
 		WithPolicyRules(policyRules).
 		WithExtraEnvs(extraEnvVars...).
 		WithExtraResources(createMaintenanceSecret(instanceNamespace, sgNamespace, comp.GetName()+"-maintenance-secret")).
+		WithClusterRole(clusterPolicyRules).
 		Run(ctx)
 }
 

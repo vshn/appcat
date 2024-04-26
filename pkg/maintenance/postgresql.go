@@ -31,6 +31,7 @@ var (
 	su  OpName = "securityUpgrade"
 	mvu OpName = "minorVersionUpgrade"
 	r   OpName = "repack"
+	v   OpName = "vacuum"
 )
 
 // PostgreSQL handles the maintenance of postgresql services
@@ -45,6 +46,7 @@ type PostgreSQL struct {
 	claimNamespace    string
 	claimName         string
 	SgURL             string
+	Repack, Vacuum    bool
 }
 
 type loginRequest struct {
@@ -68,7 +70,6 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	if err := p.configure(); err != nil {
 		return err
 	}
-
 	p.ctx = ctx
 
 	p.log = logr.FromContextOrDiscard(p.ctx).WithValues("instanceNamespace", p.instanceNamespace)
@@ -121,10 +122,33 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 		return fmt.Errorf("cannot watch for maintenance sgdbops resources: %v", err)
 	}
 
-	p.log.Info("Repacking databases...")
-	err = p.createRepack(sgCluster.GetName())
+	p.log.Info("Setting vacuum and repack variables")
+	err = p.setVacuumRepack()
 	if err != nil {
-		return fmt.Errorf("cannot create repack: %v", err)
+		return fmt.Errorf("cannot set vacuum and repack variables: %v", err)
+	}
+
+	if p.Vacuum {
+		p.log.Info("Vacuuming databases...")
+		err = p.createVacuum(sgCluster.GetName())
+		if err != nil {
+			return fmt.Errorf("cannot create vacuum: %v", err)
+		}
+	}
+
+	if p.Repack {
+		p.log.Info("Repacking databases...")
+		err = p.createRepack(sgCluster.GetName())
+		if err != nil {
+			return fmt.Errorf("cannot create repack: %v", err)
+		}
+	}
+	// default to repack if for some reason it was possible to disable both vacuum and repack
+	if !p.Vacuum && !p.Repack {
+		err = p.createRepack(sgCluster.GetName())
+		if err != nil {
+			return fmt.Errorf("cannot create repack: %v", err)
+		}
 	}
 
 	return nil
@@ -313,7 +337,14 @@ func (p *PostgreSQL) fetchVersionList(url string) (*pgVersions, error) {
 
 func (p *PostgreSQL) createRepack(clusterName string) error {
 	repack := p.getDbOpsObject(clusterName, "databasesrepack", r)
+
 	return p.applyDbOps(repack)
+}
+
+func (p *PostgreSQL) createVacuum(clusterName string) error {
+	vacuum := p.getDbOpsObject(clusterName, "vacuum", v)
+
+	return p.applyDbOps(vacuum)
 }
 
 func (p *PostgreSQL) createMinorUpgrade(clusterName, minorVersion string) error {
@@ -404,4 +435,18 @@ func (p *PostgreSQL) setEOLStatus() error {
 	claim.Status.IsEOL = true
 
 	return p.Client.Update(p.ctx, claim)
+}
+
+func (p *PostgreSQL) setVacuumRepack() error {
+	claim := &vshnv1.VSHNPostgreSQL{}
+
+	err := p.Client.Get(p.ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim)
+	if err != nil {
+		return err
+	}
+
+	p.Vacuum = claim.Spec.Parameters.Service.VacuumEnabled
+	p.Repack = claim.Spec.Parameters.Service.RepackEnabled
+
+	return nil
 }

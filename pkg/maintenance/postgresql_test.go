@@ -228,6 +228,13 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 						Name:      "myclaim",
 						Namespace: "default",
 					},
+					Spec: vshnv1.VSHNPostgreSQLSpec{
+						Parameters: vshnv1.VSHNPostgreSQLParameters{
+							Service: vshnv1.VSHNPostgreSQLServiceSpec{
+								RepackEnabled: true,
+							},
+						},
+					},
 				},
 			},
 			wantedClaim: &vshnv1.VSHNPostgreSQL{
@@ -253,6 +260,19 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 					Spec: stackgresv1.SGClusterSpec{
 						Postgres: stackgresv1.SGClusterSpecPostgres{
 							Version: "15.0",
+						},
+					},
+				},
+				&vshnv1.VSHNPostgreSQL{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myclaim",
+						Namespace: "default",
+					},
+					Spec: vshnv1.VSHNPostgreSQLSpec{
+						Parameters: vshnv1.VSHNPostgreSQLParameters{
+							Service: vshnv1.VSHNPostgreSQLServiceSpec{
+								RepackEnabled: true,
+							},
 						},
 					},
 				},
@@ -289,6 +309,19 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 						},
 					},
 				},
+				&vshnv1.VSHNPostgreSQL{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myclaim",
+						Namespace: "default",
+					},
+					Spec: vshnv1.VSHNPostgreSQLSpec{
+						Parameters: vshnv1.VSHNPostgreSQLParameters{
+							Service: vshnv1.VSHNPostgreSQLServiceSpec{
+								RepackEnabled: true,
+							},
+						},
+					},
+				},
 			},
 			wantedOps: &stackgresv1.SGDbOps{
 				ObjectMeta: metav1.ObjectMeta{
@@ -318,6 +351,19 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 					Spec: stackgresv1.SGClusterSpec{
 						Postgres: stackgresv1.SGClusterSpecPostgres{
 							Version: "15.0",
+						},
+					},
+				},
+				&vshnv1.VSHNPostgreSQL{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myclaim",
+						Namespace: "default",
+					},
+					Spec: vshnv1.VSHNPostgreSQLSpec{
+						Parameters: vshnv1.VSHNPostgreSQLParameters{
+							Service: vshnv1.VSHNPostgreSQLServiceSpec{
+								RepackEnabled: true,
+							},
 						},
 					},
 				},

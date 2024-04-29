@@ -11,6 +11,7 @@ import (
 	maintenancecontroller "github.com/vshn/appcat/v4/pkg/sliexporter/maintenance_controller"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
 	vshnkeycloakcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnkeycloak_controller"
+	vshnmariadbcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnmariadb_controller"
 	vshnminiocontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnminio_controller"
 	vshnpostgresqlcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnpostgresql_controller"
 	vshnrediscontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnredis_controller"
@@ -22,9 +23,9 @@ import (
 )
 
 type sliProber struct {
-	scheme                                                                                                       *runtime.Scheme
-	metricsAddr, probeAddr                                                                                       string
-	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis, enableVSHNMinio, enableMaintenanceStatus, enableKeycloak bool
+	scheme                                                                                                                      *runtime.Scheme
+	metricsAddr, probeAddr                                                                                                      string
+	leaderElect, enableVSHNPostgreSQL, enableVSHNRedis, enableVSHNMinio, enableMaintenanceStatus, enableKeycloak, enableMariaDB bool
 }
 
 var s = sliProber{
@@ -52,6 +53,7 @@ func init() {
 	SLIProberCMD.Flags().BoolVar(&s.enableMaintenanceStatus, "vshn-track-oc-maintenance-status", getEnvBool("APPCAT_SLI_TRACK_OC_MAINTENANCE_STATUS"),
 		"Enable oc maintenance status observer. Will set the labels 'maintenance' accordingly.")
 	SLIProberCMD.Flags().BoolVar(&s.enableKeycloak, "vshn-keycloak", getEnvBool("APPCAT_SLI_VSHNKEYCLOAK"), "Enable probing of VSHNKeycloak instances")
+	SLIProberCMD.Flags().BoolVar(&s.enableMariaDB, "vshn-mariadb", getEnvBool("APPCAT_SLI_VSHNMARIADB"), "Enable probing of VSHNMariaDB instances")
 }
 
 func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
@@ -141,6 +143,19 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 		log.Info("Enable OC maintenance observer")
 		if err = maintenanceRecociler.SetupWithManager(mgr); err != nil {
 			log.Error(err, "unable to create controller", "controller", "Maintenance Observer")
+			return err
+		}
+	}
+	if s.enableMariaDB {
+		log.Info("Enabling VSHNMariaDB controller")
+		if err = (&vshnmariadbcontroller.VSHNMariaDBReconciler{
+			Client:             mgr.GetClient(),
+			Scheme:             mgr.GetScheme(),
+			ProbeManager:       &probeManager,
+			StartupGracePeriod: 1 * time.Minute,
+			MariaDBDialer:      probes.NewMariaDB,
+		}).SetupWithManager(mgr); err != nil {
+			log.Error(err, "unable to create controller", "controller", "VSHNMariadb")
 			return err
 		}
 	}

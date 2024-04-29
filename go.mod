@@ -6,6 +6,7 @@ replace github.com/deepmap/oapi-codegen => github.com/sljeff/oapi-codegen v1.5.1
 
 require (
 	dario.cat/mergo v1.0.0
+	github.com/alecthomas/assert/v2 v2.1.0
 	github.com/appuio/appuio-cloud-reporting v0.15.0
 	github.com/appuio/openshift-upgrade-controller v0.5.1
 	github.com/blang/semver/v4 v4.0.0
@@ -52,6 +53,7 @@ require (
 require (
 	cloud.google.com/go/compute v1.24.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.29 // indirect
@@ -65,6 +67,7 @@ require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/alecthomas/kong v0.8.1 // indirect
+	github.com/alecthomas/repr v0.1.0 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
@@ -120,6 +123,7 @@ require (
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20230919002926-dbcd01c402b2 // indirect
 	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20230516205744-dbecb1de8cfa // indirect
 	github.com/google/safetext v0.0.0-20220905092116-b49f7bc46da2 // indirect
+	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
@@ -183,6 +187,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect

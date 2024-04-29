@@ -41,7 +41,6 @@ func init() {
 		&XVSHNKeycloakList{},
 		&VSHNKeycloakList{},
 		&VSHNKeycloak{},
-
 		&XVSHNMariaDB{},
 		&XVSHNMariaDBList{},
 		&VSHNMariaDB{},

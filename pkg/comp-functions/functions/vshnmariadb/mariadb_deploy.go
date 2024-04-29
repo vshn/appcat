@@ -200,6 +200,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"containerSecurityContext": map[string]interface{}{
 				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
 			},
+			"serviceMonitor": map[string]interface{}{
+				"enabled": true,
+			},
 		},
 		"securityContext": map[string]interface{}{
 			"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),

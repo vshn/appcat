@@ -17,6 +17,8 @@ import (
 	logging "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+//+kubebuilder:rbac:groups=kubernetes.crossplane.io,resources=objects,verbs=delete
+
 type XPostgreSQLReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme

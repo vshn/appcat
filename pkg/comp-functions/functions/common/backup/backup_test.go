@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -103,7 +104,7 @@ func Test_setNestedValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := setNestedObjectValue(tt.args.values, tt.args.path, tt.args.val); (err != nil) != tt.wantErr {
+			if err := common.SetNestedObjectValue(tt.args.values, tt.args.path, tt.args.val); (err != nil) != tt.wantErr {
 				t.Errorf("setNestedValue() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.Equal(t, tt.want, tt.args.values)

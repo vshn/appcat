@@ -74,9 +74,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, svc *runtime.Serv
 		return runtime.NewWarningResult("LoadBalancerIP is not ready yet")
 	}
 
-	if err := updateConnectionSecretWithLoadBalancerIP(ctx, svc, k8sservice); err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("Cannot update connection secret: %w", err))
-	}
+	updateConnectionSecretWithLoadBalancerIP(ctx, svc, k8sservice)
 
 	return nil
 }
@@ -92,15 +90,9 @@ func getObservedService(ctx context.Context, svc *runtime.ServiceRuntime, servic
 	return service, err
 }
 
-func updateConnectionSecretWithLoadBalancerIP(ctx context.Context, svc *runtime.ServiceRuntime, service *v1.Service) error {
-	s := &v1.Secret{}
-	err := svc.GetObservedKubeObject(s, connectionSecretResourceName)
-	if err != nil {
-		return err
-	}
+func updateConnectionSecretWithLoadBalancerIP(ctx context.Context, svc *runtime.ServiceRuntime, service *v1.Service) {
 
 	ip := service.Status.LoadBalancer.Ingress[0].IP
 	svc.SetConnectionDetail("LOADBALANCER_IP", []byte(ip))
 
-	return nil
 }

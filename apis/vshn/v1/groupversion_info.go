@@ -26,14 +26,17 @@ func init() {
 		&VSHNPostgreSQLList{},
 		&XVSHNPostgreSQL{},
 		&XVSHNPostgreSQLList{},
+
 		&VSHNRedis{},
 		&VSHNRedisList{},
-		&VSHNMinio{},
-		&VSHNMinioList{},
 		&XVSHNRedis{},
 		&XVSHNRedisList{},
+
+		&VSHNMinio{},
+		&VSHNMinioList{},
 		&XVSHNMinio{},
 		&XVSHNMinioList{},
+
 		&XVSHNKeycloak{},
 		&XVSHNKeycloakList{},
 		&VSHNKeycloakList{},

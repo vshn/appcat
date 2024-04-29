@@ -73,6 +73,10 @@ func init() {
 				Name:    "pg-exporter-Workaround",
 				Execute: PgExporterConfig,
 			},
+			{
+				Name:    "ensure-objectbucket-labels",
+				Execute: EnsureObjectBucketLabels,
+			},
 		},
 	})
 }

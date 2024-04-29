@@ -230,7 +230,7 @@ func AddBackupCMToValues(values map[string]any, volumePath []string, mountPath [
 		},
 	}
 
-	err := setNestedObjectValue(values, volumePath, volumes)
+	err := common.SetNestedObjectValue(values, volumePath, volumes)
 	if err != nil {
 		return err
 	}
@@ -241,29 +241,10 @@ func AddBackupCMToValues(values map[string]any, volumePath []string, mountPath [
 			MountPath: "/scripts",
 		},
 	}
-
-	err = setNestedObjectValue(values, mountPath, volumeMounts)
+	err = common.SetNestedObjectValue(values, mountPath, volumeMounts)
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-// setNestedObjectValue is necessary as unstructured can't handle anything except basic values and maps.
-// this is a recursive function, it will traverse the map until it reaches the last element of the path.
-// If it encounters any non-map values while traversing, it will throw an error.
-func setNestedObjectValue(values map[string]interface{}, path []string, val interface{}) error {
-
-	if len(path) == 1 {
-		values[path[0]] = val
-		return nil
-	}
-
-	tmpVals, ok := values[path[0]].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("cannot traverse map, value at field %s is not a map", path[0])
-	}
-
-	return setNestedObjectValue(tmpVals, path[1:], val)
 }

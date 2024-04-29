@@ -535,7 +535,7 @@ func (s *ServiceRuntime) GetObservedComposedResourceConnectionDetails(objectName
 	return object.ConnectionDetails, nil
 }
 
-// GetObservedComposedResource returns and unmarshals the observed object into the given managed resource.
+// GetObservedComposedResource returns and unmarshalls the observed object into the given managed resource.
 func (s *ServiceRuntime) GetObservedComposedResource(obj xpresource.Managed, name string) error {
 	resources, err := request.GetObservedComposedResources(s.req)
 	if err != nil {

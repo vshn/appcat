@@ -274,10 +274,10 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Conte
 	return fieldErrs
 }
 
-// k8s limitation is 52 characters, our longest postfix we add is 15 character, therefore 37 chracters is the maximum length
+// k8s limitation is 56 characters, longest postfix for sgbackups is 26 character, therefore 30 chracters is the maximum length
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
 func (r *PostgreSQLWebhookHandler) validateResourceNameLength(name string) error {
-	if len(name) > 37 {
+	if len(name) > 30 {
 		return fmt.Errorf("name is too long: %d. We add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name))
 	}
 	return nil

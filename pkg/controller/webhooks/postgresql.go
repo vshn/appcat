@@ -20,7 +20,7 @@ import (
 )
 
 // See https://book.kubebuilder.io/reference/markers/webhook for docs
-//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=postgresqls,versions=v1,name=postgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnpostgresqls,versions=v1,name=postgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
 //RBAC
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,verbs=get;list;watch;patch;update
@@ -86,7 +86,7 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 	if err != nil {
 		allErrs = append(allErrs, &field.Error{
 			Field: ".metadata.name",
-			Detail: fmt.Sprintf("Please shorten PostgreSQL name, currently it is: %s",
+			Detail: fmt.Sprintf("Please shorten PostgreSQL name to 30 characters or less: %s",
 				err.Error()),
 			BadValue: pg.GetName(),
 			Type:     field.ErrorTypeTooLong,
@@ -278,7 +278,7 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Conte
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
 func (r *PostgreSQLWebhookHandler) validateResourceNameLength(name string) error {
 	if len(name) > 30 {
-		return fmt.Errorf("name is too long: %d. We add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name))
+		return fmt.Errorf("current length: %d. We add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name))
 	}
 	return nil
 }

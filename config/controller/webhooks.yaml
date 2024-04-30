@@ -42,7 +42,7 @@ webhooks:
     - UPDATE
     - DELETE
     resources:
-    - postgresqls
+    - vshnpostgresqls
   sideEffects: None
 - admissionReviewVersions:
   - v1

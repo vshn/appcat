@@ -28,4 +28,5 @@ type Composite interface {
 	InfoGetter
 	client.Object
 	SetInstanceNamespaceStatus()
+	GetAllowedNamespaces() []string
 }

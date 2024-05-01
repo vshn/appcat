@@ -84,6 +84,9 @@ type VSHNPostgreSQLParameters struct {
 	//
 	// The main replication group is implicit and contains the total number of instances less the sum of all instances in other replication groups.
 	Replication VSHNPostgreSQLReplicationStrategy `json:"replication,omitempty"`
+
+	// Security defines the security of a service
+	Security Security `json:"security,omitempty"`
 }
 
 type VSHNPostgreSQLReplicationStrategy struct {
@@ -349,4 +352,9 @@ func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
 // GetServiceName returns the name of this service
 func (v *VSHNPostgreSQL) GetServiceName() string {
 	return "postgresql"
+}
+
+// GetAllowedNamespaces returns allowed namespaces to access this service
+func (v *VSHNPostgreSQL) GetAllowedNamespaces() []string {
+	return v.Spec.Parameters.Security.AllowedNamespaces
 }

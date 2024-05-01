@@ -175,3 +175,9 @@ type VSHNScheduleStatus struct {
 	// Backup keeps track of the backup schedule.
 	Backup string `json:"backup,omitempty"`
 }
+
+// Security defines the security of a service
+type Security struct {
+	// AllowedNamespaces defines a list of namespaces from where the service can be reached in the claim namespace
+	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
+}

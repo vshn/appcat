@@ -8,10 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TODO: it would probably make sense to call this from the `BootstrapInstanceNs()` function. For future reference...
-
+// CreateNetworkPolicy creates network policy in the instance namespace to allow other namespaces access to the service
 func CreateNetworkPolicy(sourceNs []string, instanceNs string, instance string, svc *runtime.ServiceRuntime) error {
-
 	netPolPeer := []netv1.NetworkPolicyPeer{}
 	for _, ns := range sourceNs {
 		peer := netv1.NetworkPolicyPeer{
@@ -24,16 +22,17 @@ func CreateNetworkPolicy(sourceNs []string, instanceNs string, instance string, 
 		netPolPeer = append(netPolPeer, peer)
 	}
 
-	sliNs := svc.Config.Data["sliNamespace"]
-
 	// add the SLI exporter namespace
-	netPolPeer = append(netPolPeer, netv1.NetworkPolicyPeer{
-		NamespaceSelector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"kubernetes.io/metadata.name": sliNs,
+	sliNs := svc.Config.Data["sliNamespace"]
+	if sliNs != "" {
+		netPolPeer = append(netPolPeer, netv1.NetworkPolicyPeer{
+			NamespaceSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"kubernetes.io/metadata.name": sliNs,
+				},
 			},
-		},
-	})
+		})
+	}
 
 	netPol := netv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{

@@ -106,16 +106,6 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed connection details for keycloak admin: %s", err))
 	}
 
-	svc.Log.Info("Adding Network policy for keycloak")
-
-	sourceNS := []string{
-		comp.GetClaimNamespace(),
-	}
-	err = common.CreateNetworkPolicy(sourceNS, comp.GetInstanceNamespace(), comp.GetName(), svc)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create net pol: %w", err))
-	}
-
 	svc.SetConnectionDetail(adminPWConnectionDetailsField, cd[adminPWSecretField])
 	svc.SetConnectionDetail(adminConnectionDetailsField, []byte("admin"))
 	svc.SetConnectionDetail(hostConnectionDetailsField, []byte(fmt.Sprintf("%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())))

@@ -64,16 +64,6 @@ func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 		return runtime.NewWarningResult(fmt.Errorf("cannot create helm release: %w", err).Error())
 	}
 
-	l.Info("Creating network policies mariadb instance")
-	sourceNs := []string{comp.GetClaimNamespace()}
-	if svc.GetBoolFromCompositionConfig("slosEnabled") {
-		sourceNs = append(sourceNs, svc.Config.Data["slosNs"])
-	}
-	err = common.CreateNetworkPolicy(sourceNs, comp.GetInstanceNamespace(), comp.GetName(), svc)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot create helm release: %w", err).Error())
-	}
-
 	l.Info("Get connection details from secret")
 	err = getConnectionDetails(comp, svc, passwordSecret)
 	if err != nil {

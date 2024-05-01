@@ -72,6 +72,9 @@ type VSHNMinioParameters struct {
 
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
+
+	// Security defines the security of a service
+	Security Security `json:"security,omitempty"`
 }
 
 // VSHNMinioServiceSpec contains Redis DBaaS specific properties
@@ -196,4 +199,9 @@ func (v *VSHNMinio) GetBackupRetention() K8upRetentionPolicy {
 // GetServiceName returns the name of this service
 func (v *VSHNMinio) GetServiceName() string {
 	return "minio"
+}
+
+// GetAllowedNamespaces returns allowed namespaces to access this service
+func (v *VSHNMinio) GetAllowedNamespaces() []string {
+	return v.Spec.Parameters.Security.AllowedNamespaces
 }

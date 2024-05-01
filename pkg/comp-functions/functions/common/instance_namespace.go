@@ -48,6 +48,13 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 		return fmt.Errorf("cannot create rbac rules for %s instance: %w", serviceName, err)
 	}
 
+	l.Info("Creating namespace policy to allow access to " + serviceName + " instance")
+	sourceNS := append(comp.GetAllowedNamespaces(), comp.GetClaimNamespace())
+	err = CreateNetworkPolicy(sourceNS, comp.GetInstanceNamespace(), comp.GetName(), svc)
+	if err != nil {
+		return fmt.Errorf("cannot create namespace policy  for %s instance: %w", serviceName, err)
+	}
+
 	l.Info("Add instance namespace to status")
 	err = setInstanceNamespaceStatus(svc, comp)
 	if err != nil {

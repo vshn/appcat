@@ -73,6 +73,9 @@ type VSHNRedisParameters struct {
 
 	// Monitoring contains settings to control monitoring.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
+
+	// Security defines the security of a service
+	Security Security `json:"security,omitempty"`
 }
 
 // VSHNRedisServiceSpec contains Redis DBaaS specific properties
@@ -251,4 +254,9 @@ func (v *VSHNRedis) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpe
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
 	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
 	return schedule
+}
+
+// GetAllowedNamespaces returns allowed namespaces to access this service
+func (v *VSHNRedis) GetAllowedNamespaces() []string {
+	return v.Spec.Parameters.Security.AllowedNamespaces
 }

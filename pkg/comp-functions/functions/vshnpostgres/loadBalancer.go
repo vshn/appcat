@@ -19,10 +19,6 @@ var serviceName = "primary-service"
 
 func AddLoadBalancerIPToConnectionDetails(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	if !svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled") {
-		return nil
-	}
-
 	comp, err := getVSHNPostgreSQL(ctx, svc)
 
 	if err != nil {
@@ -30,7 +26,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, svc *runtime.Serv
 	}
 
 	annotations := map[string]string{}
-	if svc.Config.Data["loadbalancerAnnotations"] != "" {
+	if svc.Config.Data["loadbalancerAnnotations"] != "" && svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled") {
 
 		err := yaml.Unmarshal([]byte(svc.Config.Data["loadbalancerAnnotations"]), annotations)
 		if err != nil {
@@ -63,7 +59,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, svc *runtime.Serv
 		},
 	}
 
-	if comp.Spec.Parameters.Network.ServiceType == "LoadBalancer" {
+	if comp.Spec.Parameters.Network.ServiceType == "LoadBalancer" && svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled") {
 		k8sservice.Spec.Type = v1.ServiceTypeLoadBalancer
 	} else {
 		k8sservice.Spec.Type = v1.ServiceTypeClusterIP

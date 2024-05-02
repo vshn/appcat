@@ -221,7 +221,7 @@ func GetRelease(ctx context.Context, k8sClient client.Client, instanceNamespace 
 
 func (h *ImagePatcher) getVersions(imageURL string) (VersionLister, error) {
 	// We're using docker hub's rich api to list the image tags, if it's on docker hub.
-	if strings.Contains(imageURL, "https//hub.docker.com") {
+	if strings.Contains(imageURL, "https://hub.docker.com") {
 		return h.getHubVersions(imageURL)
 	}
 	// For the rest we use the default registry API.

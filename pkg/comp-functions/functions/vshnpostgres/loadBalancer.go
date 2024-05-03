@@ -9,6 +9,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -16,11 +17,7 @@ import (
 
 var serviceName = "primary-service"
 
-func AddLoadBalancerIPToConnectionDetails(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	if !svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled") {
-		return nil
-	}
+func AddPrimaryService(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	comp, err := getVSHNPostgreSQL(ctx, svc)
 
@@ -28,10 +25,21 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, svc *runtime.Serv
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
 	}
 
+	annotations := map[string]string{}
+	if svc.Config.Data["loadbalancerAnnotations"] != "" && svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled") {
+
+		err := yaml.Unmarshal([]byte(svc.Config.Data["loadbalancerAnnotations"]), annotations)
+		if err != nil {
+			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
+		}
+	}
+
 	k8sservice := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceName,
-			Namespace: getInstanceNamespace(comp),
+			Name:        serviceName,
+			Namespace:   getInstanceNamespace(comp),
+			Annotations: annotations,
 		},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{
@@ -51,7 +59,7 @@ func AddLoadBalancerIPToConnectionDetails(ctx context.Context, svc *runtime.Serv
 		},
 	}
 
-	if comp.Spec.Parameters.Network.ServiceType == "LoadBalancer" {
+	if comp.Spec.Parameters.Network.ServiceType == "LoadBalancer" && svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled") {
 		k8sservice.Spec.Type = v1.ServiceTypeLoadBalancer
 	} else {
 		k8sservice.Spec.Type = v1.ServiceTypeClusterIP

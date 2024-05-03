@@ -73,6 +73,9 @@ type VSHNKeycloakParameters struct {
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
 
+	// Security defines the security of a service
+	Security Security `json:"security,omitempty"`
+
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=3
@@ -267,10 +270,15 @@ func (v *VSHNKeycloak) GetServiceName() string {
 	return "keycloak"
 }
 
-// GetFullMaintenanceSchedule returns
+// GetFullMaintenanceSchedule returns the maintenance schedule
 func (v *VSHNKeycloak) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
 	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
 	return schedule
+}
+
+// GetAllowedNamespaces returns allowed namespaces to access this service
+func (v *VSHNKeycloak) GetAllowedNamespaces() []string {
+	return v.Spec.Parameters.Security.AllowedNamespaces
 }

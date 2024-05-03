@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"strconv"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -25,12 +26,15 @@ const (
 	SLIBucketName = "vshn-test-bucket-for-sli"
 )
 
+// TODO refactor the code and use common.BootstrapInstanceNs()
+
 // DeployMinio will add deploy the objects to deploy minio
 func DeployMinio(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
 	comp := &vshnv1.VSHNMinio{}
+	serviceName := comp.GetServiceName()
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		err = fmt.Errorf("cannot get observed composite: %w", err)
@@ -73,6 +77,13 @@ func DeployMinio(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Res
 		}
 		err = fmt.Errorf("cannot get connection details: %w", err)
 		return runtime.NewFatalResult(fmt.Errorf("cannot get connection details: %w", err))
+	}
+
+	l.Info("Creating namespace policy to allow access to " + serviceName + " instance")
+	sourceNS := append(comp.GetAllowedNamespaces(), comp.GetClaimNamespace())
+	err = common.CreateNetworkPolicy(sourceNS, comp.GetInstanceNamespace(), comp.GetName(), svc)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot create namespace policy  for %s instance: %w", serviceName, err))
 	}
 
 	l.Info("Starting vshn-test-bucket-for-sli creation")

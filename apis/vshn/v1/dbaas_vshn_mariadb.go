@@ -73,6 +73,9 @@ type VSHNMariaDBParameters struct {
 
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
+
+	// Security defines the security of a service
+	Security Security `json:"security,omitempty"`
 }
 
 // VSHNMariaDBServiceSpec contains MariaDB DBaaS specific properties
@@ -227,4 +230,9 @@ func (v *VSHNMariaDB) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleS
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
 	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
 	return schedule
+}
+
+// GetAllowedNamespaces returns allowed namespaces to access this service
+func (v *VSHNMariaDB) GetAllowedNamespaces() []string {
+	return v.Spec.Parameters.Security.AllowedNamespaces
 }

@@ -51,7 +51,7 @@ func init() {
 			},
 			{
 				Name:    "load-balancer",
-				Execute: AddLoadBalancerIPToConnectionDetails,
+				Execute: AddPrimaryService,
 			},
 			{
 				Name:    "namespaceQuotas",

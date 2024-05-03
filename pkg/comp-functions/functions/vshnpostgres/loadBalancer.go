@@ -17,7 +17,7 @@ import (
 
 var serviceName = "primary-service"
 
-func AddLoadBalancerIPToConnectionDetails(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddPrimaryService(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	comp, err := getVSHNPostgreSQL(ctx, svc)
 

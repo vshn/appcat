@@ -5055,9 +5055,8 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       repackEnabled:
                         default: true
-                        enum:
-                        - true
-                        - false
+                        description: This is default option if neither repack or vacuum
+                          are selected
                         type: boolean
                       serviceLevel:
                         default: besteffort
@@ -5070,9 +5069,6 @@ spec:
                         type: string
                       vacuumEnabled:
                         default: false
-                        enum:
-                        - true
-                        - false
                         type: boolean
                     type: object
                   size:

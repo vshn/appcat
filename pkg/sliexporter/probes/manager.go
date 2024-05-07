@@ -175,6 +175,7 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 			prometheus.Labels{"reason": "success"},
 		).Observe(latency.Seconds())
 	case errors.Is(err, ErrTimeout) || errors.Is(ctx.Err(), context.DeadlineExceeded):
+		l.V(0).Error(err, "Probe Timeout")
 		o.With(
 			prometheus.Labels{"reason": "fail-timeout"},
 		).Observe(latency.Seconds())

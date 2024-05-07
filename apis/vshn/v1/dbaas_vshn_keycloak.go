@@ -278,7 +278,15 @@ func (v *VSHNKeycloak) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceSchedule
 	return schedule
 }
 
-// GetAllowedNamespaces returns allowed namespaces to access this service
+// GetAllowAllNamespaces returns the AllowAllNamespaces field of this service
+func (v *VSHNKeycloak) GetAllowAllNamespaces() bool {
+	return v.Spec.Parameters.Security.AllowAllNamespaces
+}
+
+// GetAllowedNamespaces returns the AllowedNamespaces array of this service
 func (v *VSHNKeycloak) GetAllowedNamespaces() []string {
-	return v.Spec.Parameters.Security.AllowedNamespaces
+	if v.Spec.Parameters.Security.AllowedNamespaces == nil {
+		v.Spec.Parameters.Security.AllowedNamespaces = []string{}
+	}
+	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }

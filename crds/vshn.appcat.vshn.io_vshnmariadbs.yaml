@@ -114,6 +114,10 @@ spec:
                     security:
                       description: Security defines the security of a service
                       properties:
+                        allowAllNamespaces:
+                          default: false
+                          description: AllowAllNamespaces allows the service to be accessible from all namespaces, this supersedes the AllowedNamespaces field
+                          type: boolean
                         allowedNamespaces:
                           description: AllowedNamespaces defines a list of namespaces from where the service can be reached in the claim namespace
                           items:

@@ -17,6 +17,7 @@ type Service struct {
 	Name            string `json:"name"`
 	NamePluralLower string
 	NameShort       string
+	Security        bool   `json:"security"`
 	Backup          bool   `json:"backup"`
 	Restore         bool   `json:"restore"`
 	Maintenance     bool   `json:"maintenance"`

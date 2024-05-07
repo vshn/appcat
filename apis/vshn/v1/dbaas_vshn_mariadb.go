@@ -232,7 +232,15 @@ func (v *VSHNMariaDB) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleS
 	return schedule
 }
 
-// GetAllowedNamespaces returns allowed namespaces to access this service
+// GetAllowAllNamespaces returns the AllowAllNamespaces field of this service
+func (v *VSHNMariaDB) GetAllowAllNamespaces() bool {
+	return v.Spec.Parameters.Security.AllowAllNamespaces
+}
+
+// GetAllowedNamespaces returns the AllowedNamespaces array of this service
 func (v *VSHNMariaDB) GetAllowedNamespaces() []string {
-	return v.Spec.Parameters.Security.AllowedNamespaces
+	if v.Spec.Parameters.Security.AllowedNamespaces == nil {
+		v.Spec.Parameters.Security.AllowedNamespaces = []string{}
+	}
+	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }

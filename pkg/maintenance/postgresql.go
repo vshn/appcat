@@ -46,7 +46,7 @@ type PostgreSQL struct {
 	claimNamespace    string
 	claimName         string
 	SgURL             string
-	Repack, Vacuum    bool
+	Repack, Vacuum    string
 }
 
 type loginRequest struct {
@@ -122,13 +122,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 		return fmt.Errorf("cannot watch for maintenance sgdbops resources: %v", err)
 	}
 
-	p.log.Info("Setting vacuum and repack variables")
-	err = p.setVacuumRepack()
-	if err != nil {
-		return fmt.Errorf("cannot set vacuum and repack variables: %v", err)
-	}
-
-	if p.Vacuum {
+	if p.Vacuum == "true" {
 		p.log.Info("Vacuuming databases...")
 		err = p.createVacuum(sgCluster.GetName())
 		if err != nil {
@@ -136,7 +130,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 		}
 	}
 
-	if p.Repack {
+	if p.Repack == "true" {
 		p.log.Info("Repacking databases...")
 		err = p.createRepack(sgCluster.GetName())
 		if err != nil {
@@ -144,7 +138,8 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 		}
 	}
 	// default to repack if for some reason it was possible to disable both vacuum and repack
-	if !p.Vacuum && !p.Repack {
+	// this should be catched by webhook
+	if p.Vacuum != "true" && p.Repack != "true" {
 		err = p.createRepack(sgCluster.GetName())
 		if err != nil {
 			return fmt.Errorf("cannot create repack: %v", err)
@@ -417,6 +412,16 @@ func (p *PostgreSQL) configure() error {
 		return fmt.Errorf(errString, "CLAIM_NAMESPACE")
 	}
 
+	p.Vacuum = viper.GetString("VACUUM_ENABLED")
+	if p.claimNamespace == "" {
+		return fmt.Errorf(errString, "VACUUM_ENABLED")
+	}
+
+	p.Repack = viper.GetString("REPACK_ENABLED")
+	if p.claimNamespace == "" {
+		return fmt.Errorf(errString, "REPACK_ENABLED")
+	}
+
 	return nil
 }
 
@@ -435,18 +440,4 @@ func (p *PostgreSQL) setEOLStatus() error {
 	claim.Status.IsEOL = true
 
 	return p.Client.Update(p.ctx, claim)
-}
-
-func (p *PostgreSQL) setVacuumRepack() error {
-	claim := &vshnv1.VSHNPostgreSQL{}
-
-	err := p.Client.Get(p.ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim)
-	if err != nil {
-		return err
-	}
-
-	p.Vacuum = claim.Spec.Parameters.Service.VacuumEnabled
-	p.Repack = claim.Spec.Parameters.Service.RepackEnabled
-
-	return nil
 }

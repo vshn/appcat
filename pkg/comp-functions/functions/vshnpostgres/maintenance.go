@@ -3,10 +3,12 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -96,6 +98,14 @@ var (
 				},
 			},
 		},
+		{
+			Name:  "REPACK_ENABLED",
+			Value: "",
+		},
+		{
+			Name:  "VACUUM_ENABLED",
+			Value: "",
+		},
 	}
 )
 
@@ -116,6 +126,9 @@ func addSchedules(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Re
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get cluster object: %w", err))
 	}
+
+	extraEnvVars[3].Value = strconv.FormatBool(comp.Spec.Parameters.Service.RepackEnabled)
+	extraEnvVars[4].Value = strconv.FormatBool(comp.Spec.Parameters.Service.VacuumEnabled)
 
 	backups := *cluster.Spec.Configurations.Backups
 	backups[0].CronSchedule = ptr.To(comp.GetBackupSchedule())

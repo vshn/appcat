@@ -13,6 +13,7 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnminios.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnminios.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnminios.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnminios.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.properties.allowAllNamespaces.default=true)"
 
 // +kubebuilder:object:root=true
 
@@ -105,6 +106,10 @@ func (v *VSHNMinio) GetClaimNamespace() string {
 
 func (v *VSHNMinio) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-minio-%s", v.GetName())
+}
+
+func (v *VSHNMinio) SetInstanceNamespaceStatus() {
+	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
 // +kubebuilder:object:generate=true
@@ -201,7 +206,15 @@ func (v *VSHNMinio) GetServiceName() string {
 	return "minio"
 }
 
-// GetAllowedNamespaces returns allowed namespaces to access this service
+// GetAllowAllNamespaces returns the AllowAllNamespaces field of this service
+func (v *VSHNMinio) GetAllowAllNamespaces() bool {
+	return v.Spec.Parameters.Security.AllowAllNamespaces
+}
+
+// GetAllowedNamespaces returns the AllowedNamespaces array of this service
 func (v *VSHNMinio) GetAllowedNamespaces() []string {
-	return v.Spec.Parameters.Security.AllowedNamespaces
+	if v.Spec.Parameters.Security.AllowedNamespaces == nil {
+		v.Spec.Parameters.Security.AllowedNamespaces = []string{}
+	}
+	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }

@@ -80,8 +80,7 @@ func DeployMinio(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Res
 	}
 
 	l.Info("Creating namespace policy to allow access to " + serviceName + " instance")
-	sourceNS := append(comp.GetAllowedNamespaces(), comp.GetClaimNamespace())
-	err = common.CreateNetworkPolicy(sourceNS, comp.GetInstanceNamespace(), comp.GetName(), svc)
+	err = common.CreateNetworkPolicy(comp, svc)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create namespace policy  for %s instance: %w", serviceName, err))
 	}
@@ -149,9 +148,6 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, svc *r
 		"fullnameOverride": comp.GetName(),
 		"mode":             comp.Spec.Parameters.Service.Mode,
 		"replicas":         comp.Spec.Parameters.Instances,
-		"networkPolicy": map[string]interface{}{
-			"enabled": true,
-		},
 		"deploymentUpdate": map[string]interface{}{
 			"type": "Recreate",
 		},

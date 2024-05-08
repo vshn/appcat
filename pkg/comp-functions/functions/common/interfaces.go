@@ -28,5 +28,10 @@ type Composite interface {
 	InfoGetter
 	client.Object
 	SetInstanceNamespaceStatus()
+	AllowedNamespaceGetter
+}
+
+type AllowedNamespaceGetter interface {
+	GetAllowAllNamespaces() bool
 	GetAllowedNamespaces() []string
 }

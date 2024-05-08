@@ -178,6 +178,9 @@ type VSHNScheduleStatus struct {
 
 // Security defines the security of a service
 type Security struct {
+	// AllowAllNamespaces allows the service to be accessible from all namespaces, this supersedes the AllowedNamespaces field
+	// +kubebuilder:default=false
+	AllowAllNamespaces bool `json:"allowAllNamespaces,omitempty"`
 	// AllowedNamespaces defines a list of namespaces from where the service can be reached in the claim namespace
 	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
 }

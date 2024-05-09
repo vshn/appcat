@@ -5,6 +5,7 @@
 package v1
 
 import (
+	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	apisv1 "github.com/vshn/appcat/v4/apis/v1"
@@ -958,7 +959,7 @@ func (in *VSHNPostgreSQLStatus) DeepCopyInto(out *VSHNPostgreSQLStatus) {
 	}
 	if in.NetworkPolicyConditions != nil {
 		in, out := &in.NetworkPolicyConditions, &out.NetworkPolicyConditions
-		*out = make([]apisv1.Condition, len(*in))
+		*out = make([]commonv1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

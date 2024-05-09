@@ -218,17 +218,17 @@ type VSHNPostgreSQLStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// PostgreSQLConditions contains the status conditions of the backing object.
-	PostgreSQLConditions         []v1.Condition `json:"postgresqlConditions,omitempty"`
-	NamespaceConditions          []v1.Condition `json:"namespaceConditions,omitempty"`
-	ProfileConditions            []v1.Condition `json:"profileConditions,omitempty"`
-	PGConfigConditions           []v1.Condition `json:"pgconfigConditions,omitempty"`
-	PGClusterConditions          []v1.Condition `json:"pgclusterConditions,omitempty"`
-	SecretsConditions            []v1.Condition `json:"secretConditions,omitempty"`
-	ObjectBucketConditions       []v1.Condition `json:"objectBucketConditions,omitempty"`
-	ObjectBackupConfigConditions []v1.Condition `json:"objectBackupConfigConditions,omitempty"`
-	NetworkPolicyConditions      []v1.Condition `json:"networkPolicyConditions,omitempty"`
-	LocalCAConditions            []v1.Condition `json:"localCAConditions,omitempty"`
-	CertificateConditions        []v1.Condition `json:"certificateConditions,omitempty"`
+	PostgreSQLConditions         []v1.Condition   `json:"postgresqlConditions,omitempty"`
+	NamespaceConditions          []v1.Condition   `json:"namespaceConditions,omitempty"`
+	ProfileConditions            []v1.Condition   `json:"profileConditions,omitempty"`
+	PGConfigConditions           []v1.Condition   `json:"pgconfigConditions,omitempty"`
+	PGClusterConditions          []v1.Condition   `json:"pgclusterConditions,omitempty"`
+	SecretsConditions            []v1.Condition   `json:"secretConditions,omitempty"`
+	ObjectBucketConditions       []v1.Condition   `json:"objectBucketConditions,omitempty"`
+	ObjectBackupConfigConditions []v1.Condition   `json:"objectBackupConfigConditions,omitempty"`
+	NetworkPolicyConditions      []xpv1.Condition `json:"networkPolicyConditions,omitempty"`
+	LocalCAConditions            []v1.Condition   `json:"localCAConditions,omitempty"`
+	CertificateConditions        []v1.Condition   `json:"certificateConditions,omitempty"`
 	// IsEOL indicates if this instance is using an EOL version of PostgreSQL.
 	IsEOL bool `json:"isEOL,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

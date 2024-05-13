@@ -98,14 +98,6 @@ var (
 				},
 			},
 		},
-		{
-			Name:  "REPACK_ENABLED",
-			Value: "",
-		},
-		{
-			Name:  "VACUUM_ENABLED",
-			Value: "",
-		},
 	}
 )
 
@@ -127,8 +119,16 @@ func addSchedules(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Re
 		return runtime.NewFatalResult(fmt.Errorf("cannot get cluster object: %w", err))
 	}
 
-	extraEnvVars[3].Value = strconv.FormatBool(comp.Spec.Parameters.Service.RepackEnabled)
-	extraEnvVars[4].Value = strconv.FormatBool(comp.Spec.Parameters.Service.VacuumEnabled)
+	additionalVars := append(extraEnvVars, []corev1.EnvVar{
+		{
+			Name:  "REPACK_ENABLED",
+			Value: strconv.FormatBool(comp.Spec.Parameters.Service.RepackEnabled),
+		},
+		{
+			Name:  "VACUUM_ENABLED",
+			Value: strconv.FormatBool(comp.Spec.Parameters.Service.VacuumEnabled),
+		},
+	}...)
 
 	backups := *cluster.Spec.Configurations.Backups
 	backups[0].CronSchedule = ptr.To(comp.GetBackupSchedule())
@@ -142,7 +142,7 @@ func addSchedules(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Re
 	return maintenance.New(comp, svc, schedule, instanceNamespace, service).
 		WithRole(maintRolename).
 		WithPolicyRules(policyRules).
-		WithExtraEnvs(extraEnvVars...).
+		WithExtraEnvs(additionalVars...).
 		WithExtraResources(createMaintenanceSecret(instanceNamespace, sgNamespace, comp.GetName()+"-maintenance-secret")).
 		Run(ctx)
 }

@@ -146,6 +146,9 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 					Memory: "1Gi",
 				},
 				Instances: 1,
+				Service: vshnv1.VSHNPostgreSQLServiceSpec{
+					RepackEnabled: true,
+				},
 			},
 		},
 	}

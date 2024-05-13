@@ -31,6 +31,7 @@ var (
 	su  OpName = "securityUpgrade"
 	mvu OpName = "minorVersionUpgrade"
 	r   OpName = "repack"
+	v   OpName = "vacuum"
 )
 
 // PostgreSQL handles the maintenance of postgresql services
@@ -45,6 +46,7 @@ type PostgreSQL struct {
 	claimNamespace    string
 	claimName         string
 	SgURL             string
+	Repack, Vacuum    string
 }
 
 type loginRequest struct {
@@ -68,7 +70,6 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	if err := p.configure(); err != nil {
 		return err
 	}
-
 	p.ctx = ctx
 
 	p.log = logr.FromContextOrDiscard(p.ctx).WithValues("instanceNamespace", p.instanceNamespace)
@@ -121,10 +122,28 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 		return fmt.Errorf("cannot watch for maintenance sgdbops resources: %v", err)
 	}
 
-	p.log.Info("Repacking databases...")
-	err = p.createRepack(sgCluster.GetName())
-	if err != nil {
-		return fmt.Errorf("cannot create repack: %v", err)
+	if p.Vacuum == "true" {
+		p.log.Info("Vacuuming databases...")
+		err = p.createVacuum(sgCluster.GetName())
+		if err != nil {
+			return fmt.Errorf("cannot create vacuum: %v", err)
+		}
+	}
+
+	if p.Repack == "true" {
+		p.log.Info("Repacking databases...")
+		err = p.createRepack(sgCluster.GetName())
+		if err != nil {
+			return fmt.Errorf("cannot create repack: %v", err)
+		}
+	}
+	// default to repack if for some reason it was possible to disable both vacuum and repack
+	// this should be catched by webhook
+	if p.Vacuum != "true" && p.Repack != "true" {
+		err = p.createRepack(sgCluster.GetName())
+		if err != nil {
+			return fmt.Errorf("cannot create repack: %v", err)
+		}
 	}
 
 	return nil
@@ -313,7 +332,14 @@ func (p *PostgreSQL) fetchVersionList(url string) (*pgVersions, error) {
 
 func (p *PostgreSQL) createRepack(clusterName string) error {
 	repack := p.getDbOpsObject(clusterName, "databasesrepack", r)
+
 	return p.applyDbOps(repack)
+}
+
+func (p *PostgreSQL) createVacuum(clusterName string) error {
+	vacuum := p.getDbOpsObject(clusterName, "vacuum", v)
+
+	return p.applyDbOps(vacuum)
 }
 
 func (p *PostgreSQL) createMinorUpgrade(clusterName, minorVersion string) error {
@@ -384,6 +410,16 @@ func (p *PostgreSQL) configure() error {
 	p.claimNamespace = viper.GetString("CLAIM_NAMESPACE")
 	if p.claimNamespace == "" {
 		return fmt.Errorf(errString, "CLAIM_NAMESPACE")
+	}
+
+	p.Vacuum = viper.GetString("VACUUM_ENABLED")
+	if p.claimNamespace == "" {
+		return fmt.Errorf(errString, "VACUUM_ENABLED")
+	}
+
+	p.Repack = viper.GetString("REPACK_ENABLED")
+	if p.claimNamespace == "" {
+		return fmt.Errorf(errString, "REPACK_ENABLED")
 	}
 
 	return nil

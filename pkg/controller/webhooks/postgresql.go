@@ -64,6 +64,15 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
+	err := validateVacuumRepack(pg.Spec.Parameters.Service.VacuumEnabled, pg.Spec.Parameters.Service.RepackEnabled)
+	if err != nil {
+		allErrs = append(allErrs, &field.Error{
+			Field:  "spec.parameters.service",
+			Detail: fmt.Sprintf("pg.Spec.Parameters.Service.VacuumEnabled and pg.Spec.Parameters.Service.RepackEnabled settings can't be both disabled: %s", err.Error()),
+			Type:   field.ErrorTypeForbidden,
+		})
+	}
+
 	if p.withQuota {
 		quotaErrs, fieldErrs := p.checkPostgreSQLQuotas(ctx, pg, true)
 		if quotaErrs != nil {
@@ -82,7 +91,7 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 
 	allErrs = append(allErrs, instancesError...)
 
-	err := p.validateResourceNameLength(pg.GetName())
+	err = p.validateResourceNameLength(pg.GetName())
 	if err != nil {
 		allErrs = append(allErrs, &field.Error{
 			Field: ".metadata.name",
@@ -117,6 +126,15 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 		return nil, nil
 	}
 
+	err := validateVacuumRepack(pg.Spec.Parameters.Service.VacuumEnabled, pg.Spec.Parameters.Service.RepackEnabled)
+	if err != nil {
+		allErrs = append(allErrs, &field.Error{
+			Field:  "spec.parameters.service",
+			Detail: fmt.Sprintf("pg.Spec.Parameters.Service.VacuumEnabled and pg.Spec.Parameters.Service.RepackEnabled settings can't be both disabled: %s", err.Error()),
+			Type:   field.ErrorTypeForbidden,
+		})
+	}
+
 	if p.withQuota {
 		quotaErrs, fieldErrs := p.checkPostgreSQLQuotas(ctx, pg, false)
 		if quotaErrs != nil {
@@ -134,7 +152,7 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 
 	allErrs = append(allErrs, instancesError...)
 
-	err := p.validateResourceNameLength(pg.GetName())
+	err = p.validateResourceNameLength(pg.GetName())
 	if err != nil {
 		allErrs = append(allErrs, &field.Error{
 			Field: ".metadata.name",
@@ -279,6 +297,14 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Conte
 func (r *PostgreSQLWebhookHandler) validateResourceNameLength(name string) error {
 	if len(name) > 30 {
 		return fmt.Errorf("current length: %d. We add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name))
+	}
+	return nil
+}
+
+// validate vacuum and repack settings
+func validateVacuumRepack(vacuum, repack bool) error {
+	if !vacuum && !repack {
+		return fmt.Errorf("repack cannot be enabled without vacuum")
 	}
 	return nil
 }

@@ -3,10 +3,12 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -61,6 +63,7 @@ var (
 			},
 		},
 	}
+
 	extraEnvVars = []corev1.EnvVar{
 		{
 			Name: "SG_NAMESPACE",
@@ -116,6 +119,17 @@ func addSchedules(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Re
 		return runtime.NewFatalResult(fmt.Errorf("cannot get cluster object: %w", err))
 	}
 
+	additionalVars := append(extraEnvVars, []corev1.EnvVar{
+		{
+			Name:  "REPACK_ENABLED",
+			Value: strconv.FormatBool(comp.Spec.Parameters.Service.RepackEnabled),
+		},
+		{
+			Name:  "VACUUM_ENABLED",
+			Value: strconv.FormatBool(comp.Spec.Parameters.Service.VacuumEnabled),
+		},
+	}...)
+
 	backups := *cluster.Spec.Configurations.Backups
 	backups[0].CronSchedule = ptr.To(comp.GetBackupSchedule())
 	cluster.Spec.Configurations.Backups = &backups
@@ -128,7 +142,7 @@ func addSchedules(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Re
 	return maintenance.New(comp, svc, schedule, instanceNamespace, service).
 		WithRole(maintRolename).
 		WithPolicyRules(policyRules).
-		WithExtraEnvs(extraEnvVars...).
+		WithExtraEnvs(additionalVars...).
 		WithExtraResources(createMaintenanceSecret(instanceNamespace, sgNamespace, comp.GetName()+"-maintenance-secret")).
 		Run(ctx)
 }

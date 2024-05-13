@@ -23,8 +23,16 @@ func init() {
 				Execute: AddBackupMariadb,
 			},
 			{
+				Name:    "mailgun-alerting",
+				Execute: common.MailgunAlerting(&vshnv1.VSHNMariaDB{}),
+			},
+			{
+				Name:    "user-alerting",
+				Execute: common.AddUserAlerting(&vshnv1.VSHNMariaDB{}),
+			},
+			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNMariaDB{}),
+				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNMariaDB{}, common.AlertsEnabled{All: true}),
 			},
 		},
 	})

@@ -24,7 +24,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNMinio{}),
+				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNMinio{}, common.AlertsEnabled{All: true}),
 			},
 			{
 				Name:    "securitycontext",

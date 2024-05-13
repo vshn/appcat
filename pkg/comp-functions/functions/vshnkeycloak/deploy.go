@@ -165,6 +165,7 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 				},
 			},
 		},
+		Monitoring: comp.Spec.Parameters.Monitoring,
 	}
 
 	if comp.Spec.Parameters.Service.PostgreSQLParameters != nil {

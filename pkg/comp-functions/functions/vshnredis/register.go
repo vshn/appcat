@@ -51,7 +51,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNRedis{}),
+				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNRedis{}, common.AlertsEnabled{All: true}),
 			},
 		},
 	})

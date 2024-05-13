@@ -63,7 +63,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNPostgreSQL{}),
+				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNPostgreSQL{}, common.AlertsEnabled{All: true}),
 			},
 			{
 				Name:    "pgbouncer-settings",

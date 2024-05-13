@@ -249,6 +249,7 @@ func (in *VSHNKeycloakParameters) DeepCopyInto(out *VSHNKeycloakParameters) {
 	out.Backup = in.Backup
 	out.Restore = in.Restore
 	out.Maintenance = in.Maintenance
+	in.Monitoring.DeepCopyInto(&out.Monitoring)
 	in.Security.DeepCopyInto(&out.Security)
 }
 
@@ -430,6 +431,7 @@ func (in *VSHNMariaDBParameters) DeepCopyInto(out *VSHNMariaDBParameters) {
 	out.Backup = in.Backup
 	out.Restore = in.Restore
 	out.Maintenance = in.Maintenance
+	in.Monitoring.DeepCopyInto(&out.Monitoring)
 	in.Security.DeepCopyInto(&out.Security)
 }
 

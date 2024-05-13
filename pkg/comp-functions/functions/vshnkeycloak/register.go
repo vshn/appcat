@@ -1,6 +1,10 @@
 package vshnkeycloak
 
-import "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+import (
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+)
 
 func init() {
 	runtime.RegisterService("keycloak", runtime.Service{
@@ -17,6 +21,18 @@ func init() {
 			{
 				Name:    "ingress",
 				Execute: AddIngress,
+			},
+			{
+				Name:    "mailgun-alerting",
+				Execute: common.MailgunAlerting(&vshnv1.VSHNKeycloak{}),
+			},
+			{
+				Name:    "user-alerting",
+				Execute: common.AddUserAlerting(&vshnv1.VSHNKeycloak{}),
+			},
+			{
+				Name:    "non-sla-prometheus-rules",
+				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNKeycloak{}, common.AlertsEnabled{Memory: true}),
 			},
 		},
 	})

@@ -3,6 +3,8 @@ package pkg
 import (
 	xhelm "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 
+	apix "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
+
 	managedupgradev1beta1 "github.com/appuio/openshift-upgrade-controller/api/v1beta1"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
@@ -10,6 +12,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	miniov1 "github.com/vshn/appcat/v4/apis/minio/v1"
+	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -47,4 +50,6 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = cmv1.SchemeBuilder.AddToScheme(s)
 	_ = netv1.AddToScheme(s)
 	_ = managedupgradev1beta1.AddToScheme(s)
+	_ = pgv1alpha1.SchemeBuilder.AddToScheme(s)
+	_ = apix.AddToScheme(s)
 }

@@ -5502,6 +5502,45 @@ spec:
                             description: Service contains PostgreSQL DBaaS specific
                               properties
                             properties:
+                              access:
+                                items:
+                                  properties:
+                                    database:
+                                      description: Database is the name of the database
+                                        to create, defaults to user.
+                                      type: string
+                                    privileges:
+                                      description: |-
+                                        Privileges specifies the privileges to grant the user. Please check
+                                        the database's docs for available privileges.
+                                      items:
+                                        type: string
+                                      type: array
+                                    user:
+                                      description: |-
+                                        User specifies the username. If all other fields are left empty
+                                        then a new database with the same name and all permissions will be created.
+                                      type: string
+                                    writeConnectionSecretToReference:
+                                      description: |-
+                                        WriteConnectionSecretToReference specifies the namespace and name of a
+                                        Secret to which any connection details for this user should
+                                        be written.
+                                        If not specified, a secret with the name $claimname-$username will be
+                                        created in the namespace where the claim is located.
+                                      properties:
+                                        name:
+                                          description: Name of the secret.
+                                          type: string
+                                        namespace:
+                                          description: Namespace of the secret.
+                                          type: string
+                                      required:
+                                      - name
+                                      - namespace
+                                      type: object
+                                  type: object
+                                type: array
                               extensions:
                                 description: Extensions allow to enable/disable any
                                   of the supported

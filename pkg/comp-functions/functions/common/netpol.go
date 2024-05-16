@@ -40,6 +40,17 @@ func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name string, allow
 				},
 			})
 		}
+
+		xpNs := svc.Config.Data["crossplaneNamespace"]
+		if xpNs != "" {
+			netPolPeer = append(netPolPeer, netv1.NetworkPolicyPeer{
+				NamespaceSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"kubernetes.io/metadata.name": xpNs,
+					},
+				},
+			})
+		}
 	}
 
 	netPol := netv1.NetworkPolicy{

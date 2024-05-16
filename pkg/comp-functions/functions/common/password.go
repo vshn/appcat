@@ -17,7 +17,14 @@ import (
 // same as the resource name.
 // Additionally it exposes the generated passwords as connection details, for easier retrieval.
 func AddCredentialsSecret(comp InfoGetter, svc *runtime.ServiceRuntime, fieldList []string) (string, error) {
-	secretObjectName := comp.GetName() + "-credentials-secret"
+	return AddGenericSecret(comp, svc, "credentials-secret", fieldList)
+}
+
+// AddGenericSecret generates passwords the same way AddCredentialsSecret does.
+// With the difference that the resource name can be chosen.
+// This is helpful if multiple different random generated passwords are necessary.
+func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix string, fieldList []string) (string, error) {
+	secretObjectName := comp.GetName() + "-" + suffix
 	secret := &corev1.Secret{}
 	cd := []xkube.ConnectionDetail{}
 	err := svc.GetObservedKubeObject(secret, secretObjectName)

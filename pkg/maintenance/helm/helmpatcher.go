@@ -135,6 +135,10 @@ func (h *ImagePatcher) DoMaintenance(ctx context.Context, tagURL string, tagPath
 		return fmt.Errorf("cannot get versions from Docker Hub: %v", err)
 	}
 
+	if len(results.GetVersions()) == 0 {
+		return fmt.Errorf("no images found! Please check url")
+	}
+
 	h.log.Info("Getting release")
 	release, err := GetRelease(ctx, h.k8sClient, h.instanceNamespace)
 	if err != nil {
@@ -301,7 +305,9 @@ func SemVerPatchesOnly(ignoreBuild bool) func(results VersionLister, currentTag 
 			}
 		}
 		if currentV.EQ(newV) {
-			return currentV.String(), nil
+			// Don't return the semver representation! Sometimes there might be
+			// a v1.0 but no v1.0.0 tag for an image (AKA Bitnami doing an oopsie).
+			return currentTag, nil
 		}
 		return newV.String(), nil
 	}

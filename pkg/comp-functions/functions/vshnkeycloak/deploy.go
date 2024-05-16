@@ -152,7 +152,6 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 
 	params := &vshnv1.VSHNPostgreSQLParameters{
 		Size:        comp.Spec.Parameters.Size,
-		Instances:   1,
 		Maintenance: comp.GetFullMaintenanceSchedule(),
 		Backup: vshnv1.VSHNPostgreSQLBackup{
 			Retention:          retention,
@@ -183,6 +182,9 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error
 			params.Backup.DeletionProtection = comp.Spec.Parameters.Service.PostgreSQLParameters.Backup.DeletionProtection
 		}
 	}
+	// We need to set this after the merge, as the default instance count for PostgreSQL is always 1
+	// and would therefore override any value we set before the merge.
+	params.Instances = comp.Spec.Parameters.Instances
 
 	pg := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
@@ -371,6 +373,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	values = map[string]any{
+		"replicas":          comp.Spec.Parameters.Instances,
 		"extraEnv":          extraEnv,
 		"extraVolumes":      extraVolumes,
 		"extraVolumeMounts": extraVolumeMounts,

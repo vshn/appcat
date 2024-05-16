@@ -153,6 +153,8 @@ type VSHNPostgreSQLServiceSpec struct {
 	RepackEnabled bool `json:"repackEnabled,omitempty"`
 	// +kubebuilder:default=false
 	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
+
+	VSHNPostgreSQLIAM `json:",inline"`
 }
 
 // VSHNDBaaSPostgresExtension contains the name of a single extension.
@@ -371,4 +373,18 @@ func (v *VSHNPostgreSQL) GetAllowedNamespaces() []string {
 		v.Spec.Parameters.Security.AllowedNamespaces = []string{}
 	}
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
+}
+
+type VSHNPostgreSQLIAM struct {
+	Users     `json:",inline"`
+	Databases `json:",inline"`
+	// Grants specify any grants that should be applied to users
+	Grants []VSHNPostgreSQLGrant `json:"grants,omitempty"`
+}
+
+type VSHNPostgreSQLGrant struct {
+	Privileges []string `json:"privileges,omitempty"`
+	Type       string   `json:"type,omitempty"`
+	User       string   `json:"user,omitempty"`
+	Database   string   `json:"database,omitempty"`
 }

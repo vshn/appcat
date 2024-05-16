@@ -184,3 +184,13 @@ type Security struct {
 	// AllowedNamespaces defines a list of namespaces from where the service can be reached in the claim namespace
 	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
 }
+
+type Users struct {
+	// Users specifies a list of users that should get added to the instance
+	Users []string `json:"users,omitempty"`
+}
+
+type Databases struct {
+	// Databases specifies a list of databases that should get added to the instance
+	Databases []string `json:"databases,omitempty"`
+}

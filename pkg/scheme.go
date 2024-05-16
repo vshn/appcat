@@ -10,6 +10,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	miniov1 "github.com/vshn/appcat/v4/apis/minio/v1"
+	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -47,4 +48,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = cmv1.SchemeBuilder.AddToScheme(s)
 	_ = netv1.AddToScheme(s)
 	_ = managedupgradev1beta1.AddToScheme(s)
+	_ = pgv1alpha1.SchemeBuilder.AddToScheme(s)
 }

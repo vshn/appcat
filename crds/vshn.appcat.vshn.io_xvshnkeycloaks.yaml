@@ -5502,6 +5502,12 @@ spec:
                             description: Service contains PostgreSQL DBaaS specific
                               properties
                             properties:
+                              databases:
+                                description: Databases specifies a list of databases
+                                  that should get added to the instance
+                                items:
+                                  type: string
+                                type: array
                               extensions:
                                 description: Extensions allow to enable/disable any
                                   of the supported
@@ -5513,6 +5519,23 @@ spec:
                                       description: |-
                                         Name is the name of the extension to enable.
                                         For an extensive list, please consult https://stackgres.io/doc/latest/intro/extensions/
+                                      type: string
+                                  type: object
+                                type: array
+                              grants:
+                                description: Grants specify any grants that should
+                                  be applied to users
+                                items:
+                                  properties:
+                                    database:
+                                      type: string
+                                    privileges:
+                                      items:
+                                        type: string
+                                      type: array
+                                    type:
+                                      type: string
+                                    user:
                                       type: string
                                   type: object
                                 type: array
@@ -5575,6 +5598,12 @@ spec:
                                 - besteffort
                                 - guaranteed
                                 type: string
+                              users:
+                                description: Users specifies a list of users that
+                                  should get added to the instance
+                                items:
+                                  type: string
+                                type: array
                               vacuumEnabled:
                                 default: false
                                 type: boolean

@@ -139,13 +139,13 @@ func Test_PatchRelease(t *testing.T) {
 }
 
 func Test_compareSemanticVersion(t *testing.T) {
-	defaultV, _ := semver.ParseTolerant("7.0")
+	defaultV := "7.0"
 	tests := []struct {
 		name              string
 		instanceNamespace string
 		release           *v1beta1.Release
 		results           []Result
-		expectedVer       semver.Version
+		expectedVer       string
 		expectedNew       bool
 		expectedErr       string
 	}{
@@ -185,7 +185,7 @@ func Test_compareSemanticVersion(t *testing.T) {
 				getResult("7.0.14-alpha", "active", "image"),
 				getResult("7.0.14%alpa", "active", "image"),
 			},
-			expectedVer: semver.MustParse("7.0.13"),
+			expectedVer: semver.MustParse("7.0.13").String(),
 		},
 		{
 			name:              "WhenNoNewVersion_ThenReleaseNoNewVersion",
@@ -289,7 +289,7 @@ func Test_compareSemanticVersion(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, tt.expectedVer.String(), version)
+			assert.Equal(t, tt.expectedVer, version)
 		})
 	}
 }

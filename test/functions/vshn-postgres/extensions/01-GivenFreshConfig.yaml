@@ -23,6 +23,44 @@ desired:
         writeConnectionSecretToRef: {}
       status: {}
   resources:
+    pg-conf:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata:
+          generateName: pgsql-app1-prod-wdhkp-
+          name: pgsql-app1-prod-wdhkp-pgconf
+        spec:
+          deletionPolicy: Delete
+          forProvider:
+            manifest:
+              apiVersion: stackgres.io/v1
+              kind: SGPostgresConfig
+              metadata:
+                name: pgsql-app1-prod-wdhkp
+                namespace: vshn-postgresql-pgsql-app1-prod-wdhkp
+              spec:
+                postgresVersion: "15"
+                postgresql.conf:
+                  shared_preload_libraries: pg_stat_statements, auto_explain
+                  max_connections: "200"
+          managementPolicy: Default
+          providerConfigRef:
+            name: kubernetes
+        status:
+          atProvider:
+            manifest:
+              apiVersion: stackgres.io/v1
+              kind: SGPostgresConfig
+              metadata:
+                name: pgsql-app1-prod-wdhkp
+              spec:
+                postgresVersion: "15"
+                postgresql.conf:
+                  shared_preload_libraries: pg_stat_statements, auto_explain
+              status:
+                defaultParameters:
+                  shared_preload_libraries: pg_stat_statements, auto_explain
     cluster:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha1
@@ -88,42 +126,3 @@ observed:
           maintenance:
             dayOfWeek: tuesday
             timeOfDay: "23:32:00"
-  resources:
-    pg-conf:
-      resource:
-        apiVersion: kubernetes.crossplane.io/v1alpha1
-        kind: Object
-        metadata:
-          generateName: pgsql-app1-prod-wdhkp-
-          name: pgsql-app1-prod-wdhkp-pgconf
-        spec:
-          deletionPolicy: Delete
-          forProvider:
-            manifest:
-              apiVersion: stackgres.io/v1
-              kind: SGPostgresConfig
-              metadata:
-                name: pgsql-app1-prod-wdhkp
-                namespace: vshn-postgresql-pgsql-app1-prod-wdhkp
-              spec:
-                postgresVersion: "15"
-                postgresql.conf:
-                  shared_preload_libraries: pg_stat_statements, auto_explain
-          managementPolicy: Default
-          providerConfigRef:
-            name: kubernetes
-        status:
-          atProvider:
-            manifest:
-              apiVersion: stackgres.io/v1
-              kind: SGPostgresConfig
-              metadata:
-                name: pgsql-app1-prod-wdhkp
-              spec:
-                postgresVersion: "15"
-                postgresql.conf:
-                  shared_preload_libraries: pg_stat_statements, auto_explain
-              status:
-                defaultParameters:
-                  shared_preload_libraries: pg_stat_statements, auto_explain
-

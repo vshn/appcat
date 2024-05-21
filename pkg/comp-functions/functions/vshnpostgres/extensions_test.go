@@ -43,6 +43,8 @@ func Test_enableTimescaleDB(t *testing.T) {
 		assert.NoError(t, svc.GetDesiredKubeObject(config, configResourceName))
 
 		assert.Contains(t, config.Spec.PostgresqlConf[sharedLibraries], timescaleExtName)
+
+		assert.Contains(t, config.Spec.PostgresqlConf["max_connections"], "200")
 	}
 }
 

@@ -18,7 +18,7 @@ import (
 
 func UserManagement(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	comp := &vshnv1.VSHNPostgreSQL{}
-	err := svc.GetObservedComposite(comp)
+	err := svc.GetDesiredComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
 	}

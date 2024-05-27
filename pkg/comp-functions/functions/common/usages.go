@@ -20,7 +20,7 @@ import (
 // By is the managed resource which should block the deletion. As long as it exists
 // the deletion of "Of" will be denied.
 func UsageOfBy(of, by xpresource.Managed, svc *runtime.ServiceRuntime) error {
-	name := by.GetName() + "-usage"
+	name := of.GetName() + "-used-by-" + by.GetName()
 	ofAPIVersion, ofKind := of.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
 	byAPIVersion, byKind := by.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
 

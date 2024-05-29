@@ -7,7 +7,7 @@ import (
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certmgrv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

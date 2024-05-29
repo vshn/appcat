@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"dario.cat/mergo"
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xpresource "github.com/crossplane/crossplane-runtime/pkg/resource"
 	xpapi "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
@@ -415,7 +415,7 @@ func KubeOptionAddConnectionDetails(destNamespace string, cd ...xkube.Connection
 // KubeOptionObserveCreateUpdate sets the object to only create and update.
 // Provider-kubernetes will not delete it.
 func KubeOptionObserveCreateUpdate(obj *xkube.Object) {
-	obj.Spec.ManagementPolicy = xkube.ObserveCreateUpdate
+	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionCreate, xpv1.ManagementActionUpdate, xpv1.ManagementActionObserve)
 }
 
 // KubeOptionProtectedBy protects the given kube objects from deletion as long
@@ -508,7 +508,7 @@ func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon, r
 		return tmpKo, err
 	} else if err == ErrNotFound {
 		koSpec = xkube.ObjectSpec{
-			ResourceSpec: xkube.ResourceSpec{
+			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: providerConfigRefName,
 				},
@@ -535,7 +535,8 @@ func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon, r
 	}
 
 	if observeOnly {
-		ko.Spec.ManagementPolicy = xkube.Observe
+		ko.Spec.ManagementPolicies = nil
+		ko.Spec.ManagementPolicies = append(ko.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
 	}
 
 	ko.Spec.ForProvider.Manifest = runtime.RawExtension{Object: o}

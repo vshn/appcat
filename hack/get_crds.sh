@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xef
 
 url=${1}
 name=${2}
@@ -16,10 +16,11 @@ sed() {
 rm -rf gen && \
 mkdir gen && \
 cd gen && \
-git clone --depth 1 --filter=tree:0 "$url" && \
+git clone --filter=tree:0 "$url" && \
 cd "$name" && \
-git sparse-checkout set --no-cone apis && \
-git checkout && \
+#git sparse-checkout set --no-cone apis && \
+if [ -n "$5" ]; then git checkout "$5"; fi && \
+#git checkout "$5" && \
 find . -name "zz_generated*" -delete && \
 rsync -ra --delete "$src" "../../$dst" && \
 cd ../.. && rm -rf gen

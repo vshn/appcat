@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"

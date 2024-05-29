@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"

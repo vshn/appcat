@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
@@ -30,25 +29,18 @@ func UserManagement(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 
 	addProviderConfig(comp, svc)
 
-	providerSecret := &xkube.Object{}
-	err = svc.GetDesiredComposedResourceByName(providerSecret, comp.GetName()+"-provider-conf-credentials")
-	if err != nil {
-		svc.Log.Error(err, "cannot get provider config secret resource")
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot get provider config secret resource: %s", err)))
-	}
-
 	for _, access := range comp.Spec.Parameters.Service.Access {
 
-		userPasswordRef := addUser(comp, svc, providerSecret, *access.User)
+		userPasswordRef := addUser(comp, svc, *access.User)
 
 		dbname := *access.User
 		if access.Database != nil {
 			dbname = *access.Database
 		}
 
-		addDatabase(comp, svc, providerSecret, dbname)
+		addDatabase(comp, svc, dbname)
 
-		addGrants(comp, svc, providerSecret, *access.User, dbname, access.Privileges)
+		addGrants(comp, svc, *access.User, dbname, access.Privileges)
 
 		addConnectionDetail(comp, svc, userPasswordRef, *access.User, dbname, access.WriteConnectionSecretToReference)
 	}
@@ -56,7 +48,7 @@ func UserManagement(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 	return nil
 }
 
-func addUser(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, providerSecret *xkube.Object, username string) string {
+func addUser(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, username string) string {
 	secretName, err := common.AddGenericSecret(comp, svc, "userpass-"+username, []string{"userpass"})
 	if err != nil {
 		svc.Log.Error(err, "cannot deploy user password secret")
@@ -91,16 +83,10 @@ func addUser(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, providerS
 		},
 	}
 
-	err = svc.SetDesiredComposedResource(role)
+	err = svc.SetDesiredComposedResource(role, runtime.ComposedOptionProtects(comp.GetName()+"-provider-conf-credentials"), runtime.ComposedOptionProtects(secretName))
 	if err != nil {
 		svc.Log.Error(err, "cannot apply user")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply user: %s", err)))
-	}
-
-	err = common.UsageOfBy(providerSecret, role, svc)
-	if err != nil {
-		svc.Log.Error(err, "cannot create usage definition")
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot create usage definition: %s", err)))
 	}
 
 	return secretName
@@ -165,7 +151,10 @@ func addProviderConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(secret, comp.GetName()+"-provider-conf-credentials")
+	err := svc.SetDesiredKubeObject(secret, comp.GetName()+"-provider-conf-credentials",
+		runtime.KubeOptionProtects("namespace-conditions"),
+		runtime.KubeOptionProtects("cluster"),
+		runtime.KubeOptionProtects(comp.GetName()+"-netpol"))
 	if err != nil {
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set credential secret for provider-sql: %s", err)))
 		svc.Log.Error(err, "cannot set credential secret for provider-sql")
@@ -194,33 +183,13 @@ func addProviderConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply the provider config for provider sql: %s", err)))
 		svc.Log.Error(err, "cannot apply the provider config for provider sql")
 	}
-
-	koConfig := &xkube.Object{}
-	err = svc.GetDesiredComposedResourceByName(koConfig, comp.GetName()+"-providerconfig")
-	if err != nil {
-		svc.Log.Error(err, "cannot get kube object of the provider config")
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot get kube object of the provider config: %s", err)))
-	}
-
-	providerSecret := &xkube.Object{}
-	err = svc.GetDesiredComposedResourceByName(providerSecret, comp.GetName()+"-provider-conf-credentials")
-	if err != nil {
-		svc.Log.Error(err, "cannot get kube object of the provider config secret")
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot get kube object of the provider config secret: %s", err)))
-	}
-
-	err = common.UsageOfBy(providerSecret, koConfig, svc)
-	if err != nil {
-		svc.Log.Error(err, "cannot create usage definition")
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot create usage definition: %s", err)))
-	}
 }
 
 // We check if the database is already specified.
 // If not it will be added.
 // This should handle cases where there are mutliple users pointing to the same
 // database, and one is deleted, that the database is not dropped.
-func addDatabase(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, providerSecret *xkube.Object, name string) {
+func addDatabase(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, name string) {
 	resname := fmt.Sprintf("%s-%s-database", comp.GetName(), name)
 
 	xdb := &pgv1alpha1.Database{}
@@ -252,20 +221,14 @@ func addDatabase(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, provi
 		},
 	}
 
-	err = svc.SetDesiredComposedResource(xdb)
+	err = svc.SetDesiredComposedResource(xdb, runtime.ComposedOptionProtects(comp.GetName()+"-provider-conf-credentials"))
 	if err != nil {
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply database: %s", err)))
 		svc.Log.Error(err, "cannot apply database")
 	}
-
-	err = common.UsageOfBy(providerSecret, xdb, svc)
-	if err != nil {
-		svc.Log.Error(err, "cannot create usage definition")
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot create usage definition: %s", err)))
-	}
 }
 
-func addGrants(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, providerSecret *xkube.Object, username, dbname string, privileges []string) {
+func addGrants(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, username, dbname string, privileges []string) {
 	privs := []pgv1alpha1.GrantPrivilege{}
 
 	if len(privileges) == 0 {
@@ -294,15 +257,9 @@ func addGrants(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, provide
 		},
 	}
 
-	err := svc.SetDesiredComposedResource(grant)
+	err := svc.SetDesiredComposedResource(grant, runtime.ComposedOptionProtects(comp.GetName()+"-provider-conf-credentials"))
 	if err != nil {
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply database: %s", err)))
 		svc.Log.Error(err, "cannot apply database")
-	}
-
-	err = common.UsageOfBy(providerSecret, grant, svc)
-	if err != nil {
-		svc.Log.Error(err, "cannot create usage definition")
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot create usage definition: %s", err)))
 	}
 }

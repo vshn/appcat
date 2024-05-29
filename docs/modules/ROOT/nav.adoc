@@ -24,3 +24,4 @@
 * xref:explanations/helm-maintenance.adoc[]
 * xref:explanations/disable-billing.adoc[]
 * xref:explanations/webhook-protection.adoc[]
+* xref:explanations/ordered-deletion.adoc[]

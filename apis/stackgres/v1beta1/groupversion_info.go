@@ -1,8 +1,8 @@
 // +kubebuilder:object:generate=true
 // +groupName=stackgres.io
-// +versionName=v1
+// +versionName=v1beta1
 
-package v1
+package v1beta1
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -11,7 +11,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "stackgres.io", Version: "v1"}
+	GroupVersion = schema.GroupVersion{Group: "stackgres.io", Version: "v1beta1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
@@ -22,15 +22,7 @@ var (
 
 func init() {
 	SchemeBuilder.Register(
-		&SGDbOps{},
-		&SGDbOpsList{},
-		&SGCluster{},
-		&SGClusterList{},
-		&SGPostgresConfig{},
-		&SGPostgesConfigList{},
-		&SGPoolingConfigList{},
-		&SGPoolingConfig{},
-		&SGInstanceProfile{},
-		&SGPInstanceProfileList{},
+		&SGObjectStorage{},
+		&SGObjectStorageList{},
 	)
 }

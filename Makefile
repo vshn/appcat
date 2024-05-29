@@ -94,13 +94,26 @@ generate-stackgres-crds:
 	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgcluster.gen.go
 
 	# The generator for the pool config CRD unfortunately produces a broken result. However if we ever need to regenerate it in the future, please uncomment this.
+	# curl ${STACKGRES_CRD_URL}/SGInstanceProfile.yaml?inline=false -o apis/stackgres/v1/sginstanceprofile_crd.yaml
+	# yq -i e apis/stackgres/v1/sginstanceprofile.yaml --expression ".components.schemas.SGInstanceProfileSpec=load(\"apis/stackgres/v1/sginstanceprofile_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	# go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sginstanceprofile.gen.go apis/stackgres/v1/sginstanceprofile.yaml
+	# perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sginstanceprofile.gen.go
+
+	# The generator for the pool config CRD unfortunately produces a broken result. However if we ever need to regenerate it in the future, please uncomment this.
 	# curl ${STACKGRES_CRD_URL}/SGPoolingConfig.yaml?inline=false -o apis/stackgres/v1/sgpoolconfigs_crd.yaml
 	# yq -i e apis/stackgres/v1/sgpoolconfigs.yaml --expression ".components.schemas.SGPoolingConfigSpec=load(\"apis/stackgres/v1/sgpoolconfigs_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
 	# yq -i e apis/stackgres/v1/sgpoolconfigs.yaml --expression ".components.schemas.SGPoolingConfigStatus=load(\"apis/stackgres/v1/sgpoolconfigs_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.status"
 	# go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sgpoolconfigs.gen.go apis/stackgres/v1/sgpoolconfigs.yaml
 	# perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgpoolconfigs.gen.go
 
+	curl ${STACKGRES_CRD_URL}/SGObjectStorage.yaml?inline=false -o apis/stackgres/v1beta1/sgobjectstorage_crd.yaml
+	yq -i e apis/stackgres/v1beta1/sgobjectstorage.yaml --expression ".components.schemas.SGObjectStorageSpec=load(\"apis/stackgres/v1beta1/sgobjectstorage_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1beta1 -generate=types -o apis/stackgres/v1beta1/sgobjectstorage.gen.go apis/stackgres/v1beta1/sgobjectstorage.yaml
+	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1beta1/sgobjectstorage.gen.go
+
+
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1/...
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1beta1/...
 	rm apis/stackgres/v1/*_crd.yaml
 
 .PHONY: fmt

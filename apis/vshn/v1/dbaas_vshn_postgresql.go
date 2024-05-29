@@ -60,7 +60,7 @@ type VSHNPostgreSQLParameters struct {
 	Backup VSHNPostgreSQLBackup `json:"backup,omitempty"`
 
 	// Restore contains settings to control the restore of an instance.
-	Restore VSHNPostgreSQLRestore `json:"restore,omitempty"`
+	Restore *VSHNPostgreSQLRestore `json:"restore,omitempty"`
 
 	// Monitoring contains settings to control monitoring.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`

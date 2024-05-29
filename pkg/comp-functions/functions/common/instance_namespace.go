@@ -31,19 +31,19 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 	}
 
 	l.Info("creating namespace observer for " + serviceName + " claim namespace")
-	err := createNamespaceObserver(ctx, claimNs, compositionName, svc)
+	err := createNamespaceObserver(claimNs, compositionName, svc)
 	if err != nil {
 		return fmt.Errorf("cannot create namespace observer for claim namespace: %w", err)
 	}
 
 	l.Info("Creating namespace for " + serviceName + " instance")
-	err = createInstanceNamespace(ctx, serviceName, compositionName, claimNs, instanceNs, namespaceResName, claimName, svc)
+	err = createInstanceNamespace(serviceName, compositionName, claimNs, instanceNs, namespaceResName, claimName, svc)
 	if err != nil {
 		return fmt.Errorf("cannot create %s namespace: %w", serviceName, err)
 	}
 
 	l.Info("Creating rbac rules for " + serviceName + " instance")
-	err = createNamespacePermissions(ctx, compositionName, instanceNs, namespaceResName, svc)
+	err = createNamespacePermissions(compositionName, instanceNs, namespaceResName, svc)
 	if err != nil {
 		return fmt.Errorf("cannot create rbac rules for %s instance: %w", serviceName, err)
 	}
@@ -73,7 +73,7 @@ func getOrg(instance string, svc *runtime.ServiceRuntime) (string, error) {
 	return ns.GetLabels()[utils.OrgLabelName], nil
 }
 
-func createNamespaceObserver(ctx context.Context, claimNs string, instance string, svc *runtime.ServiceRuntime) error {
+func createNamespaceObserver(claimNs string, instance string, svc *runtime.ServiceRuntime) error {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: claimNs,
@@ -84,7 +84,7 @@ func createNamespaceObserver(ctx context.Context, claimNs string, instance strin
 }
 
 // Create the namespace for the service instance
-func createInstanceNamespace(ctx context.Context, serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName string, svc *runtime.ServiceRuntime) error {
+func createInstanceNamespace(serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName string, svc *runtime.ServiceRuntime) error {
 
 	org, err := getOrg(compName, svc)
 	if err != nil {
@@ -126,7 +126,7 @@ func createInstanceNamespace(ctx context.Context, serviceName, compName, claimNa
 	return svc.SetDesiredKubeObjectWithName(ns, instanceNamespace, namespaceResName)
 }
 
-func createNamespacePermissions(ctx context.Context, instance string, instanceNs string, namespaceResName string, svc *runtime.ServiceRuntime) error {
+func createNamespacePermissions(instance string, instanceNs string, namespaceResName string, svc *runtime.ServiceRuntime) error {
 	ns := &corev1.Namespace{}
 	err := svc.GetObservedKubeObject(ns, namespaceResName)
 	if err != nil {

@@ -30,13 +30,13 @@ func DelayClusterDeployment(_ context.Context, svc *runtime.ServiceRuntime) *xfn
 		// We're done here, the sgcluster has been applied.
 		return nil
 	} else if err != runtime.ErrNotFound {
-		return runtime.NewFatalResult(fmt.Errorf("Cannot get cluster: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("Cannot get cluster: %w", err).Error())
 	}
 
 	desiredCluster := &stackgresv1.SGCluster{}
 	err = svc.GetDesiredKubeObject(desiredCluster, "cluster")
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot get desired cluster: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot get desired cluster: %w", err).Error())
 	}
 
 	svc.DeleteDesiredCompososedResource("cluster")

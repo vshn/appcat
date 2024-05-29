@@ -116,7 +116,7 @@ func addSchedules(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Re
 	cluster := &stackgresv1.SGCluster{}
 	err = svc.GetDesiredKubeObject(cluster, "cluster")
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot get cluster object: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot get cluster object: %w", err).Error())
 	}
 
 	additionalVars := append(extraEnvVars, []corev1.EnvVar{

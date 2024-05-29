@@ -3,6 +3,7 @@ package vshnkeycloak
 import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/nonsla"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
@@ -32,7 +33,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNKeycloak{}, common.AlertsEnabled{Memory: true}),
+				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNKeycloak{}, nonsla.NewAlertSetBuilder("keycloak").AddMemory().GetAlerts()),
 			},
 		},
 	})

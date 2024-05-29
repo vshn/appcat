@@ -2,7 +2,7 @@ package vshnminio
 
 import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/nonsla"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
@@ -24,7 +24,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNMinio{}, common.AlertsEnabled{All: true}),
+				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNMinio{}, nonsla.NewAlertSetBuilder("minio").AddAll().GetAlerts()),
 			},
 			{
 				Name:    "securitycontext",

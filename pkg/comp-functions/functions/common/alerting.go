@@ -28,7 +28,7 @@ func AddUserAlerting(obj client.Object) func(ctx context.Context, svc *runtime.S
 	return func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 
 		log := controllerruntime.LoggerFrom(ctx)
-		log.Info("Check if alerting references are set")
+		log.Info("Checking if alerting references are set")
 
 		log.V(1).Info("Transforming", "obj", svc)
 

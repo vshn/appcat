@@ -3,6 +3,7 @@ package vshnmariadb
 import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/nonsla"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
@@ -23,8 +24,16 @@ func init() {
 				Execute: AddBackupMariadb,
 			},
 			{
+				Name:    "mailgun-alerting",
+				Execute: common.MailgunAlerting(&vshnv1.VSHNMariaDB{}),
+			},
+			{
+				Name:    "user-alerting",
+				Execute: common.AddUserAlerting(&vshnv1.VSHNMariaDB{}),
+			},
+			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: common.GenerateNonSLAPromRules(&vshnv1.VSHNMariaDB{}),
+				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNMariaDB{}, nonsla.NewAlertSetBuilder("mariadb", "mariadb").AddAll().GetAlerts()),
 			},
 		},
 	})

@@ -52,7 +52,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNRedis{}, nonsla.NewAlertSetBuilder("redis").AddAll().GetAlerts()),
+				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNRedis{}, nonsla.NewAlertSetBuilder("redis", "redis").AddAll().GetAlerts()),
 			},
 		},
 	})

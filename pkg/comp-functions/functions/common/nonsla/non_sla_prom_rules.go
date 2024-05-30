@@ -3,6 +3,7 @@ package nonsla
 import (
 	"context"
 	"fmt"
+
 	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	promV1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
@@ -31,14 +32,13 @@ func GenerateNonSLAPromRules(obj client.Object, alerts Alerts) func(ctx context.
 		rules := make([]promV1.Rule, 0)
 		for _, a := range alerts.alerts {
 			f := AlertDefinitions[a]
-			r := f(alerts.alertContainerName)
+			r := f(alerts.alertContainerName, alerts.namespace)
 			rules = append(rules, r)
 		}
 		rules = append(rules, alerts.customRules...)
 
 		err = generatePromeRules(elem.GetName(), elem.GetInstanceNamespace(), rules, svc)
 		if err != nil {
-			log.Info("broken addition")
 			return runtime.NewWarningResult("can't create prometheus rules: " + err.Error())
 		}
 

@@ -6,7 +6,7 @@ import (
 )
 
 // ServiceRule is a func definition to get a specific rule based on a container name s
-type ServiceRule func(s string) promV1.Rule
+type ServiceRule func(s, n string) promV1.Rule
 
 // alert non-exportable alert type to be used only in this package
 type alert string
@@ -18,7 +18,7 @@ type Alerts struct {
 	// alerts are generic alerts defined for all services of appcat
 	alerts []alert
 	// alertContainerName is the container name to be used for alert names alert expression
-	alertContainerName string
+	alertContainerName, namespace string
 }
 
 const (
@@ -31,7 +31,7 @@ var (
 	// AlertDefinitions is a map of alert definitions which has the name of alerts as key and the func ServiceRule as value
 	AlertDefinitions = map[alert]ServiceRule{
 
-		pvFillUp: func(name string) promV1.Rule {
+		pvFillUp: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
 				Alert: name + "PersistentVolumeFillingUp",
 				Annotations: map[string]string{
@@ -41,7 +41,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\", metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.03 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + name + "-(.+)-.+\")",
+					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\", metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.03 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + namespace + "-(.+)-.+\")",
 				},
 				For: minuteInterval,
 				Labels: map[string]string{
@@ -50,7 +50,7 @@ var (
 				},
 			}
 		},
-		pvExpectedFillUp: func(name string) promV1.Rule {
+		pvExpectedFillUp: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
 				Alert: name + "PersistentVolumeExpectedToFillUp",
 				Annotations: map[string]string{
@@ -60,7 +60,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + name + "-(.+)-.+\")",
+					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + namespace + "-(.+)-.+\")",
 				},
 				For: hourInterval,
 				Labels: map[string]string{
@@ -69,7 +69,7 @@ var (
 				},
 			}
 		},
-		memCritical: func(name string) promV1.Rule {
+		memCritical: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
 				Alert: name + "MemoryCritical",
 				Annotations: map[string]string{
@@ -79,7 +79,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( topk(1, (max(container_memory_working_set_bytes{container=\"" + name + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + name + "-(.+)-.+\")",
+					StrVal: "label_replace( topk(1, (max(container_memory_working_set_bytes{container=\"" + name + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + namespace + "-(.+)-.+\")",
 				},
 				For: twoHourInterval,
 				Labels: map[string]string{
@@ -101,11 +101,12 @@ type AlertBuilder struct {
 	as Alerts
 }
 
-func NewAlertSetBuilder(containerName string) *AlertBuilder {
+func NewAlertSetBuilder(containerName, namespace string) *AlertBuilder {
 	return &AlertBuilder{as: Alerts{
 		customRules:        make([]promV1.Rule, 0),
 		alerts:             make([]alert, 0),
 		alertContainerName: containerName,
+		namespace:          namespace,
 	}}
 }
 

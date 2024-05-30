@@ -64,7 +64,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNPostgreSQL{}, nonsla.NewAlertSetBuilder("patroni").AddAll().GetAlerts()),
+				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNPostgreSQL{}, nonsla.NewAlertSetBuilder("patroni", "postgresql").AddAll().GetAlerts()),
 			},
 			{
 				Name:    "pgbouncer-settings",

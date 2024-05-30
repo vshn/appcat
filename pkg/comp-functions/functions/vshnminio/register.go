@@ -24,7 +24,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNMinio{}, nonsla.NewAlertSetBuilder("minio").AddAll().GetAlerts()),
+				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNMinio{}, nonsla.NewAlertSetBuilder("minio", "minio").AddAll().GetAlerts()),
 			},
 			{
 				Name:    "securitycontext",

@@ -1,6 +1,9 @@
 package v1
 
-import alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+import (
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+)
 
 // K8upBackupSpec specifies when a backup for redis should be triggered.
 // It also contains the retention policy for the backup.
@@ -183,4 +186,25 @@ type Security struct {
 	AllowAllNamespaces bool `json:"allowAllNamespaces,omitempty"`
 	// AllowedNamespaces defines a list of namespaces from where the service can be reached in the claim namespace
 	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
+}
+
+type VSHNAccess struct {
+	// User specifies the username. If all other fields are left empty
+	// then a new database with the same name and all permissions will be created.
+	// +kubebuilder:validation:Required
+	User *string `json:"user,omitempty"`
+
+	// Database is the name of the database to create, defaults to user.
+	Database *string `json:"database,omitempty"`
+
+	// Privileges specifies the privileges to grant the user. Please check
+	// the database's docs for available privileges.
+	Privileges []string `json:"privileges,omitempty"`
+
+	// WriteConnectionSecretToReference specifies the namespace and name of a
+	// Secret to which any connection details for this user should
+	// be written.
+	// If not specified, a secret with the name $claimname-$username will be
+	// created in the namespace where the claim is located.
+	WriteConnectionSecretToReference *xpv1.SecretReference `json:"writeConnectionSecretToRef,omitempty"`
 }

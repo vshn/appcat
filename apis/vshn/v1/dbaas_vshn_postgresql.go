@@ -153,6 +153,8 @@ type VSHNPostgreSQLServiceSpec struct {
 	RepackEnabled bool `json:"repackEnabled,omitempty"`
 	// +kubebuilder:default=false
 	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
+
+	Access []VSHNAccess `json:"access,omitempty"`
 }
 
 // VSHNDBaaSPostgresExtension contains the name of a single extension.

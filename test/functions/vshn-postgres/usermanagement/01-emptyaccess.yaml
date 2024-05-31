@@ -1,0 +1,52 @@
+desired:
+  composite:
+    connection_details:
+      POSTGRESQL_USER: cm9vdA== #root
+      POSTGRESQL_PASSWORD: cm9vdA== #root
+      POSTGRESQL_HOST: bG9jYWxob3N0IC1uCg== #localhost
+      POSTGRESQL_PORT: NTQzMgo=
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}
+observed:
+  composite:
+    connection_details:
+      POSTGRESQL_USER: cm9vdA== #root
+      POSTGRESQL_PASSWORD: cm9vdA== #root
+      POSTGRESQL_HOST: bG9jYWxob3N0IC1uCg== #localhost
+      POSTGRESQL_PORT: NTQzMgo=
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}

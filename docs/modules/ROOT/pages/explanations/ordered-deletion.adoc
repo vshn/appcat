@@ -1,0 +1,22 @@
+= Ordered Deletion
+
+If multiple provider and operators process the same service, it might be necessary to make the deletion process ordered.
+
+For example, if we deploy a PostgreSQL instance with Users, then PostgreSQL itself is handled by StackGres, but the user is managed by `provider-sql`.
+If the PostgreSQL pods are deleted before `provider-sql` can deprovision the users, it will never remove the finalizer from the object and it will get stuck.
+
+It's possible to pass these kinds of relationships, when adding an object to the desired state.
+
+.Example mydependency is only deleted after myobject
+[source,golang]
+----
+secret := &corev1.Secret{}
+
+err := svc.SetDesiredKubeObject(secret, comp.GetName()+"-myobject", runtime.KubeOptionProtects("mydependency"))
+if err != nil {}
+----
+
+There are two ways to specify the relations:
+
+. An object protects another object: this is handled via the option `*Protects`. Simply pass the resource name as specified in the desired map and the protection will be deployed. This is useful if the protected object doesn't know about the objects it's protected by. This is usually the case for dynamic objects, like a provisioning secret is protected by one or more user objects.
+. An object is protected by another object: This is handled via the option `ProtectedBy`. This is useful for static objects. For example if a service deploys a secret that is needed by a fixed number of other objects.

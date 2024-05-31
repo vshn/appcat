@@ -68,7 +68,7 @@ generate: export PATH := $(go_bin):$(PATH)
 generate: $(protoc_bin) get-crds generate-stackgres-crds ## Generate code with controller-gen and protobuf.
 	go version
 	rm -rf apis/generated
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths=./apis/... object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="{./apis/v1/..., ./apis/vshn/..., ./apis/exoscale/...}" object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
 	go generate ./...
 	# Because yaml is such a fun and easy specification, we need to hack some things here.
 	# Depending on the yaml parser implementation the equal sign (=) has special meaning, or not...
@@ -193,6 +193,10 @@ clean:
 get-crds:
 	./hack/get_crds.sh https://github.com/vshn/provider-minio provider-minio apis/minio/v1 apis/minio
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-helm provider-helm apis/release apis/helm
+	# provider-sql needs manual fixes... Running this every time would break them.
+	# The crossplane code generator only works if the code is valid, but the code is not valid until the code generator has run...
+	#./hack/get_crds.sh https://github.com/crossplane-contrib/provider-sql provider-sql apis/ apis/sql
+	#rm apis/sql/sql.go
 
 .PHONY: api-bootstrap
 api-bootstrap:

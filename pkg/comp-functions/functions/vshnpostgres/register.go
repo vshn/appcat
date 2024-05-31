@@ -78,6 +78,10 @@ func init() {
 				Name:    "ensure-objectbucket-labels",
 				Execute: EnsureObjectBucketLabels,
 			},
+			{
+				Name:    "user-management",
+				Execute: UserManagement,
+			},
 		},
 	})
 }

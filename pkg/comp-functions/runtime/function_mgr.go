@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"dario.cat/mergo"
 	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xpresource "github.com/crossplane/crossplane-runtime/pkg/resource"
+	xpapi "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
 	fnv1beta1 "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/crossplane/function-sdk-go/request"
@@ -26,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -43,6 +46,8 @@ const (
 	OwnerKindAnnotation    = "appcat.vshn.io/ownerkind"
 	OwnerVersionAnnotation = "appcat.vshn.io/ownerapiversion"
 	OwnerGroupAnnotation   = "appcat.vshn.io/ownergroup"
+	ProtectedByAnnotation  = "appcat.vshn.io/protectedby"
+	ProtectsAnnotation     = "appcat.vshn.io/protects"
 )
 
 // Step describes a single change within a service.
@@ -84,7 +89,12 @@ type Manager struct {
 	fnv1beta1.UnimplementedFunctionRunnerServiceServer
 }
 
+// KubeObjectOption defines the type of functional parameters for kubeObjects
 type KubeObjectOption func(obj *xkube.Object)
+
+// ComposedResourceOption defines the type of functional parameters for Crossplane
+// managed resources
+type ComposedResourceOption func(obj xpresource.Managed)
 
 // RegisterService will register a service to the map of all services.
 func RegisterService(name string, function Service) {
@@ -153,6 +163,11 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequ
 			result.Message = fmt.Sprintf("%s step %s result: %s", service, step.Name, result.Message)
 		}
 		sr.AddResult(result)
+	}
+
+	err = sr.addUsages()
+	if err != nil {
+		return errResp, err
 	}
 
 	return sr.GetResponse()
@@ -302,17 +317,21 @@ func (s *ServiceRuntime) GetResponse() (*fnv1beta1.RunFunctionResponse, error) {
 
 // SetDesiredComposedResource adds the given object to the desired resources, it needs to be a proper
 // crossplane Managed Resource.
-func (s *ServiceRuntime) SetDesiredComposedResource(obj xpresource.Managed) error {
-	return s.SetDesiredComposedResourceWithName(obj, obj.GetName())
+func (s *ServiceRuntime) SetDesiredComposedResource(obj xpresource.Managed, opts ...ComposedResourceOption) error {
+	return s.SetDesiredComposedResourceWithName(obj, obj.GetName(), opts...)
 }
 
 // SetDesiredComposedResourceWithName adds the given object to the desired resources, it needs to be a proper
 // crossplane Managed Resource. Additionally provide a name, if it's not derived from the object name.
 // Usually needed for objects that where migrated from P+T compositions with a static name.
 // Additionally it injects the claim-name, claim-namespace and the composite name as a label.
-func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Managed, name string) error {
+func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Managed, name string, opts ...ComposedResourceOption) error {
 
 	s.addOwnerReferenceAnnotation(obj, true)
+
+	for _, opt := range opts {
+		opt(obj)
+	}
 
 	unstructuredObj, err := composed.From(obj)
 	if err != nil {
@@ -321,6 +340,23 @@ func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Manag
 
 	s.desirdResources[resource.Name(name)] = &resource.DesiredComposed{Resource: unstructuredObj}
 	return nil
+}
+
+// ComposedOptionProtectedBy protects the given resource from deletion as long
+// as resName exists.
+// resName is the name of the resource in the desired map.
+func ComposedOptionProtectedBy(resName string) ComposedResourceOption {
+	return func(obj xpresource.Managed) {
+		addProtectionAnnotation(resName, ProtectedByAnnotation, obj)
+	}
+}
+
+// ComposedOptionProtects is the inverse of ProtectedBy. The object with this annotation
+// protects the object with resName.
+func ComposedOptionProtects(resName string) ComposedResourceOption {
+	return func(obj xpresource.Managed) {
+		addProtectionAnnotation(resName, ProtectsAnnotation, obj)
+	}
 }
 
 // SetDesiredKubeObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
@@ -380,6 +416,51 @@ func KubeOptionAddConnectionDetails(destNamespace string, cd ...xkube.Connection
 // Provider-kubernetes will not delete it.
 func KubeOptionObserveCreateUpdate(obj *xkube.Object) {
 	obj.Spec.ManagementPolicy = xkube.ObserveCreateUpdate
+}
+
+// KubeOptionProtectedBy protects the given kube objects from deletion as long
+// as resName exists.
+// resName is the name of the resource in the desired map.
+func KubeOptionProtectedBy(resName string) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		addProtectionAnnotation(resName, ProtectedByAnnotation, obj)
+	}
+}
+
+// KubeOptionProtects is the inverse of ProtectedBy. The object with this annotation
+// protects the object with resName.
+func KubeOptionProtects(resName string) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		addProtectionAnnotation(resName, ProtectsAnnotation, obj)
+	}
+}
+
+func addProtectionAnnotation(resName, protectionType string, obj client.Object) {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	if annotations[protectionType] == "" {
+		annotations[protectionType] = resName
+	} else {
+		list := strings.Split(annotations[protectionType], ",")
+		list = append(list, resName)
+		list = removeDuplicate(list)
+		annotations[protectionType] = strings.Join(list, ",")
+	}
+	obj.SetAnnotations(annotations)
+}
+
+func removeDuplicate(strSlice []string) []string {
+	allKeys := make(map[string]bool)
+	list := []string{}
+	for _, item := range strSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
 }
 
 // SetDesiredKubeObserveObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
@@ -892,4 +973,94 @@ func (s *ServiceRuntime) addOwnerReferenceAnnotation(obj client.Object, composed
 	}
 
 	obj.SetLabels(labels)
+}
+
+// UsageOfBy helps with ordered deletions.
+// Sometimes there are objects that are essential for porviders to work.
+// For example provider-sql needs secrets to connect to instances.
+// During the deletion it's not guaranteed that the secret gets deleted after
+// the managed resource that the provider manages.
+// This will essentially make it deadlock, as the managed resource will still
+// contain a finalizer which blocks the deletion.
+// See: https://docs.crossplane.io/latest/concepts/usages/#usage-for-deletion-ordering
+//
+// Of is the name of the managed resource that should be protected, as set in the desired map
+// By is the name of then managed resource which should block the deletion, as set in the desired map. As long as it exists
+// the deletion of "Of" will be denied.
+func (s *ServiceRuntime) UsageOfBy(of, by string) error {
+	ofUnstructuredRaw := s.desirdResources[resource.Name(of)]
+	if ofUnstructuredRaw == nil {
+		return ErrNotFound
+	}
+	ofUnstructured := ofUnstructuredRaw.Resource
+	byUnstructuredRaw := s.desirdResources[resource.Name(by)]
+	if byUnstructuredRaw == nil {
+		return ErrNotFound
+	}
+	byUnstructured := byUnstructuredRaw.Resource
+
+	name := ofUnstructured.GetName() + "-used-by-" + byUnstructured.GetName()
+	ofAPIVersion, ofKind := ofUnstructured.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
+	byAPIVersion, byKind := byUnstructured.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
+
+	usage := &xpapi.Usage{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: xpapi.UsageSpec{
+			ReplayDeletion: ptr.To(true),
+			Of: xpapi.Resource{
+				APIVersion: ofAPIVersion,
+				Kind:       ofKind,
+				ResourceRef: &xpapi.ResourceRef{
+					Name: ofUnstructured.GetName(),
+				},
+			},
+			By: &xpapi.Resource{
+				APIVersion: byAPIVersion,
+				Kind:       byKind,
+				ResourceRef: &xpapi.ResourceRef{
+					Name: byUnstructured.GetName(),
+				},
+			},
+		},
+	}
+
+	return s.SetDesiredKubeObject(usage, name)
+}
+
+func (s *ServiceRuntime) addUsages() error {
+	for resName, resource := range s.desirdResources {
+		byName, protect := resource.Resource.Unstructured.GetAnnotations()[ProtectedByAnnotation]
+		if protect {
+			resources := strings.Split(byName, ",")
+			for _, res := range resources {
+				err := s.UsageOfBy(string(resName), res)
+				if err != nil {
+					if err == ErrNotFound {
+						s.Log.Error(err, "cannot add usage for object")
+						s.AddResult(NewWarningResult(fmt.Sprintf("cannot add usage for object: %s", err)))
+						continue
+					}
+					return fmt.Errorf("cannot set protected by for object: %w", err)
+				}
+			}
+		}
+		ofName, protect := resource.Resource.Unstructured.GetAnnotations()[ProtectsAnnotation]
+		if protect {
+			resources := strings.Split(ofName, ",")
+			for _, res := range resources {
+				err := s.UsageOfBy(res, string(resName))
+				if err != nil {
+					if err == ErrNotFound {
+						s.Log.Error(err, "cannot add usage for object")
+						s.AddResult(NewWarningResult(fmt.Sprintf("cannot add usage for object: %s", err)))
+						continue
+					}
+					return fmt.Errorf("cannot set protects for object: %w", err)
+				}
+			}
+		}
+	}
+	return nil
 }

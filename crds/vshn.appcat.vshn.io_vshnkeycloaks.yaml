@@ -4415,7 +4415,7 @@ spec:
                                           User specifies the username. If all other fields are left empty
                                           then a new database with the same name and all permissions will be created.
                                         type: string
-                                      writeConnectionSecretToReference:
+                                      writeConnectionSecretToRef:
                                         description: |-
                                           WriteConnectionSecretToReference specifies the namespace and name of a
                                           Secret to which any connection details for this user should

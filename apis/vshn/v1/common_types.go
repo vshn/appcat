@@ -206,5 +206,5 @@ type VSHNAccess struct {
 	// be written.
 	// If not specified, a secret with the name $claimname-$username will be
 	// created in the namespace where the claim is located.
-	WriteConnectionSecretToReference *xpv1.SecretReference `json:"writeConnectionSecretToReference,omitempty"`
+	WriteConnectionSecretToReference *xpv1.SecretReference `json:"writeConnectionSecretToRef,omitempty"`
 }

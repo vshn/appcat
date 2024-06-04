@@ -1077,36 +1077,26 @@ func (s *ServiceRuntime) ForwardEvents() error {
 	if claimRef == nil {
 		return nil
 	}
-	claimName := claimRef.Name
-	claimNamespace := claimRef.Namespace
+	eventForwardValue := fmt.Sprintf("%s/%s/%s/%s", claimRef.APIVersion, claimRef.Kind, claimRef.Namespace, claimRef.Name)
 	for _, res := range s.desiredResources {
 		r := res.Resource
 
 		// For kube objects set the annotation 'EventForwardAnnotation' in managed resource and not in kube object itself
-		if isProviderK8sObject(r) {
-			p := "spec.forProvider.manifest"
-			v, err := r.GetValue(p)
-			if err != nil {
-				return fmt.Errorf("cannot get manifest from kube object %s: %w", r.GetName(), err)
-			}
-			m, ok := v.(map[string]interface{})
-			if !ok {
-				return fmt.Errorf("cannot get manifest from kube object %s: %w", r.GetName(), err)
-			}
-			eventForwardValue := fmt.Sprintf("%s/%s/%s/%s", m["apiVersion"], m["kind"], claimNamespace, claimName)
+		if isKubeObject(r) {
+			p := "spec.forProvider.manifest.metadata.annotations"
+			v, _ := r.GetValue(p)
 			mrAnnotations := make(map[string]any)
-			if m["metadata"].(map[string]interface{})["annotations"] != nil {
-				mrAnnotations = m["metadata"].(map[string]interface{})["annotations"].(map[string]any)
+			if v != nil {
+				mrAnnotations = v.(map[string]any)
 			}
 			mrAnnotations[EventForwardAnnotation] = eventForwardValue
-			err = r.SetValue(p+".metadata.annotations", mrAnnotations)
+			err := r.SetValue(p, mrAnnotations)
 			if err != nil {
 				return fmt.Errorf("cannot set event forward annotations for managed object %s: %w", r.GetName(), err)
 			}
 
 			// For non kube objects set directly into the managed resource
 		} else {
-			eventForwardValue := fmt.Sprintf("%s/%s/%s/%s", r.GetAPIVersion(), strings.ToLower(r.GetKind()), claimNamespace, claimName)
 			annotations := r.GetAnnotations()
 			if annotations == nil {
 				annotations = map[string]string{}
@@ -1119,6 +1109,6 @@ func (s *ServiceRuntime) ForwardEvents() error {
 	return nil
 }
 
-func isProviderK8sObject(r *composed.Unstructured) bool {
+func isKubeObject(r *composed.Unstructured) bool {
 	return r.GetKind() == "Object" && strings.HasPrefix(r.GetAPIVersion(), "kubernetes.crossplane.io")
 }

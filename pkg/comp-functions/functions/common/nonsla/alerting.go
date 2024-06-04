@@ -33,7 +33,7 @@ var (
 
 		pvFillUp: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
-				Alert: name + "PersistentVolumeFillingUp",
+				Alert: "PersistentVolumeFillingUp",
 				Annotations: map[string]string{
 					"description": "The volume claimed by the instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} is only {{ $value | humanizePercentage }} free.",
 					"runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepersistentvolumefillingup",
@@ -52,7 +52,7 @@ var (
 		},
 		pvExpectedFillUp: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
-				Alert: name + "PersistentVolumeExpectedToFillUp",
+				Alert: "PersistentVolumeExpectedToFillUp",
 				Annotations: map[string]string{
 					"description": "Based on recent sampling, the volume claimed by the instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} is expected to fill up within four days. Currently {{ $value | humanizePercentage }} is available.",
 					"runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepersistentvolumefillingup",
@@ -71,7 +71,7 @@ var (
 		},
 		memCritical: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
-				Alert: name + "MemoryCritical",
+				Alert: "MemoryCritical",
 				Annotations: map[string]string{
 					"description": "The memory claimed by the instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} has been over 85% for 2 hours.\n  Please reduce the load of this instance, or increase the memory.",
 					"runbook_url": "https://hub.syn.tools/appcat/runbooks/vshn-generic.html#MemoryCritical",

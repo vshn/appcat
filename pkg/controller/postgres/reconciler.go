@@ -19,6 +19,9 @@ import (
 
 //+kubebuilder:rbac:groups=kubernetes.crossplane.io,resources=objects,verbs=delete
 
+// To run on newer OpenShift version, this RBAC permission is necessary.
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls/finalizers,verbs=get;list;patch;update;watch;create
+
 type XPostgreSQLReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme

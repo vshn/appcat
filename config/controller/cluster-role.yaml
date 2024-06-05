@@ -65,6 +65,17 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - xvshnpostgresqls/finalizers
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
   - xvshnpostgresqls/status
   verbs:
   - get

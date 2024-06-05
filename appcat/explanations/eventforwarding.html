@@ -481,7 +481,7 @@
     <a class="version is-missing" href="../4.22/index.html">4.22</a>
   </div>
 </div>
-  <div class="edit-this-page"><a href="https://github.com/vshn/appcat/edit/HEAD/docs/modules/ROOT/pages/explanations/eventforwarding.adoc">Edit this Page</a></div>
+  <div class="edit-this-page"><a href="https://github.com/vshn/appcat/edit/master/docs/modules/ROOT/pages/explanations/eventforwarding.adoc">Edit this Page</a></div>
   </div>
   <div class="content">
 <aside class="toc sidebar" data-title="Contents" data-levels="2">
@@ -505,7 +505,7 @@ We check the owner object of every event for a specific annotation.</p>
 <h2 id="_annotation"><a class="anchor" href="#_annotation"></a>Annotation</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The annotation is called <code>appcat.vshn.io/forward-events-to</code> and has the following format: <code>&lt;claim_kind&gt;/&lt;claim_namespace&gt;/&lt;claim_name&gt;</code>.</p>
+<p>The annotation is called <code>appcat.vshn.io/forward-events-to</code> and has the following format: <code>&lt;api_version&gt;/&lt;claim_kind&gt;/&lt;claim_namespace&gt;/&lt;claim_name&gt;</code>.</p>
 </div>
 </div>
 </div>
@@ -515,7 +515,7 @@ We check the owner object of every event for a specific annotation.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">annotations:
-  appcat.vshn.io/forward-events-to: VSHNRedis/my-project/my-redis</code></pre>
+  appcat.vshn.io/forward-events-to: vshn.appcat.vshn.io/v1/VSHNRedis/my-project/my-redis</code></pre>
 </div>
 </div>
 <div class="paragraph">

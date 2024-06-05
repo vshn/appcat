@@ -1,11 +1,14 @@
 package vshnpostgres
 
 import (
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/nonsla"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
+
+var pgAlerts = nonsla.NewAlertSetBuilder("patroni", "postgresql").AddAll().AddCustom([]promv1.Rule{maxConnectionsAlert}).GetAlerts()
 
 func init() {
 	runtime.RegisterService("postgresql", runtime.Service{
@@ -64,7 +67,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNPostgreSQL{}, nonsla.NewAlertSetBuilder("patroni", "postgresql").AddAll().GetAlerts()),
+				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNPostgreSQL{}, pgAlerts),
 			},
 			{
 				Name:    "pgbouncer-settings",

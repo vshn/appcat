@@ -48,15 +48,15 @@ func TestNewAlertSetBuilder(t *testing.T) {
 
 	checkCount := 0
 	for _, rule := range rules {
-		if rule.Alert == containerName+"PersistentVolumeExpectedToFillUp" {
+		if rule.Alert == "PersistentVolumeExpectedToFillUp" {
 			assert.Equal(t, patroniPersistentVolumeExpectedToFillUp, rule.Expr.StrVal)
 			checkCount++
 		}
-		if rule.Alert == containerName+"MemoryCritical" {
+		if rule.Alert == "MemoryCritical" {
 			assert.Equal(t, patroniMemoryCritical, rule.Expr.StrVal)
 			checkCount++
 		}
-		if rule.Alert == containerName+"PersistentVolumeFillingUp" {
+		if rule.Alert == "PersistentVolumeFillingUp" {
 			assert.Equal(t, patroniPersistentVolumeFillingUp, rule.Expr.StrVal)
 			checkCount++
 		}

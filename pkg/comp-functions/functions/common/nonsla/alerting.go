@@ -22,9 +22,9 @@ type Alerts struct {
 }
 
 const (
-	synTeam                                       string          = "schedar"
-	severityCritical                              string          = "critical"
-	minuteInterval, hourInterval, twoHourInterval promV1.Duration = "1m", "1h", "2h"
+	SynTeam                                       string          = "schedar"
+	SeverityCritical                              string          = "critical"
+	MinuteInterval, HourInterval, TwoHourInterval promV1.Duration = "1m", "1h", "2h"
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 
 		pvFillUp: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
-				Alert: name + "PersistentVolumeFillingUp",
+				Alert: "PersistentVolumeFillingUp",
 				Annotations: map[string]string{
 					"description": "The volume claimed by the instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} is only {{ $value | humanizePercentage }} free.",
 					"runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepersistentvolumefillingup",
@@ -43,16 +43,16 @@ var (
 					Type:   intstr.String,
 					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\", metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.03 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + namespace + "-(.+)-.+\")",
 				},
-				For: minuteInterval,
+				For: MinuteInterval,
 				Labels: map[string]string{
-					"severity": severityCritical,
-					"syn_team": synTeam,
+					"severity": SeverityCritical,
+					"syn_team": SynTeam,
 				},
 			}
 		},
 		pvExpectedFillUp: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
-				Alert: name + "PersistentVolumeExpectedToFillUp",
+				Alert: "PersistentVolumeExpectedToFillUp",
 				Annotations: map[string]string{
 					"description": "Based on recent sampling, the volume claimed by the instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} is expected to fill up within four days. Currently {{ $value | humanizePercentage }} is available.",
 					"runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepersistentvolumefillingup",
@@ -62,16 +62,16 @@ var (
 					Type:   intstr.String,
 					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + namespace + "-(.+)-.+\")",
 				},
-				For: hourInterval,
+				For: HourInterval,
 				Labels: map[string]string{
-					"severity": severityCritical,
-					"syn_team": synTeam,
+					"severity": SeverityCritical,
+					"syn_team": SynTeam,
 				},
 			}
 		},
 		memCritical: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
-				Alert: name + "MemoryCritical",
+				Alert: "MemoryCritical",
 				Annotations: map[string]string{
 					"description": "The memory claimed by the instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} has been over 85% for 2 hours.\n  Please reduce the load of this instance, or increase the memory.",
 					"runbook_url": "https://hub.syn.tools/appcat/runbooks/vshn-generic.html#MemoryCritical",
@@ -81,10 +81,10 @@ var (
 					Type:   intstr.String,
 					StrVal: "label_replace( topk(1, (max(container_memory_working_set_bytes{container=\"" + name + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + namespace + "-(.+)-.+\")",
 				},
-				For: twoHourInterval,
+				For: TwoHourInterval,
 				Labels: map[string]string{
-					"severity": severityCritical,
-					"syn_team": synTeam,
+					"severity": SeverityCritical,
+					"syn_team": SynTeam,
 				},
 			}
 		},

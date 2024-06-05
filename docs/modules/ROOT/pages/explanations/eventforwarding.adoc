@@ -10,13 +10,13 @@ The annotation contains the kind, namespace and name of a claim that should rece
 
 == Annotation
 
-The annotation is called `appcat.vshn.io/forward-events-to` and has the following format: `<claim_kind>/<claim_namespace>/<claim_name>`.
+The annotation is called `appcat.vshn.io/forward-events-to` and has the following format: `<api_version>/<claim_kind>/<claim_namespace>/<claim_name>`.
 
 == Example
 
 ```yaml
 annotations:
-  appcat.vshn.io/forward-events-to: VSHNRedis/my-project/my-redis
+  appcat.vshn.io/forward-events-to: vshn.appcat.vshn.io/v1/VSHNRedis/my-project/my-redis
 ```
 
 will forward all events that are owned by that object to the `VSHNRedis` claim `my-redis` in the namespace `my-project`.

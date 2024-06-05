@@ -1081,7 +1081,7 @@ func (s *ServiceRuntime) ForwardEvents() error {
 	for _, res := range s.desiredResources {
 		r := res.Resource
 
-		// For kube objects set the annotation 'EventForwardAnnotation' in managed resource and not in kube object itself
+		// For kube objects set the annotation 'EventForwardAnnotation' for themselves and for managed resource
 		if isKubeObject(r) {
 			p := "spec.forProvider.manifest.metadata.annotations"
 			v, _ := r.GetValue(p)
@@ -1094,17 +1094,13 @@ func (s *ServiceRuntime) ForwardEvents() error {
 			if err != nil {
 				return fmt.Errorf("cannot set event forward annotations for managed object %s: %w", r.GetName(), err)
 			}
-
-			// For non kube objects set directly into the managed resource
-		} else {
-			annotations := r.GetAnnotations()
-			if annotations == nil {
-				annotations = map[string]string{}
-			}
-			annotations[EventForwardAnnotation] = eventForwardValue
-			r.SetAnnotations(annotations)
 		}
-
+		annotations := r.GetAnnotations()
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		annotations[EventForwardAnnotation] = eventForwardValue
+		r.SetAnnotations(annotations)
 	}
 	return nil
 }

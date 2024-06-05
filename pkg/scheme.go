@@ -7,19 +7,20 @@ import (
 
 	managedupgradev1beta1 "github.com/appuio/openshift-upgrade-controller/api/v1beta1"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	miniov1 "github.com/vshn/appcat/v4/apis/minio/v1"
 	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
 	minioproviderv1 "github.com/vshn/provider-minio/apis/provider/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 

@@ -6,9 +6,9 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
-	miniov1 "github.com/vshn/appcat/v4/apis/minio/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

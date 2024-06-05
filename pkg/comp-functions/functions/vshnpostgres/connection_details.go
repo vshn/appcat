@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	// "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
-	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"

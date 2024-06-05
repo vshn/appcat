@@ -237,6 +237,7 @@ type VSHNPostgreSQLStatus struct {
 	NetworkPolicyConditions      []v1.Condition `json:"networkPolicyConditions,omitempty"`
 	LocalCAConditions            []v1.Condition `json:"localCAConditions,omitempty"`
 	CertificateConditions        []v1.Condition `json:"certificateConditions,omitempty"`
+
 	// IsEOL indicates if this instance is using an EOL version of PostgreSQL.
 	IsEOL bool `json:"isEOL,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

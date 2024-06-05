@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"dario.cat/mergo"
-	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha1"
+	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"

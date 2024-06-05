@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	miniov1 "github.com/vshn/appcat/v4/apis/minio/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
 )
 
 func TestProvisionMiniobucket(t *testing.T) {

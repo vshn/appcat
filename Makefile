@@ -73,7 +73,7 @@ generate: $(protoc_bin) get-crds generate-stackgres-crds ## Generate code with c
 	# Because yaml is such a fun and easy specification, we need to hack some things here.
 	# Depending on the yaml parser implementation the equal sign (=) has special meaning, or not...
 	# So we make it explicitly a string.
-	find apis/generated/ -exec $(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' {} \;
+	find apis/generated/ -type f -exec $(sed) -i ':a;N;$$!ba;s/- =\n/- "="\n/g' {} \;
 	rm -rf crds && cp -r apis/generated crds
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-sli-exporter paths="{./pkg/sliexporter/...}" output:artifacts:config=config/sliexporter/rbac
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-controller paths="{./pkg/controller/...}" output:rbac:stdout > config/controller/cluster-role.yaml
@@ -191,12 +191,14 @@ clean:
 	rm -rf bin/ appcat .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated default.sock
 
 get-crds:
-	./hack/get_crds.sh https://github.com/vshn/provider-minio provider-minio apis/minio/v1 apis/minio
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-helm provider-helm apis/release apis/helm
+	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-kubernetes provider-kubernetes apis/object/v1alpha2 apis/kubernetes
+	
 	# provider-sql needs manual fixes... Running this every time would break them.
 	# The crossplane code generator only works if the code is valid, but the code is not valid until the code generator has run...
 	#./hack/get_crds.sh https://github.com/crossplane-contrib/provider-sql provider-sql apis/ apis/sql
 	#rm apis/sql/sql.go
+
 
 .PHONY: api-bootstrap
 api-bootstrap:

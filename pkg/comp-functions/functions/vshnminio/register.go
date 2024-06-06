@@ -2,6 +2,7 @@ package vshnminio
 
 import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/nonsla"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
@@ -29,6 +30,14 @@ func init() {
 			{
 				Name:    "securitycontext",
 				Execute: SetSecurityContext,
+			},
+			{
+				Name:    "mailgun-alerting",
+				Execute: common.MailgunAlerting(&vshnv1.VSHNMinio{}),
+			},
+			{
+				Name:    "user-alerting",
+				Execute: common.AddUserAlerting(&vshnv1.VSHNMinio{}),
 			},
 		},
 	})

@@ -178,7 +178,7 @@ func addProviderConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(config, comp.GetName()+"-providerconfig")
+	err = svc.SetDesiredComposedResource(config)
 	if err != nil {
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply the provider config for provider sql: %s", err)))
 		svc.Log.Error(err, "cannot apply the provider config for provider sql")

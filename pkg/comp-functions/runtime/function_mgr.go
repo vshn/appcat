@@ -95,7 +95,7 @@ type KubeObjectOption func(obj *xkube.Object)
 
 // ComposedResourceOption defines the type of functional parameters for Crossplane
 // managed resources
-type ComposedResourceOption func(obj xpresource.Managed)
+type ComposedResourceOption func(obj client.Object)
 
 // RegisterService will register a service to the map of all services.
 func RegisterService(name string, function Service) {
@@ -322,7 +322,7 @@ func (s *ServiceRuntime) GetResponse() (*fnv1beta1.RunFunctionResponse, error) {
 
 // SetDesiredComposedResource adds the given object to the desired resources, it needs to be a proper
 // crossplane Managed Resource.
-func (s *ServiceRuntime) SetDesiredComposedResource(obj xpresource.Managed, opts ...ComposedResourceOption) error {
+func (s *ServiceRuntime) SetDesiredComposedResource(obj client.Object, opts ...ComposedResourceOption) error {
 	return s.SetDesiredComposedResourceWithName(obj, obj.GetName(), opts...)
 }
 
@@ -330,7 +330,7 @@ func (s *ServiceRuntime) SetDesiredComposedResource(obj xpresource.Managed, opts
 // crossplane Managed Resource. Additionally provide a name, if it's not derived from the object name.
 // Usually needed for objects that where migrated from P+T compositions with a static name.
 // Additionally it injects the claim-name, claim-namespace and the composite name as a label.
-func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Managed, name string, opts ...ComposedResourceOption) error {
+func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj client.Object, name string, opts ...ComposedResourceOption) error {
 
 	s.addOwnerReferenceAnnotation(obj, true)
 
@@ -351,7 +351,7 @@ func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Manag
 // as resName exists.
 // resName is the name of the resource in the desired map.
 func ComposedOptionProtectedBy(resName string) ComposedResourceOption {
-	return func(obj xpresource.Managed) {
+	return func(obj client.Object) {
 		addProtectionAnnotation(resName, ProtectedByAnnotation, obj)
 	}
 }
@@ -359,7 +359,7 @@ func ComposedOptionProtectedBy(resName string) ComposedResourceOption {
 // ComposedOptionProtects is the inverse of ProtectedBy. The object with this annotation
 // protects the object with resName.
 func ComposedOptionProtects(resName string) ComposedResourceOption {
-	return func(obj xpresource.Managed) {
+	return func(obj client.Object) {
 		addProtectionAnnotation(resName, ProtectsAnnotation, obj)
 	}
 }

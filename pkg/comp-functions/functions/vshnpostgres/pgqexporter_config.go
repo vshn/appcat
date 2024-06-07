@@ -45,10 +45,7 @@ func PgExporterConfig(ctx context.Context, svc *runtime.ServiceRuntime) *v1beta1
 
 	xRef := xkube.Reference{
 		DependsOn: &xkube.DependsOn{
-			APIVersion: "stackgres.io/v1",
-			Kind:       "SGCluster",
-			Name:       comp.GetName(),
-			Namespace:  comp.GetInstanceNamespace(),
+			Name: comp.GetName() + "-cluster",
 		},
 	}
 

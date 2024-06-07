@@ -196,4 +196,3 @@ go run github.com/crossplane/crossplane/cmd/crank beta render xr.yaml compositio
 Crank will return a list of all the objects this specific request would have produced, including the result messages.
 
 Please have a look at the `hack/` folder for an example.
-

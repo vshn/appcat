@@ -221,3 +221,7 @@ func (v *VSHNMinio) GetAllowedNamespaces() []string {
 	}
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }
+
+func (v *VSHNMinio) GetVSHNMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}

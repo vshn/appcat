@@ -74,6 +74,9 @@ type VSHNMinioParameters struct {
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
 
+	// Monitoring contains settings to control monitoring.
+	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
+
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
 }
@@ -217,4 +220,8 @@ func (v *VSHNMinio) GetAllowedNamespaces() []string {
 		v.Spec.Parameters.Security.AllowedNamespaces = []string{}
 	}
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
+}
+
+func (v *VSHNMinio) GetVSHNMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
 }

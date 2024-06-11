@@ -653,6 +653,7 @@ func (in *VSHNMinioParameters) DeepCopyInto(out *VSHNMinioParameters) {
 	out.Restore = in.Restore
 	out.Service = in.Service
 	out.Maintenance = in.Maintenance
+	in.Monitoring.DeepCopyInto(&out.Monitoring)
 	in.Security.DeepCopyInto(&out.Security)
 }
 

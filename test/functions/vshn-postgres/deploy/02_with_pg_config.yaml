@@ -1,0 +1,305 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters:
+          service:
+            majorVersion: "15"
+            pgSettings:
+              timezone: "Europe/Zurich"
+          instances: 1
+          backup:
+            schedule: 44 20 * * *
+          maintenance:
+            schedule: 12 34 * * *
+        writeConnectionSecretToRef: {}
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+
+input:
+  apiVersion: v1
+  data:
+    defaultPlan: standard-1
+    controlNamespace: appcat-control
+    plans:
+      '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true,
+      "memory": "1Gi"}}}'
+    imageTag: master
+    initContainers: '{"clusterReconciliationCycle": {"limits": {"cpu": "300m",
+      "memory": "200Mi"}, "requests": {"cpu": "100m", "memory": "100Mi"}}, "pgbouncerAuthFile":
+      {"limits": {"cpu": "300m", "memory": "500Mi"}, "requests": {"cpu": "100m",
+      "memory": "100Mi"}}, "relocateBinaries": {"limits": {"cpu": "300m", "memory":
+      "500Mi"}, "requests": {"cpu": "100m", "memory": "100Mi"}}, "setDbopsRunning":
+      {"limits": {"cpu": "250m", "memory": "256Mi"}, "requests": {"cpu": "250m",
+      "memory": "256Mi"}}, "setupArbitraryUser": {"limits": {"cpu": "300m",
+      "memory": "500Mi"}, "requests": {"cpu": "100m", "memory": "500Mi"}}, "setupScripts":
+      {"limits": {"cpu": "300m", "memory": "500Mi"}, "requests": {"cpu": "100m",
+      "memory": "500Mi"}}}'
+    keepMetrics: '["pg_locks_count", "pg_postmaster_start_time_seconds", "pg_replication_lag",
+      "pg_settings_effective_cache_size_bytes", "pg_settings_maintenance_work_mem_bytes",
+      "pg_settings_max_connections", "pg_settings_max_parallel_workers", "pg_settings_max_wal_size_bytes",
+      "pg_settings_max_worker_processes", "pg_settings_shared_buffers_bytes",
+      "pg_settings_work_mem_bytes", "pg_stat_activity_count", "pg_stat_bgwriter_buffers_alloc_total",
+      "pg_stat_bgwriter_buffers_backend_fsync_total", "pg_stat_bgwriter_buffers_backend_total",
+      "pg_stat_bgwriter_buffers_checkpoint_total", "pg_stat_bgwriter_buffers_clean_total",
+      "pg_stat_database_blks_hit", "pg_stat_database_blks_read", "pg_stat_database_conflicts",
+      "pg_stat_database_deadlocks", "pg_stat_database_temp_bytes", "pg_stat_database_xact_commit",
+      "pg_stat_database_xact_rollback", "pg_static", "pg_up", "pgbouncer_show_stats_total_xact_count",
+      "pgbouncer_show_stats_totals_bytes_received", "pgbouncer_show_stats_totals_bytes_sent"]'
+    serviceName: postgresql
+    sgNamespace: stackgres
+    sideCars: '{"clusterController": {"limits": {"cpu": "32m", "memory": "256Mi"},
+      "requests": {"cpu": "32m", "memory": "128Mi"}}, "createBackup": {"limits":
+      {"cpu": "400m", "memory": "500Mi"}, "requests": {"cpu": "100m", "memory":
+      "64Mi"}}, "envoy": {"limits": {"cpu": "64m", "memory": "64Mi"}, "requests":
+      {"cpu": "32m", "memory": "64Mi"}}, "pgbouncer": {"limits": {"cpu": "32m",
+      "memory": "20Mi"}, "requests": {"cpu": "16m", "memory": "4Mi"}}, "postgresUtil":
+      {"limits": {"cpu": "20m", "memory": "20Mi"}, "requests": {"cpu": "10m",
+      "memory": "4Mi"}}, "prometheusPostgresExporter": {"limits": {"cpu": "150m",
+      "memory": "256Mi"}, "requests": {"cpu": "10m", "memory": "16Mi"}}, "runDbops":
+      {"limits": {"cpu": "250m", "memory": "256Mi"}, "requests": {"cpu": "100m",
+      "memory": "64Mi"}}, "setDbopsResult": {"limits": {"cpu": "250m", "memory":
+      "256Mi"}, "requests": {"cpu": "100m", "memory": "64Mi"}}}'
+    providerEnabled: "true"
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        annotations: null
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: unit-test
+        compositionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          service:
+            majorVersion: "15"
+            pgSettings:
+              timezone: "Europe/Zurich"
+          instances: 1
+          backup:
+            schedule: 44 20 * * *
+            retention: 6
+          maintenance:
+            dayOfWeek: wednesday
+            timeOfDay: '12:34:56'
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+  resources:
+    namespace-conditions:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: vshn-postgresql-pgsql-gc9x4
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: vshn-postgresql-pgsql-gc9x4
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: vshn-postgresql-pgsql-gc9x4
+    pgsql-gc9x4-claim-ns-observer:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-claim-ns-observer
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  'appuio.io/organization': 'vshn'
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  'appuio.io/organization': 'vshn'
+    cluster:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-cluster
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: stackgres.io/v1
+              kind: SGCluster
+              metadata:
+                name: psql-gc9x4
+                namespace: vshn-postgresql-psql-gc9x4
+              spec:
+                configurations:
+                  backups:
+                  - cronSchedule: 44 20 * * *
+                    retention: 6
+                    sgObjectStorage: sgbackup-psql-gc9x4
+                  sgPostgresConfig: psql-gc9x4
+                instances: 1
+                nonProductionOptions:
+                  enableSetPatroniCpuRequests: true
+                  enableSetPatroniMemoryRequests: true
+                pods:
+                  persistentVolume:
+                    size: 20Gi
+                  scheduling:
+                    nodeSelector: {}
+                postgres:
+                  ssl:
+                    certificateSecretKeySelector:
+                      key: tls.crt
+                      name: tls-certificate
+                    enabled: true
+                    privateKeySecretKeySelector:
+                      key: tls.key
+                      name: tls-certificate
+                  version: "15"
+                sgInstanceProfile: psql-gc9x4
+          managementPolicy: Default
+          providerConfigRef:
+            name: kubernetes
+        status:
+          atProvider:
+            manifest:
+              apiVersion: stackgres.io/v1
+              kind: SGCluster
+              metadata:
+                annotations: null
+                creationTimestamp: "2023-04-27T09:21:42Z"
+                generation: 8
+                name: psql-gc9x4
+                namespace: vshn-postgresql-psql-gc9x4
+                resourceVersion: "583272583"
+                uid: 44ead047-98de-4e73-9cc0-d99454090a36
+              spec:
+                configurations:
+                  backups:
+                  - cronSchedule: 44 20 * * *
+                    path: sgbackups.stackgres.io/vshn-postgresql-psql-gc9x4/buzz-qvgrd/15
+                    retention: 6
+                    sgObjectStorage: sgbackup-psql-gc9x4
+                  sgPoolingConfig: generated-from-default-1682587302016
+                  sgPostgresConfig: psql-gc9x4
+                instances: 1
+                managedSql:
+                  scripts:
+                  - id: 0
+                    sgScript: psql-gc9x4-default
+                nonProductionOptions:
+                  enableSetPatroniCpuRequests: true
+                  enableSetPatroniMemoryRequests: true
+                pods:
+                  persistentVolume:
+                    size: 20Gi
+                  scheduling:
+                    nodeSelector: {}
+                postgres:
+                  flavor: vanilla
+                  ssl:
+                    certificateSecretKeySelector:
+                      key: tls.crt
+                      name: tls-certificate
+                    enabled: true
+                    privateKeySecretKeySelector:
+                      key: tls.key
+                      name: tls-certificate
+                  version: "15.1"
+                postgresServices:
+                  primary:
+                    enabled: true
+                    type: ClusterIP
+                  replicas:
+                    enabled: true
+                    type: ClusterIP
+                replication:
+                  mode: async
+                  role: ha-read
+                sgInstanceProfile: psql-gc9x4
+                toInstallPostgresExtensions: []
+              status:
+                arch: x86_64
+                conditions:
+                - lastTransitionTime: "2023-04-27T09:22:22.200237Z"
+                  reason: FalseFailed
+                  status: "False"
+                  type: Failed
+                - lastTransitionTime: "2023-04-27T09:22:22.226244Z"
+                  reason: FalsePendingRestart
+                  status: "False"
+                  type: PendingRestart
+                - lastTransitionTime: "2023-04-27T09:22:22.226273Z"
+                  reason: FalsePendingUpgrade
+                  status: "False"
+                  type: PendingUpgrade
+                managedSql:
+                  scripts:
+                  - completedAt: "2023-04-27T09:22:52.795696Z"
+                    id: 0
+                    scripts:
+                    - id: 0
+                      version: 0
+                    startedAt: "2023-04-27T09:22:52.631407Z"
+                    updatedAt: "2023-04-27T09:22:52.631418Z"
+                os: linux
+                podStatuses:
+                - installedPostgresExtensions: []
+                  name: psql-gc9x4-0
+                  pendingRestart: false
+                  primary: true
+                  replicationGroup: 0
+

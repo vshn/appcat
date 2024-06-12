@@ -62,7 +62,7 @@ func AddExtensions(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.R
 	cluster := &stackgresv1.SGCluster{}
 	err = svc.GetDesiredKubeObject(cluster, "cluster")
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("not able to get cluster: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("not able to get cluster: %w", err).Error())
 	}
 
 	finalExtensions := []stackgresv1.SGClusterSpecPostgresExtensionsItem{}

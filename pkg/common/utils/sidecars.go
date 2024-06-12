@@ -69,6 +69,17 @@ func FetchSidecarsFromConfig(ctx context.Context, svc *runtime.ServiceRuntime) (
 	return s, nil
 }
 
+func FetchInitContainersFromConfig(ctx context.Context, svc *runtime.ServiceRuntime) (*Sidecars, error) {
+	s := &Sidecars{}
+
+	err := json.Unmarshal([]byte(svc.Config.Data["initContainers"]), s)
+	if err != nil {
+		return &Sidecars{}, err
+	}
+
+	return s, nil
+}
+
 // FetchSidecarFromCluster will fetch the specified sidecar from the current PLANS_NAMESPACE namespace and parse it into Resources.
 // By default PLANS_NAMESPACE should be the same namespace where the controller pod is running.
 func FetchSidecarFromCluster(ctx context.Context, c client.Client, name, sidecar string) (Resources, error) {

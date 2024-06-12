@@ -50,10 +50,6 @@ func init() {
 				Execute: AddExtensions,
 			},
 			{
-				Name:    "replication",
-				Execute: ConfigureReplication,
-			},
-			{
 				Name:    "load-balancer",
 				Execute: AddPrimaryService,
 			},

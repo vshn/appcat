@@ -13,6 +13,7 @@ import (
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	stackgresv1beta1 "github.com/vshn/appcat/v4/apis/stackgres/v1beta1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
@@ -38,6 +39,7 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = xkube.SchemeBuilder.AddToScheme(s)
 	_ = vshnv1.SchemeBuilder.SchemeBuilder.AddToScheme(s)
 	_ = stackgresv1.SchemeBuilder.AddToScheme(s)
+	_ = stackgresv1beta1.SchemeBuilder.AddToScheme(s)
 	_ = rbacv1.SchemeBuilder.AddToScheme(s)
 	_ = appcatv1.SchemeBuilder.AddToScheme(s)
 	_ = batchv1.SchemeBuilder.AddToScheme(s)

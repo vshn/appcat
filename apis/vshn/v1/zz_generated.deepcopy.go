@@ -845,7 +845,11 @@ func (in *VSHNPostgreSQLParameters) DeepCopyInto(out *VSHNPostgreSQLParameters) 
 	in.Scheduling.DeepCopyInto(&out.Scheduling)
 	in.Network.DeepCopyInto(&out.Network)
 	in.Backup.DeepCopyInto(&out.Backup)
-	out.Restore = in.Restore
+	if in.Restore != nil {
+		in, out := &in.Restore, &out.Restore
+		*out = new(VSHNPostgreSQLRestore)
+		**out = **in
+	}
 	in.Monitoring.DeepCopyInto(&out.Monitoring)
 	out.Encryption = in.Encryption
 	out.UpdateStrategy = in.UpdateStrategy

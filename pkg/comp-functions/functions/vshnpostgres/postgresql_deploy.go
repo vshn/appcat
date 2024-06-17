@@ -81,7 +81,7 @@ func DeployPostgreSQL(ctx context.Context, svc *runtime.ServiceRuntime) *xfnprot
 		return runtime.NewWarningResult(fmt.Errorf("cannot create podMonitor object: %w", err).Error())
 	}
 
-	if comp.Spec.Parameters.Restore != nil {
+	if comp.Spec.Parameters.Restore != nil && comp.Spec.Parameters.Restore.BackupName != "" && comp.Spec.Parameters.Restore.ClaimName != "" {
 		l.Info("Create copy job")
 		err = createCopyJob(comp, svc)
 		if err != nil {

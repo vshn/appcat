@@ -17,7 +17,7 @@ type SGPostgresConfig struct {
 	Spec SGPostgresConfigSpec `json:"spec"`
 
 	// Status reflects the observed state of a SGPostgresConfig.
-	Status SGPostgresConfigStatus `json:"status,omitempty"`
+	Status *SGPostgresConfigStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -45,5 +45,5 @@ type SGPostgresConfigSpec struct {
 // SGPostgresConfigStatus defines model for SGPostgresConfigStatus.
 type SGPostgresConfigStatus struct {
 	// The `postgresql.conf` default parameters which are used if not set.
-	PostgresqlConf map[string]string `json:"postgresql.conf"`
+	DefaultParameters map[string]string `json:"defaultParameters"`
 }

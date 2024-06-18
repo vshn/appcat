@@ -13,7 +13,7 @@ func TestAddInitialNamespaceQuotas(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "common/quotas/01_default.yaml")
 	ctx := context.TODO()
 
-	res := AddInitialNamespaceQuotas("namespace")(ctx, svc)
+	res := addInitialNamespaceQuotas(ctx, svc, "namespace")
 	assert.Nil(t, res)
 
 	ns := &corev1.Namespace{}

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/vshn/appcat/v4/apis/metadata"
+	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -58,6 +60,12 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 	err = setInstanceNamespaceStatus(svc, comp)
 	if err != nil {
 		return fmt.Errorf("cannot add instance namespace to composite status: %w", err)
+	}
+
+	l.Info("Add default quotas to namespace")
+	err = addInitialNamespaceQuotas(ctx, svc, namespaceResName)
+	if err != nil {
+		return fmt.Errorf("canot add default quotas to namespace: %w", err)
 	}
 
 	return nil
@@ -241,4 +249,56 @@ func setInstanceNamespaceStatus(svc *runtime.ServiceRuntime, comp Composite) err
 	comp.SetInstanceNamespaceStatus()
 
 	return svc.SetDesiredCompositeStatus(comp)
+}
+
+// addInitialNamespaceQuotas will add the default quotas to a namespace if they are not yet set.
+// This function takes the name of the namespace resource as it appears in the functionIO, it then returns the actual
+// function that implements the composition function step.
+func addInitialNamespaceQuotas(ctx context.Context, svc *runtime.ServiceRuntime, namespaceKon string) error {
+	if !svc.GetBoolFromCompositionConfig("quotasEnabled") {
+		svc.Log.Info("Quotas disabled, skipping")
+		svc.AddResult(runtime.NewNormalResult("Quotas disabled, skipping"))
+		return nil
+	}
+
+	ns := &corev1.Namespace{}
+
+	err := svc.GetObservedKubeObject(ns, namespaceKon)
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			err = svc.GetDesiredKubeObject(ns, namespaceKon)
+			if err != nil {
+				return fmt.Errorf("cannot get namespace: %w", err)
+			}
+			// Make sure we don't touch this, if there's no name in the namespace.
+			if ns.GetName() == "" {
+				return fmt.Errorf("namespace doesn't yet have a name")
+			}
+		} else {
+			return fmt.Errorf("cannot get namespace: %w", err)
+		}
+	}
+
+	objectMeta := &metadata.MetadataOnlyObject{}
+
+	err = svc.GetObservedComposite(objectMeta)
+	if err != nil {
+		return fmt.Errorf("cannot get composite meta: %w", err)
+	}
+
+	s, err := utils.FetchSidecarsFromConfig(ctx, svc)
+	if err != nil {
+		s = &utils.Sidecars{}
+	}
+
+	// We only act if either the quotas were missing or the organization label is not on the
+	// namespace. Otherwise we ignore updates. This is to prevent any unwanted overwriting.
+	if quotas.AddInitalNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind) {
+		err = svc.SetDesiredKubeObjectWithName(ns, ns.GetName(), namespaceKon)
+		if err != nil {
+			return fmt.Errorf("cannot save namespace quotas: %w", err)
+		}
+	}
+
+	return nil
 }

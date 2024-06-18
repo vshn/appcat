@@ -63,7 +63,7 @@ func TestServiceRuntime_escapeK8sNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := escapeDNS1123(tt.args.name, tt.args.allowColon)
+			got := EscapeDNS1123(tt.args.name, tt.args.allowColon)
 			assert.Equal(t, tt.want, got)
 		})
 	}

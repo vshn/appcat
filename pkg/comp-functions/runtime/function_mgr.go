@@ -335,7 +335,7 @@ func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Manag
 	s.addOwnerReferenceAnnotation(obj, true)
 
 	escapeK8sNames(obj)
-	name = escapeDNS1123(name, false)
+	name = EscapeDNS1123(name, false)
 
 	for _, opt := range opts {
 		opt(obj)
@@ -412,7 +412,7 @@ func KubeOptionAddRefs(refs ...xkube.Reference) KubeObjectOption {
 // The associated secret will have the UID of the parent object as the name.
 func KubeOptionAddConnectionDetails(destNamespace string, cd ...xkube.ConnectionDetail) KubeObjectOption {
 	return func(obj *xkube.Object) {
-		objName := escapeDNS1123(obj.GetName()+"-cd", false)
+		objName := EscapeDNS1123(obj.GetName()+"-cd", false)
 
 		obj.Spec.ConnectionDetails = cd
 		obj.Spec.WriteConnectionSecretToReference = &xpv1.SecretReference{
@@ -621,7 +621,7 @@ func (s *ServiceRuntime) GetConnectionDetails() map[string][]byte {
 // composed resource.
 // Returns an empty map if not found.
 func (s *ServiceRuntime) GetObservedComposedResourceConnectionDetails(objectName string) (map[string][]byte, error) {
-	objectName = escapeDNS1123(objectName, false)
+	objectName = EscapeDNS1123(objectName, false)
 	object, ok := s.req.Observed.Resources[objectName]
 	if !ok {
 		return map[string][]byte{}, ErrNotFound
@@ -632,7 +632,7 @@ func (s *ServiceRuntime) GetObservedComposedResourceConnectionDetails(objectName
 
 // GetObservedComposedResource returns and unmarshalls the observed object into the given managed resource.
 func (s *ServiceRuntime) GetObservedComposedResource(obj xpresource.Managed, name string) error {
-	name = escapeDNS1123(name, false)
+	name = EscapeDNS1123(name, false)
 	resources, err := request.GetObservedComposedResources(s.req)
 	if err != nil {
 		return err
@@ -655,7 +655,7 @@ func (s *ServiceRuntime) GetObservedComposedResource(obj xpresource.Managed, nam
 // GetDesiredComposedResourceByName will return a desired composed resource from the request.
 // Use this, if you want anything from a previous function in the pipeline.
 func (s *ServiceRuntime) GetDesiredComposedResourceByName(obj xpresource.Managed, name string) error {
-	name = escapeDNS1123(name, false)
+	name = EscapeDNS1123(name, false)
 	if res, ok := s.desiredResources[resource.Name(name)]; ok {
 		jsonString, err := res.Resource.Unstructured.MarshalJSON()
 		if err != nil {
@@ -718,7 +718,7 @@ func (s *ServiceRuntime) AddObservedConnectionDetails(name string) error {
 
 // GetObservedKubeObject returns the object as is on the cluster.
 func (s *ServiceRuntime) GetObservedKubeObject(obj client.Object, name string) error {
-	name = escapeDNS1123(name, false)
+	name = EscapeDNS1123(name, false)
 	resources, err := request.GetObservedComposedResources(s.req)
 	if err != nil {
 		return err
@@ -750,7 +750,7 @@ func (s *ServiceRuntime) GetObservedKubeObject(obj client.Object, name string) e
 
 // GetDesiredKubeObject returns the object as is on the cluster.
 func (s *ServiceRuntime) GetDesiredKubeObject(obj client.Object, name string) error {
-	name = escapeDNS1123(name, false)
+	name = EscapeDNS1123(name, false)
 	res, ok := s.desiredResources[resource.Name(name)]
 	if !ok {
 		return ErrNotFound

@@ -16,32 +16,32 @@ import (
 func escapeK8sNames(obj client.Object) {
 	kind, _, err := composed.Scheme.ObjectKinds(obj)
 	if err != nil {
-		obj.SetName(escapeDNS1123(obj.GetName(), false))
+		obj.SetName(EscapeDNS1123(obj.GetName(), false))
 	}
 
 	switch kind[0].Kind {
 	case "Pod":
-		obj.SetName(escapeDNS1123Label(obj.GetName()))
+		obj.SetName(EscapeDNS1123Label(obj.GetName()))
 	case "Namespace":
-		obj.SetName(escapeDNS1123Label(obj.GetName()))
+		obj.SetName(EscapeDNS1123Label(obj.GetName()))
 	case "Service":
-		obj.SetName(escapeDNS1123Label(obj.GetName()))
+		obj.SetName(EscapeDNS1123Label(obj.GetName()))
 	case "Role":
-		obj.SetName(escapeDNS1123(obj.GetName(), true))
+		obj.SetName(EscapeDNS1123(obj.GetName(), true))
 	case "ClusterRole":
-		obj.SetName(escapeDNS1123(obj.GetName(), true))
+		obj.SetName(EscapeDNS1123(obj.GetName(), true))
 	case "RoleBinding":
-		obj.SetName(escapeDNS1123(obj.GetName(), true))
+		obj.SetName(EscapeDNS1123(obj.GetName(), true))
 	case "ClusterRoleBinding":
-		obj.SetName(escapeDNS1123(obj.GetName(), true))
+		obj.SetName(EscapeDNS1123(obj.GetName(), true))
 	default:
-		obj.SetName(escapeDNS1123(obj.GetName(), false))
+		obj.SetName(EscapeDNS1123(obj.GetName(), false))
 	}
 }
 
-// escapeDNS1123Label does the same as escapeDNS1123 but also limit to 63 chars
-func escapeDNS1123Label(name string) string {
-	name = escapeDNS1123(name, false)
+// EscapeDNS1123Label does the same as escapeDNS1123 but also limit to 63 chars
+func EscapeDNS1123Label(name string) string {
+	name = EscapeDNS1123(name, false)
 	if len(name) > 63 {
 		suffix := hashString(name)
 		name = name[:58] + suffix
@@ -49,14 +49,14 @@ func escapeDNS1123Label(name string) string {
 	return name
 }
 
-// escapeDNS1123 will always return a string that conforms to K8s' DNS subdomain naming scheme
+// EscapeDNS1123 will always return a string that conforms to K8s' DNS subdomain naming scheme
 // contain no more than 253 characters
 // contain only lowercase alphanumeric characters, '-' or '.'
 // start with an alphanumeric character
 // end with an alphanumeric character
 // We also remove any '.' here, so that it can be used as a base function for escaping
 // label names as well.
-func escapeDNS1123(name string, allowColons bool) string {
+func EscapeDNS1123(name string, allowColons bool) string {
 	escapeNameStart := regexp.MustCompile("^[^a-zA-Z0-9]+")
 	escapeNameEnd := regexp.MustCompile("[^a-zA-Z0-9]+$")
 	escapeExpression := regexp.MustCompile("[^a-zA-Z0-9]+")

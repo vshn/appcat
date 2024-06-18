@@ -24,7 +24,7 @@ func AddCredentialsSecret(comp InfoGetter, svc *runtime.ServiceRuntime, fieldLis
 // With the difference that the resource name can be chosen.
 // This is helpful if multiple different random generated passwords are necessary.
 func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix string, fieldList []string) (string, error) {
-	secretObjectName := comp.GetName() + "-" + suffix
+	secretObjectName := runtime.EscapeDNS1123(comp.GetName()+"-"+suffix, false)
 	secret := &corev1.Secret{}
 	cd := []xkube.ConnectionDetail{}
 	err := svc.GetObservedKubeObject(secret, secretObjectName)

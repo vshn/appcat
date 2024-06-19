@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -19,11 +20,11 @@ func Test_addPostgreSQL(t *testing.T) {
 
 	comp := &vshnv1.VSHNKeycloak{}
 
-	assert.NoError(t, addPostgreSQL(svc, comp))
+	assert.NoError(t, common.AddPostgreSQL(svc, comp, comp.Spec.Parameters.Service.PostgreSQLParameters, nil))
 
 	pg := &vshnv1.XVSHNPostgreSQL{}
 
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 
 	// Assert default values
 	assert.True(t, *pg.Spec.Parameters.Backup.DeletionProtection)
@@ -37,8 +38,8 @@ func Test_addPostgreSQL(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, addPostgreSQL(svc, comp))
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
+	assert.NoError(t, common.AddPostgreSQL(svc, comp, comp.Spec.Parameters.Service.PostgreSQLParameters, nil))
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.False(t, *pg.Spec.Parameters.Backup.DeletionProtection)
 	assert.Equal(t, 1, pg.Spec.Parameters.Backup.Retention)
 }
@@ -95,8 +96,8 @@ func Test_addHARelease(t *testing.T) {
 
 	pg := &vshnv1.XVSHNPostgreSQL{}
 
-	assert.NoError(t, addPostgreSQL(svc, comp))
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
+	assert.NoError(t, common.AddPostgreSQL(svc, comp, comp.Spec.Parameters.Service.PostgreSQLParameters, nil))
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
 
 }

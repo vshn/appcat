@@ -5,64 +5,59 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Workaround to make nested defaulting work.
 // kubebuilder is unable to set a {} default
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 
 // +kubebuilder:object:root=true
 
-// VSHNKeycloak is the API for creating keycloak instances.
-type VSHNKeycloak struct {
+// VSHNNextcloud is the API for creating nextcloud instances.
+type VSHNNextcloud struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec defines the desired state of a VSHNKeycloak.
-	Spec VSHNKeycloakSpec `json:"spec"`
+	// Spec defines the desired state of a VSHNNextcloud.
+	Spec VSHNNextcloudSpec `json:"spec"`
 
-	// Status reflects the observed state of a VSHNKeycloak.
-	Status VSHNKeycloakStatus `json:"status,omitempty"`
+	// Status reflects the observed state of a VSHNNextcloud.
+	Status VSHNNextcloudStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
-type VSHNKeycloakList struct {
+type VSHNNextcloudList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []VSHNKeycloak `json:"items,omitempty"`
+	Items []VSHNNextcloud `json:"items,omitempty"`
 }
 
-// VSHNKeycloakSpec defines the desired state of a VSHNKeycloak.
-type VSHNKeycloakSpec struct {
-	// Parameters are the configurable fields of a VSHNKeycloak.
-	Parameters VSHNKeycloakParameters `json:"parameters,omitempty"`
+// VSHNNextcloudSpec defines the desired state of a VSHNNextcloud.
+type VSHNNextcloudSpec struct {
+	// Parameters are the configurable fields of a VSHNNextcloud.
+	Parameters VSHNNextcloudParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
 	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
-// VSHNKeycloakParameters are the configurable fields of a VSHNKeycloak.
-type VSHNKeycloakParameters struct {
-	// Service contains keycloak DBaaS specific properties
-	Service VSHNKeycloakServiceSpec `json:"service,omitempty"`
+// VSHNNextcloudParameters are the configurable fields of a VSHNNextcloud.
+type VSHNNextcloudParameters struct {
+	// Service contains nextcloud DBaaS specific properties
+	Service VSHNNextcloudServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
 	Size VSHNSizeSpec `json:"size,omitempty"`
 
 	// Scheduling contains settings to control the scheduling of an instance.
 	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`
-
-	// TLS contains settings to control tls traffic of a service.
-	TLS VSHNKeycloakTLSSpec `json:"tls,omitempty"`
 
 	// Backup contains settings to control how the instance should get backed up.
 	Backup K8upBackupSpec `json:"backup,omitempty"`
@@ -83,27 +78,26 @@ type VSHNKeycloakParameters struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=3
 
-	// Instances configures the number of Keycloak instances for the cluster.
-	// Each instance contains one Keycloak server.
+	// Instances configures the number of Nextcloud instances for the cluster.
+	// Each instance contains one Nextcloud server.
 	Instances int `json:"instances,omitempty"`
 }
 
-// VSHNKeycloakServiceSpec contains keycloak DBaaS specific properties
-type VSHNKeycloakServiceSpec struct {
+// VSHNNextcloudserviceSpec contains nextcloud DBaaS specific properties
+type VSHNNextcloudServiceSpec struct {
 	// FQDN contains the FQDN which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.
 	// This also enables strict hostname checking for this FQDN.
 	FQDN string `json:"fqdn,omitempty"`
 
-	// RelativePath on which Keycloak will listen.
+	// RelativePath on which Nextcloud will listen.
 	// +kubebuilder:default="/"
 	RelativePath string `json:"relativePath,omitempty"`
 
-	// +kubebuilder:validation:Enum="23";"24"
-	// +kubebuilder:default="23"
+	// +kubebuilder:default="29"
 
-	// Version contains supported version of keycloak.
-	// Multiple versions are supported. The latest version 23 is the default version.
+	// Version contains supported version of nextcloud.
+	// Multiple versions are supported. The latest version 29 is the default version.
 	Version string `json:"version,omitempty"`
 
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
@@ -112,29 +106,22 @@ type VSHNKeycloakServiceSpec struct {
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 
+	// // +kubebuilder:default=true"
+
+	//UseExternalPostgreSQL defines if the VSHNPostgreSQL database backend should be used. Defaults to true. If set to false,
+	// the build-in SQLite database is being used.
+	UseExternalPostgreSQL bool `json:"useExternalPostgreSQL,omitempty"`
+
 	// PostgreSQLParameters can be used to set any supported setting in the
 	// underlying PostgreSQL instance.
 	PostgreSQLParameters *VSHNPostgreSQLParameters `json:"postgreSQLParameters,omitempty"`
-
-	// CustomizationImage can be used to provide an image with custom themes and providers.
-	// The themes need to be be placed in the `/themes` directory of the custom image.
-	// the providers need to be placed in the `/providers` directory of the custom image.
-	CustomizationImage VSHNKeycloakCustomizationImage `json:"customizationImage,omitempty"`
 }
 
-type VSHNKeycloakCustomizationImage struct {
-	// Path to a valid image
-	Image string `json:"image,omitempty"`
+// VSHNNextcloudsettings contains Nextcloud specific settings.
+type VSHNNextcloudsettings struct{}
 
-	// Reference to an imagePullSecret
-	ImagePullSecretRef corev1.SecretReference `json:"imagePullSecretRef,omitempty"`
-}
-
-// VSHNKeycloakSettings contains Keycloak specific settings.
-type VSHNKeycloakSettings struct{}
-
-// VSHNKeycloakSizeSpec contains settings to control the sizing of a service.
-type VSHNKeycloakSizeSpec struct {
+// VSHNNextcloudsizeSpec contains settings to control the sizing of a service.
+type VSHNNextcloudsizeSpec struct {
 
 	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
 	CPURequests string `json:"cpuRequests,omitempty"`
@@ -155,20 +142,8 @@ type VSHNKeycloakSizeSpec struct {
 	Plan string `json:"plan,omitempty"`
 }
 
-// VSHNKeycloakTLSSpec contains settings to control tls traffic of a service.
-type VSHNKeycloakTLSSpec struct {
-	// +kubebuilder:default=true
-
-	// TLSEnabled enables TLS traffic for the service
-	TLSEnabled bool `json:"enabled,omitempty"`
-
-	// +kubebuilder:default=true
-	// TLSAuthClients enables client authentication requirement
-	TLSAuthClients bool `json:"authClients,omitempty"`
-}
-
-// VSHNKeycloakStatus reflects the observed state of a VSHNKeycloak.
-type VSHNKeycloakStatus struct {
+// VSHNNextcloudStatus reflects the observed state of a VSHNNextcloud.
+type VSHNNextcloudStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by
@@ -176,60 +151,60 @@ type VSHNKeycloakStatus struct {
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 }
 
-func (v *VSHNKeycloak) GetClaimNamespace() string {
+func (v *VSHNNextcloud) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
-func (v *VSHNKeycloak) GetInstanceNamespace() string {
-	return fmt.Sprintf("vshn-keycloak-%s", v.GetName())
+func (v *VSHNNextcloud) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-nextcloud-%s", v.GetName())
 }
 
-func (v *XVSHNKeycloak) GetInstanceNamespace() string {
-	return fmt.Sprintf("vshn-keycloak-%s", v.GetName())
+func (v *XVSHNNextcloud) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-nextcloud-%s", v.GetName())
 }
 
-func (v *VSHNKeycloak) SetInstanceNamespaceStatus() {
+func (v *VSHNNextcloud) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
-// XVSHNKeycloak represents the internal composite of this claim
-type XVSHNKeycloak struct {
+// XVSHNNextcloud represents the internal composite of this claim
+type XVSHNNextcloud struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   XVSHNKeycloakSpec   `json:"spec"`
-	Status XVSHNKeycloakStatus `json:"status,omitempty"`
+	Spec   XVSHNNextcloudSpec   `json:"spec"`
+	Status XVSHNNextcloudStatus `json:"status,omitempty"`
 }
 
-// XVSHNKeycloakSpec defines the desired state of a VSHNKeycloak.
-type XVSHNKeycloakSpec struct {
-	// Parameters are the configurable fields of a VSHNKeycloak.
-	Parameters VSHNKeycloakParameters `json:"parameters,omitempty"`
+// XVSHNNextcloudSpec defines the desired state of a VSHNNextcloud.
+type XVSHNNextcloudSpec struct {
+	// Parameters are the configurable fields of a VSHNNextcloud.
+	Parameters VSHNNextcloudParameters `json:"parameters,omitempty"`
 
 	xpv1.ResourceSpec `json:",inline"`
 }
 
-type XVSHNKeycloakStatus struct {
-	VSHNKeycloakStatus  `json:",inline"`
+type XVSHNNextcloudStatus struct {
+	VSHNNextcloudStatus `json:",inline"`
 	xpv1.ResourceStatus `json:",inline"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
-// XVSHNKeycloakList represents a list of composites
-type XVSHNKeycloakList struct {
+// XVSHNNextcloudList represents a list of composites
+type XVSHNNextcloudList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []XVSHNKeycloak `json:"items"`
+	Items []XVSHNNextcloud `json:"items"`
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
-func (n *VSHNKeycloak) GetMaintenanceDayOfWeek() string {
+func (n *VSHNNextcloud) GetMaintenanceDayOfWeek() string {
 	if n.Spec.Parameters.Maintenance.DayOfWeek != "" {
 		return n.Spec.Parameters.Maintenance.DayOfWeek
 	}
@@ -237,7 +212,7 @@ func (n *VSHNKeycloak) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *VSHNKeycloak) GetMaintenanceTimeOfDay() string {
+func (v *VSHNNextcloud) GetMaintenanceTimeOfDay() string {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
 		return v.Spec.Parameters.Maintenance.TimeOfDay
 	}
@@ -245,17 +220,17 @@ func (v *VSHNKeycloak) GetMaintenanceTimeOfDay() string {
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
-func (v *VSHNKeycloak) SetMaintenanceDayOfWeek(dow string) {
+func (v *VSHNNextcloud) SetMaintenanceDayOfWeek(dow string) {
 	v.Status.Schedules.Maintenance.DayOfWeek = dow
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (v *VSHNKeycloak) SetMaintenanceTimeOfDay(tod string) {
+func (v *VSHNNextcloud) SetMaintenanceTimeOfDay(tod string) {
 	v.Status.Schedules.Maintenance.TimeOfDay = tod
 }
 
 // GetBackupSchedule returns the current backup schedule
-func (v *VSHNKeycloak) GetBackupSchedule() string {
+func (v *VSHNNextcloud) GetBackupSchedule() string {
 	if v.Spec.Parameters.Backup.Schedule != "" {
 		return v.Spec.Parameters.Backup.Schedule
 	}
@@ -263,22 +238,22 @@ func (v *VSHNKeycloak) GetBackupSchedule() string {
 }
 
 // SetBackupSchedule overwrites the current backup schedule
-func (v *VSHNKeycloak) SetBackupSchedule(schedule string) {
+func (v *VSHNNextcloud) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
 }
 
 // GetBackupRetention returns the retention definition for this backup.
-func (v *VSHNKeycloak) GetBackupRetention() K8upRetentionPolicy {
+func (v *VSHNNextcloud) GetBackupRetention() K8upRetentionPolicy {
 	return v.Spec.Parameters.Backup.Retention
 }
 
 // GetServiceName returns the name of this service
-func (v *VSHNKeycloak) GetServiceName() string {
-	return "keycloak"
+func (v *VSHNNextcloud) GetServiceName() string {
+	return "nextcloud"
 }
 
 // GetFullMaintenanceSchedule returns the maintenance schedule
-func (v *VSHNKeycloak) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
+func (v *VSHNNextcloud) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
 	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
@@ -286,30 +261,30 @@ func (v *VSHNKeycloak) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceSchedule
 }
 
 // GetAllowAllNamespaces returns the AllowAllNamespaces field of this service
-func (v *VSHNKeycloak) GetAllowAllNamespaces() bool {
+func (v *VSHNNextcloud) GetAllowAllNamespaces() bool {
 	return v.Spec.Parameters.Security.AllowAllNamespaces
 }
 
 // GetAllowedNamespaces returns the AllowedNamespaces array of this service
-func (v *VSHNKeycloak) GetAllowedNamespaces() []string {
+func (v *VSHNNextcloud) GetAllowedNamespaces() []string {
 	if v.Spec.Parameters.Security.AllowedNamespaces == nil {
 		v.Spec.Parameters.Security.AllowedNamespaces = []string{}
 	}
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }
 
-func (v *VSHNKeycloak) GetVSHNMonitoring() VSHNMonitoring {
+func (v *VSHNNextcloud) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
-func (v *VSHNKeycloak) GetSize() VSHNSizeSpec {
+func (v *VSHNNextcloud) GetSize() VSHNSizeSpec {
 	return v.Spec.Parameters.Size
 }
 
-func (v *VSHNKeycloak) GetMonitoring() VSHNMonitoring {
+func (v *VSHNNextcloud) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
-func (v *VSHNKeycloak) GetInstances() int {
+func (v *VSHNNextcloud) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }

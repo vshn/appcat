@@ -225,3 +225,15 @@ func (v *VSHNMinio) GetAllowedNamespaces() []string {
 func (v *VSHNMinio) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
+
+func (v *VSHNMinio) GetSize() VSHNSizeSpec {
+	return v.Spec.Parameters.Size
+}
+
+func (v *VSHNMinio) GetMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNMinio) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}

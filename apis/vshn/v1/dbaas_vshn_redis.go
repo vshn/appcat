@@ -268,3 +268,23 @@ func (v *VSHNRedis) GetAllowedNamespaces() []string {
 	}
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }
+
+func (v *VSHNRedis) GetSize() VSHNSizeSpec {
+	return VSHNSizeSpec{
+		CPU:    v.Spec.Parameters.Size.CPULimits,
+		Memory: v.Spec.Parameters.Size.MemoryLimits,
+		Requests: VSHNDBaaSSizeRequestsSpec{
+			CPU:    v.Spec.Parameters.Size.CPURequests,
+			Memory: v.Spec.Parameters.Size.MemoryRequests,
+		},
+		Disk: v.Spec.Parameters.Size.Disk,
+	}
+}
+
+func (v *VSHNRedis) GetMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNRedis) GetInstances() int {
+	return 1
+}

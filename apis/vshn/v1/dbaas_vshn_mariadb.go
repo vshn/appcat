@@ -247,3 +247,19 @@ func (v *VSHNMariaDB) GetAllowedNamespaces() []string {
 	}
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }
+
+func (v *VSHNMariaDB) GetVSHNMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNMariaDB) GetSize() VSHNSizeSpec {
+	return v.Spec.Parameters.Size
+}
+
+func (v *VSHNMariaDB) GetMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNMariaDB) GetInstances() int {
+	return 1
+}

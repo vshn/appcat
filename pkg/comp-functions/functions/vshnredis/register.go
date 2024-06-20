@@ -35,10 +35,6 @@ func init() {
 				Execute: ResizePVCs,
 			},
 			{
-				Name:    "namespaceQuotas",
-				Execute: common.AddInitialNamespaceQuotas("namespace-conditions"),
-			},
-			{
 				Name:    "redis_url",
 				Execute: AddUrlToConnectionDetails,
 			},

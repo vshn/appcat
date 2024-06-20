@@ -54,10 +54,6 @@ func init() {
 				Execute: AddPrimaryService,
 			},
 			{
-				Name:    "namespaceQuotas",
-				Execute: common.AddInitialNamespaceQuotas("namespace-conditions"),
-			},
-			{
 				Name:    "delay-cluster-deployment",
 				Execute: DelayClusterDeployment,
 			},

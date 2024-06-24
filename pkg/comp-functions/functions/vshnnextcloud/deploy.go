@@ -3,6 +3,7 @@ package vshnnextcloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"dario.cat/mergo"
@@ -197,6 +198,7 @@ func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 }
 
 func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) (common.Resources, error) {
+	l := svc.Log
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
@@ -205,8 +207,10 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 		return common.Resources{}, err
 	}
 
-	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
-
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) != 0 {
+		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
+	}
 	return res, nil
 }
 

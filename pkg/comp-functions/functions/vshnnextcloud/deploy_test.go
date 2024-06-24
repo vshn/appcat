@@ -2,7 +2,6 @@ package vshnnextcloud
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,7 @@ func Test_addPostgreSQL(t *testing.T) {
 
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/empty.yaml")
 
-	comp := &vshnv1.VSHNKeycloak{}
+	comp := &vshnv1.VSHNNextcloud{}
 
 	assert.NoError(t, addPostgreSQL(svc, comp))
 
@@ -44,17 +43,17 @@ func Test_addPostgreSQL(t *testing.T) {
 }
 
 func Test_addRelease(t *testing.T) {
-	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+	svc := commontest.LoadRuntimeFromFile(t, "vshnnextcloud/01_default.yaml")
 
-	comp := &vshnv1.VSHNKeycloak{
+	comp := &vshnv1.VSHNNextcloud{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "mycloak",
+			Name:      "mynextcloud",
 			Namespace: "default",
 		},
-		Spec: vshnv1.VSHNKeycloakSpec{
-			Parameters: vshnv1.VSHNKeycloakParameters{
-				Service: vshnv1.VSHNKeycloakServiceSpec{
-					Version: "23",
+		Spec: vshnv1.VSHNNextcloudSpec{
+			Parameters: vshnv1.VSHNNextcloudParameters{
+				Service: vshnv1.VSHNNextcloudServiceSpec{
+					Version: "29",
 				},
 			},
 		},
@@ -65,38 +64,5 @@ func Test_addRelease(t *testing.T) {
 	release := &xhelmv1.Release{}
 
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release"))
-
-}
-
-func Test_addHARelease(t *testing.T) {
-	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
-
-	comp := &vshnv1.VSHNKeycloak{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "mycloak",
-			Namespace: "default",
-		},
-		Spec: vshnv1.VSHNKeycloakSpec{
-			Parameters: vshnv1.VSHNKeycloakParameters{
-				Instances: 2,
-				Service: vshnv1.VSHNKeycloakServiceSpec{
-					Version: "23",
-				},
-			},
-		},
-	}
-
-	assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret"))
-	release := &xhelmv1.Release{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release"))
-	values := map[string]any{}
-	assert.NoError(t, json.Unmarshal(release.Spec.ForProvider.Values.Raw, &values))
-	assert.Equal(t, float64(2), values["replicas"])
-
-	pg := &vshnv1.XVSHNPostgreSQL{}
-
-	assert.NoError(t, addPostgreSQL(svc, comp))
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
-	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
 
 }

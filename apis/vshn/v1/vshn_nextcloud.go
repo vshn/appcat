@@ -25,7 +25,7 @@ type VSHNNextcloud struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the desired state of a VSHNNextcloud.
-	Spec VSHNNextcloudspec `json:"spec"`
+	Spec VSHNNextcloudSpec `json:"spec"`
 
 	// Status reflects the observed state of a VSHNNextcloud.
 	Status VSHNNextcloudstatus `json:"status,omitempty"`
@@ -40,8 +40,8 @@ type VSHNNextcloudList struct {
 	Items []VSHNNextcloud `json:"items,omitempty"`
 }
 
-// VSHNNextcloudspec defines the desired state of a VSHNNextcloud.
-type VSHNNextcloudspec struct {
+// VSHNNextcloudSpec defines the desired state of a VSHNNextcloud.
+type VSHNNextcloudSpec struct {
 	// Parameters are the configurable fields of a VSHNNextcloud.
 	Parameters VSHNNextcloudParameters `json:"parameters,omitempty"`
 
@@ -52,7 +52,7 @@ type VSHNNextcloudspec struct {
 // VSHNNextcloudParameters are the configurable fields of a VSHNNextcloud.
 type VSHNNextcloudParameters struct {
 	// Service contains nextcloud DBaaS specific properties
-	Service VSHNNextcloudserviceSpec `json:"service,omitempty"`
+	Service VSHNNextcloudServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
 	Size VSHNSizeSpec `json:"size,omitempty"`
@@ -85,7 +85,7 @@ type VSHNNextcloudParameters struct {
 }
 
 // VSHNNextcloudserviceSpec contains nextcloud DBaaS specific properties
-type VSHNNextcloudserviceSpec struct {
+type VSHNNextcloudServiceSpec struct {
 	// FQDN contains the FQDN which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.
 	// This also enables strict hostname checking for this FQDN.

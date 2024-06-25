@@ -224,7 +224,11 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 		"setDbopsRunning":            "dbops.set-dbops-running",
 	}
 
-	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	res, err := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if err != nil {
+		err = fmt.Errorf("Cannot get Resources from plan and claim: %w", err)
+		return err
+	}
 	containersRequests := generateContainers(*containers, sideCarMap, false)
 
 	containersRequestsBytes, err := json.Marshal(containersRequests)
@@ -255,11 +259,11 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Spec: sgv1.SGInstanceProfileSpec{
-			Cpu:    res.CPU,
-			Memory: res.Mem,
+			Cpu:    res.CPU.String(),
+			Memory: res.Mem.String(),
 			Requests: &sgv1.SGInstanceProfileSpecRequests{
-				Cpu:    &res.ReqCPU,
-				Memory: &res.ReqMem,
+				Cpu:    ptr.To(res.ReqCPU.String()),
+				Memory: ptr.To(res.ReqMem.String()),
 				Containers: k8sruntime.RawExtension{
 					Raw: containersRequestsBytes,
 				},
@@ -349,7 +353,11 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		return err
 	}
 
-	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	res, err := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if err != nil {
+		err = fmt.Errorf("Cannot get Resources from plan and claim: %w", err)
+		return err
+	}
 	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
 
 	if err != nil {
@@ -411,7 +419,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			},
 			Pods: sgv1.SGClusterSpecPods{
 				PersistentVolume: sgv1.SGClusterSpecPodsPersistentVolume{
-					Size: res.Disk,
+					Size: res.Disk.String(),
 				},
 				Resources: &sgv1.SGClusterSpecPodsResources{
 					EnableClusterLimitsRequirements: ptr.To(true),

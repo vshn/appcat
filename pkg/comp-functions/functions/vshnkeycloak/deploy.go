@@ -233,7 +233,11 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 		return common.Resources{}, err
 	}
 
-	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	res, err := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if err != nil {
+		err = fmt.Errorf("Cannot get Resources from plan and claim: %w", err)
+		return common.Resources{}, err
+	}
 
 	return res, nil
 }
@@ -411,12 +415,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"resources": map[string]any{
 			"requests": map[string]any{
-				"memory": res.ReqMem,
-				"cpu":    res.ReqCPU,
+				"memory": res.ReqMem.String(),
+				"cpu":    res.ReqCPU.String(),
 			},
 			"limits": map[string]any{
-				"memory": res.Mem,
-				"cpu":    res.CPU,
+				"memory": res.Mem.String(),
+				"cpu":    res.CPU.String(),
 			},
 		},
 		"nodeSelector": nodeSelector,

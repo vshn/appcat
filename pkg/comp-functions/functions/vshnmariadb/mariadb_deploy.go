@@ -7,6 +7,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strconv"
+
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmbeta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -14,12 +17,10 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	"io"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/utils/ptr"
-	"strconv"
 )
 
 const (
@@ -147,7 +148,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return values, err
 	}
 
-	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	res, err := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if err != nil {
+		err = fmt.Errorf("Cannot get Resources from plan and claim: %w", err)
+		return values, err
+	}
 	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
 
 	if err != nil {
@@ -160,12 +165,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"replicaCount":     1,
 		"resources": map[string]interface{}{
 			"requests": map[string]interface{}{
-				"memory": res.ReqMem,
-				"cpu":    res.ReqCPU,
+				"memory": res.ReqMem.String(),
+				"cpu":    res.ReqCPU.String(),
 			},
 			"limits": map[string]interface{}{
-				"memory": res.Mem,
-				"cpu":    res.CPU,
+				"memory": res.Mem.String(),
+				"cpu":    res.CPU.String(),
 			},
 		},
 		"networkPolicy": map[string]interface{}{
@@ -179,7 +184,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"certCAFilename":     "ca.crt",
 		},
 		"persistence": map[string]interface{}{
-			"size":         res.Disk,
+			"size":         res.Disk.String(),
 			"storageClass": comp.Spec.Parameters.StorageClass,
 		},
 		"startupProbe": map[string]interface{}{

@@ -1,0 +1,9 @@
+desired: {}
+input:
+  apiVersion: v1
+  data:
+    defaultPlan: standard-1
+    plans:
+      '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true,
+      "memory": "1Gi"}}}'
+observed: {}

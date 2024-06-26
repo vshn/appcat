@@ -17,47 +17,48 @@ type Resources struct {
 // GetResources will return a `Resources` object with the correctly calculated requests,
 // limits and disk space according to the definitions in the plan as well as the overrides
 // in the claim.
-func GetResources(size *vshnv1.VSHNSizeSpec, plan utils.Resources) (Resources, error) {
+func GetResources(size *vshnv1.VSHNSizeSpec, plan utils.Resources) (Resources, []error) {
 	reqMem := resource.Quantity{}
 	reqCPU := resource.Quantity{}
 	mem := resource.Quantity{}
 	cpu := resource.Quantity{}
 	disk := plan.Disk
 
+	var errors []error
 	var err error
 
 	if size.Requests.Memory != "" {
 		reqMem, err = resource.ParseQuantity(size.Requests.Memory)
 		if err != nil {
-			return Resources{}, err
+			errors = append(errors, err)
 		}
 	}
 
 	if size.Requests.CPU != "" {
 		reqCPU, err = resource.ParseQuantity(size.Requests.CPU)
 		if err != nil {
-			return Resources{}, err
+			errors = append(errors, err)
 		}
 	}
 
 	if size.Memory != "" {
 		mem, err = resource.ParseQuantity(size.Memory)
 		if err != nil {
-			return Resources{}, err
+			errors = append(errors, err)
 		}
 	}
 
 	if size.CPU != "" {
 		cpu, err = resource.ParseQuantity(size.CPU)
 		if err != nil {
-			return Resources{}, err
+			errors = append(errors, err)
 		}
 	}
 
 	if size.Disk != "" {
 		disk, err = resource.ParseQuantity(size.Disk)
 		if err != nil {
-			return Resources{}, err
+			errors = append(errors, err)
 		}
 	}
 
@@ -73,7 +74,7 @@ func GetResources(size *vshnv1.VSHNSizeSpec, plan utils.Resources) (Resources, e
 		Mem:    memLimit,
 		CPU:    cpuLimit,
 		Disk:   disk,
-	}, nil
+	}, errors
 }
 
 // getLimit will compare a given limit and request as well as the limit defined in the plan

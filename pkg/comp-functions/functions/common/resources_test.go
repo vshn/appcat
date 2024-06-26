@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -101,8 +102,8 @@ func TestResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			res, err := GetResources(&tt.claimResources, planResources)
-			assert.NoError(t, err)
+			res, errs := GetResources(&tt.claimResources, planResources)
+			assert.NoError(t, errors.Join(errs...))
 
 			assert.Equal(t, tt.expResult, res)
 		})

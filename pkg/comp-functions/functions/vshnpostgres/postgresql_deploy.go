@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -182,6 +183,7 @@ func createStackgresObjects(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, sv
 }
 
 func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	l := svc.Log
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
@@ -224,10 +226,9 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 		"setDbopsRunning":            "dbops.set-dbops-running",
 	}
 
-	res, err := common.GetResources(&comp.Spec.Parameters.Size, resources)
-	if err != nil {
-		err = fmt.Errorf("Cannot get Resources from plan and claim: %w", err)
-		return err
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) != 0 {
+		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
 	}
 	containersRequests := generateContainers(*containers, sideCarMap, false)
 
@@ -345,6 +346,8 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 
 func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 
+	l := svc.Log
+
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
@@ -353,10 +356,9 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		return err
 	}
 
-	res, err := common.GetResources(&comp.Spec.Parameters.Size, resources)
-	if err != nil {
-		err = fmt.Errorf("Cannot get Resources from plan and claim: %w", err)
-		return err
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) != 0 {
+		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
 	}
 	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
 

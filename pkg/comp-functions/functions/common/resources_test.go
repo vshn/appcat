@@ -15,42 +15,42 @@ func TestResources(t *testing.T) {
 
 	ctx := context.Background()
 	svc := commontest.LoadRuntimeFromFile(t, "plans.yaml")
-	resources, err := utils.FetchPlansFromConfig(ctx, svc, svc.Config.Data["defaultPlan"])
+	planResources, err := utils.FetchPlansFromConfig(ctx, svc, svc.Config.Data["defaultPlan"])
 	assert.NoError(t, err)
 
 	tests := []struct {
-		name      string
-		size      vshnv1.VSHNSizeSpec
-		expResult Resources
+		name           string
+		claimResources vshnv1.VSHNSizeSpec
+		expResult      Resources
 	}{
 		{
-			name: "GivenDefaultPlanNoResources",
-			size: vshnv1.VSHNSizeSpec{},
+			name:           "GivenDefaultPlanNoResources",
+			claimResources: vshnv1.VSHNSizeSpec{},
 			expResult: Resources{
-				ReqMem: resources.MemoryRequests,
-				ReqCPU: resources.CPURequests,
-				Mem:    resources.MemoryLimits,
-				CPU:    resources.CPULimits,
-				Disk:   resources.Disk,
+				ReqMem: planResources.MemoryRequests,
+				ReqCPU: planResources.CPURequests,
+				Mem:    planResources.MemoryLimits,
+				CPU:    planResources.CPULimits,
+				Disk:   planResources.Disk,
 			},
 		},
 		{
 			name: "GivenDefaultPlanCustomLimitHigherThanPlan",
-			size: vshnv1.VSHNSizeSpec{
+			claimResources: vshnv1.VSHNSizeSpec{
 				Memory: "2Gi",
 				CPU:    "500m",
 			},
 			expResult: Resources{
-				ReqMem: resources.MemoryRequests,
-				ReqCPU: resources.CPURequests,
+				ReqMem: planResources.MemoryRequests,
+				ReqCPU: planResources.CPURequests,
 				Mem:    resource.MustParse("2Gi"),
 				CPU:    resource.MustParse("500m"),
-				Disk:   resources.Disk,
+				Disk:   planResources.Disk,
 			},
 		},
 		{
 			name: "GivenDefaultPlanCustomMemoryLimitLowerThanPlan",
-			size: vshnv1.VSHNSizeSpec{
+			claimResources: vshnv1.VSHNSizeSpec{
 				Memory: "100Mi",
 				CPU:    "100m",
 			},
@@ -59,12 +59,12 @@ func TestResources(t *testing.T) {
 				ReqCPU: resource.MustParse("100m"),
 				Mem:    resource.MustParse("100Mi"),
 				CPU:    resource.MustParse("100m"),
-				Disk:   resources.Disk,
+				Disk:   planResources.Disk,
 			},
 		},
 		{
 			name: "GivenDefaultPlanCustomMemoryRequestsHigherThanPlan",
-			size: vshnv1.VSHNSizeSpec{
+			claimResources: vshnv1.VSHNSizeSpec{
 				Requests: vshnv1.VSHNDBaaSSizeRequestsSpec{
 					Memory: "2Gi",
 					CPU:    "1",
@@ -75,12 +75,12 @@ func TestResources(t *testing.T) {
 				ReqCPU: resource.MustParse("1"),
 				Mem:    resource.MustParse("2Gi"),
 				CPU:    resource.MustParse("1"),
-				Disk:   resources.Disk,
+				Disk:   planResources.Disk,
 			},
 		},
 		{
 			name: "GivenDefaultPlanCustomMemoryRequestsHigherThanLimit",
-			size: vshnv1.VSHNSizeSpec{
+			claimResources: vshnv1.VSHNSizeSpec{
 				Requests: vshnv1.VSHNDBaaSSizeRequestsSpec{
 					Memory: "2Gi",
 					CPU:    "1",
@@ -93,7 +93,7 @@ func TestResources(t *testing.T) {
 				ReqCPU: resource.MustParse("1"),
 				Mem:    resource.MustParse("2Gi"),
 				CPU:    resource.MustParse("1"),
-				Disk:   resources.Disk,
+				Disk:   planResources.Disk,
 			},
 		},
 	}
@@ -101,7 +101,7 @@ func TestResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			res, err := GetResources(&tt.size, resources)
+			res, err := GetResources(&tt.claimResources, planResources)
 			assert.NoError(t, err)
 
 			assert.Equal(t, tt.expResult, res)

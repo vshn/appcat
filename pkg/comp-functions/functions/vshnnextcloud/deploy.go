@@ -46,40 +46,38 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
-	svc.Log.Info("Adding postgresql instance")
-	err = addPostgreSQL(svc, comp)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
-	}
-
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create db for nextcloud: %s", err))
-	}
-
 	svc.Log.Info("Bootstrapping instance namespace and rbac rules")
 	err = common.BootstrapInstanceNs(ctx, comp, comp.GetServiceName(), comp.GetName()+"-instanceNs", svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot bootstrap instance namespace: %s", err))
 	}
 
-	svc.Log.Info("Checking readiness of cluster")
+	if !comp.Spec.Parameters.Service.DefaultInternalDB {
+		svc.Log.Info("Adding postgresql instance")
+		err = addPostgreSQL(svc, comp)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
+		}
 
-	resourceCDMap := map[string][]string{
-		comp.GetName() + pgInstanceNameSuffix: {
-			vshnpostgres.PostgresqlHost,
-			vshnpostgres.PostgresqlPort,
-			vshnpostgres.PostgresqlDb,
-			vshnpostgres.PostgresqlUser,
-			vshnpostgres.PostgresqlPassword,
-		},
-	}
+		svc.Log.Info("Checking readiness of cluster")
 
-	ready, err := svc.WaitForDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
-	if err != nil {
-		// We're returning a fatal here, so in case something is wrong we won't delete anything by mistake.
-		return runtime.NewFatalResult(err)
-	} else if !ready {
-		return runtime.NewWarningResult("postgresql instance not yet ready")
+		resourceCDMap := map[string][]string{
+			comp.GetName() + pgInstanceNameSuffix: {
+				vshnpostgres.PostgresqlHost,
+				vshnpostgres.PostgresqlPort,
+				vshnpostgres.PostgresqlDb,
+				vshnpostgres.PostgresqlUser,
+				vshnpostgres.PostgresqlPassword,
+			},
+		}
+
+		ready, err := svc.WaitForDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
+		if err != nil {
+			// We're returning a fatal here, so in case something is wrong we won't delete anything by mistake.
+			return runtime.NewFatalResult(err)
+		} else if !ready {
+			return runtime.NewWarningResult("postgresql instance not yet ready")
+		}
 	}
 
 	svc.Log.Info("Adding release")
@@ -217,11 +215,6 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret string) (map[string]any, error) {
 	values := map[string]any{}
 
-	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + pgInstanceNameSuffix)
-	if err != nil {
-		return nil, err
-	}
-
 	res, err := getResources(ctx, svc, comp)
 	if err != nil {
 		return nil, err
@@ -233,20 +226,14 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return values, fmt.Errorf("cannot fetch nodeSelector from the composition config: %w", err)
 	}
 
-	values = map[string]any{
-		"nextcloud": map[string]any{
-			"host": comp.Spec.Parameters.Service.FQDN,
-			"existingSecret": map[string]any{
-				"enabled":     true,
-				"secretName":  adminSecret,
-				"usernameKey": adminUserSecretField,
-				"passwordKey": adminPWSecretField,
-			},
-		},
-		"internalDatabase": map[string]any{
-			"enabled": false,
-		},
-		"externalDatabase": map[string]any{
+	externalDb := map[string]any{}
+
+	if !comp.Spec.Parameters.Service.DefaultInternalDB {
+		cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + pgInstanceNameSuffix)
+		if err != nil {
+			return nil, err
+		}
+		externalDb = map[string]any{
 			"enabled": true,
 			"type":    "postgresql",
 			"existingSecret": map[string]any{
@@ -261,7 +248,23 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"database": string(cd[vshnpostgres.PostgresqlDb]),
 			"user":     string(cd[vshnpostgres.PostgresqlUser]),
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
+		}
+	}
+
+	values = map[string]any{
+		"nextcloud": map[string]any{
+			"host": comp.Spec.Parameters.Service.FQDN,
+			"existingSecret": map[string]any{
+				"enabled":     true,
+				"secretName":  adminSecret,
+				"usernameKey": adminUserSecretField,
+				"passwordKey": adminPWSecretField,
+			},
 		},
+		"internalDatabase": map[string]any{
+			"enabled": comp.Spec.Parameters.Service.DefaultInternalDB,
+		},
+		"externalDatabase": externalDb,
 		"metrics": map[string]any{
 			"enabled": true,
 		},

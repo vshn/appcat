@@ -14,7 +14,6 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 
 // +kubebuilder:object:root=true
@@ -106,6 +105,10 @@ type VSHNNextcloudServiceSpec struct {
 
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
+
+	// // +kubebuilder:default=true"
+	//
+	DefaultInternalDB bool `json:"defaultInternalDB,omitempty"`
 
 	// PostgreSQLParameters can be used to set any supported setting in the
 	// underlying PostgreSQL instance.

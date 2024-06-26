@@ -4923,6 +4923,9 @@ spec:
                   service:
                     description: Service contains nextcloud DBaaS specific properties
                     properties:
+                      defaultInternalDB:
+                        description: // +kubebuilder:default=true"
+                        type: boolean
                       fqdn:
                         description: |-
                           FQDN contains the FQDN which will be used for the ingress.

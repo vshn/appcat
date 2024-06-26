@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -137,7 +138,7 @@ func getConnectionDetails(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime,
 }
 
 func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB, secretName string) (map[string]interface{}, error) {
-
+	l := svc.Log
 	values := map[string]interface{}{}
 
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
@@ -148,10 +149,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return values, err
 	}
 
-	res, err := common.GetResources(&comp.Spec.Parameters.Size, resources)
-	if err != nil {
-		err = fmt.Errorf("Cannot get Resources from plan and claim: %w", err)
-		return values, err
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) != 0 {
+		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
 	}
 	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
 

@@ -260,6 +260,16 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"usernameKey": adminUserSecretField,
 				"passwordKey": adminPWSecretField,
 			},
+			"securityContext": map[string]any{
+				"runAsUser":                nil,
+				"allowPrivilegeEscalation": false,
+				"capabilities": map[string]any{
+					"drop": []string{
+						"ALL",
+					},
+				},
+			},
+			"podSecurityContext": nil,
 		},
 		"internalDatabase": map[string]any{
 			"enabled": comp.Spec.Parameters.Service.DefaultInternalDB,
@@ -279,19 +289,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 		},
 		"nodeSelector": nodeSelector,
-		"securityContext": map[string]any{
-			"runAsUser":                nil,
-			"allowPrivilegeEscalation": false,
-			"capabilities": map[string]any{
-				"drop": []string{
-					"ALL",
-				},
-			},
-		},
+
 		"http": map[string]any{
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
 		},
-		"podSecurityContext": nil,
 		"persistence": map[string]any{
 			"enabled": true,
 			"size":    res.Disk,

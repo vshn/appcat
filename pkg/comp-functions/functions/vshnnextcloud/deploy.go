@@ -109,11 +109,6 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add configmap for apache: %s", err))
 	}
 
-	err = addNextcloudConfig(svc, comp)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot add configmap for nextcloud: %s", err))
-	}
-
 	err = addRelease(ctx, svc, comp, adminSecret)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create release: %s", err))
@@ -278,6 +273,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"usernameKey": adminUserSecretField,
 				"passwordKey": adminPWSecretField,
 			},
+			"configs": map[string]string{
+				"vshn-nextcloud.config.php": nextcloudConfig,
+			},
 			"containerPort":   8080,
 			"securityContext": nil,
 			"podSecurityContext": map[string]any{
@@ -296,12 +294,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 						"name": "apache-config",
 					},
 				},
-				{
-					"name": "nextcloud-config",
-					"configMap": map[string]any{
-						"name": "nextcloud-config",
-					},
-				},
 			},
 			"extraVolumeMounts": []map[string]any{
 				{
@@ -313,11 +305,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":      "apache-config",
 					"mountPath": "/etc/apache2/sites-available/000-default.conf",
 					"subPath":   "000-default.conf",
-				},
-				{
-					"name":      "nextcloud-config",
-					"mountPath": "/var/www/html/config/vshn-nextcloud.config.php",
-					"subPath":   "vshn-nextcloud.config.php",
 				},
 			},
 		},
@@ -332,6 +319,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"internalDatabase": map[string]any{
 			"enabled": comp.Spec.Parameters.Service.DefaultInternalDB,
+		},
+		"startupProbe": map[string]any{
+			"enabled": true,
 		},
 		"externalDatabase": externalDb,
 		"metrics": map[string]any{
@@ -398,25 +388,6 @@ func addApacheConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) er
 	}
 
 	err := svc.SetDesiredKubeObject(cm, comp.GetName()+"-apache-config")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func addNextcloudConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
-
-	cm := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "nextcloud-config",
-			Namespace: comp.GetInstanceNamespace(),
-		},
-		Data: map[string]string{
-			"vshn-nextcloud.config.php": nextcloudConfig,
-		},
-	}
-
-	err := svc.SetDesiredKubeObject(cm, comp.GetName()+"-nextcloud-config")
 	if err != nil {
 		return err
 	}

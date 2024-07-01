@@ -83,6 +83,10 @@ func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud,
 			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
 		}
 
-		unstructured.SetNestedMap(values, annotations, "ingress", "annotations")
+		err = unstructured.SetNestedMap(values, annotations, "ingress", "annotations")
+		if err != nil {
+			svc.Log.Error(err, "cannot set ingress annotations")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set ingress annotations: %s", err)))
+		}
 	}
 }

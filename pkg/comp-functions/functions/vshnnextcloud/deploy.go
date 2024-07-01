@@ -42,6 +42,9 @@ const (
 //go:embed files/000-default.conf
 var apacheVhostConfig string
 
+//go:embed files/vshn-nextcloud.config.php
+var nextcloudConfig string
+
 // DeployNextcloud deploys a nexctloud instance via the codecentric Helm Chart.
 func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -101,9 +104,14 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 	svc.SetConnectionDetail(adminConnectionDetailsField, cd[adminUserSecretField])
 	svc.SetConnectionDetail(hostConnectionDetailsField, []byte(fmt.Sprintf("%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())))
 
-	err = addApacheconfig(svc, comp)
+	err = addApacheConfig(svc, comp)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add configmap for apache: %s", err))
+	}
+
+	err = addNextcloudConfig(svc, comp)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add configmap for nextcloud: %s", err))
 	}
 
 	err = addRelease(ctx, svc, comp, adminSecret)
@@ -288,6 +296,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 						"name": "apache-config",
 					},
 				},
+				{
+					"name": "nextcloud-config",
+					"configMap": map[string]any{
+						"name": "nextcloud-config",
+					},
+				},
 			},
 			"extraVolumeMounts": []map[string]any{
 				{
@@ -299,6 +313,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":      "apache-config",
 					"mountPath": "/etc/apache2/sites-available/000-default.conf",
 					"subPath":   "000-default.conf",
+				},
+				{
+					"name":      "nextcloud-config",
+					"mountPath": "/var/www/html/config/vshn-nextcloud.config.php",
+					"subPath":   "vshn-nextcloud.config.php",
 				},
 			},
 		},
@@ -365,7 +384,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	return release, err
 }
 
-func addApacheconfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
+func addApacheConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
 
 	cm := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -379,6 +398,25 @@ func addApacheconfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) er
 	}
 
 	err := svc.SetDesiredKubeObject(cm, comp.GetName()+"-apache-config")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func addNextcloudConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
+
+	cm := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nextcloud-config",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Data: map[string]string{
+			"vshn-nextcloud.config.php": nextcloudConfig,
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(cm, comp.GetName()+"-nextcloud-config")
 	if err != nil {
 		return err
 	}

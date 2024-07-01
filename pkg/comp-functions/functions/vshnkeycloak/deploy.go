@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"dario.cat/mergo"
@@ -225,6 +226,7 @@ func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 }
 
 func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) (common.Resources, error) {
+	l := svc.Log
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
@@ -233,7 +235,10 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 		return common.Resources{}, err
 	}
 
-	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) != 0 {
+		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
+	}
 
 	return res, nil
 }
@@ -411,12 +416,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"resources": map[string]any{
 			"requests": map[string]any{
-				"memory": res.ReqMem,
-				"cpu":    res.ReqCPU,
+				"memory": res.ReqMem.String(),
+				"cpu":    res.ReqCPU.String(),
 			},
 			"limits": map[string]any{
-				"memory": res.Mem,
-				"cpu":    res.CPU,
+				"memory": res.Mem.String(),
+				"cpu":    res.CPU.String(),
 			},
 		},
 		"nodeSelector": nodeSelector,

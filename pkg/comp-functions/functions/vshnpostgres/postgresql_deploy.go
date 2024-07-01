@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -182,6 +183,7 @@ func createStackgresObjects(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, sv
 }
 
 func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	l := svc.Log
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
@@ -224,7 +226,10 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 		"setDbopsRunning":            "dbops.set-dbops-running",
 	}
 
-	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) != 0 {
+		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
+	}
 	containersRequests := generateContainers(*containers, sideCarMap, false)
 
 	containersRequestsBytes, err := json.Marshal(containersRequests)
@@ -255,11 +260,11 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Spec: sgv1.SGInstanceProfileSpec{
-			Cpu:    res.CPU,
-			Memory: res.Mem,
+			Cpu:    res.CPU.String(),
+			Memory: res.Mem.String(),
 			Requests: &sgv1.SGInstanceProfileSpecRequests{
-				Cpu:    &res.ReqCPU,
-				Memory: &res.ReqMem,
+				Cpu:    ptr.To(res.ReqCPU.String()),
+				Memory: ptr.To(res.ReqMem.String()),
 				Containers: k8sruntime.RawExtension{
 					Raw: containersRequestsBytes,
 				},
@@ -341,6 +346,8 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 
 func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 
+	l := svc.Log
+
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
@@ -349,7 +356,10 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		return err
 	}
 
-	res := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) != 0 {
+		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
+	}
 	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
 
 	if err != nil {
@@ -411,7 +421,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			},
 			Pods: sgv1.SGClusterSpecPods{
 				PersistentVolume: sgv1.SGClusterSpecPodsPersistentVolume{
-					Size: res.Disk,
+					Size: res.Disk.String(),
 				},
 				Resources: &sgv1.SGClusterSpecPodsResources{
 					EnableClusterLimitsRequirements: ptr.To(true),

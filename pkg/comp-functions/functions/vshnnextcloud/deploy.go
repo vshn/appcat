@@ -2,6 +2,7 @@ package vshnnextcloud
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
@@ -36,6 +38,9 @@ const (
 	urlConnectionDetailsField     = "NEXTCLOUD_URL"
 	serviceSuffix                 = "nextcloud"
 )
+
+//go:embed files/000-default.conf
+var apacheVhostConfig string
 
 // DeployNextcloud deploys a nexctloud instance via the codecentric Helm Chart.
 func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
@@ -95,6 +100,11 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 	svc.SetConnectionDetail(adminPWConnectionDetailsField, cd[adminPWSecretField])
 	svc.SetConnectionDetail(adminConnectionDetailsField, cd[adminUserSecretField])
 	svc.SetConnectionDetail(hostConnectionDetailsField, []byte(fmt.Sprintf("%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())))
+
+	err = addApacheconfig(svc, comp)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add configmap for apache: %s", err))
+	}
 
 	err = addRelease(ctx, svc, comp, adminSecret)
 	if err != nil {
@@ -260,7 +270,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"usernameKey": adminUserSecretField,
 				"passwordKey": adminPWSecretField,
 			},
-			"securityContext": map[string]any{
+			"containerPort":   8080,
+			"securityContext": nil,
+			"podSecurityContext": map[string]any{
 				"runAsUser":                nil,
 				"allowPrivilegeEscalation": false,
 				"capabilities": map[string]any{
@@ -269,7 +281,35 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					},
 				},
 			},
-			"podSecurityContext": nil,
+			"extraVolumes": []map[string]any{
+				{
+					"name": "apache-config",
+					"configMap": map[string]any{
+						"name": "apache-config",
+					},
+				},
+			},
+			"extraVolumeMounts": []map[string]any{
+				{
+					"name":      "apache-config",
+					"mountPath": "/etc/apache2/ports.conf",
+					"subPath":   "ports.conf",
+				},
+				{
+					"name":      "apache-config",
+					"mountPath": "/etc/apache2/sites-available/000-default.conf",
+					"subPath":   "000-default.conf",
+				},
+			},
+		},
+		"securityContext": map[string]any{
+			"runAsUser":                nil,
+			"allowPrivilegeEscalation": false,
+			"capabilities": map[string]any{
+				"drop": []string{
+					"ALL",
+				},
+			},
 		},
 		"internalDatabase": map[string]any{
 			"enabled": comp.Spec.Parameters.Service.DefaultInternalDB,
@@ -323,4 +363,24 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	release.Spec.ForProvider.Chart.Name = "nextcloud"
 
 	return release, err
+}
+
+func addApacheconfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
+
+	cm := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "apache-config",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Data: map[string]string{
+			"000-default.conf": apacheVhostConfig,
+			"ports.conf":       "Listen 8080",
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(cm, comp.GetName()+"-apache-config")
+	if err != nil {
+		return err
+	}
+	return nil
 }

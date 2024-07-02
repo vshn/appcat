@@ -185,7 +185,7 @@ type XVSHNNextcloudspec struct {
 	xpv1.ResourceSpec `json:",inline"`
 }
 
-type XVSHNNextcloudstatus struct {
+type XVSHNNextcloudStatus struct {
 	VSHNNextcloudstatus `json:",inline"`
 	xpv1.ResourceStatus `json:",inline"`
 }

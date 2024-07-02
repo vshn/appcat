@@ -140,7 +140,7 @@ type VSHNNextcloudsizeSpec struct {
 	Plan string `json:"plan,omitempty"`
 }
 
-// VSHNNextcloudstatus reflects the observed state of a VSHNNextcloud.
+// VSHNNextcloudStatus reflects the observed state of a VSHNNextcloud.
 type VSHNNextcloudStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`

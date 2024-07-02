@@ -3,7 +3,6 @@ package vshnnextcloud
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -12,7 +11,6 @@ import (
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
-	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
@@ -21,7 +19,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/utils/ptr"
 )
@@ -133,15 +130,6 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) erro
 		retention = comp.Spec.Parameters.Backup.Retention.KeepDaily
 	}
 
-	configs := map[string]string{
-		"ignore_startup_parameters": "extra_float_digits, search_path",
-	}
-
-	configBytes, err := json.Marshal(configs)
-	if err != nil {
-		return err
-	}
-
 	params := &vshnv1.VSHNPostgreSQLParameters{
 		Size:        comp.Spec.Parameters.Size,
 		Maintenance: comp.GetFullMaintenanceSchedule(),
@@ -149,13 +137,6 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) erro
 			Retention:          retention,
 			DeletionProtection: ptr.To(true),
 			DeletionRetention:  7,
-		},
-		Service: vshnv1.VSHNPostgreSQLServiceSpec{
-			PgBouncerSettings: &sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni{
-				Pgbouncer: k8sruntime.RawExtension{
-					Raw: configBytes,
-				},
-			},
 		},
 		Monitoring: comp.Spec.Parameters.Monitoring,
 	}

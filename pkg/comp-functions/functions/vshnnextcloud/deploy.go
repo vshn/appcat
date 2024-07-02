@@ -304,9 +304,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				},
 				{
 					"name": "nextcloud-hooks",
-					"configMap": map[string]string{
+					"configMap": map[string]any{
 						"name":        "nextcloud-hooks",
-						"defaultMode": "754",
+						"defaultMode": 0754,
 					},
 				},
 			},
@@ -341,7 +341,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": comp.Spec.Parameters.Service.DefaultInternalDB,
 		},
 		"startupProbe": map[string]any{
-			"enabled": true,
+			"initialDelaySeconds": "5",
+			"failureThreshold":    "60",
+			"enabled":             true,
 		},
 		"externalDatabase": externalDb,
 		"metrics": map[string]any{

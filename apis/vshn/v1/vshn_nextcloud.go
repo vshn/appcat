@@ -178,7 +178,7 @@ type XVSHNNextcloud struct {
 }
 
 // XVSHNNextcloudSpec defines the desired state of a VSHNNextcloud.
-type XVSHNNextcloudspec struct {
+type XVSHNNextcloudSpec struct {
 	// Parameters are the configurable fields of a VSHNNextcloud.
 	Parameters VSHNNextcloudParameters `json:"parameters,omitempty"`
 

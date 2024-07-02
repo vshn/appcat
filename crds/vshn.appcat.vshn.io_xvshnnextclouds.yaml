@@ -37,7 +37,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: XVSHNNextcloudspec defines the desired state of a VSHNNextcloud.
+            description: XVSHNNextcloudSpec defines the desired state of a VSHNNextcloud.
             properties:
               deletionPolicy:
                 default: Delete

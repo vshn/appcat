@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -175,7 +176,7 @@ func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) erro
 		},
 	}
 
-	err = common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-nextcloud", false, svc)
+	err := common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-nextcloud", false, svc)
 	if err != nil {
 		return err
 	}
@@ -253,6 +254,24 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	configString := svc.Config.Data["isOpenshift"]
+	isOpenShift, err := strconv.ParseBool(configString)
+	if err != nil {
+		return nil, fmt.Errorf("cannot determine if this is an OpenShift cluster or not: %w", err)
+	}
+	securityContext := map[string]any{}
+	if isOpenShift {
+		securityContext = map[string]any{
+			"runAsUser":                nil,
+			"allowPrivilegeEscalation": false,
+			"capabilities": map[string]any{
+				"drop": []string{
+					"ALL",
+				},
+			},
+		}
+	}
+
 	values = map[string]any{
 		"nextcloud": map[string]any{
 			"host": comp.Spec.Parameters.Service.FQDN,
@@ -265,17 +284,8 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"configs": map[string]string{
 				"vshn-nextcloud.config.php": nextcloudConfig,
 			},
-			"containerPort":   8080,
-			"securityContext": nil,
-			"podSecurityContext": map[string]any{
-				"runAsUser":                nil,
-				"allowPrivilegeEscalation": false,
-				"capabilities": map[string]any{
-					"drop": []string{
-						"ALL",
-					},
-				},
-			},
+			"containerPort":      8080,
+			"podSecurityContext": securityContext,
 			"extraVolumes": []map[string]any{
 				{
 					"name": "apache-config",
@@ -309,15 +319,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				},
 			},
 		},
-		"securityContext": map[string]any{
-			"runAsUser":                nil,
-			"allowPrivilegeEscalation": false,
-			"capabilities": map[string]any{
-				"drop": []string{
-					"ALL",
-				},
-			},
-		},
+		"securityContext": securityContext,
 		"internalDatabase": map[string]any{
 			"enabled": comp.Spec.Parameters.Service.DefaultInternalDB,
 		},

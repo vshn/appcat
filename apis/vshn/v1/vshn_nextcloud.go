@@ -27,7 +27,7 @@ type VSHNNextcloud struct {
 	Spec VSHNNextcloudSpec `json:"spec"`
 
 	// Status reflects the observed state of a VSHNNextcloud.
-	Status VSHNNextcloudstatus `json:"status,omitempty"`
+	Status VSHNNextcloudStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
@@ -173,8 +173,8 @@ type XVSHNNextcloud struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   XVSHNNextcloudspec   `json:"spec"`
-	Status XVSHNNextcloudstatus `json:"status,omitempty"`
+	Spec   XVSHNNextcloudSpec   `json:"spec"`
+	Status XVSHNNextcloudStatus `json:"status,omitempty"`
 }
 
 // XVSHNNextcloudSpec defines the desired state of a VSHNNextcloud.
@@ -186,7 +186,7 @@ type XVSHNNextcloudSpec struct {
 }
 
 type XVSHNNextcloudStatus struct {
-	VSHNNextcloudstatus `json:",inline"`
+	VSHNNextcloudStatus `json:",inline"`
 	xpv1.ResourceStatus `json:",inline"`
 }
 

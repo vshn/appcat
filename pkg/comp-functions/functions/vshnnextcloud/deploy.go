@@ -45,6 +45,9 @@ var apacheVhostConfig string
 //go:embed files/vshn-nextcloud.config.php
 var nextcloudConfig string
 
+//go:embed files/nextcloud-post-installation.sh
+var nextcloudPostInstallation string
+
 // DeployNextcloud deploys a nexctloud instance via the codecentric Helm Chart.
 func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -107,6 +110,11 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 	err = addApacheConfig(svc, comp)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add configmap for apache: %s", err))
+	}
+
+	err = addNextcloudHooks(svc, comp)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("Cannot add configmap for Nextcloud: %s", err))
 	}
 
 	err = addRelease(ctx, svc, comp, adminSecret)
@@ -290,8 +298,15 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"extraVolumes": []map[string]any{
 				{
 					"name": "apache-config",
-					"configMap": map[string]any{
+					"configMap": map[string]string{
 						"name": "apache-config",
+					},
+				},
+				{
+					"name": "nextcloud-hooks",
+					"configMap": map[string]string{
+						"name":        "nextcloud-hooks",
+						"defaultMode": "754",
 					},
 				},
 			},
@@ -305,6 +320,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":      "apache-config",
 					"mountPath": "/etc/apache2/sites-available/000-default.conf",
 					"subPath":   "000-default.conf",
+				},
+				{
+					"name":      "nextcloud-hooks",
+					"mountPath": "/docker-entrypoint-hooks.d/post-installation/vshn-post-installation.sh",
+					"subPath":   "vshn-post-installation.sh",
 				},
 			},
 		},
@@ -388,6 +408,25 @@ func addApacheConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) er
 	}
 
 	err := svc.SetDesiredKubeObject(cm, comp.GetName()+"-apache-config")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func addNextcloudHooks(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
+
+	cm := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nextcloud-hooks",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Data: map[string]string{
+			"vshn-post-installation.sh": nextcloudPostInstallation,
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(cm, comp.GetName()+"-nextcloud-hooks")
 	if err != nil {
 		return err
 	}

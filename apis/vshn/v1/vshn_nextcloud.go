@@ -141,7 +141,7 @@ type VSHNNextcloudsizeSpec struct {
 }
 
 // VSHNNextcloudstatus reflects the observed state of a VSHNNextcloud.
-type VSHNNextcloudstatus struct {
+type VSHNNextcloudStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

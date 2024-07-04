@@ -3,8 +3,8 @@ package postgres
 import (
 	"context"
 
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	corev1 "k8s.io/api/core/v1"

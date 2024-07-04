@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"dario.cat/mergo"
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xpresource "github.com/crossplane/crossplane-runtime/pkg/resource"
 	xpapi "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
@@ -21,6 +20,7 @@ import (
 	"github.com/crossplane/function-sdk-go/response"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	"github.com/vshn/appcat/v4/pkg"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

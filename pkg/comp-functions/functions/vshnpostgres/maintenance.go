@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	xkubev1 "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"

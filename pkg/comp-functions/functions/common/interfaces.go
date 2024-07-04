@@ -11,6 +11,10 @@ type InfoGetter interface {
 	GetBackupRetention() vshnv1.K8upRetentionPolicy
 	GetServiceName() string
 	GetLabels() map[string]string
+	GetSize() vshnv1.VSHNSizeSpec
+	GetInstances() int
+	GetFullMaintenanceSchedule() vshnv1.VSHNDBaaSMaintenanceScheduleSpec
+	GetMonitoring() vshnv1.VSHNMonitoring
 	InstanceNamespaceInfo
 }
 

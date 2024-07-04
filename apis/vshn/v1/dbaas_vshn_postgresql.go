@@ -375,3 +375,15 @@ func (v *VSHNPostgreSQL) GetAllowedNamespaces() []string {
 	}
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }
+
+func (v *VSHNPostgreSQL) GetSize() VSHNSizeSpec {
+	return v.Spec.Parameters.Size
+}
+
+func (v *VSHNPostgreSQL) GetMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNPostgreSQL) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}

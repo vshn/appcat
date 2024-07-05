@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"strconv"
 
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	runtime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

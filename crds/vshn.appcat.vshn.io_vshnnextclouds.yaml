@@ -4201,9 +4201,6 @@ spec:
                     service:
                       description: Service contains nextcloud DBaaS specific properties
                       properties:
-                        defaultInternalDB:
-                          description: // +kubebuilder:default=true"
-                          type: boolean
                         fqdn:
                           description: |-
                             FQDN contains the FQDN which will be used for the ingress.
@@ -8607,6 +8604,11 @@ spec:
                             - besteffort
                             - guaranteed
                           type: string
+                        useExternalPostgreSQL:
+                          description: |-
+                            UseExternalPostgreSQL defines if the VSHNPostgreSQL database backend should be used. Defaults to true. If set to false,
+                            the build-in SQLite database is being used.
+                          type: boolean
                         version:
                           default: "29"
                           description: |-

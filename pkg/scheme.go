@@ -7,10 +7,10 @@ import (
 
 	managedupgradev1beta1 "github.com/appuio/openshift-upgrade-controller/api/v1beta1"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/object/v1alpha2"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	stackgresv1beta1 "github.com/vshn/appcat/v4/apis/stackgres/v1beta1"

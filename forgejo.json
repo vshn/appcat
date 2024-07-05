@@ -1,0 +1,8 @@
+{
+  "name": "VSHNForgejo",
+  "backup": true,
+  "restore": true,
+  "maintenance": true,
+  "tls": true,
+  "settingsKey": "forgejosettings"
+}

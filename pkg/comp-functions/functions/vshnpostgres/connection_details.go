@@ -11,6 +11,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
@@ -145,8 +146,27 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 
 	obj.Spec.WriteConnectionSecretToReference = &commonv1.SecretReference{
 		Name:      comp.GetName() + "-connection",
-		Namespace: comp.GetInstanceNamespace(),
+		Namespace: svc.Config.Data["crossplaneNamespace"],
 	}
 
-	return svc.SetDesiredComposedResourceWithName(obj, "cluster")
+	err := svc.SetDesiredComposedResourceWithName(obj, "cluster")
+	if err != nil {
+		return err
+	}
+
+	// TODO: should probably go somewhere else...
+	cd, err := svc.GetObservedComposedResourceConnectionDetails("pg-bucket")
+	if err != nil {
+		return err
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pgbucket-" + comp.GetName(),
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Data: cd,
+	}
+
+	return svc.SetDesiredKubeObject(secret, comp.GetName()+"-bucket-credentials")
 }

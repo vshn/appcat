@@ -12,6 +12,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 )
 
 func TestMinioDeploy(t *testing.T) {
@@ -49,6 +50,10 @@ func TestMinioDeploy(t *testing.T) {
 	assert.Equal(t, "/minio/v2/metrics/cluster", sm.Spec.Endpoints[1].Path)
 	assert.Equal(t, "/minio/v2/metrics/bucket", sm.Spec.Endpoints[2].Path)
 	assert.Equal(t, "/minio/v2/metrics/resource", sm.Spec.Endpoints[3].Path)
+
+	np := &netv1.NetworkPolicy{}
+	assert.NoError(t, svc.GetDesiredKubeObject(np, comp.Name+"-netpol"))
+
 }
 
 func getMinioComp(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNMinio) {

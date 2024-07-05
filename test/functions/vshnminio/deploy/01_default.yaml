@@ -1,10 +1,10 @@
-desired: {}
+desired:
 input:
   apiVersion: v1
   data:
     defaultPlan: standard-1
-    minioChartRepo: https://charts.min.io
-    minioChartVersion: 5.0.13
+    chartRepository: https://charts.min.io
+    chartVersion: 5.0.13
     plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true,
       "memory": "1Gi"}}}'
     providerEnabled: "true"
@@ -43,6 +43,8 @@ observed:
         compositionRevisionRef:
           name: vshnminio.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
+      status:
+        instanceNamespace: vshn-minio-minio-gc9x4
   resources:
     minio-gc9x4-ns:
       resource:
@@ -64,6 +66,30 @@ observed:
               kind: Namespace
               metadata:
                 name: vshn-minio-minio-gc9x4
+    minio-gc9x4-claim-ns-observer:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: minio-gc9x4-claim-ns-observer
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  'appuio.io/organization': 'vshn'
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  'appuio.io/organization': 'vshn'
     minio-gc9x4-release:
       connection_details:
         AWS_ACCESS_KEY_ID: bWluaW8= #minio

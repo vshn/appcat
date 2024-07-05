@@ -46,6 +46,9 @@ var nextcloudConfig string
 //go:embed files/nextcloud-post-installation.sh
 var nextcloudPostInstallation string
 
+//go:embed files/nextcloud-post-upgrade.sh
+var nextcloudPostUpgrade string
+
 // DeployNextcloud deploys a nexctloud instance via the codecentric Helm Chart.
 func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -317,6 +320,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"mountPath": "/docker-entrypoint-hooks.d/post-installation/vshn-post-installation.sh",
 					"subPath":   "vshn-post-installation.sh",
 				},
+				{
+					"name":      "nextcloud-hooks",
+					"mountPath": "/docker-entrypoint-hooks.d/post-upgrade/vshn-post-upgrade.sh",
+					"subPath":   "vshn-post-upgrade.sh",
+				},
 			},
 		},
 		"securityContext": securityContext,
@@ -408,6 +416,7 @@ func addNextcloudHooks(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) 
 		},
 		Data: map[string]string{
 			"vshn-post-installation.sh": nextcloudPostInstallation,
+			"vshn-post-upgrade.sh":      nextcloudPostUpgrade,
 		},
 	}
 

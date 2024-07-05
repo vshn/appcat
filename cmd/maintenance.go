@@ -29,6 +29,7 @@ const (
 	minio
 	mariadb
 	keycloak
+	nextcloud
 )
 
 var maintenanceServices = map[service][]string{
@@ -37,6 +38,7 @@ var maintenanceServices = map[service][]string{
 	minio:      {"minio"},
 	mariadb:    {"mariadb"},
 	keycloak:   {"keycloak"},
+	nextcloud:  {"nextcloud"},
 }
 
 var serviceName service
@@ -99,6 +101,10 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 
 	case keycloak:
 		k := maintenance.NewKeycloak(kubeClient, getHTTPClient())
+		return k.DoMaintenance(cmd.Context())
+
+	case nextcloud:
+		k := maintenance.NewNextcloud(kubeClient, getHTTPClient())
 		return k.DoMaintenance(cmd.Context())
 	}
 

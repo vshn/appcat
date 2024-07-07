@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -275,6 +277,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	updatedNextcloudConfig := setBackgroundJobMaintenance(comp, nextcloudConfig)
 	values = map[string]any{
 		"nextcloud": map[string]any{
 			"host": comp.Spec.Parameters.Service.FQDN,
@@ -285,7 +288,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"passwordKey": adminPWSecretField,
 			},
 			"configs": map[string]string{
-				"vshn-nextcloud.config.php": nextcloudConfig,
+				"vshn-nextcloud.config.php": updatedNextcloudConfig,
 			},
 			"containerPort":      8080,
 			"podSecurityContext": securityContext,
@@ -425,4 +428,12 @@ func addNextcloudHooks(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) 
 		return err
 	}
 	return nil
+}
+
+func setBackgroundJobMaintenance(comp *vshnv1.VSHNNextcloud, nextcloudConfig string) string {
+	parsedTime, _ := time.Parse(time.TimeOnly, comp.Spec.Parameters.Maintenance.GetMaintenanceTimeOfDay())
+	// Start Background Job Maintenance no earlier than 20 min after the regular Maintenance
+	// and no later than 1 hour and 19 min after the regular Maintenance
+	backgroundJobHour := parsedTime.Add(20 * time.Minute).Hour()
+	return strings.Replace(nextcloudConfig, "%maintenance_value%", strconv.Itoa(backgroundJobHour), 1)
 }

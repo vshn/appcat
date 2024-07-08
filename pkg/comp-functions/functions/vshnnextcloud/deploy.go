@@ -434,6 +434,6 @@ func setBackgroundJobMaintenance(comp *vshnv1.VSHNNextcloud, nextcloudConfig str
 	parsedTime, _ := time.Parse(time.TimeOnly, comp.Spec.Parameters.Maintenance.GetMaintenanceTimeOfDay())
 	// Start Background Job Maintenance no earlier than 20 min after the regular Maintenance
 	// and no later than 1 hour and 19 min after the regular Maintenance
-	backgroundJobHour := parsedTime.Add(20 * time.Minute).Hour()
+	backgroundJobHour := parsedTime.Add(20 * time.Minute).Add(time.Hour).Hour()
 	return strings.Replace(nextcloudConfig, "%maintenance_value%", strconv.Itoa(backgroundJobHour), 1)
 }

@@ -1,0 +1,75 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    defaultPlan: standard-2
+    controlNamespace: appcat-control
+    plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled":
+            true, "memory": "2Gi"}}, "standard-4": {"size": {"cpu": "1", "disk": "16Gi",
+            "enabled": true, "memory": "4Gi"}}, "standard-8": {"size": {"cpu": "2",
+            "disk": "16Gi", "enabled": true, "memory": "8Gi"}}}'
+    isOpenshift: "false"
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNNextcloud
+      metadata:
+        annotations: null
+        creationTimestamp: "2024-07-08T16:30:28Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: nextcloud-
+        generation: 1
+        labels:
+          crossplane.io/claim-name: nextcloud
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: nextcloud-gc9x4
+        name: nextcloud-gc9x4
+      spec:
+        parameters:
+          service:
+            useExternalPostgreSQL: false
+            version: "29"
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNNextcloud
+          name: nextcloud
+          namespace: unit-test
+        compositionRef:
+          name: vshnnextcloud.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnnextcloud.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+  resources:
+    nextcloud-gc9x4-claim-ns-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  appuio.io/organization: vshn
+    nextcloud-gc9x4-credentials-secret:
+      connection_details:
+        admin: czNjcjN0UGFzcwo=

@@ -16,6 +16,10 @@ func init() {
 				Name:    "ingress",
 				Execute: AddIngress,
 			},
+			{
+				Name:    "maintenance",
+				Execute: AddMaintenanceJob,
+			},
 		},
 	})
 }

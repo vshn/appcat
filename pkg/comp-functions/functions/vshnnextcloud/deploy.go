@@ -61,7 +61,7 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 		return runtime.NewWarningResult(fmt.Sprintf("cannot bootstrap instance namespace: %s", err))
 	}
 
-	if !comp.Spec.Parameters.Service.UseExternalPostgreSQL {
+	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
 		svc.Log.Info("Adding postgresql instance")
 		err = addPostgreSQL(svc, comp)
 		if err != nil {
@@ -231,7 +231,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	externalDb := map[string]any{}
 
-	if !comp.Spec.Parameters.Service.UseExternalPostgreSQL {
+	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
 		cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + pgInstanceNameSuffix)
 		if err != nil {
 			return nil, err
@@ -321,7 +321,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"securityContext": securityContext,
 		"internalDatabase": map[string]any{
-			"enabled": comp.Spec.Parameters.Service.UseExternalPostgreSQL,
+			"enabled": !comp.Spec.Parameters.Service.UseExternalPostgreSQL,
 		},
 		"startupProbe": map[string]any{
 			"initialDelaySeconds": "5",

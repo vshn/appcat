@@ -16,7 +16,143 @@ input:
             "disk": "16Gi", "enabled": true, "memory": "8Gi"}}}'
     isOpenshift: "false"
 observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNNextcloud
+      metadata:
+        annotations: null
+        creationTimestamp: "2024-07-08T16:30:28Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: nextcloud-
+        generation: 1
+        labels:
+          crossplane.io/claim-name: nextcloud
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: nextcloud-gc9x4
+        name: nextcloud-gc9x4
+      spec:
+        parameters:
+          service:
+            useExternalPostgreSQL: true
+            version: "29"
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNNextcloud
+          name: nextcloud
+          namespace: unit-test
+        compositionRef:
+          name: vshnnextcloud.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnnextcloud.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
   resources:
-    mynextcloud-pg:
+    nextcloud-gc9x4-claim-ns-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  appuio.io/organization: vshn
+    nextcloud-gc9x4-credentials-secret:
       connection_details:
-        foo: YmFyCg==
+        admin: czNjcjN0UGFzcwo=
+    nextcloud-gc9x4-pg:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: "nextcloud-gc9x4-pg"
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: vshn.appcat.vshn.io/v1
+              kind: VSHNNextcloud
+              metadata:
+                name: "nextcloud-gc9x4-pg"
+              spec:
+                parameters:
+                  service:
+                    repackEnabled: false
+                    vacuumEnabled: false
+                  backup:
+                    retention: 6
+                    deletionProtection: true
+                    deletionRetention: 7
+                  encryption:
+                    enabled: false
+                  instances: 1
+                  security:
+                    allowAllNamespaces: false
+        status:
+          atProvider:
+            manifest:
+              apiVersion: vshn.appcat.vshn.io/v1
+              kind: VSHNNextcloud
+              metadata:
+                annotations: null
+                creationTimestamp: "2024-07-08T16:30:28Z"
+                generation: 8
+                name: "nextcloud-gc9x4-pg"
+                namespace: vshn-postgresql-nextcloud-gc9x4
+                resourceVersion: "583272583"
+                uid: 44ead047-98de-4e73-9cc0-d99454090a36
+              spec:
+                parameters:
+                  service:
+                    repackEnabled: false
+                    vacuumEnabled: false
+                  backup:
+                    retention: 6
+                    deletionProtection: true
+                    deletionRetention: 7
+                  encryption:
+                    enabled: false
+                  instances: 1
+                  security:
+                    allowAllNamespaces: false
+              status:
+                conditions:
+                - lastTransitionTime: "2024-07-08T14:50:19Z"
+                  reason: Available
+                  status: "True"
+                  type: Ready
+                - lastTransitionTime: "2024-07-08T14:50:18Z"
+                  reason: ReconcileSuccess
+                  status: "True"
+                  type: Synced
+      connection_details:
+        POSTGRESQL_HOST: bmV4dGNsb3VkLWdjOXg0LnZzaG4tcG9zdGdyZXNxbC1uZXh0Y2xvdWQtZ2N4NC5zdmMuY2x1c3Rlci5sb2NhbAo=
+        POSTGRESQL_DB: cG9zdGdyZXMK
+        POSTGRESQL_URL: cG9zdGdyZXM6Ly9wb3N0Z3Jlczo0YTcwLWY2OTItNGE5YS1iMzBAbmV4dGNsb3VkLWdjOXg0LnZzaG4tcG9zdGdyZXNxbC1uZXh0Y2xvdWQtZ2N4NC5zdmMuY2x1c3Rlci5sb2NhbC9wb3N0Z3Jlcwo=
+        POSTGRESQL_USER: cG9zdGdyZXMK
+        POSTGRESQL_PORT: NTQzMgo=
+        POSTGRESQL_PASSWORD: NGE3MC1mNjkyLTRhOWEtYjMwCg==
+      status:
+        conditions:
+        - lastTransitionTime: "2024-07-08T14:50:19Z"
+          reason: Available
+          status: "True"
+          type: Ready
+        - lastTransitionTime: "2024-07-08T14:50:18Z"
+          reason: ReconcileSuccess
+          status: "True"
+          type: Synced
+
+

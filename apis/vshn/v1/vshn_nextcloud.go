@@ -106,9 +106,9 @@ type VSHNNextcloudServiceSpec struct {
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 
-	// // +kubebuilder:default=true"
+	// +kubebuilder:default=true
 
-	//UseExternalPostgreSQL defines if the VSHNPostgreSQL database backend should be used. Defaults to true. If set to false,
+	// UseExternalPostgreSQL defines if the VSHNPostgreSQL database backend should be used. Defaults to true. If set to false,
 	// the build-in SQLite database is being used.
 	UseExternalPostgreSQL bool `json:"useExternalPostgreSQL,omitempty"`
 

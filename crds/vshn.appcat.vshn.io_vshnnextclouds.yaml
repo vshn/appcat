@@ -8605,6 +8605,7 @@ spec:
                             - guaranteed
                           type: string
                         useExternalPostgreSQL:
+                          default: true
                           description: |-
                             UseExternalPostgreSQL defines if the VSHNPostgreSQL database backend should be used. Defaults to true. If set to false,
                             the build-in SQLite database is being used.

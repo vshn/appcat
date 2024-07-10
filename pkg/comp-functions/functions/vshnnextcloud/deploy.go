@@ -277,7 +277,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
-	updatedNextcloudConfig := setBackgroundJobMaintenance(comp, nextcloudConfig)
+	updatedNextcloudConfig := setBackgroundJobMaintenance(comp.Spec.Parameters.Maintenance.GetMaintenanceTimeOfDay(), nextcloudConfig)
 	values = map[string]any{
 		"nextcloud": map[string]any{
 			"host": comp.Spec.Parameters.Service.FQDN,
@@ -430,8 +430,12 @@ func addNextcloudHooks(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) 
 	return nil
 }
 
-func setBackgroundJobMaintenance(comp *vshnv1.VSHNNextcloud, nextcloudConfig string) string {
-	parsedTime, _ := time.Parse(time.TimeOnly, comp.Spec.Parameters.Maintenance.GetMaintenanceTimeOfDay())
+func setBackgroundJobMaintenance(timeOfDay, nextcloudConfig string) string {
+	parsedTime, err := time.Parse(time.TimeOnly, timeOfDay)
+	if err != nil {
+		// set the default value at 1 am
+		return "1"
+	}
 	// Start Background Job Maintenance no earlier than 20 min after the regular Maintenance
 	// and no later than 1 hour and 19 min after the regular Maintenance
 	backgroundJobHour := parsedTime.Add(20 * time.Minute).Add(time.Hour).Hour()

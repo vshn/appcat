@@ -63,9 +63,22 @@ $(protoc_bin): | $(go_bin)
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
+.PHONY: protobuf-gen
+protobuf-gen: export PATH := $(go_bin):$(PATH)
+protobuf-gen: $(protoc_bin)
+	go run k8s.io/code-generator/cmd/go-to-protobuf@v0.26.3 \
+		--packages=github.com/vshn/appcat/v4/apis/apiserver/v1 \
+		--output-base=./.work/tmp \
+		--go-header-file=./pkg/apiserver/hack/boilerplate.txt  \
+        --apimachinery-packages='-k8s.io/apimachinery/pkg/util/intstr,-k8s.io/apimachinery/pkg/api/resource,-k8s.io/apimachinery/pkg/runtime/schema,-k8s.io/apimachinery/pkg/runtime,-k8s.io/apimachinery/pkg/apis/meta/v1,-k8s.io/apimachinery/pkg/apis/meta/v1beta1,-k8s.io/api/core/v1,-k8s.io/api/rbac/v1' \
+        --proto-import=./.work/kubernetes/staging/src/ \
+		--proto-import=./.work/kubernetes/vendor && \
+    	mv ./.work/tmp/github.com/vshn/appcat/v4/apis/apiserver/v1/generated.pb.go ./apis/apiserver/v1/ && \
+    	rm -rf ./.work/tmp
+
 .PHONY: generate
 generate: export PATH := $(go_bin):$(PATH)
-generate: $(protoc_bin) get-crds generate-stackgres-crds ## Generate code with controller-gen and protobuf.
+generate:  get-crds generate-stackgres-crds protobuf-gen ## Generate code with controller-gen and protobuf.
 	go version
 	rm -rf apis/generated
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="{./apis/v1/..., ./apis/vshn/..., ./apis/exoscale/...}" object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
@@ -206,7 +219,7 @@ clean:
 get-crds:
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-helm provider-helm apis/release apis/helm
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-kubernetes provider-kubernetes apis/object/v1alpha2 apis/kubernetes
-	
+
 	# provider-sql needs manual fixes... Running this every time would break them.
 	# The crossplane code generator only works if the code is valid, but the code is not valid until the code generator has run...
 	#./hack/get_crds.sh https://github.com/crossplane-contrib/provider-sql provider-sql apis/ apis/sql

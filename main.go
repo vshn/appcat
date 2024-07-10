@@ -16,6 +16,7 @@ func init() {
 		cmd.FunctionCMD,
 		cmd.MaintenanceCMD,
 		cmd.SlareportCMD,
+		cmd.APIServerCMD,
 	)
 }
 

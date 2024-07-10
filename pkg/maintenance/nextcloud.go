@@ -35,5 +35,5 @@ func (m *Nextcloud) DoMaintenance(ctx context.Context) error {
 
 	valuesPath := helm.NewValuePath("image", "tag")
 
-	return patcher.DoMaintenance(ctx, nextcloudURL, valuesPath, helm.SemVerMinorsAndPatches(true))
+	return patcher.DoMaintenance(ctx, nextcloudURL, valuesPath, helm.SemVerPatchesOnly(true))
 }

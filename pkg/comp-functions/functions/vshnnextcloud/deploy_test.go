@@ -118,7 +118,7 @@ func Test_setBackgroundJobMaintenance(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			updatedNextcloudConfig := setBackgroundJobMaintenance(tt.timeOfDay, testNextcloudConfig)
 			splitted := strings.Split(updatedNextcloudConfig, "'maintenance_window_start' => ")
-			actual := strings.Trim(splitted[1][:2], "\n")
+			actual := strings.Trim(splitted[1][:2], ",\n")
 			assert.Equal(t, tt.want, actual)
 		})
 	}

@@ -192,7 +192,7 @@ type VSHNAccess struct {
 	// User specifies the username. If all other fields are left empty
 	// then a new database with the same name and all permissions will be created.
 	// +kubebuilder:validation:Required
-	User *string `json:"user,omitempty"`
+	User *string `json:"user"`
 
 	// Database is the name of the database to create, defaults to user.
 	Database *string `json:"database,omitempty"`

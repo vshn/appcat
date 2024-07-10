@@ -12,7 +12,6 @@ import (
 // kubebuilder is unable to set a {} default
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 
@@ -85,10 +84,12 @@ type VSHNNextcloudParameters struct {
 
 // VSHNNextcloudserviceSpec contains nextcloud DBaaS specific properties
 type VSHNNextcloudServiceSpec struct {
+	// +kubebuilder:validation:Required
+
 	// FQDN contains the FQDN which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.
 	// This also enables strict hostname checking for this FQDN.
-	FQDN string `json:"fqdn,omitempty"`
+	FQDN string `json:"fqdn"`
 
 	// RelativePath on which Nextcloud will listen.
 	// +kubebuilder:default="/"

@@ -8478,6 +8478,8 @@ spec:
                                           - name
                                           - namespace
                                         type: object
+                                    required:
+                                      - user
                                     type: object
                                   type: array
                                 extensions:
@@ -8616,8 +8618,9 @@ spec:
                             Version contains supported version of nextcloud.
                             Multiple versions are supported. The latest version 29 is the default version.
                           type: string
+                      required:
+                        - fqdn
                       type: object
-                      default: {}
                     size:
                       description: Size contains settings to control the sizing of a service.
                       properties:

@@ -20,8 +20,8 @@ type MariaDB struct {
 }
 
 // NewMariaDB returns a new Redis maintenance job runner
-func NewMariaDB(c client.Client, hc *http.Client) MariaDB {
-	return MariaDB{
+func NewMariaDB(c client.Client, hc *http.Client) *MariaDB {
+	return &MariaDB{
 		k8sClient:  c,
 		httpClient: hc,
 	}

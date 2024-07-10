@@ -21,8 +21,8 @@ type Keycloak struct {
 }
 
 // NewKeycloak returns a new Keycloak object
-func NewKeycloak(c client.Client, hc *http.Client) Keycloak {
-	return Keycloak{
+func NewKeycloak(c client.Client, hc *http.Client) *Keycloak {
+	return &Keycloak{
 		k8sClient:  c,
 		httpClient: hc,
 	}

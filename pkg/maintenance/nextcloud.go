@@ -21,8 +21,8 @@ type Nextcloud struct {
 }
 
 // NewNextcloud returns a new Nextcloud object
-func NewNextcloud(c client.Client, hc *http.Client) Nextcloud {
-	return Nextcloud{
+func NewNextcloud(c client.Client, hc *http.Client) *Nextcloud {
+	return &Nextcloud{
 		k8sClient:  c,
 		httpClient: hc,
 	}

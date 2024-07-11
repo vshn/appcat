@@ -2,7 +2,9 @@ package vshnnextcloud
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -84,6 +86,42 @@ func Test_addReleaseInternalDB(t *testing.T) {
 	assert.Equal(t, map[string]any{}, extDb)
 	intDb := values["internalDatabase"].(map[string]any)
 	assert.Equal(t, true, intDb["enabled"])
+}
+
+//go:embed files/vshn-nextcloud.config.php
+var testNextcloudConfig string
+
+func Test_setBackgroundJobMaintenance(t *testing.T) {
+
+	tests := []struct {
+		name      string
+		timeOfDay string
+		want      string
+	}{
+		{
+			name:      "10MinEarlierThan20Expect21",
+			timeOfDay: "19:50:01",
+			want:      "21",
+		},
+		{
+			name:      "21MinEarlierThan20Expect20",
+			timeOfDay: "19:39:01",
+			want:      "20",
+		},
+		{
+			name:      "1MinAfterThan0Expect1",
+			timeOfDay: "00:01:01",
+			want:      "1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updatedNextcloudConfig := setBackgroundJobMaintenance(tt.timeOfDay, testNextcloudConfig)
+			splitted := strings.Split(updatedNextcloudConfig, "'maintenance_window_start' => ")
+			actual := strings.Trim(splitted[1][:2], ",\n")
+			assert.Equal(t, tt.want, actual)
+		})
+	}
 }
 
 func getNextcloudComp(t *testing.T, file string) (*runtime.ServiceRuntime, *vshnv1.VSHNNextcloud) {

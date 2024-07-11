@@ -82,7 +82,7 @@ type VSHNNextcloudParameters struct {
 	Instances int `json:"instances,omitempty"`
 }
 
-// VSHNNextcloudserviceSpec contains nextcloud DBaaS specific properties
+// VSHNNextcloudServiceSpec contains nextcloud DBaaS specific properties
 type VSHNNextcloudServiceSpec struct {
 	// +kubebuilder:validation:Required
 
@@ -118,11 +118,11 @@ type VSHNNextcloudServiceSpec struct {
 	PostgreSQLParameters *VSHNPostgreSQLParameters `json:"postgreSQLParameters,omitempty"`
 }
 
-// VSHNNextcloudsettings contains Nextcloud specific settings.
-type VSHNNextcloudsettings struct{}
+// VSHNNextcloudSettings contains Nextcloud specific settings.
+type VSHNNextcloudSettings struct{}
 
-// VSHNNextcloudsizeSpec contains settings to control the sizing of a service.
-type VSHNNextcloudsizeSpec struct {
+// VSHNNextcloudSizeSpec contains settings to control the sizing of a service.
+type VSHNNextcloudSizeSpec struct {
 
 	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
 	CPURequests string `json:"cpuRequests,omitempty"`

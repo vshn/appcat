@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -45,6 +47,9 @@ var nextcloudConfig string
 
 //go:embed files/nextcloud-post-installation.sh
 var nextcloudPostInstallation string
+
+//go:embed files/nextcloud-post-upgrade.sh
+var nextcloudPostUpgrade string
 
 // DeployNextcloud deploys a nexctloud instance via the codecentric Helm Chart.
 func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
@@ -272,6 +277,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	updatedNextcloudConfig := setBackgroundJobMaintenance(comp.Spec.Parameters.Maintenance.GetMaintenanceTimeOfDay(), nextcloudConfig)
 	values = map[string]any{
 		"nextcloud": map[string]any{
 			"host": comp.Spec.Parameters.Service.FQDN,
@@ -282,7 +288,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"passwordKey": adminPWSecretField,
 			},
 			"configs": map[string]string{
-				"vshn-nextcloud.config.php": nextcloudConfig,
+				"vshn-nextcloud.config.php": updatedNextcloudConfig,
 			},
 			"containerPort":      8080,
 			"podSecurityContext": securityContext,
@@ -316,6 +322,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":      "nextcloud-hooks",
 					"mountPath": "/docker-entrypoint-hooks.d/post-installation/vshn-post-installation.sh",
 					"subPath":   "vshn-post-installation.sh",
+				},
+				{
+					"name":      "nextcloud-hooks",
+					"mountPath": "/docker-entrypoint-hooks.d/post-upgrade/vshn-post-upgrade.sh",
+					"subPath":   "vshn-post-upgrade.sh",
 				},
 			},
 		},
@@ -408,6 +419,7 @@ func addNextcloudHooks(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) 
 		},
 		Data: map[string]string{
 			"vshn-post-installation.sh": nextcloudPostInstallation,
+			"vshn-post-upgrade.sh":      nextcloudPostUpgrade,
 		},
 	}
 
@@ -416,4 +428,16 @@ func addNextcloudHooks(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) 
 		return err
 	}
 	return nil
+}
+
+func setBackgroundJobMaintenance(timeOfDay, nextcloudConfig string) string {
+	parsedTime, err := time.Parse(time.TimeOnly, timeOfDay)
+	if err != nil {
+		// set the default value at 1 am
+		return "1"
+	}
+	// Start Background Job Maintenance no earlier than 20 min after the regular Maintenance
+	// and no later than 1 hour and 19 min after the regular Maintenance
+	backgroundJobHour := parsedTime.Add(20 * time.Minute).Add(time.Hour).Hour()
+	return strings.Replace(nextcloudConfig, "%maintenance_value%", strconv.Itoa(backgroundJobHour), 1)
 }

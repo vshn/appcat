@@ -31,8 +31,8 @@ type Minio struct {
 }
 
 // NewMinio returns a new Minio object
-func NewMinio(c client.Client, hc *http.Client) Minio {
-	return Minio{
+func NewMinio(c client.Client, hc *http.Client) *Minio {
+	return &Minio{
 		k8sClient:  c,
 		httpClient: hc,
 	}

@@ -20,8 +20,8 @@ type Redis struct {
 }
 
 // NewRedis returns a new Redis maintenance job runner
-func NewRedis(c client.Client, hc *http.Client) Redis {
-	return Redis{
+func NewRedis(c client.Client, hc *http.Client) *Redis {
+	return &Redis{
 		k8sClient:  c,
 		httpClient: hc,
 	}

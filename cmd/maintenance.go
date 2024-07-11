@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -20,6 +21,10 @@ var (
 	MaintenanceCMD = newMaintenanceCMD()
 )
 
+type Maintenance interface {
+	DoMaintenance(ctx context.Context) error
+}
+
 type service enumflag.Flag
 
 const (
@@ -29,6 +34,7 @@ const (
 	minio
 	mariadb
 	keycloak
+	nextcloud
 )
 
 var maintenanceServices = map[service][]string{
@@ -37,6 +43,7 @@ var maintenanceServices = map[service][]string{
 	minio:      {"minio"},
 	mariadb:    {"mariadb"},
 	keycloak:   {"keycloak"},
+	nextcloud:  {"nextcloud"},
 }
 
 var serviceName service
@@ -71,6 +78,7 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	var m Maintenance
 	switch serviceName {
 	case postgresql:
 
@@ -79,30 +87,31 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("missing environment variable: %s", "SG_NAMESPACE")
 		}
 
-		pg := maintenance.PostgreSQL{
+		m = &maintenance.PostgreSQL{
 			Client:       kubeClient,
 			SgURL:        "https://stackgres-restapi." + sgNamespace + ".svc",
 			MaintTimeout: time.Hour,
 		}
-		return pg.DoMaintenance(cmd.Context())
 	case redis:
-		r := maintenance.NewRedis(kubeClient, getHTTPClient())
-		return r.DoMaintenance(cmd.Context())
+		m = maintenance.NewRedis(kubeClient, getHTTPClient())
 
 	case minio:
-		m := maintenance.NewMinio(kubeClient, getHTTPClient())
-		return m.DoMaintenance(cmd.Context())
+		m = maintenance.NewMinio(kubeClient, getHTTPClient())
 
 	case mariadb:
-		m := maintenance.NewMariaDB(kubeClient, getHTTPClient())
-		return m.DoMaintenance(cmd.Context())
+		m = maintenance.NewMariaDB(kubeClient, getHTTPClient())
 
 	case keycloak:
-		k := maintenance.NewKeycloak(kubeClient, getHTTPClient())
-		return k.DoMaintenance(cmd.Context())
+		m = maintenance.NewKeycloak(kubeClient, getHTTPClient())
+
+	case nextcloud:
+		m = maintenance.NewNextcloud(kubeClient, getHTTPClient())
+	default:
+
+		panic("service name is mandatory")
 	}
 
-	return nil
+	return m.DoMaintenance(cmd.Context())
 }
 
 func getHTTPClient() *http.Client {

@@ -342,7 +342,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"--http-enabled=true",
 			"--http-port=8080",
 			"--hostname-strict=false",
-			"--hostname-strict-https=false",
 			"--spi-events-listener-jboss-logging-success-level=info",
 			"--spi-events-listener-jboss-logging-error-level=warn",
 		},
@@ -360,10 +359,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": true,
 		},
 		"extraServiceMonitor": map[string]any{
-			"enabled": true,
+			"enabled": false,
 		},
 		"serviceMonitor": map[string]any{
-			"enabled": true,
+			"enabled": false,
 		},
 		"resources": map[string]any{
 			"requests": map[string]any{
@@ -391,11 +390,24 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				},
 			},
 		},
+		"service": map[string]any{
+			"extraPorts": []map[string]any{
+				{
+					"name":       "http-internal",
+					"port":       9000,
+					"targetPort": 9000,
+				},
+			},
+		},
 		"http": map[string]any{
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
+			//	"internalPort": "http-internal",
 		},
 		"podSecurityContext": nil,
 	}
+
+	jsonned, _ := json.Marshal(values)
+	fmt.Println(string(jsonned))
 
 	return values, nil
 }

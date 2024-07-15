@@ -100,8 +100,8 @@ type VSHNKeycloakServiceSpec struct {
 	// +kubebuilder:default="/"
 	RelativePath string `json:"relativePath,omitempty"`
 
-	// +kubebuilder:validation:Enum="23";"24"
-	// +kubebuilder:default="23"
+	// +kubebuilder:validation:Enum="25"
+	// +kubebuilder:default="25"
 
 	// Version contains supported version of keycloak.
 	// Multiple versions are supported. The latest version 23 is the default version.

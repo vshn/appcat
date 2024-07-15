@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
+	"time"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
@@ -57,7 +57,11 @@ func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.
 		"ignore_startup_parameters": "extra_float_digits, search_path",
 	}
 
-	err = common.AddPostgreSQL(svc, comp, comp.Spec.Parameters.Service.PostgreSQLParameters, pgBuncerConfig)
+	err = common.NewPostgreSQLDependencyBuilder(svc, comp).
+		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
+		AddPGBouncerConfig(pgBuncerConfig).
+		SetCustomMaintenanceSchedule(comp.Spec.Parameters.Maintenance.TimeOfDay.AddTime(20 * time.Minute)).
+		CreateDependency()
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
 	}

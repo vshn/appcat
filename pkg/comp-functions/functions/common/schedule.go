@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	v1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"math/rand"
 	"time"
 )
@@ -21,8 +22,7 @@ type BackupScheduler interface {
 type MaintenanceScheduler interface {
 	GetMaintenanceDayOfWeek() string
 	SetMaintenanceDayOfWeek(string)
-	GetMaintenanceTimeOfDay() string
-	SetMaintenanceTimeOfDay(string)
+	GetMaintenanceTimeOfDay() *v1.TimeOfDay
 }
 
 // SetRandomSchedules initializes the backup and maintenance schedules  if the user did not explicitly provide a schedule.
@@ -38,9 +38,9 @@ func SetRandomSchedules(backup BackupScheduler, maintenance MaintenanceScheduler
 		backup.SetBackupSchedule(newSchedule)
 	}
 
-	if maintenance.GetMaintenanceTimeOfDay() == "" {
-		newTime := maintTime.Format(time.TimeOnly)
-		maintenance.SetMaintenanceTimeOfDay(newTime)
+	timeOfDay := maintenance.GetMaintenanceTimeOfDay()
+	if timeOfDay.IsNotSet() {
+		timeOfDay.SetTime(maintTime)
 	}
 
 	if maintenance.GetMaintenanceDayOfWeek() == "" {

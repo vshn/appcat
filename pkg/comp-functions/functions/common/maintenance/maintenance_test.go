@@ -2,9 +2,6 @@ package maintenance
 
 import (
 	"context"
-	"reflect"
-	"testing"
-
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/stretchr/testify/assert"
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -15,6 +12,8 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+	"reflect"
+	"testing"
 )
 
 func Test_parseCron(t *testing.T) {

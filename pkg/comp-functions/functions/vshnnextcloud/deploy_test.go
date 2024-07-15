@@ -4,15 +4,14 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"strings"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"k8s.io/utils/ptr"
+	"strings"
+	"testing"
 )
 
 func Test_addPostgreSQL(t *testing.T) {
@@ -104,8 +103,13 @@ func Test_setBackgroundJobMaintenance(t *testing.T) {
 			want:      "21",
 		},
 		{
-			name:      "21MinEarlierThan20Expect20",
+			name:      "21MinEarlierThan20Expect21",
 			timeOfDay: "19:39:01",
+			want:      "21",
+		},
+		{
+			name:      "50MinEarlierThan20Expect20",
+			timeOfDay: "19:10:01",
 			want:      "20",
 		},
 		{
@@ -116,7 +120,7 @@ func Test_setBackgroundJobMaintenance(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			updatedNextcloudConfig := setBackgroundJobMaintenance(tt.timeOfDay, testNextcloudConfig)
+			updatedNextcloudConfig := setBackgroundJobMaintenance(vshnv1.TimeOfDay(tt.timeOfDay), testNextcloudConfig)
 			splitted := strings.Split(updatedNextcloudConfig, "'maintenance_window_start' => ")
 			actual := strings.Trim(splitted[1][:2], ",\n")
 			assert.Equal(t, tt.want, actual)

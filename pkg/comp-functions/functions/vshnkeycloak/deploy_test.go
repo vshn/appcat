@@ -20,7 +20,9 @@ func Test_addPostgreSQL(t *testing.T) {
 
 	comp := &vshnv1.VSHNKeycloak{}
 
-	assert.NoError(t, common.AddPostgreSQL(svc, comp, comp.Spec.Parameters.Service.PostgreSQLParameters, nil))
+	assert.NoError(t, common.NewPostgreSQLDependencyBuilder(svc, comp).
+		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
+		CreateDependency())
 
 	pg := &vshnv1.XVSHNPostgreSQL{}
 
@@ -38,7 +40,7 @@ func Test_addPostgreSQL(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, common.AddPostgreSQL(svc, comp, comp.Spec.Parameters.Service.PostgreSQLParameters, nil))
+	assert.NoError(t, common.NewPostgreSQLDependencyBuilder(svc, comp).AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).CreateDependency())
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.False(t, *pg.Spec.Parameters.Backup.DeletionProtection)
 	assert.Equal(t, 1, pg.Spec.Parameters.Backup.Retention)
@@ -96,7 +98,7 @@ func Test_addHARelease(t *testing.T) {
 
 	pg := &vshnv1.XVSHNPostgreSQL{}
 
-	assert.NoError(t, common.AddPostgreSQL(svc, comp, comp.Spec.Parameters.Service.PostgreSQLParameters, nil))
+	assert.NoError(t, common.NewPostgreSQLDependencyBuilder(svc, comp).AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).CreateDependency())
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
 

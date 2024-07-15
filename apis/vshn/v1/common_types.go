@@ -3,7 +3,10 @@ package v1
 import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"time"
 )
+
+type TimeOfDay string
 
 // K8upBackupSpec specifies when a backup for redis should be triggered.
 // It also contains the retention policy for the backup.
@@ -67,10 +70,11 @@ type VSHNDBaaSMaintenanceScheduleSpec struct {
 	DayOfWeek string `json:"dayOfWeek,omitempty"`
 
 	// +kubebuilder:validation:Pattern="^([0-1]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$"
+	// +kubebuilder:validation:Type=string
 
 	// TimeOfDay for installing updates in UTC.
 	// Format: "hh:mm:ss".
-	TimeOfDay string `json:"timeOfDay,omitempty"`
+	TimeOfDay TimeOfDay `json:"timeOfDay,omitempty"`
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
@@ -79,7 +83,7 @@ func (n *VSHNDBaaSMaintenanceScheduleSpec) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (n *VSHNDBaaSMaintenanceScheduleSpec) GetMaintenanceTimeOfDay() string {
+func (n *VSHNDBaaSMaintenanceScheduleSpec) GetMaintenanceTimeOfDay() TimeOfDay {
 	return n.TimeOfDay
 }
 
@@ -89,7 +93,7 @@ func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceDayOfWeek(dow string) {
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceTimeOfDay(tod string) {
+func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	n.TimeOfDay = tod
 }
 
@@ -207,4 +211,42 @@ type VSHNAccess struct {
 	// If not specified, a secret with the name $claimname-$username will be
 	// created in the namespace where the claim is located.
 	WriteConnectionSecretToReference *xpv1.SecretReference `json:"writeConnectionSecretToRef,omitempty"`
+}
+
+// GetTime will parse TimeOfDay into time.Time
+// If TimeOfDay is nil or non-parsable then a zero time.Time will be returned
+func (a *TimeOfDay) GetTime() time.Time {
+	if a == nil {
+		return time.Time{}
+	}
+	v, err := time.Parse(time.TimeOnly, string(*a))
+	if err != nil {
+		return time.Time{}
+	}
+	return v
+}
+
+func (a *TimeOfDay) IsSet() bool {
+	if a == nil {
+		return false
+	}
+	if *a == "" {
+		return false
+	}
+	return true
+}
+
+func (a *TimeOfDay) IsNotSet() bool {
+	return !a.IsSet()
+}
+
+// SetTime will set TimeOfDay from time.Time with time only format
+func (a *TimeOfDay) SetTime(t time.Time) {
+	*a = TimeOfDay(t.Format(time.TimeOnly))
+}
+
+// AddTime adds duration to current time
+func (a *TimeOfDay) AddTime(d time.Duration) TimeOfDay {
+	a.SetTime(a.GetTime().Add(d))
+	return *a
 }

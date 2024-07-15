@@ -187,11 +187,11 @@ func (v *VSHNMariaDB) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *VSHNMariaDB) GetMaintenanceTimeOfDay() string {
+func (v *VSHNMariaDB) GetMaintenanceTimeOfDay() *TimeOfDay {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
-		return v.Spec.Parameters.Maintenance.TimeOfDay
+		return &v.Spec.Parameters.Maintenance.TimeOfDay
 	}
-	return v.Status.Schedules.Maintenance.TimeOfDay
+	return &v.Status.Schedules.Maintenance.TimeOfDay
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
@@ -200,7 +200,7 @@ func (v *VSHNMariaDB) SetMaintenanceDayOfWeek(dow string) {
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (v *VSHNMariaDB) SetMaintenanceTimeOfDay(tod string) {
+func (v *VSHNMariaDB) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	v.Status.Schedules.Maintenance.TimeOfDay = tod
 }
 
@@ -231,7 +231,7 @@ func (v *VSHNMariaDB) GetServiceName() string {
 func (v *VSHNMariaDB) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
-	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
+	schedule.TimeOfDay = *v.GetMaintenanceTimeOfDay()
 	return schedule
 }
 

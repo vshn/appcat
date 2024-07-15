@@ -213,11 +213,11 @@ func (n *VSHNNextcloud) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *VSHNNextcloud) GetMaintenanceTimeOfDay() string {
+func (v *VSHNNextcloud) GetMaintenanceTimeOfDay() *TimeOfDay {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
-		return v.Spec.Parameters.Maintenance.TimeOfDay
+		return &v.Spec.Parameters.Maintenance.TimeOfDay
 	}
-	return v.Status.Schedules.Maintenance.TimeOfDay
+	return &v.Status.Schedules.Maintenance.TimeOfDay
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
@@ -226,7 +226,7 @@ func (v *VSHNNextcloud) SetMaintenanceDayOfWeek(dow string) {
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (v *VSHNNextcloud) SetMaintenanceTimeOfDay(tod string) {
+func (v *VSHNNextcloud) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	v.Status.Schedules.Maintenance.TimeOfDay = tod
 }
 
@@ -257,7 +257,7 @@ func (v *VSHNNextcloud) GetServiceName() string {
 func (v *VSHNNextcloud) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
-	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
+	schedule.TimeOfDay = *v.GetMaintenanceTimeOfDay()
 	return schedule
 }
 

@@ -25,4 +25,6 @@ import (
 
 	// Crossplane package manager
 	_ "github.com/crossplane/crossplane/cmd/crank"
+	// Kubernetes openapi generator
+	_ "k8s.io/kube-openapi/cmd/openapi-gen"
 )

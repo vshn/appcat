@@ -120,6 +120,17 @@ type VSHNKeycloakServiceSpec struct {
 	// The themes need to be be placed in the `/themes` directory of the custom image.
 	// the providers need to be placed in the `/providers` directory of the custom image.
 	CustomizationImage VSHNKeycloakCustomizationImage `json:"customizationImage,omitempty"`
+
+	// CustomConfigurationRef can be used to provide a configmap containing configurations for the
+	// keycloak instance. The config is a JSON file based on the keycloak export files.
+	// The referenced configmap, must have the configuration in a field called `keycloak-config.json`
+	CustomConfigurationRef *string `json:"configuration,omitempty"`
+
+	// CustomEnvVariablesRef can be used to provide custom environment variables from a
+	// provided secret for the keycloak instance. The environment variables provided
+	// can for example be used in the custom JSON configuration provided in the `Configuration`
+	// field with `$(env:<ENV_VAR_NAME>:-<some_default_value>)`
+	CustomEnvVariablesRef *string `json:"customEnvVariables,omitempty"`
 }
 
 type VSHNKeycloakCustomizationImage struct {

@@ -268,11 +268,11 @@ func (v *VSHNPostgreSQL) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *VSHNPostgreSQL) GetMaintenanceTimeOfDay() string {
+func (v *VSHNPostgreSQL) GetMaintenanceTimeOfDay() *TimeOfDay {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
-		return v.Spec.Parameters.Maintenance.TimeOfDay
+		return &v.Spec.Parameters.Maintenance.TimeOfDay
 	}
-	return v.Status.Schedules.Maintenance.TimeOfDay
+	return &v.Status.Schedules.Maintenance.TimeOfDay
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
@@ -281,7 +281,7 @@ func (v *VSHNPostgreSQL) SetMaintenanceDayOfWeek(dow string) {
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (v *VSHNPostgreSQL) SetMaintenanceTimeOfDay(tod string) {
+func (v *VSHNPostgreSQL) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	v.Status.Schedules.Maintenance.TimeOfDay = tod
 }
 
@@ -302,7 +302,7 @@ func (v *VSHNPostgreSQL) SetBackupSchedule(schedule string) {
 func (v *VSHNPostgreSQL) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
-	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
+	schedule.TimeOfDay = *v.GetMaintenanceTimeOfDay()
 	return schedule
 }
 

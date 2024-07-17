@@ -68,7 +68,10 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
 		svc.Log.Info("Adding postgresql instance")
-		err = addPostgreSQL(svc, comp)
+		err = common.NewPostgreSQLDependencyBuilder(svc, comp).
+			AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
+			SetCustomMaintenanceSchedule(comp.Spec.Parameters.Maintenance.TimeOfDay.AddTime(20 * time.Minute)).
+			CreateDependency()
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
 		}
@@ -430,14 +433,9 @@ func addNextcloudHooks(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) 
 	return nil
 }
 
-func setBackgroundJobMaintenance(timeOfDay, nextcloudConfig string) string {
-	parsedTime, err := time.Parse(time.TimeOnly, timeOfDay)
-	if err != nil {
-		// set the default value at 1 am
-		return "1"
-	}
+func setBackgroundJobMaintenance(t vshnv1.TimeOfDay, nextcloudConfig string) string {
 	// Start Background Job Maintenance no earlier than 20 min after the regular Maintenance
-	// and no later than 1 hour and 19 min after the regular Maintenance
-	backgroundJobHour := parsedTime.Add(20 * time.Minute).Add(time.Hour).Hour()
+	// and no later than 1 hour and 39 min after the regular Maintenance
+	backgroundJobHour := t.GetTime().Add(40 * time.Minute).Add(time.Hour).Hour()
 	return strings.Replace(nextcloudConfig, "%maintenance_value%", strconv.Itoa(backgroundJobHour), 1)
 }

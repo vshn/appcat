@@ -3,8 +3,6 @@ package maintenance
 import (
 	"context"
 	"fmt"
-	"regexp"
-
 	"github.com/blang/semver/v4"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -16,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/utils/ptr"
+	"regexp"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -303,7 +302,7 @@ func (m *Maintenance) parseCron() (string, error) {
 	cronDayOfWeek := dayOfWeekMap[m.schedule.DayOfWeek]
 
 	r := regexp.MustCompile(`(\d+):(\d+):.*`)
-	timeSlice := r.FindStringSubmatch(m.schedule.TimeOfDay)
+	timeSlice := r.FindStringSubmatch(string(m.schedule.TimeOfDay))
 
 	if len(timeSlice) == 0 {
 		return "", fmt.Errorf("not a valid time string %s", m.schedule.TimeOfDay)

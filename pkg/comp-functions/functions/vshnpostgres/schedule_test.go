@@ -29,7 +29,7 @@ func TestTransformSchedule_SetRandomSchedule(t *testing.T) {
 			assert.NoError(t, err)
 
 			backupTime := parseAndValidateBackupSchedule(t, out)
-			maintTime := parseAndValidateMaitenance(t, out)
+			maintTime := parseAndValidateMaintenance(t, out)
 
 			t.Logf("Backup Time: %q\n", backupTime.Format(time.RFC3339))
 			t.Logf("Maintenance Time: %q\n", maintTime.Format(time.RFC3339))
@@ -58,7 +58,7 @@ func TestTransformSchedule_DontOverwriteBackup(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "3 2 * * *", comp.Spec.Parameters.Backup.Schedule)
 
-	_ = parseAndValidateMaitenance(t, comp)
+	_ = parseAndValidateMaintenance(t, comp)
 }
 
 func TestTransformSchedule_DontOverwriteMaintenance(t *testing.T) {
@@ -78,7 +78,7 @@ func TestTransformSchedule_DontOverwriteMaintenance(t *testing.T) {
 	err = svc.GetDesiredComposite(comp)
 	assert.NoError(t, err)
 	assert.Equal(t, "thursday", comp.Spec.Parameters.Maintenance.DayOfWeek)
-	assert.Equal(t, "11:12:23", comp.Spec.Parameters.Maintenance.TimeOfDay)
+	assert.Equal(t, vshnv1.TimeOfDay("11:12:23"), comp.Spec.Parameters.Maintenance.TimeOfDay)
 
 	_ = parseAndValidateBackupSchedule(t, comp)
 }
@@ -102,7 +102,7 @@ func TestTransformSchedule_DontOverwriteBackupOrMaintenance(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "3 2 * * *", comp.Spec.Parameters.Backup.Schedule)
 	assert.Equal(t, "thursday", comp.Spec.Parameters.Maintenance.DayOfWeek)
-	assert.Equal(t, "11:12:23", comp.Spec.Parameters.Maintenance.TimeOfDay)
+	assert.Equal(t, vshnv1.TimeOfDay("11:12:23"), comp.Spec.Parameters.Maintenance.TimeOfDay)
 }
 
 func parseAndValidateBackupSchedule(t *testing.T, comp *vshnv1.VSHNPostgreSQL) time.Time {
@@ -139,7 +139,7 @@ func parseAndValidateBackupSchedule(t *testing.T, comp *vshnv1.VSHNPostgreSQL) t
 	return backupTime
 }
 
-func parseAndValidateMaitenance(t *testing.T, comp *vshnv1.VSHNPostgreSQL) time.Time {
+func parseAndValidateMaintenance(t *testing.T, comp *vshnv1.VSHNPostgreSQL) time.Time {
 	var maintTime time.Time
 	t.Run("validateMaintenanceSchedule", func(t *testing.T) {
 
@@ -148,7 +148,7 @@ func parseAndValidateMaitenance(t *testing.T, comp *vshnv1.VSHNPostgreSQL) time.
 
 		var err error
 		assert.NotEmpty(t, comp.GetFullMaintenanceSchedule().TimeOfDay)
-		maintTime, err = time.ParseInLocation(time.TimeOnly, comp.GetFullMaintenanceSchedule().TimeOfDay, time.UTC)
+		maintTime, err = time.ParseInLocation(time.TimeOnly, string(comp.GetFullMaintenanceSchedule().TimeOfDay), time.UTC)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, comp.GetFullMaintenanceSchedule().DayOfWeek)
 		switch comp.GetFullMaintenanceSchedule().DayOfWeek {

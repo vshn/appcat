@@ -237,11 +237,11 @@ func (n *VSHNKeycloak) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *VSHNKeycloak) GetMaintenanceTimeOfDay() string {
+func (v *VSHNKeycloak) GetMaintenanceTimeOfDay() *TimeOfDay {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
-		return v.Spec.Parameters.Maintenance.TimeOfDay
+		return &v.Spec.Parameters.Maintenance.TimeOfDay
 	}
-	return v.Status.Schedules.Maintenance.TimeOfDay
+	return &v.Status.Schedules.Maintenance.TimeOfDay
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
@@ -250,7 +250,7 @@ func (v *VSHNKeycloak) SetMaintenanceDayOfWeek(dow string) {
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (v *VSHNKeycloak) SetMaintenanceTimeOfDay(tod string) {
+func (v *VSHNKeycloak) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	v.Status.Schedules.Maintenance.TimeOfDay = tod
 }
 
@@ -281,7 +281,7 @@ func (v *VSHNKeycloak) GetServiceName() string {
 func (v *VSHNKeycloak) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
-	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
+	schedule.TimeOfDay = *v.GetMaintenanceTimeOfDay()
 	return schedule
 }
 

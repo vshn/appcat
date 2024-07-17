@@ -47,11 +47,11 @@ var _ rest.GracefulDeleter = &Noop{}
 var _ rest.CollectionDeleter = &Noop{}
 
 func (v Noop) Delete(_ context.Context, name string, _ rest.ValidateObjectFunc, _ *metav1.DeleteOptions) (runtime.Object, bool, error) {
-	return v.singular, false, apierrors.NewForbidden(v.gr, "not implemented", fmt.Errorf("method not implemented"))
+	return v.singular, false, nil
 }
 
 func (v *Noop) DeleteCollection(ctx context.Context, _ rest.ValidateObjectFunc, _ *metav1.DeleteOptions, _ *metainternalversion.ListOptions) (runtime.Object, error) {
-	return v.singular, apierrors.NewForbidden(v.gr, "not implemented", fmt.Errorf("method not implemented"))
+	return v.singular, nil
 }
 
 var _ rest.Getter = &Noop{}

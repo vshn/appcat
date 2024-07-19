@@ -44,7 +44,7 @@ func AddConnectionDetails(ctx context.Context, svc *runtime.ServiceRuntime) *v1b
 
 	log.Info("Making sure the cluster exposed connection details")
 	obj := &xkubev1.Object{}
-	err = svc.GetObservedComposedResource(obj, "cluster")
+	err = svc.GetDesiredComposedResourceByName(obj, "cluster")
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get the sgcluster object: %s", err))
 	}

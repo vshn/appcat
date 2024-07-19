@@ -100,12 +100,17 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 		svc.AddResult(runtime.NewWarningResult("cannot get claim namespace"))
 	}
 
+	mode := "standalone"
+	if _, exists := svc.Config.Data["mode"]; exists {
+		mode = svc.Config.Data["mode"]
+	}
+
 	ns := &corev1.Namespace{
 
 		ObjectMeta: metav1.ObjectMeta{
 			Name: instanceNamespace,
 			Labels: map[string]string{
-				"appcat.vshn.io/servicename":     serviceName + "-standalone",
+				"appcat.vshn.io/servicename":     serviceName + "-" + mode,
 				"appcat.vshn.io/claim-namespace": claimNamespace,
 				"appcat.vshn.io/claim-name":      claimName,
 				"appuio.io/no-rbac-creation":     "true",

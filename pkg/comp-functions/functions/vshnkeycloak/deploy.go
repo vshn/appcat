@@ -266,6 +266,21 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
+	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
+		extraVolumesMap = append(extraVolumesMap, map[string]any{
+			"name": "keycloak-configs",
+			"configMap": map[string]any{
+				"name": comp.Spec.Parameters.Service.CustomConfigurationRef,
+				"items": []map[string]string{
+					{
+						"key":  "keycloak-config.json",
+						"path": "keycloak-config.json",
+					},
+				},
+			},
+		})
+	}
+
 	extraVolumes, err := toYAML(extraVolumesMap)
 	if err != nil {
 		return nil, err
@@ -294,14 +309,28 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
+	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
+		extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
+			"name":      "keycloak-configs",
+			"mountPath": "/opt/keycloak/setup/keycloak-config.json",
+			"subPath":   "keycloak-config.json",
+		})
+	}
+
 	extraVolumeMounts, err := toYAML(extraVolumeMountsMap)
 	if err != nil {
 		return nil, err
 	}
 
+	envFrom := ""
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		envFrom = "[secretRef: {name: " + *comp.Spec.Parameters.Service.CustomEnvVariablesRef + "}]"
+	}
+
 	values = map[string]any{
 		"replicas":          comp.Spec.Parameters.Instances,
 		"extraEnv":          extraEnv,
+		"extraEnvFrom":      envFrom,
 		"extraVolumes":      extraVolumes,
 		"extraVolumeMounts": extraVolumeMounts,
 
@@ -371,6 +400,20 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret string) (*xhelmv1.Release, error) {
+
+	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
+		err := copyConfigMap(comp, svc)
+		if err != nil {
+			return nil, fmt.Errorf("cannot copy keycloak config configmap to instance namespace: %w", err)
+		}
+	}
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		err := copySecret(comp, svc)
+		if err != nil {
+			return nil, fmt.Errorf("cannot copy keycloak env variable secret to instance namespace: %w", err)
+		}
+	}
+
 	values, err := newValues(ctx, svc, comp, adminSecret)
 	if err != nil {
 		return nil, err
@@ -386,7 +429,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
 	}
 
-	err = addInitContainer(comp, svc, values, observedVersion)
+	err = addInitContainer(comp, values, observedVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -496,7 +539,7 @@ func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, v
 	return nil
 }
 
-func addInitContainer(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, values map[string]any, version string) error {
+func addInitContainer(comp *vshnv1.VSHNKeycloak, values map[string]any, version string) error {
 	extraInitContainersMap := []map[string]any{
 		{
 			"name":            providerInitName,
@@ -539,7 +582,7 @@ ls -lh /custom-setup`,
 			},
 		},
 	}
-	extraInitContainersMap, err := addCustomInitContainer(comp, svc, extraInitContainersMap)
+	extraInitContainersMap, err := addCustomInitContainer(comp, extraInitContainersMap)
 	if err != nil {
 		return err
 	}
@@ -554,7 +597,7 @@ ls -lh /custom-setup`,
 	return nil
 }
 
-func addCustomInitContainer(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, extraInitContainersMap []map[string]any) ([]map[string]any, error) {
+func addCustomInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContainersMap []map[string]any) ([]map[string]any, error) {
 	if comp.Spec.Parameters.Service.CustomizationImage.Image != "" {
 
 		extraInitContainersThemeProvidersMap := map[string]any{
@@ -586,4 +629,78 @@ exit 0`,
 		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
 	}
 	return extraInitContainersMap, nil
+}
+
+func copyConfigMap(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+
+	cmObjectName := comp.GetName() + "-config-claim-observer"
+
+	cmClaimObserver := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      *comp.Spec.Parameters.Service.CustomConfigurationRef,
+			Namespace: comp.GetClaimNamespace(),
+		},
+	}
+	err := svc.SetDesiredKubeObserveObject(cmClaimObserver, cmObjectName)
+
+	if err != nil {
+		svc.Log.Info("Can't observe Keycloak config Configmap")
+		svc.AddResult(runtime.NewFatalResult(fmt.Errorf("cannot get configMap: %w", err)))
+	}
+
+	configMapClaim := &corev1.ConfigMap{}
+	err = svc.GetObservedKubeObject(configMapClaim, cmObjectName)
+	if err != nil {
+		svc.Log.Info("cannot get observed Keycloak config map")
+		svc.AddResult(runtime.NewWarningResult("cannot get observed Keycloak config map"))
+	}
+
+	configMapInstance := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        *comp.Spec.Parameters.Service.CustomConfigurationRef,
+			Namespace:   comp.GetInstanceNamespace(),
+			Labels:      configMapClaim.Labels,
+			Annotations: configMapClaim.Annotations,
+		},
+		Data: configMapClaim.Data,
+	}
+
+	return svc.SetDesiredKubeObject(configMapInstance, comp.GetName()+"-config-map")
+}
+
+func copySecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+
+	secretObjectName := comp.GetName() + "-env-secret-claim-observer"
+
+	secretClaimObserver := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+			Namespace: comp.GetClaimNamespace(),
+		},
+	}
+	err := svc.SetDesiredKubeObserveObject(secretClaimObserver, secretObjectName)
+
+	if err != nil {
+		svc.Log.Info("Can't observe Keycloak env variable secret")
+		svc.AddResult(runtime.NewFatalResult(fmt.Errorf("cannot get secret: %w", err)))
+	}
+
+	secretClaim := &corev1.Secret{}
+	err = svc.GetObservedKubeObject(secretClaim, secretObjectName)
+	if err != nil {
+		svc.Log.Info("cannot get observed Keycloak env variable secret")
+		svc.AddResult(runtime.NewWarningResult("cannot get observed Keycloak env variable secret"))
+	}
+
+	secretInstance := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+			Namespace:   comp.GetInstanceNamespace(),
+			Labels:      secretClaim.Labels,
+			Annotations: secretClaim.Annotations,
+		},
+		Data: secretClaim.Data,
+	}
+
+	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-env-secret")
 }

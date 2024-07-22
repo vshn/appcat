@@ -9,9 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"dario.cat/mergo"
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -22,8 +19,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -134,72 +129,6 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 	}
 
 	return nil
-}
-
-func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
-	// Unfortunately k8up and stackgres backups don't match up very well...
-	// if no daily backup is set we just do the default.
-	retention := 6
-	if comp.Spec.Parameters.Backup.Retention.KeepDaily != 0 {
-		retention = comp.Spec.Parameters.Backup.Retention.KeepDaily
-	}
-
-	params := &vshnv1.VSHNPostgreSQLParameters{
-		Size:        comp.Spec.Parameters.Size,
-		Maintenance: comp.GetFullMaintenanceSchedule(),
-		Backup: vshnv1.VSHNPostgreSQLBackup{
-			Retention:          retention,
-			DeletionProtection: ptr.To(true),
-			DeletionRetention:  7,
-		},
-		Monitoring: comp.Spec.Parameters.Monitoring,
-	}
-
-	if comp.Spec.Parameters.Service.PostgreSQLParameters != nil {
-		err := mergo.Merge(params, comp.Spec.Parameters.Service.PostgreSQLParameters, mergo.WithOverride)
-		if err != nil {
-			return err
-		}
-
-		// Mergo doesn't override non-default values with default values. So
-		// changing true to false is not possible with a merge.
-		// This is a small hack to fix this.
-		// `mergo.WithOverwriteWithEmptyValue` opens a new can of worms, so it's
-		// not used here. https://github.com/darccio/mergo/issues/249
-		if comp.Spec.Parameters.Service.PostgreSQLParameters.Backup.DeletionProtection != nil {
-			params.Backup.DeletionProtection = comp.Spec.Parameters.Service.PostgreSQLParameters.Backup.DeletionProtection
-		}
-	}
-	// We need to set this after the merge, as the default instance count for PostgreSQL is always 1
-	// and would therefore override any value we set before the merge.
-	params.Instances = comp.Spec.Parameters.Instances
-
-	pg := &vshnv1.XVSHNPostgreSQL{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: comp.GetName() + pgInstanceNameSuffix,
-		},
-		Spec: vshnv1.XVSHNPostgreSQLSpec{
-			Parameters: *params,
-			ResourceSpec: xpv1.ResourceSpec{
-				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      pgSecretName,
-					Namespace: comp.GetInstanceNamespace(),
-				},
-			},
-		},
-	}
-
-	err := common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-nextcloud", false, svc)
-	if err != nil {
-		return err
-	}
-
-	err = common.DisableBilling(pg.GetInstanceNamespace(), svc)
-	if err != nil {
-		return err
-	}
-
-	return svc.SetDesiredComposedResource(pg)
 }
 
 func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret string) error {

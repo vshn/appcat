@@ -5558,13 +5558,13 @@ spec:
                   service:
                     description: Service contains keycloak DBaaS specific properties
                     properties:
-                      configuration:
+                      customConfigurationRef:
                         description: |-
                           CustomConfigurationRef can be used to provide a configmap containing configurations for the
                           keycloak instance. The config is a JSON file based on the keycloak export files.
                           The referenced configmap, must have the configuration in a field called `keycloak-config.json`
                         type: string
-                      customEnvVariables:
+                      customEnvVariablesRef:
                         description: |-
                           CustomEnvVariablesRef can be used to provide custom environment variables from a
                           provided secret for the keycloak instance. The environment variables provided

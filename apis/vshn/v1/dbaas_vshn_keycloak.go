@@ -124,13 +124,13 @@ type VSHNKeycloakServiceSpec struct {
 	// CustomConfigurationRef can be used to provide a configmap containing configurations for the
 	// keycloak instance. The config is a JSON file based on the keycloak export files.
 	// The referenced configmap, must have the configuration in a field called `keycloak-config.json`
-	CustomConfigurationRef *string `json:"configuration,omitempty"`
+	CustomConfigurationRef *string `json:"customConfigurationRef,omitempty"`
 
 	// CustomEnvVariablesRef can be used to provide custom environment variables from a
 	// provided secret for the keycloak instance. The environment variables provided
 	// can for example be used in the custom JSON configuration provided in the `Configuration`
 	// field with `$(env:<ENV_VAR_NAME>:-<some_default_value>)`
-	CustomEnvVariablesRef *string `json:"customEnvVariables,omitempty"`
+	CustomEnvVariablesRef *string `json:"customEnvVariablesRef,omitempty"`
 }
 
 type VSHNKeycloakCustomizationImage struct {

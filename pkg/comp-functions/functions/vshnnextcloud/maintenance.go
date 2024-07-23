@@ -25,6 +25,11 @@ func AddMaintenanceJob(ctx context.Context, svc *runtime.ServiceRuntime) *xfnpro
 	instanceNamespace := comp.GetInstanceNamespace()
 	schedule := comp.GetFullMaintenanceSchedule()
 
+	err = svc.SetDesiredCompositeStatus(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot update composite status: %w", err))
+	}
+
 	return maintenance.New(comp, svc, schedule, instanceNamespace, comp.GetServiceName()).
 		WithHelmBasedService().
 		Run(ctx)

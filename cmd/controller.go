@@ -126,6 +126,22 @@ func setupWebhooks(mgr manager.Manager, withQuota bool) error {
 	if err != nil {
 		return err
 	}
+	err = webhooks.SetupMariaDBWebhookHandlerWithManager(mgr, withQuota)
+	if err != nil {
+		return err
+	}
+	err = webhooks.SetupMinioWebhookHandlerWithManager(mgr, withQuota)
+	if err != nil {
+		return err
+	}
+	err = webhooks.SetupNextcloudWebhookHandlerWithManager(mgr, withQuota)
+	if err != nil {
+		return err
+	}
+	err = webhooks.SetupKeycloakWebhookHandlerWithManager(mgr, withQuota)
+	if err != nil {
+		return err
+	}
 	err = webhooks.SetupNamespaceDeletionProtectionHandlerWithManager(mgr)
 	if err != nil {
 		return err

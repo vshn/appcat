@@ -129,9 +129,13 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	viper.AutomaticEnv()
 
 	handler := PostgreSQLWebhookHandler{
-		client:    fclient,
-		log:       logr.Discard(),
-		withQuota: true,
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:    fclient,
+			log:       logr.Discard(),
+			withQuota: true,
+			obj:       &vshnv1.VSHNPostgreSQL{},
+			name:      "postgresql",
+		},
 	}
 
 	pgOrig := &vshnv1.VSHNPostgreSQL{
@@ -227,4 +231,166 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	pgInvalid.Spec.Parameters.Service.ServiceLevel = "guaranteed"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
+}
+
+func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {
+	// Given
+	claimNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "claimns",
+			Labels: map[string]string{
+				utils.OrgLabelName: "myorg",
+			},
+		},
+	}
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vshnpostgresqlplans",
+			Namespace: "testns",
+		},
+		Data: map[string]string{
+			"sideCars": `
+			{
+				"clusterController": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "32m",
+						"memory": "188Mi"
+					}
+				},
+				"createBackup": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "250m",
+						"memory": "256Mi"
+					}
+				},
+				"envoy": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "32m",
+						"memory": "64Mi"
+					}
+				},
+				"pgbouncer": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "16m",
+						"memory": "32Mi"
+					}
+				},
+				"postgresUtil": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "10m",
+						"memory": "4Mi"
+					}
+				},
+				"prometheusPostgresExporter": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "10m",
+						"memory": "32Mi"
+					}
+				},
+				"runDbops": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "250m",
+						"memory": "256Mi"
+					}
+				},
+				"setDbopsResult": {
+					"limits": {
+						"cpu": "600m",
+						"memory": "768Mi"
+					},
+					"requests": {
+						"cpu": "250m",
+						"memory": "256Mi"
+					}
+				}
+			}
+			`,
+		},
+	}
+
+	ctx := context.TODO()
+
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(claimNS, cm).
+		Build()
+
+	viper.Set("PLANS_NAMESPACE", "testns")
+	viper.AutomaticEnv()
+
+	handler := PostgreSQLWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:    fclient,
+			log:       logr.Discard(),
+			withQuota: true,
+			obj:       &vshnv1.VSHNPostgreSQL{},
+			name:      "postgresql",
+		},
+	}
+
+	pgOrig := &vshnv1.VSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "claimns",
+		},
+		Spec: vshnv1.VSHNPostgreSQLSpec{
+			Parameters: vshnv1.VSHNPostgreSQLParameters{
+				Size: vshnv1.VSHNSizeSpec{
+					CPU:    "500m",
+					Memory: "1Gi",
+				},
+				Instances: 1,
+				Service: vshnv1.VSHNPostgreSQLServiceSpec{
+					RepackEnabled: true,
+				},
+				Security: vshnv1.Security{
+					DeletionProtection: true,
+				},
+			},
+		},
+	}
+
+	// When within quota
+	_, err := handler.ValidateDelete(ctx, pgOrig)
+
+	//Then err
+	assert.Error(t, err)
+
+	//Instances
+	pgDeletable := pgOrig.DeepCopy()
+	pgDeletable.Spec.Parameters.Security.DeletionProtection = false
+
+	_, err = handler.ValidateDelete(ctx, pgDeletable)
+
+	//Then no err
+	assert.NoError(t, err)
+
 }

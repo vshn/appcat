@@ -10,6 +10,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const defaultDNSLabelLength = 63
+const jobDSNLabelLenth = 52
+
 // escapeK8sNames will figure out what naming scheme applies to the given object
 // and tries to find the correct naming scheme for it.
 // Then it will escape the name accordingly.
@@ -21,11 +24,9 @@ func escapeK8sNames(obj client.Object) {
 
 	switch kind[0].Kind {
 	case "Pod":
-		obj.SetName(EscapeDNS1123Label(obj.GetName()))
-	case "Namespace":
-		obj.SetName(EscapeDNS1123Label(obj.GetName()))
+		obj.SetName(EscapeDNS1123Label(obj.GetName(), defaultDNSLabelLength))
 	case "Service":
-		obj.SetName(EscapeDNS1123Label(obj.GetName()))
+		obj.SetName(EscapeDNS1123Label(obj.GetName(), defaultDNSLabelLength))
 	case "Role":
 		obj.SetName(EscapeDNS1123(obj.GetName(), true))
 	case "ClusterRole":
@@ -34,17 +35,19 @@ func escapeK8sNames(obj client.Object) {
 		obj.SetName(EscapeDNS1123(obj.GetName(), true))
 	case "ClusterRoleBinding":
 		obj.SetName(EscapeDNS1123(obj.GetName(), true))
+	case "CronJob":
+		obj.SetName(EscapeDNS1123Label(obj.GetName(), jobDSNLabelLenth))
 	default:
 		obj.SetName(EscapeDNS1123(obj.GetName(), false))
 	}
 }
 
 // EscapeDNS1123Label does the same as escapeDNS1123 but also limit to 63 chars
-func EscapeDNS1123Label(name string) string {
+func EscapeDNS1123Label(name string, length int) string {
 	name = EscapeDNS1123(name, false)
-	if len(name) > 63 {
+	if len(name) > length {
 		suffix := hashString(name)
-		name = name[:58] + suffix
+		name = name[:length-5] + suffix
 	}
 	return name
 }

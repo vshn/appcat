@@ -1,0 +1,44 @@
+package webhooks
+
+import (
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+)
+
+//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshn{{.NameShort}},mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources={{.NamePluralLower}},versions=v1,name=vshn{{.NameShort}}.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=x{{.NamePluralLower}},verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=x{{.NamePluralLower}}/status,verbs=get;list;watch;patch;update
+
+var (
+	{{.NameShort}}GK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "{{.Name}}"}
+	{{.NameShort}}GR = schema.GroupResource{Group: {{.NameShort}}GK.Group, Resource: "vshn{{.NameShort}}"}
+)
+
+var _ webhook.CustomValidator = &{{.NameShortCapital}}WebhookHandler{}
+
+type {{.NameShortCapital}}WebhookHandler struct {
+	DefaultWebhookHandler
+}
+
+// Setup{{.NameShortCapital}}WebhookHandlerWithManager registers the validation webhook with the manager.
+func Setup{{.NameShortCapital}}WebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
+
+	return ctrl.NewWebhookManagedBy(mgr).
+		For(&vshnv1.{{.Name}}{}).
+		WithValidator(&{{.NameShortCapital}}WebhookHandler{
+			DefaultWebhookHandler: *New(
+				mgr.GetClient(),
+				mgr.GetLogger().WithName("webhook").WithName("{{.NameShort}}"),
+				withQuota,
+				&vshnv1.{{.Name}}{},
+				"{{.NameShort}}",
+				{{.NameShort}}GK,
+				{{.NameShort}}GR,
+				45, // TBD: Adjust this as necessary. prefix for the instance namespace is 11 postfix is 8 chars for the instance namespace (eg. "vshn-{{.NameShort}}-foo-kn7tx2r"). Max namespace length is 63. That leaves us with 42 chars
+			),
+		}).
+		Complete()
+}

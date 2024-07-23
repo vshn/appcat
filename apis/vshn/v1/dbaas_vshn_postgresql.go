@@ -17,6 +17,7 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.maintenance.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
 
 // +kubebuilder:object:root=true
 
@@ -392,4 +393,8 @@ func (v *VSHNPostgreSQL) GetPDBLabels() map[string]string {
 	return map[string]string{
 		"app": "StackGresCluster",
 	}
+}
+
+func (v *VSHNPostgreSQL) GetSecurity() *Security {
+	return &v.Spec.Parameters.Security
 }

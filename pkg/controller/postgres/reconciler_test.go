@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -30,7 +29,6 @@ func init() {
 }
 
 func Test_Reconcile(t *testing.T) {
-	previousDay := metav1.Time{Time: getCurrentTime().AddDate(0, 0, -1)}
 	tests := []struct {
 		name                    string
 		req                     reconcile.Request
@@ -38,43 +36,10 @@ func Test_Reconcile(t *testing.T) {
 		instanceNamespace       corev1.Namespace
 		expectedResult          ctrl.Result
 		expectedError           error
-		expectFinalizer         bool
 		expectInstanceNamespace bool
 	}{
 		{
-			name: "WhenInstanceNotDeletedAndNoFinalizer_ThenPatchAndDontDeleteInstanceAndRequeueDefault",
-			req: reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name: "instance-1",
-				},
-			},
-			inst: v1.XVSHNPostgreSQL{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:       "instance-1",
-					Finalizers: []string{"dummy"}, // we can't jsonpatch an empty array...
-				},
-				Spec: v1.XVSHNPostgreSQLSpec{
-					Parameters: v1.VSHNPostgreSQLParameters{
-						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: ptr.To(true),
-						},
-					},
-				},
-			},
-			instanceNamespace: corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "vshn-postgresql-instance-1",
-				},
-			},
-			expectFinalizer: true,
-			expectedResult: ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: time.Second * 30,
-			},
-			expectInstanceNamespace: true,
-		},
-		{
-			name: "WhenInstanceNotDeletedAndFinalizer_ThenNoPatchAndDontDeleteInstanceAndRequeueDefault",
+			name: "WhenFinalizer_ThenPatchInstance",
 			req: reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name: "instance-1",
@@ -98,150 +63,8 @@ func Test_Reconcile(t *testing.T) {
 					Name: "vshn-postgresql-instance-1",
 				},
 			},
-			expectFinalizer: true,
-			expectedResult: ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: time.Second * 30,
-			},
+			expectedResult:          ctrl.Result{},
 			expectInstanceNamespace: true,
-		},
-		{
-			name: "WhenInstanceDeletedAndFinalizer_ThenNoPatchAndDontDeleteInstanceAndRequeueDefault",
-			req: reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name: "instance-1",
-				},
-			},
-			inst: v1.XVSHNPostgreSQL{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "instance-1",
-					DeletionTimestamp: &previousDay,
-					Finalizers:        []string{finalizerName},
-				},
-				Spec: v1.XVSHNPostgreSQLSpec{
-					Parameters: v1.VSHNPostgreSQLParameters{
-						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: ptr.To(true),
-							DeletionRetention:  2,
-						},
-					},
-				},
-			},
-			instanceNamespace: corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "vshn-postgresql-instance-1",
-				},
-			},
-			expectFinalizer: true,
-			expectedResult: ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: time.Hour * 24,
-			},
-			expectInstanceNamespace: true,
-		},
-		{
-			name: "WhenInstanceDeletedAndRetentionHigherThanCurrentTime_ThenDeleteInstanceAndRequeueDifferenceTime",
-			req: reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name: "instance-1",
-				},
-			},
-			inst: v1.XVSHNPostgreSQL{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "instance-1",
-					DeletionTimestamp: &previousDay,
-					Finalizers: []string{
-						"dummy",
-					},
-				},
-				Spec: v1.XVSHNPostgreSQLSpec{
-					Parameters: v1.VSHNPostgreSQLParameters{
-						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: ptr.To(true),
-							DeletionRetention:  2,
-						},
-					},
-				},
-			},
-			instanceNamespace: corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "vshn-postgresql-instance-1",
-				},
-			},
-			expectedResult: ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: time.Hour * 24,
-			},
-			expectInstanceNamespace: true,
-		},
-		{
-			name: "WhenInstanceDeletedAndRetentionLowerThanCurrentTime_ThenDeleteInstanceAndRequeueDifferenceTimeNegative",
-			req: reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name: "instance-1",
-				},
-			},
-			inst: v1.XVSHNPostgreSQL{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "instance-1",
-					DeletionTimestamp: &previousDay,
-					Finalizers: []string{
-						"dummy",
-					},
-				},
-				Spec: v1.XVSHNPostgreSQLSpec{
-					Parameters: v1.VSHNPostgreSQLParameters{
-						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: ptr.To(true),
-							DeletionRetention:  0,
-						},
-					},
-				},
-			},
-			instanceNamespace: corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "vshn-postgresql-instance-1",
-				},
-			},
-			expectedResult: ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: -time.Hour * 24,
-			},
-			expectInstanceNamespace: true,
-		},
-		{
-			name: "WhenInstanceNamespaceIsDeleted_ThenExpectRemoveFinalizerFromInstance",
-			req: reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name: "instance-1",
-				},
-			},
-			inst: v1.XVSHNPostgreSQL{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:       "instance-1",
-					Finalizers: []string{finalizerName},
-				},
-				Spec: v1.XVSHNPostgreSQLSpec{
-					Parameters: v1.VSHNPostgreSQLParameters{
-						Backup: v1.VSHNPostgreSQLBackup{
-							DeletionProtection: ptr.To(true),
-							DeletionRetention:  0,
-						},
-					},
-				},
-			},
-			instanceNamespace: corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "vshn-postgresql-instance-1",
-					DeletionTimestamp: &metav1.Time{Time: time.Now()},
-					Finalizers:        []string{finalizerName},
-				},
-			},
-			expectedResult: ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: time.Second * 30,
-			},
-			expectInstanceNamespace: false,
 		},
 	}
 	for _, tc := range tests {
@@ -279,12 +102,7 @@ func Test_Reconcile(t *testing.T) {
 				assert.Error(t, fclient.Get(context.TODO(), client.ObjectKeyFromObject(&tc.instanceNamespace), resultNs))
 			}
 
-			if tc.expectFinalizer {
-				assert.Contains(t, resultComposite.GetFinalizers(), finalizerName)
-				assert.Contains(t, resultNs.GetFinalizers(), finalizerName)
-			} else {
-				assert.NotContains(t, resultComposite.GetFinalizers(), finalizerName)
-			}
+			assert.NotContains(t, resultComposite.GetFinalizers(), finalizerName)
 		})
 	}
 }

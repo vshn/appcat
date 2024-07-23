@@ -69,6 +69,90 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-vshnkeycloak
+  failurePolicy: Fail
+  name: vshnkeycloak.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - vshnkeycloaks
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-vshnmariadb
+  failurePolicy: Fail
+  name: vshnmariadb.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - vshnmariadbs
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-vshnminio
+  failurePolicy: Fail
+  name: vshnminio.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - vshnminios
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-vshnnextcloud
+  failurePolicy: Fail
+  name: vshnnextcloud.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - vshnnextclouds
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-vshn-appcat-vshn-io-v1-vshnredis
   failurePolicy: Fail
   name: vshnredis.vshn.appcat.vshn.io
@@ -78,6 +162,8 @@ webhooks:
     apiVersions:
     - v1
     operations:
+    - CREATE
+    - UPDATE
     - DELETE
     resources:
     - vshnredis

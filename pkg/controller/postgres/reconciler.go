@@ -41,26 +41,13 @@ func (p *XPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	requeueTime := getRequeueTime(ctx, inst, inst.GetDeletionTimestamp(), inst.Spec.Parameters.Backup.DeletionRetention)
-	if inst.DeletionTimestamp != nil {
-		log.Info("Deleting database")
-		err = p.deletePostgresDB(ctx, inst)
-		if err != nil {
-			return ctrl.Result{RequeueAfter: requeueTime, Requeue: true}, err
-		}
-	}
 
-	return ctrl.Result{
-		Requeue:      true,
-		RequeueAfter: requeueTime,
-	}, err
+	return ctrl.Result{}, nil
 }
 
 func (p *XPostgreSQLReconciler) handleDeletionProtection(ctx context.Context, inst *vshnv1.XVSHNPostgreSQL) error {
 	log := logging.FromContext(ctx, "namespace", inst.GetNamespace(), "instance", inst.GetName())
 
-	protectionEnabled := inst.Spec.Parameters.Backup.DeletionProtection
-	retention := inst.Spec.Parameters.Backup.DeletionRetention
 	baseObj := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      inst.Name,
@@ -68,19 +55,10 @@ func (p *XPostgreSQLReconciler) handleDeletionProtection(ctx context.Context, in
 		},
 	}
 
-	patch, err := handle(ctx, inst, *protectionEnabled, retention)
+	patch, err := handle(ctx, inst)
 
 	if err != nil {
 		return errors.Wrap(err, "cannot return patch operation object")
-	}
-
-	overridePatch, err := getInstanceNamespaceOverride(ctx, inst, *protectionEnabled, p.Client)
-	if err != nil {
-		return errors.Wrap(err, "can't determine patch for namespace override")
-	}
-
-	if overridePatch != nil {
-		patch = overridePatch
 	}
 
 	if patch != nil {

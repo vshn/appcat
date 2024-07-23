@@ -109,9 +109,14 @@ func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed connection details for nextcloud admin: %s", err))
 	}
 
+	hostname := comp.GetName()
+	if !strings.Contains(hostname, serviceSuffix) {
+		hostname = hostname + "-" + serviceSuffix
+	}
+
 	svc.SetConnectionDetail(adminPWConnectionDetailsField, cd[adminPWSecretField])
 	svc.SetConnectionDetail(adminConnectionDetailsField, cd[adminUserSecretField])
-	svc.SetConnectionDetail(hostConnectionDetailsField, []byte(fmt.Sprintf("%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())))
+	svc.SetConnectionDetail(hostConnectionDetailsField, []byte(fmt.Sprintf("%s.%s.svc.cluster.local", hostname, comp.GetInstanceNamespace())))
 
 	err = addApacheConfig(svc, comp)
 	if err != nil {

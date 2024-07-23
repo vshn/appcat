@@ -39,3 +39,15 @@ type AllowedNamespaceGetter interface {
 	GetAllowAllNamespaces() bool
 	GetAllowedNamespaces() []string
 }
+
+// Required to get info required for alerting.
+type Alerter interface {
+	GetVSHNMonitoring() vshnv1.VSHNMonitoring
+	GetInstanceNamespace() string
+}
+
+// minimalist PDB interface
+type PDB interface {
+	GetInstanceNamespace() string
+	GetInstances() int
+}

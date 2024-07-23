@@ -11,17 +11,11 @@ import (
 	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
-	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
-
-type Alerter interface {
-	GetVSHNMonitoring() vshnv1.VSHNMonitoring
-	GetInstanceNamespace() string
-}
 
 // AddUserAlerting adds user alerting to the Redis instance.
 func AddUserAlerting(obj client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {

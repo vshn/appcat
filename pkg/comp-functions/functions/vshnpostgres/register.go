@@ -77,6 +77,10 @@ func init() {
 				Name:    "user-management",
 				Execute: UserManagement,
 			},
+			{
+				Name:    "pdb",
+				Execute: common.AddPDBSettings(&vshnv1.VSHNPostgreSQL{}),
+			},
 		},
 	})
 }

@@ -1,0 +1,201 @@
+apiVersion: helm.crossplane.io/v1beta1
+kind: Release
+metadata:
+  annotations:
+    appcat.vshn.io/forward-events-to: vshn.appcat.vshn.io/v1/VSHNKeycloak/widera-testing/keycloak-widera
+    crossplane.io/composition-resource-name: keycloak-widera-n9c8b-release
+    crossplane.io/external-create-pending: "2024-07-23T10:52:26Z"
+    crossplane.io/external-create-succeeded: "2024-07-23T10:52:27Z"
+    crossplane.io/external-name: keycloak-widera-n9c8b
+  creationTimestamp: "2024-07-23T10:52:25Z"
+  finalizers:
+  - finalizer.managedresource.crossplane.io
+  generateName: keycloak-widera-n9c8b-
+  generation: 6
+  labels:
+    appcat.vshn.io/ownerapiversion: v1
+    appcat.vshn.io/ownergroup: vshn.appcat.vshn.io
+    appcat.vshn.io/ownerkind: XVSHNKeycloak
+    crossplane.io/claim-name: keycloak-widera
+    crossplane.io/claim-namespace: widera-testing
+    crossplane.io/composite: keycloak-widera-n9c8b
+  name: keycloak-widera-n9c8b
+  ownerReferences:
+  - apiVersion: vshn.appcat.vshn.io/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: XVSHNKeycloak
+    name: keycloak-widera-n9c8b
+    uid: c71a7604-aceb-4ae8-98d6-93b5cdb918e6
+  resourceVersion: "52730"
+  uid: 31948f38-d869-4c7b-b266-f360a0c68e5a
+spec:
+  deletionPolicy: Delete
+  forProvider:
+    chart:
+      name: keycloakx
+      pullSecretRef:
+        name: ""
+        namespace: ""
+      repository: https://codecentric.github.io/helm-charts
+      version: 2.3.0
+    insecureSkipTLSVerify: false
+    namespace: vshn-keycloak-keycloak-widera-n9c8b
+    skipCRDs: false
+    skipCreateNamespace: false
+    values:
+      command:
+      - /opt/keycloak/bin/kc-with-setup.sh
+      - --verbose
+      - start
+      - --http-enabled=true
+      - --http-port=8080
+      - --hostname-strict=false
+      - --hostname-strict-https=false
+      - --spi-events-listener-jboss-logging-success-level=info
+      - --spi-events-listener-jboss-logging-error-level=warn
+      database:
+        database: postgres
+        hostname: keycloak-widera-n9c8b-pg.vshn-postgresql-keycloak-widera-n9c8b-pg.svc.cluster.local
+        password: cac3-adfd-438c-ade
+        port: "5432"
+        username: postgres
+      dbchecker:
+        enabled: true
+        securityContext: null
+      extraEnv: |
+        - name: KEYCLOAK_ADMIN
+          value: internaladmin
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: internalAdminPassword
+              name: keycloak-widera-n9c8b-credentials-secret
+        - name: KEYCLOAK_MANAGED
+          value: admin
+        - name: KEYCLOAK_MANAGED_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: adminPassword
+              name: keycloak-widera-n9c8b-credentials-secret
+        - name: KC_DB_URL_PROPERTIES
+          value: ?sslmode=verify-full&sslrootcert=/certs/pg/ca.crt
+        - name: JAVA_OPTS_APPEND
+          value: |-
+            -Djava.awt.headless=true
+            -Djgroups.dns.query={{ include "keycloak.fullname" . }}-headless
+        - name: KC_HTTPS_CERTIFICATE_FILE
+          value: /certs/keycloak/tls.crt
+        - name: KC_HTTPS_CERTIFICATE_KEY_FILE
+          value: /certs/keycloak/tls.key
+      extraEnvFrom: ""
+      extraInitContainers: |
+        - args:
+          - -c
+          - |-
+            echo "Copying original provider files..."
+            cp -R /opt/keycloak/providers/*.jar /custom-providers
+            ls -lh /custom-providers
+          command:
+          - sh
+          image: docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed:24
+          imagePullPolicy: IfNotPresent
+          name: copy-original-providers
+          volumeMounts:
+          - mountPath: /custom-providers
+            name: custom-providers
+        - args:
+          - -c
+          - |-
+            echo "Copying original setup files..."
+            cp -R /opt/keycloak/setup/*.json /custom-setup
+            ls -lh /custom-setup
+          command:
+          - sh
+          image: docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed:24
+          imagePullPolicy: IfNotPresent
+          name: copy-original-realm-setup
+          volumeMounts:
+          - mountPath: /custom-setup
+            name: custom-setup
+      extraServiceMonitor:
+        enabled: true
+      extraVolumeMounts: |
+        - mountPath: /opt/keycloak/providers
+          name: custom-providers
+        - mountPath: /opt/keycloak/themes
+          name: custom-themes
+        - mountPath: /opt/keycloak/setup
+          name: custom-setup
+        - mountPath: /certs/pg
+          name: postgresql-certs
+        - mountPath: /certs/keycloak
+          name: keycloak-certs
+      extraVolumes: |
+        - emptyDir: null
+          name: custom-providers
+        - emptyDir: null
+          name: custom-themes
+        - emptyDir: null
+          name: custom-setup
+        - name: keycloak-dist
+        - name: postgresql-certs
+          secret:
+            defaultMode: 420
+            secretName: pg-creds
+        - name: keycloak-certs
+          secret:
+            defaultMode: 420
+            secretName: tls-server-certificate
+      http:
+        relativePath: /
+      image:
+        repository: docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed
+        tag: "24"
+      metrics:
+        enabled: true
+      nodeSelector: null
+      podSecurityContext: null
+      replicas: 3
+      resources:
+        limits:
+          cpu: 500m
+          memory: 2Gi
+        requests:
+          cpu: 500m
+          memory: 2Gi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsUser: null
+      serviceAccount:
+        automountServiceAccountToken: "false"
+        imagePullSecrets:
+        - name: pullsecret
+      serviceMonitor:
+        enabled: true
+    wait: false
+  managementPolicies:
+  - '*'
+  providerConfigRef:
+    name: helm
+  writeConnectionSecretToRef:
+    name: keycloak-widera-n9c8b-connection
+    namespace: vshn-keycloak-keycloak-widera-n9c8b
+status:
+  atProvider:
+    releaseDescription: Upgrade complete
+    revision: 2
+    state: deployed
+  conditions:
+  - lastTransitionTime: "2024-07-23T11:57:30Z"
+    reason: Available
+    status: "True"
+    type: Ready
+  - lastTransitionTime: "2024-07-23T10:52:27Z"
+    reason: ReconcileSuccess
+    status: "True"
+    type: Synced
+  synced: true

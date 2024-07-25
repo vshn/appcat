@@ -263,3 +263,9 @@ func (v *VSHNMariaDB) GetMonitoring() VSHNMonitoring {
 func (v *VSHNMariaDB) GetInstances() int {
 	return 1
 }
+
+func (v *VSHNMariaDB) GetPDBLabels() map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name:": "mariadb-galera",
+	}
+}

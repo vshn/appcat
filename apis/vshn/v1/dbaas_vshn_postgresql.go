@@ -387,3 +387,9 @@ func (v *VSHNPostgreSQL) GetMonitoring() VSHNMonitoring {
 func (v *VSHNPostgreSQL) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }
+
+func (v *VSHNPostgreSQL) GetPDBLabels() map[string]string {
+	return map[string]string{
+		"app": "StackGresCluster",
+	}
+}

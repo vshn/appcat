@@ -50,4 +50,5 @@ type Alerter interface {
 type PDB interface {
 	GetInstanceNamespace() string
 	GetInstances() int
+	GetPDBLabels() map[string]string
 }

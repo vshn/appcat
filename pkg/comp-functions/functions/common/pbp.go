@@ -20,7 +20,7 @@ import (
 func AddPDBSettings(comp client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 	return func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 
-		log := controllerruntime.LoggerFrom(ctx)
+		log := svc.Log
 
 		err := svc.GetObservedComposite(obj)
 		if err != nil {

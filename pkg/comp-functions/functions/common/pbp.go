@@ -17,7 +17,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-func AddPDBSettings(obj client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
+func AddPDBSettings(comp client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 	return func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 
 		log := controllerruntime.LoggerFrom(ctx)

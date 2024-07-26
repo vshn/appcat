@@ -29,7 +29,7 @@ func AddPDBSettings(comp Composite) func(ctx context.Context, svc *runtime.Servi
 		}
 		log.Info("HA detected, adding pdb", "service", comp.GetName())
 
-		min := intstr.IntOrString{IntVal: int32(comp.GetInstances()) / 2}
+		min := intstr.IntOrString{StrVal: "50%", Type: intstr.String}
 
 		x := &pdbv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{

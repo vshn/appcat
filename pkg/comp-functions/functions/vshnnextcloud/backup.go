@@ -20,7 +20,7 @@ var nextcloudBackupScript string
 
 func AddBackup(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	comp := &vshnv1.VSHNNextcloud{}
-	err := svc.GetObservedComposite(comp)
+	err := svc.GetDesiredComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
@@ -37,7 +37,7 @@ func AddBackup(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Resul
 
 	err = updateRelease(svc, comp)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot update release with backup configuration: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot update release with backup configuration: %s", err))
 	}
 
 	return nil

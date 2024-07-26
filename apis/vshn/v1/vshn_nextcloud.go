@@ -289,3 +289,9 @@ func (v *VSHNNextcloud) GetMonitoring() VSHNMonitoring {
 func (v *VSHNNextcloud) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }
+
+func (v *VSHNNextcloud) GetPDBLabels() map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name": "nextcloud",
+	}
+}

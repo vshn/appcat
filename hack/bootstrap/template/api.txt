@@ -255,3 +255,11 @@ func (v *{{.Name}}) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpe
 	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
 	return schedule
 }
+
+// GetPDBLabels returns the labels to be used for the PodDisruptionBudget
+// it should match one unique label od pod running in instanceNamespace
+// without this, the PDB will match all pods
+func (v *{{.Name}}) GetPDBLabels() map[string]string {
+	return map[string]string{
+	}
+}

@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	netv1 "k8s.io/api/networking/v1"
+	pdbv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,4 +56,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = managedupgradev1beta1.AddToScheme(s)
 	_ = pgv1alpha1.SchemeBuilder.AddToScheme(s)
 	_ = apix.AddToScheme(s)
+	_ = pdbv1.AddToScheme(s)
 }

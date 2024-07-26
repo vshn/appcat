@@ -288,3 +288,9 @@ func (v *VSHNRedis) GetMonitoring() VSHNMonitoring {
 func (v *VSHNRedis) GetInstances() int {
 	return 1
 }
+
+func (v *VSHNRedis) GetPDBLabels() map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name": "redis",
+	}
+}

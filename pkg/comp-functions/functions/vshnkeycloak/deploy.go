@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	"time"
+
+	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"

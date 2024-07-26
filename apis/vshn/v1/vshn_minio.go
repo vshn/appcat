@@ -237,3 +237,9 @@ func (v *VSHNMinio) GetMonitoring() VSHNMonitoring {
 func (v *VSHNMinio) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }
+
+func (v *VSHNMinio) GetPDBLabels() map[string]string {
+	return map[string]string{
+		"app": "minio",
+	}
+}

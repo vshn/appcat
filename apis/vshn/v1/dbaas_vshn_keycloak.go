@@ -324,3 +324,9 @@ func (v *VSHNKeycloak) GetMonitoring() VSHNMonitoring {
 func (v *VSHNKeycloak) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }
+
+func (v *VSHNKeycloak) GetPDBLabels() map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name": "keycloakx",
+	}
+}

@@ -16,6 +16,7 @@ type InfoGetter interface {
 	GetFullMaintenanceSchedule() vshnv1.VSHNDBaaSMaintenanceScheduleSpec
 	GetMonitoring() vshnv1.VSHNMonitoring
 	InstanceNamespaceInfo
+	GetPDBLabels() map[string]string
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create
@@ -38,4 +39,10 @@ type Composite interface {
 type AllowedNamespaceGetter interface {
 	GetAllowAllNamespaces() bool
 	GetAllowedNamespaces() []string
+}
+
+// Required to get info required for alerting.
+type Alerter interface {
+	GetVSHNMonitoring() vshnv1.VSHNMonitoring
+	GetInstanceNamespace() string
 }

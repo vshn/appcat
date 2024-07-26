@@ -35,6 +35,10 @@ func init() {
 				Name:    "non-sla-prometheus-rules",
 				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNKeycloak{}, nonsla.NewAlertSetBuilder("keycloak", "keycloak").AddMemory().GetAlerts()),
 			},
+			{
+				Name:    "pdb",
+				Execute: common.AddPDBSettings(&vshnv1.VSHNKeycloak{}),
+			},
 		},
 	})
 }

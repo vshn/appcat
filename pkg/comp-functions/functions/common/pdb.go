@@ -7,14 +7,12 @@ import (
 	pdbv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	ptr "k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-func AddPDBSettings(comp client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
+func AddPDBSettings(comp Composite) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 	return func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
 
 		log := svc.Log
@@ -23,32 +21,30 @@ func AddPDBSettings(comp client.Object) func(ctx context.Context, svc *runtime.S
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 		}
-		infoGetter, ok := comp.(InfoGetter)
-		if !ok {
-			return runtime.NewFatalResult(fmt.Errorf("could not cast to InfoGetter"))
-		}
 
-		log.Info("Checking if PDB is needed", "service", infoGetter.GetName(), "instances", infoGetter.GetInstances())
+		log.Info("Checking if PDB is needed", "service", comp.GetName(), "instances", comp.GetInstances())
 
-		if infoGetter.GetInstances() < 2 {
+		if comp.GetInstances() < 2 {
 			return runtime.NewNormalResult("Not HA, no pdb needed")
 		}
-		log.Info("HA detected, adding pdb", "service", infoGetter.GetName())
+		log.Info("HA detected, adding pdb", "service", comp.GetName())
+
+		min := intstr.IntOrString{IntVal: int32(comp.GetInstances()) / 2}
 
 		x := &pdbv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      infoGetter.GetName() + "-pdb",
-				Namespace: infoGetter.GetInstanceNamespace(),
+				Name:      comp.GetName() + "-pdb",
+				Namespace: comp.GetInstanceNamespace(),
+			},
+			Spec: pdbv1.PodDisruptionBudgetSpec{
+				MinAvailable: &min,
+				Selector: &metav1.LabelSelector{
+					MatchLabels: comp.GetPDBLabels(),
+				},
 			},
 		}
-		min := intstr.IntOrString{StrVal: "50%"}
 
-		x.Spec.MinAvailable = ptr.To(min)
-		x.Spec.Selector = &metav1.LabelSelector{
-			MatchLabels: infoGetter.GetPDBLabels(),
-		}
-
-		err = svc.SetDesiredKubeObject(x, infoGetter.GetName()+"-pdb")
+		err = svc.SetDesiredKubeObject(x, comp.GetName()+"-pdb")
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("could not set desired kube compect: %w", err))
 		}

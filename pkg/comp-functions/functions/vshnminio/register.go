@@ -39,6 +39,10 @@ func init() {
 				Name:    "user-alerting",
 				Execute: common.AddUserAlerting(&vshnv1.VSHNMinio{}),
 			},
+			{
+				Name:    "pdb",
+				Execute: common.AddPDBSettings(&vshnv1.VSHNMinio{}),
+			},
 		},
 	})
 }

@@ -16,6 +16,7 @@ type InfoGetter interface {
 	GetFullMaintenanceSchedule() vshnv1.VSHNDBaaSMaintenanceScheduleSpec
 	GetMonitoring() vshnv1.VSHNMonitoring
 	InstanceNamespaceInfo
+	GetPDBLabels() map[string]string
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create
@@ -44,11 +45,4 @@ type AllowedNamespaceGetter interface {
 type Alerter interface {
 	GetVSHNMonitoring() vshnv1.VSHNMonitoring
 	GetInstanceNamespace() string
-}
-
-// minimalist PDB interface
-type PDB interface {
-	GetInstanceNamespace() string
-	GetInstances() int
-	GetPDBLabels() map[string]string
 }

@@ -1,9 +1,8 @@
 package common
 
 import (
-	"encoding/json"
-
 	"dario.cat/mergo"
+	"encoding/json"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -77,7 +76,6 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() error {
 			Retention:          retention,
 			DeletionProtection: ptr.To(true),
 			DeletionRetention:  7,
-			Schedule:           a.comp.GetBackupSchedule(),
 		},
 		Service: vshnv1.VSHNPostgreSQLServiceSpec{
 			PgBouncerSettings: &sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni{

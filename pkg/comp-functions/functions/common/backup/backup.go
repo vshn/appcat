@@ -215,7 +215,6 @@ func AddPodAnnotationToValues(valueMap map[string]any, scriptName, fileExt strin
 
 // AddBackupCMToValues adds the volume mount for the given configMap to the helm values.
 // volumePath and mountPath specify the value path within the values map.
-// It will mount the configmap under /scripts in the pod.
 func AddBackupCMToValues(values map[string]any, volumePath []string, mountPath []string) error {
 	volumes := []interface{}{
 		corev1.Volume{
@@ -248,20 +247,4 @@ func AddBackupCMToValues(values map[string]any, volumePath []string, mountPath [
 	}
 
 	return nil
-}
-
-// AddBackupScriptCM will add a configmap containing the given script.
-// This can then be used to mount into the resulting pod by whatever means applicable (helm values, pod-definition, etc)
-func AddBackupScriptCM(svc *runtime.ServiceRuntime, comp common.Composite, script string) error {
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "backup-script",
-			Namespace: comp.GetInstanceNamespace(),
-		},
-		Data: map[string]string{
-			"backup.sh": script,
-		},
-	}
-
-	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-backup-script")
 }

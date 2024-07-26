@@ -12,6 +12,8 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
@@ -41,7 +43,7 @@ func AddBackupMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnprot
 	}
 
 	l.Info("Adding backup script config map")
-	err = backup.AddBackupScriptCM(svc, comp, mariadbBackupScript)
+	err = addBackupScriptCM(svc, comp)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create backup script configMap: %s", err.Error()))
 	}
@@ -53,6 +55,20 @@ func AddBackupMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnprot
 	}
 
 	return nil
+}
+
+func addBackupScriptCM(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) error {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "backup-script",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Data: map[string]string{
+			"backup.sh": mariadbBackupScript,
+		},
+	}
+
+	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-backup-script")
 }
 
 func updateRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) error {

@@ -4,15 +4,45 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"strings"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"k8s.io/utils/ptr"
+	"strings"
+	"testing"
 )
+
+func Test_addPostgreSQL(t *testing.T) {
+
+	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/empty.yaml")
+
+	comp := &vshnv1.VSHNNextcloud{}
+
+	assert.NoError(t, addPostgreSQL(svc, comp))
+
+	pg := &vshnv1.XVSHNPostgreSQL{}
+
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
+
+	// Assert default values
+	assert.True(t, *pg.Spec.Parameters.Backup.DeletionProtection)
+	assert.Equal(t, 6, pg.Spec.Parameters.Backup.Retention)
+
+	// Assert default overrides
+	comp.Spec.Parameters.Service.PostgreSQLParameters = &vshnv1.VSHNPostgreSQLParameters{
+		Backup: vshnv1.VSHNPostgreSQLBackup{
+			DeletionProtection: ptr.To(false),
+			Retention:          1,
+		},
+	}
+
+	assert.NoError(t, addPostgreSQL(svc, comp))
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
+	assert.False(t, *pg.Spec.Parameters.Backup.DeletionProtection)
+	assert.Equal(t, 1, pg.Spec.Parameters.Backup.Retention)
+}
 
 func Test_addNextcloud(t *testing.T) {
 	svc, comp := getNextcloudComp(t, "vshnnextcloud/01_default.yaml")

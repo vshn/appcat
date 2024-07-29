@@ -26,6 +26,7 @@ import (
 	pdbv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
+	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -57,4 +58,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = pgv1alpha1.SchemeBuilder.AddToScheme(s)
 	_ = apix.AddToScheme(s)
 	_ = pdbv1.AddToScheme(s)
+	_ = cloudscalev1.SchemeBuilder.AddToScheme(s)
 }

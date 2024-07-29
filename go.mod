@@ -12,7 +12,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cert-manager/cert-manager v1.13.2
 	github.com/crossplane/crossplane v1.15.3
-	github.com/crossplane/crossplane-runtime v1.15.1
+	github.com/crossplane/crossplane-runtime v1.16.0
 	github.com/crossplane/crossplane-tools v0.0.0-20240522174801-1ad3d4c87f21
 	github.com/crossplane/function-sdk-go v0.3.0-rc.0
 	github.com/deepmap/oapi-codegen v0.0.0-00010101000000-000000000000
@@ -36,6 +36,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/thediveo/enumflag/v2 v2.0.2
 	github.com/vektra/mockery/v2 v2.36.1
+	github.com/vshn/provider-cloudscale v0.5.2
 	github.com/vshn/provider-minio v0.3.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/text v0.14.0
@@ -48,8 +49,8 @@ require (
 	k8s.io/code-generator v0.30.2
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
 	sigs.k8s.io/apiserver-runtime v0.0.0-00010101000000-000000000000
-	sigs.k8s.io/controller-runtime v0.18.2
-	sigs.k8s.io/controller-tools v0.14.0
+	sigs.k8s.io/controller-runtime v0.18.4
+	sigs.k8s.io/controller-tools v0.15.0
 	sigs.k8s.io/kind v0.20.0
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -264,7 +265,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 	helm.sh/helm/v3 v3.15.1
-	k8s.io/apiextensions-apiserver v0.30.0 // indirect
+	k8s.io/apiextensions-apiserver v0.30.1 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect

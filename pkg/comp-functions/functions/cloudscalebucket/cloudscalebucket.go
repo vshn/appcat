@@ -5,15 +5,17 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ProvisionCloudscalebucket will create a bucket in a pre-deployed minio instance.
-// This function will leverage provider-minio to deploy proper policies and users
+// ProvisionCloudscalebucket will create a bucket in cloudscale.
+// This function will leverage provider-cloudscale to deploy proper users
 // alongside the bucket.
 func ProvisionCloudscalebucket(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -53,12 +55,15 @@ func ProvisionCloudscalebucket(_ context.Context, svc *runtime.ServiceRuntime) *
 func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
 	mb := &cloudscalev1.Bucket{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: bucket.Spec.Parameters.BucketName,
-		},
+		ObjectMeta: metav1.ObjectMeta{},
 		Spec: cloudscalev1.BucketSpec{
 			ForProvider: cloudscalev1.BucketParameters{
 				BucketDeletionPolicy: cloudscalev1.BucketDeletionPolicy(bucket.Spec.Parameters.BucketDeletionPolicy),
+				Region:               bucket.Spec.Parameters.Region,
+				BucketName:           bucket.Spec.Parameters.BucketName,
+				CredentialsSecretRef: v1.SecretReference{
+					Namespace: svc.Config.Data["providerSecretNamespace"],
+				},
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
@@ -68,30 +73,37 @@ func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 		},
 	}
 
-	return svc.SetDesiredComposedResourceWithName(mb, "minio-bucket")
+	objName := getBucketObjectName(svc, bucket, "cloudscale-bucket", mb.DeepCopy())
+
+	mb.ObjectMeta.Name = objName
+	mb.Spec.ForProvider.CredentialsSecretRef.Name = objName
+
+	return svc.SetDesiredComposedResourceWithName(mb, "cloudscale-bucket")
 }
 
 func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
 	user := &cloudscalev1.ObjectsUser{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: bucket.Spec.Parameters.BucketName,
-		},
+		ObjectMeta: metav1.ObjectMeta{},
 		Spec: cloudscalev1.ObjectsUserSpec{
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: config,
 				},
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      bucket.GetName(),
-					Namespace: "syn-crossplane",
+					Namespace: svc.Config.Data["providerSecretNamespace"],
 				},
 			},
 			ForProvider: cloudscalev1.ObjectsUserParameters{
-				DisplayName: fmt.Sprintf("%.%", bucket.Labels["crossplane.io/claim-namespace"], bucket.Labels["crossplane.io/claim-name"]),
+				DisplayName: fmt.Sprintf("%s.%s", bucket.Labels["crossplane.io/claim-namespace"], bucket.Labels["crossplane.io/claim-name"]),
 			},
 		},
 	}
+
+	objName := getBucketObjectName(svc, bucket, "cloudscale-user", user.DeepCopy())
+
+	user.ObjectMeta.Name = objName
+	user.Spec.WriteConnectionSecretToReference.Name = objName
 
 	cd, err := svc.GetObservedComposedResourceConnectionDetails("cloudscale-user")
 	if err != nil && err != runtime.ErrNotFound {
@@ -121,4 +133,21 @@ func populateEndpointConnectionDetails(svc *runtime.ServiceRuntime) error {
 
 	return nil
 
+}
+
+// Legacy buckets where created with wrong object names that break nested
+// services.
+// This logic returns the new naming scheme, if there's no existing bucket CR.
+// If there's already a CR it will simply return it's name.
+// The `obj` parameter should always be a deepCopy of the original, otherwise
+// the pointer in the calling function will have all the fields populated. Which
+// can lead to unexpected side effects.
+func getBucketObjectName(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, resName string, obj resource.Managed) string {
+
+	err := svc.GetObservedComposedResource(obj, resName)
+	if err != nil {
+		return bucket.Spec.Parameters.BucketName
+	}
+
+	return obj.GetName()
 }

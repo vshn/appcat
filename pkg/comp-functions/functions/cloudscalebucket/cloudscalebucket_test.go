@@ -6,11 +6,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
-	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
+	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
 )
 
-func TestProvisionMiniobucket(t *testing.T) {
-	svc := commontest.LoadRuntimeFromFile(t, "miniobucket/bucket.yaml")
+func TestProvisionCloudscalebucket(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "cloudscalebucket/bucket.yaml")
 
 	ctx := context.TODO()
 
@@ -19,17 +19,31 @@ func TestProvisionMiniobucket(t *testing.T) {
 	res := ProvisionCloudscalebucket(ctx, svc)
 	assert.Nil(t, res)
 
-	bucket := &miniov1.Bucket{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(bucket, "minio-bucket"))
+	bucket := &cloudscalev1.Bucket{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(bucket, "cloudscale-bucket"))
 	assert.Equal(t, bucketName, bucket.GetName())
 
-	user := &miniov1.User{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(user, "minio-user"))
+	user := &cloudscalev1.ObjectsUser{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(user, "cloudscale-user"))
 	assert.Equal(t, bucketName, user.GetName())
-	assert.Contains(t, user.Spec.ForProvider.Policies, bucketName)
 
-	policy := &miniov1.Policy{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(policy, "minio-policy"))
-	assert.Equal(t, bucketName, policy.GetName())
+}
+
+// GivenObservedBucket_ThenExpectNameFromObserved
+func TestExistingBuckets(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "cloudscalebucket/bucket-existing.yaml")
+
+	ctx := context.TODO()
+
+	res := ProvisionCloudscalebucket(ctx, svc)
+	assert.Nil(t, res)
+
+	bucket := &cloudscalev1.Bucket{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(bucket, "cloudscale-bucket"))
+	assert.Equal(t, "existing-bucket", bucket.GetName())
+
+	user := &cloudscalev1.ObjectsUser{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(user, "cloudscale-user"))
+	assert.Equal(t, "existing-user", user.GetName())
 
 }

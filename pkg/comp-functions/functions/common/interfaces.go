@@ -15,6 +15,7 @@ type InfoGetter interface {
 	GetInstances() int
 	GetFullMaintenanceSchedule() vshnv1.VSHNDBaaSMaintenanceScheduleSpec
 	GetMonitoring() vshnv1.VSHNMonitoring
+	GetSecurity() *vshnv1.Security
 	InstanceNamespaceInfo
 	GetPDBLabels() map[string]string
 }

@@ -1,9 +1,10 @@
 package v1
 
 import (
+	"time"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	"time"
 )
 
 type TimeOfDay string
@@ -190,6 +191,10 @@ type Security struct {
 	AllowAllNamespaces bool `json:"allowAllNamespaces,omitempty"`
 	// AllowedNamespaces defines a list of namespaces from where the service can be reached in the claim namespace
 	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
+
+	// DeletionProtection blocks the deletion of the instance if it is enabled (enabled by default)
+	// +kubebuilder:default=true
+	DeletionProtection bool `json:"deletionProtection,omitempty"`
 }
 
 type VSHNAccess struct {

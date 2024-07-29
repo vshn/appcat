@@ -15,6 +15,8 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+
 
 // +kubebuilder:object:root=true
 
@@ -262,4 +264,37 @@ func (v *{{.Name}}) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpe
 func (v *{{.Name}}) GetPDBLabels() map[string]string {
 	return map[string]string{
 	}
+}
+
+// GetAllowAllNamespaces returns the AllowAllNamespaces field of this service
+func (v *{{.Name}}) GetAllowAllNamespaces() bool {
+	return v.Spec.Parameters.Security.AllowAllNamespaces
+}
+
+// GetAllowedNamespaces returns the AllowedNamespaces array of this service
+func (v *{{.Name}}) GetAllowedNamespaces() []string {
+	if v.Spec.Parameters.Security.AllowedNamespaces == nil {
+		v.Spec.Parameters.Security.AllowedNamespaces = []string{}
+	}
+	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
+}
+
+func (v *{{.Name}}) GetVSHNMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
+func (v *{{.Name}}) GetSize() VSHNSizeSpec {
+	return v.Spec.Parameters.Size
+}
+
+func (v *{{.Name}}) GetMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
+func (v *{{.Name}}) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}
+
+func (v *{{.Name}}) GetSecurity() *Security {
+	return &v.Spec.Parameters.Security
 }

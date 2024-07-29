@@ -55,6 +55,86 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - xvshnkeycloaks
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnkeycloaks/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnmariadbs
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnmariadbs/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnminios
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnminios/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnnextclouds
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnnextclouds/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
   - xvshnpostgresqls
   verbs:
   - get

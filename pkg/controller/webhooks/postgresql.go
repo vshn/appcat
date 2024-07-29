@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -14,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -38,9 +36,7 @@ var _ webhook.CustomValidator = &PostgreSQLWebhookHandler{}
 
 // PostgreSQLWebhookHandler handles all quota webhooks concerning postgresql by vshn.
 type PostgreSQLWebhookHandler struct {
-	client    client.Client
-	log       logr.Logger
-	withQuota bool
+	DefaultWebhookHandler
 }
 
 // SetupPostgreSQLWebhookHandlerWithManager registers the validation webhook with the manager.
@@ -49,9 +45,15 @@ func SetupPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&vshnv1.VSHNPostgreSQL{}).
 		WithValidator(&PostgreSQLWebhookHandler{
-			client:    mgr.GetClient(),
-			log:       mgr.GetLogger().WithName("webhook").WithName("postgresql"),
-			withQuota: withQuota,
+			DefaultWebhookHandler: *New(
+				mgr.GetClient(),
+				mgr.GetLogger().WithName("webhook").WithName("postgresql"),
+				withQuota,
+				&vshnv1.VSHNPostgreSQL{},
+				"postgresql",
+				pgGK,
+				pgGR,
+			),
 		}).
 		Complete()
 }
@@ -87,11 +89,12 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 		allErrs = append(allErrs, fieldErrs...)
 	}
 
-	instancesError := p.checkGuaranteedAvailability(ctx, pg)
+	instancesError := p.checkGuaranteedAvailability(pg)
 
 	allErrs = append(allErrs, instancesError...)
 
-	err = p.validateResourceNameLength(pg.GetName())
+	// longest postfix is 26 chars for the sgbackup object (eg. "-952zx-2024-07-25-12-50-10"). Max SgBackup length is 56, therefore 30 characters is the maximum length
+	err = p.validateResourceNameLength(pg.GetName(), 30)
 	if err != nil {
 		allErrs = append(allErrs, &field.Error{
 			Field: ".metadata.name",
@@ -148,11 +151,12 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 		}
 		allErrs = append(allErrs, fieldErrs...)
 	}
-	instancesError := p.checkGuaranteedAvailability(ctx, pg)
+	instancesError := p.checkGuaranteedAvailability(pg)
 
 	allErrs = append(allErrs, instancesError...)
 
-	err = p.validateResourceNameLength(pg.GetName())
+	// longest postfix is 26 chars for the sgbackup object (eg. "-952zx-2024-07-25-12-50-10"). Max SgBackup length is 56, therefore 30 characters is the maximum length
+	err = p.validateResourceNameLength(pg.GetName(), 30)
 	if err != nil {
 		allErrs = append(allErrs, &field.Error{
 			Field: ".metadata.name",
@@ -174,12 +178,6 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 		)
 	}
 
-	return nil, nil
-}
-
-// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
-func (p *PostgreSQLWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	// NOOP for now
 	return nil, nil
 }
 
@@ -206,7 +204,7 @@ func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg
 		return apierrors.NewInternalError(err), fieldErrs
 	}
 
-	p.addPathsToResources(&resources)
+	p.addPathsToResources(&resources, false)
 
 	if pg.Spec.Parameters.Size.CPU != "" {
 		resources.CPULimits, fieldErr = parseResource(resources.CPULimitsPath, pg.Spec.Parameters.Size.CPU, "not a valid cpu size")
@@ -269,17 +267,7 @@ func parseResource(childPath *field.Path, value, errMessage string) (resource.Qu
 	return quantity, nil
 }
 
-func (p *PostgreSQLWebhookHandler) addPathsToResources(r *utils.Resources) {
-	basePath := field.NewPath("spec", "parameters", "size")
-
-	r.CPULimitsPath = basePath.Child("cpu")
-	r.CPURequestsPath = basePath.Child("requests", "cpu")
-	r.MemoryLimitsPath = basePath.Child("memory")
-	r.MemoryRequestsPath = basePath.Child("requests", "memory")
-	r.DiskPath = basePath.Child("disk")
-}
-
-func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Context, pg *vshnv1.VSHNPostgreSQL) (fieldErrs field.ErrorList) {
+func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(pg *vshnv1.VSHNPostgreSQL) (fieldErrs field.ErrorList) {
 	// service level and instances are verified in the CRD validation, therefore I skip checking them
 	if pg.Spec.Parameters.Service.ServiceLevel == "guaranteed" && pg.Spec.Parameters.Instances < 2 {
 		fieldErrs = append(fieldErrs, &field.Error{
@@ -290,15 +278,6 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(ctx context.Conte
 		})
 	}
 	return fieldErrs
-}
-
-// k8s limitation is 56 characters, longest postfix for sgbackups is 26 character, therefore 30 chracters is the maximum length
-// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
-func (r *PostgreSQLWebhookHandler) validateResourceNameLength(name string) error {
-	if len(name) > 30 {
-		return fmt.Errorf("current length: %d. We add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name))
-	}
-	return nil
 }
 
 // validate vacuum and repack settings

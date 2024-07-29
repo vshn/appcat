@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestSetupRedisWebhookHandlerWithManager(t *testing.T) {
+func TestSetupRedisWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	// Given
 	claimNS := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -33,9 +33,13 @@ func TestSetupRedisWebhookHandlerWithManager(t *testing.T) {
 		Build()
 
 	handler := RedisWebhookHandler{
-		client:    fclient,
-		log:       logr.Discard(),
-		withQuota: true,
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:    fclient,
+			log:       logr.Discard(),
+			withQuota: true,
+			obj:       &vshnv1.VSHNRedis{},
+			name:      "redis",
+		},
 	}
 
 	redisOrig := &vshnv1.VSHNRedis{
@@ -58,9 +62,15 @@ func TestSetupRedisWebhookHandlerWithManager(t *testing.T) {
 	//Then no err
 	assert.NoError(t, err)
 
+	// When name too long
+	redisInvalid := redisOrig.DeepCopy()
+	redisInvalid.Name = "this-redis-instance-name-is-way-too-long-and-should-fail"
+	_, err = handler.ValidateCreate(ctx, redisInvalid)
+	assert.Error(t, err)
+
 	//When quota breached
 	// CPU Requests
-	redisInvalid := redisOrig.DeepCopy()
+	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.CPURequests = "5000m"
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
@@ -79,7 +89,7 @@ func TestSetupRedisWebhookHandlerWithManager(t *testing.T) {
 
 	// Memory Requests
 	redisInvalid = redisOrig.DeepCopy()
-	redisInvalid.Spec.Parameters.Size.MemoryLimits = "25Gi"
+	redisInvalid.Spec.Parameters.Size.MemoryRequests = "25Gi"
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
 
@@ -110,7 +120,7 @@ func TestSetupRedisWebhookHandlerWithManager(t *testing.T) {
 
 	// Memory Requests
 	redisInvalid = redisOrig.DeepCopy()
-	redisInvalid.Spec.Parameters.Size.MemoryLimits = "foo"
+	redisInvalid.Spec.Parameters.Size.MemoryRequests = "foo"
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
 
@@ -120,4 +130,62 @@ func TestSetupRedisWebhookHandlerWithManager(t *testing.T) {
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
 
+}
+
+func TestSetupRedisWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
+	// Given
+	claimNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "claimns",
+			Labels: map[string]string{
+				utils.OrgLabelName: "myorg",
+			},
+		},
+	}
+
+	ctx := context.TODO()
+
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(claimNS).
+		Build()
+
+	handler := RedisWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:    fclient,
+			log:       logr.Discard(),
+			withQuota: true,
+			obj:       &vshnv1.VSHNRedis{},
+			name:      "redis",
+		},
+	}
+
+	redisOrig := &vshnv1.VSHNRedis{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "claimns",
+		},
+		Spec: vshnv1.VSHNRedisSpec{
+			Parameters: vshnv1.VSHNRedisParameters{
+				Security: vshnv1.Security{
+					DeletionProtection: true,
+				},
+			},
+		},
+	}
+
+	// When within quota
+	_, err := handler.ValidateDelete(ctx, redisOrig)
+
+	//Then err
+	assert.Error(t, err)
+
+	//Instances
+	redisDeletable := redisOrig.DeepCopy()
+	redisDeletable.Spec.Parameters.Security.DeletionProtection = false
+
+	_, err = handler.ValidateDelete(ctx, redisDeletable)
+
+	//Then no err
+	assert.NoError(t, err)
 }

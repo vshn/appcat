@@ -14,15 +14,16 @@ import (
 )
 
 type Service struct {
-	Name            string `json:"name"`
-	NamePluralLower string
-	NameShort       string
-	Security        bool   `json:"security"`
-	Backup          bool   `json:"backup"`
-	Restore         bool   `json:"restore"`
-	Maintenance     bool   `json:"maintenance"`
-	Tls             bool   `json:"tls"`
-	SettingsKey     string `json:"settingsKey"`
+	Name             string `json:"name"`
+	NamePluralLower  string
+	NameShort        string
+	NameShortCapital string
+	Security         bool   `json:"security"`
+	Backup           bool   `json:"backup"`
+	Restore          bool   `json:"restore"`
+	Maintenance      bool   `json:"maintenance"`
+	Tls              bool   `json:"tls"`
+	SettingsKey      string `json:"settingsKey"`
 }
 
 //go:embed template/api.txt
@@ -55,6 +56,7 @@ func main() {
 		renderer.NamePluralLower = strings.ToLower(renderer.Name) + "s"
 	}
 	renderer.NameShort = strings.TrimLeft(strings.ToLower(renderer.Name), "vshn")
+	renderer.NameShort = strings.TrimLeft(renderer.Name, "VSHN")
 
 	funcMap := template.FuncMap{
 		"CamelCase": strcase.ToCamel,
@@ -76,6 +78,25 @@ func main() {
 	err = os.WriteFile(apiFile, buf.Bytes(), 0644)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot write file '%s': %v", apiFile, err))
+	}
+
+	t, err = template.New("webhook.txt").Funcs(funcMap).ParseFS(apiGoTemplate, "template/webhook.txt")
+
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot parse webhook go template: %v", err))
+	}
+	buf = new(bytes.Buffer)
+
+	err = t.ExecuteTemplate(buf, "webhook.txt", renderer)
+
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot render webhook go template: %v", err))
+	}
+
+	webhookFile := "pkg/webhooks/" + renderer.NameShort + ".go"
+	err = os.WriteFile(webhookFile, buf.Bytes(), 0644)
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot write file '%s': %v", webhookFile, err))
 	}
 
 }

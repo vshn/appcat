@@ -277,3 +277,5 @@ replace github.com/openshift/machine-config-operator => github.com/openshift/mac
 replace sigs.k8s.io/apiserver-runtime => github.com/Kidswiss/apiserver-runtime v0.0.0-20240704094752-0638be0fd3be
 
 replace github.com/google/cel-go => github.com/google/cel-go v0.17.8
+
+replace github.com/crossplane/crossplane-runtime => github.com/crossplane/crossplane-runtime v1.15.1

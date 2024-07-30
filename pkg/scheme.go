@@ -22,11 +22,11 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
+	exoscalev1 "github.com/vshn/provider-exoscale/apis/exoscale/v1"
 	netv1 "k8s.io/api/networking/v1"
 	pdbv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-
-	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -59,4 +59,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = apix.AddToScheme(s)
 	_ = pdbv1.AddToScheme(s)
 	_ = cloudscalev1.SchemeBuilder.AddToScheme(s)
+	_ = exoscalev1.SchemeBuilder.AddToScheme(s)
 }

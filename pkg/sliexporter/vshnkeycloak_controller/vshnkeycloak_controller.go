@@ -61,7 +61,7 @@ func (r *VSHNKeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r VSHNKeycloakReconciler) getKeycloakProber(ctx context.Context, obj slireconciler.Service) (prober probes.Prober, err error) {
 	inst, ok := obj.(*vshnv1.XVSHNKeycloak)
 	if !ok {
-		return nil, fmt.Errorf("cannot start probe, object not a valid VSHNRedis")
+		return nil, fmt.Errorf("cannot start probe, object not a valid VSHKeycloak")
 	}
 
 	credentials := corev1.Secret{}
@@ -84,7 +84,7 @@ func (r VSHNKeycloakReconciler) getKeycloakProber(ctx context.Context, obj slire
 		return nil, fmt.Errorf("secret does not contain Keycloak url")
 	}
 
-	url := "https://" + string(host) + ":8443/health"
+	url := "https://" + string(host) + ":9000/health"
 
 	rawCACert, ok := credentials.Data["ca.crt"]
 	if !ok {

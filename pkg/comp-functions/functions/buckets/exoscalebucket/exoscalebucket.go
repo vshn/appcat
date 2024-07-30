@@ -95,7 +95,15 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 				},
 			},
 			ForProvider: exoscalev1.IAMKeyParameters{
-				Zone: bucket.Spec.Parameters.Region,
+				Zone:    bucket.Spec.Parameters.Region,
+				KeyName: fmt.Sprintf("%s.%s", bucket.GetLabels()["crossplane.io/claim-namespace"], bucket.GetLabels()["crossplane.io/claim-name"]),
+				Services: exoscalev1.ServicesSpec{
+					SOS: exoscalev1.SOSSpec{
+						Buckets: []string{
+							bucket.Spec.Parameters.BucketName,
+						},
+					},
+				},
 			},
 		},
 	}

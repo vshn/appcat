@@ -245,10 +245,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"emptyDir": nil,
 		},
 		{
-			"name":     "custom-setup",
-			"emptyDir": nil,
-		},
-		{
 			"name": "keycloak-dist",
 		},
 		{
@@ -272,12 +268,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"name": "keycloak-configs",
 			"configMap": map[string]any{
 				"name": comp.Spec.Parameters.Service.CustomConfigurationRef,
-				"items": []map[string]string{
-					{
-						"key":  "keycloak-config.json",
-						"path": "keycloak-config.json",
-					},
-				},
 			},
 		})
 	}
@@ -297,10 +287,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"mountPath": "/opt/keycloak/themes",
 		},
 		{
-			"name":      "custom-setup",
-			"mountPath": "/opt/keycloak/setup",
-		},
-		{
 			"name":      "postgresql-certs",
 			"mountPath": "/certs/pg",
 		},
@@ -313,8 +299,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
 		extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
 			"name":      "keycloak-configs",
-			"mountPath": "/opt/keycloak/setup/keycloak-config.json",
-			"subPath":   "keycloak-config.json",
+			"mountPath": "/opt/keycloak/setup/project",
 		})
 	}
 
@@ -571,26 +556,6 @@ ls -lh /custom-providers`,
 				{
 					"name":      "custom-providers",
 					"mountPath": "/custom-providers",
-				},
-			},
-		},
-		{
-			"name":            realmInitName,
-			"image":           fmt.Sprintf("%s:%s", registryURL, version),
-			"imagePullPolicy": "IfNotPresent",
-			"command": []string{
-				"sh",
-			},
-			"args": []string{
-				"-c",
-				`echo "Copying original setup files..."
-cp -R /opt/keycloak/setup/*.json /custom-setup
-ls -lh /custom-setup`,
-			},
-			"volumeMounts": []map[string]any{
-				{
-					"name":      "custom-setup",
-					"mountPath": "/custom-setup",
 				},
 			},
 		},

@@ -375,6 +375,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				},
 			},
 		},
+		// Workaround until https://github.com/codecentric/helm-charts/pull/784 is merged
+		"livenessProbe":  "{\"httpGet\": {\"path\": \"/health/live\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 0, \"timeoutSeconds\": 5}",
+		"readinessProbe": "{\"httpGet\": {\"path\": \"/health/ready\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 10, \"timeoutSeconds\": 1}",
+		"startupProbe":   "{\"httpGet\": {\"path\": \"/health\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 15, \"timeoutSeconds\": 1, \"failureThreshold\": 60, \"periodSeconds\": 5}",
 		"service": map[string]any{
 			"extraPorts": []map[string]any{
 				{

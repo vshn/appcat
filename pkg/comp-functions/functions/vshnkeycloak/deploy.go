@@ -245,10 +245,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"emptyDir": nil,
 		},
 		{
-			"name":     "custom-setup",
-			"emptyDir": nil,
-		},
-		{
 			"name": "keycloak-dist",
 		},
 		{
@@ -272,12 +268,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"name": "keycloak-configs",
 			"configMap": map[string]any{
 				"name": comp.Spec.Parameters.Service.CustomConfigurationRef,
-				"items": []map[string]string{
-					{
-						"key":  "keycloak-config.json",
-						"path": "keycloak-config.json",
-					},
-				},
 			},
 		})
 	}
@@ -297,10 +287,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"mountPath": "/opt/keycloak/themes",
 		},
 		{
-			"name":      "custom-setup",
-			"mountPath": "/opt/keycloak/setup",
-		},
-		{
 			"name":      "postgresql-certs",
 			"mountPath": "/certs/pg",
 		},
@@ -313,8 +299,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
 		extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
 			"name":      "keycloak-configs",
-			"mountPath": "/opt/keycloak/setup/keycloak-config.json",
-			"subPath":   "keycloak-config.json",
+			"mountPath": "/opt/keycloak/setup/project",
 		})
 	}
 
@@ -342,7 +327,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"--http-enabled=true",
 			"--http-port=8080",
 			"--hostname-strict=false",
-			"--hostname-strict-https=false",
 			"--spi-events-listener-jboss-logging-success-level=info",
 			"--spi-events-listener-jboss-logging-error-level=warn",
 		},
@@ -360,10 +344,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": true,
 		},
 		"extraServiceMonitor": map[string]any{
-			"enabled": true,
+			"enabled": false,
 		},
 		"serviceMonitor": map[string]any{
-			"enabled": true,
+			"enabled": false,
 		},
 		"resources": map[string]any{
 			"requests": map[string]any{
@@ -391,11 +375,28 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				},
 			},
 		},
+		// Workaround until https://github.com/codecentric/helm-charts/pull/784 is merged
+		"livenessProbe":  "{\"httpGet\": {\"path\": \"/health/live\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 0, \"timeoutSeconds\": 5}",
+		"readinessProbe": "{\"httpGet\": {\"path\": \"/health/ready\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 10, \"timeoutSeconds\": 1}",
+		"startupProbe":   "{\"httpGet\": {\"path\": \"/health\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 15, \"timeoutSeconds\": 1, \"failureThreshold\": 60, \"periodSeconds\": 5}",
+		"service": map[string]any{
+			"extraPorts": []map[string]any{
+				{
+					"name":       "http-internal",
+					"port":       9000,
+					"targetPort": 9000,
+				},
+			},
+		},
 		"http": map[string]any{
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
+			//	"internalPort": "http-internal",
 		},
 		"podSecurityContext": nil,
 	}
+
+	jsonned, _ := json.Marshal(values)
+	fmt.Println(string(jsonned))
 
 	return values, nil
 }
@@ -559,26 +560,6 @@ ls -lh /custom-providers`,
 				{
 					"name":      "custom-providers",
 					"mountPath": "/custom-providers",
-				},
-			},
-		},
-		{
-			"name":            realmInitName,
-			"image":           fmt.Sprintf("%s:%s", registryURL, version),
-			"imagePullPolicy": "IfNotPresent",
-			"command": []string{
-				"sh",
-			},
-			"args": []string{
-				"-c",
-				`echo "Copying original setup files..."
-cp -R /opt/keycloak/setup/*.json /custom-setup
-ls -lh /custom-setup`,
-			},
-			"volumeMounts": []map[string]any{
-				{
-					"name":      "custom-setup",
-					"mountPath": "/custom-setup",
 				},
 			},
 		},

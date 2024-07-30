@@ -1,28 +1,27 @@
-package cloudscalebucket
+package exoscalebucket
 
 import (
 	"context"
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/util"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
-	v1 "k8s.io/api/core/v1"
+	exoscalev1 "github.com/vshn/provider-exoscale/apis/exoscale/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	bucketResName = "cloudscale-bucket"
-	userResName   = "cloudscale-user"
+	bucketResName = "exoscale-bucket"
+	iamResName    = "exoscale-iam"
 )
 
-// ProvisionCloudscalebucket will create a bucket in cloudscale.
+// ProvisionExoscalebucket will create a bucket in cloudscale.
 // This function will leverage provider-cloudscale to deploy proper users
 // alongside the bucket.
-func ProvisionCloudscalebucket(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func ProvisionExoscalebucket(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	bucket := &appcatv1.ObjectBucket{}
 
@@ -59,16 +58,13 @@ func ProvisionCloudscalebucket(_ context.Context, svc *runtime.ServiceRuntime) *
 
 func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
-	mb := &cloudscalev1.Bucket{
+	mb := &exoscalev1.Bucket{
 		ObjectMeta: metav1.ObjectMeta{},
-		Spec: cloudscalev1.BucketSpec{
-			ForProvider: cloudscalev1.BucketParameters{
-				BucketDeletionPolicy: cloudscalev1.BucketDeletionPolicy(bucket.Spec.Parameters.BucketDeletionPolicy),
-				Region:               bucket.Spec.Parameters.Region,
+		Spec: exoscalev1.BucketSpec{
+			ForProvider: exoscalev1.BucketParameters{
+				BucketDeletionPolicy: exoscalev1.BucketDeletionPolicy(bucket.Spec.Parameters.BucketDeletionPolicy),
+				Zone:                 bucket.Spec.Parameters.Region,
 				BucketName:           bucket.Spec.Parameters.BucketName,
-				CredentialsSecretRef: v1.SecretReference{
-					Namespace: svc.Config.Data["providerSecretNamespace"],
-				},
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
@@ -78,19 +74,18 @@ func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 		},
 	}
 
-	objName := getBucketObjectName(svc, bucket, bucketResName, mb.DeepCopy())
+	objName := util.GetBucketObjectName(svc, bucket, bucketResName, mb.DeepCopy())
 
 	mb.ObjectMeta.Name = objName
-	mb.Spec.ForProvider.CredentialsSecretRef.Name = objName
 
 	return svc.SetDesiredComposedResourceWithName(mb, bucketResName)
 }
 
 func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
-	user := &cloudscalev1.ObjectsUser{
+	user := &exoscalev1.IAMKey{
 		ObjectMeta: metav1.ObjectMeta{},
-		Spec: cloudscalev1.ObjectsUserSpec{
+		Spec: exoscalev1.IAMKeySpec{
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: config,
@@ -99,18 +94,18 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 					Namespace: svc.Config.Data["providerSecretNamespace"],
 				},
 			},
-			ForProvider: cloudscalev1.ObjectsUserParameters{
-				DisplayName: fmt.Sprintf("%s.%s", bucket.Labels["crossplane.io/claim-namespace"], bucket.Labels["crossplane.io/claim-name"]),
+			ForProvider: exoscalev1.IAMKeyParameters{
+				Zone: bucket.Spec.Parameters.Region,
 			},
 		},
 	}
 
-	objName := getBucketObjectName(svc, bucket, userResName, user.DeepCopy())
+	objName := util.GetBucketObjectName(svc, bucket, iamResName, user.DeepCopy())
 
 	user.ObjectMeta.Name = objName
 	user.Spec.WriteConnectionSecretToReference.Name = objName
 
-	cd, err := svc.GetObservedComposedResourceConnectionDetails(userResName)
+	cd, err := svc.GetObservedComposedResourceConnectionDetails(iamResName)
 	if err != nil && err != runtime.ErrNotFound {
 		return err
 	}
@@ -119,12 +114,12 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 		svc.SetConnectionDetail(v, k)
 	}
 
-	return svc.SetDesiredComposedResourceWithName(user, userResName)
+	return svc.SetDesiredComposedResourceWithName(user, iamResName)
 }
 
 func populateEndpointConnectionDetails(svc *runtime.ServiceRuntime) error {
 
-	bucket := &cloudscalev1.Bucket{}
+	bucket := &exoscalev1.Bucket{}
 
 	err := svc.GetObservedComposedResource(bucket, bucketResName)
 	if err != nil && err == runtime.ErrNotFound {
@@ -138,21 +133,4 @@ func populateEndpointConnectionDetails(svc *runtime.ServiceRuntime) error {
 
 	return nil
 
-}
-
-// Legacy buckets where created with wrong object names that break nested
-// services.
-// This logic returns the new naming scheme, if there's no existing bucket CR.
-// If there's already a CR it will simply return it's name.
-// The `obj` parameter should always be a deepCopy of the original, otherwise
-// the pointer in the calling function will have all the fields populated. Which
-// can lead to unexpected side effects.
-func getBucketObjectName(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, resName string, obj resource.Managed) string {
-
-	err := svc.GetObservedComposedResource(obj, resName)
-	if err != nil {
-		return bucket.Spec.Parameters.BucketName
-	}
-
-	return obj.GetName()
 }

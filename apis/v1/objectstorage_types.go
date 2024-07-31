@@ -16,6 +16,8 @@ const (
 // BucketDeletionPolicy determines how buckets should be deleted when a Bucket is deleted.
 type BucketDeletionPolicy string
 
+//go:generate yq -i e ../generated/appcat.vshn.io_objectbuckets.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+
 // +kubebuilder:object:root=true
 // +kubebuilder:printcolumn:name="Bucket Name",type="string",JSONPath=".spec.parameters.bucketName"
 // +kubebuilder:printcolumn:name="Region",type="string",JSONPath=".spec.parameters.region"
@@ -60,6 +62,9 @@ type ObjectBucketParameters struct {
 	//  `DeleteIfEmpty` only deletes the bucket if the bucket is empty.
 	//  `DeleteAll` recursively deletes all objects in the bucket and then removes it.
 	BucketDeletionPolicy BucketDeletionPolicy `json:"bucketDeletionPolicy,omitempty"`
+
+	// Security defines the security of a service
+	Security Security `json:"security,omitempty"`
 }
 
 // ObjectBucketStatus reflects the observed state of a ObjectBucket.
@@ -95,4 +100,15 @@ type XObjectBucketSpec struct {
 type NamespacedName struct {
 	Namespace string `json:"namespace,omitempty"`
 	Name      string `json:"name,omitempty"`
+}
+
+// Security defines the security of a service
+type Security struct {
+	// DeletionProtection blocks the deletion of the instance if it is enabled (enabled by default)
+	// +kubebuilder:default=true
+	DeletionProtection bool `json:"deletionProtection,omitempty"`
+}
+
+func (v *ObjectBucket) GetSecurity() *Security {
+	return &v.Spec.Parameters.Security
 }

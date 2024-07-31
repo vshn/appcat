@@ -29,6 +29,25 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-appcat-vshn-io-v1-objectbucket
+  failurePolicy: Fail
+  name: objectbuckets.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - DELETE
+    resources:
+    - objectbuckets
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-vshn-appcat-vshn-io-v1-vshnpostgresql
   failurePolicy: Fail
   name: postgresql.vshn.appcat.vshn.io

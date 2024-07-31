@@ -147,7 +147,12 @@ func setupWebhooks(mgr manager.Manager, withQuota bool) error {
 		return err
 	}
 
-	err = webhooks.SetupObjectbucketCDeletionProtectionHandlerWithManager(mgr)
+	err = webhooks.SetupXObjectbucketCDeletionProtectionHandlerWithManager(mgr)
+	if err != nil {
+		return err
+	}
+
+	err = webhooks.SetupObjectbucketDeletionProtectionHandlerWithManager(mgr)
 	if err != nil {
 		return err
 	}

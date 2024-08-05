@@ -1,4 +1,4 @@
-package miniobucket
+package exoscalebucket
 
 import (
 	"context"
@@ -7,20 +7,21 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/util"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
+	exoscalev1 "github.com/vshn/provider-exoscale/apis/exoscale/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	accessKeyName = "AWS_ACCESS_KEY_ID"
-	secretKeyName = "AWS_SECRET_ACCESS_KEY"
+	bucketResName = "exoscale-bucket"
+	iamResName    = "exoscale-iam"
 )
 
-// ProvisionMiniobucket will create a bucket in a pre-deployed minio instance.
-// This function will leverage provider-minio to deploy proper policies and users
+// ProvisionExoscalebucket will create a bucket in cloudscale.
+// This function will leverage provider-cloudscale to deploy proper users
 // alongside the bucket.
-func ProvisionMiniobucket(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func ProvisionExoscalebucket(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	bucket := &appcatv1.ObjectBucket{}
 
@@ -35,11 +36,6 @@ func ProvisionMiniobucket(ctx context.Context, svc *runtime.ServiceRuntime) *xfn
 	}
 
 	err = addBucket(svc, bucket, config)
-	if err != nil {
-		return runtime.NewFatalResult(err)
-	}
-
-	err = addPolicy(svc, bucket, config)
 	if err != nil {
 		return runtime.NewFatalResult(err)
 	}
@@ -62,13 +58,13 @@ func ProvisionMiniobucket(ctx context.Context, svc *runtime.ServiceRuntime) *xfn
 
 func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
-	mb := &miniov1.Bucket{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: bucket.Spec.Parameters.BucketName,
-		},
-		Spec: miniov1.BucketSpec{
-			ForProvider: miniov1.BucketParameters{
-				BucketDeletionPolicy: miniov1.BucketDeletionPolicy(bucket.Spec.Parameters.BucketDeletionPolicy),
+	mb := &exoscalev1.Bucket{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec: exoscalev1.BucketSpec{
+			ForProvider: exoscalev1.BucketParameters{
+				BucketDeletionPolicy: exoscalev1.BucketDeletionPolicy(bucket.Spec.Parameters.BucketDeletionPolicy),
+				Zone:                 bucket.Spec.Parameters.Region,
+				BucketName:           bucket.Spec.Parameters.BucketName,
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
@@ -78,34 +74,46 @@ func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 		},
 	}
 
-	return svc.SetDesiredComposedResourceWithName(mb, "minio-bucket")
+	objName := util.GetBucketObjectName(svc, bucket, bucketResName, mb.DeepCopy())
+
+	mb.ObjectMeta.Name = objName
+
+	return svc.SetDesiredComposedResourceWithName(mb, bucketResName)
 }
 
 func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
 
-	user := &miniov1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: bucket.Spec.Parameters.BucketName,
-		},
-		Spec: miniov1.UserSpec{
+	user := &exoscalev1.IAMKey{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec: exoscalev1.IAMKeySpec{
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: config,
 				},
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      bucket.GetName(),
-					Namespace: "syn-crossplane",
+					Namespace: svc.Config.Data["providerSecretNamespace"],
 				},
 			},
-			ForProvider: miniov1.UserParameters{
-				Policies: []string{
-					bucket.Spec.Parameters.BucketName,
+			ForProvider: exoscalev1.IAMKeyParameters{
+				Zone:    bucket.Spec.Parameters.Region,
+				KeyName: fmt.Sprintf("%s.%s", bucket.GetLabels()["crossplane.io/claim-namespace"], bucket.GetLabels()["crossplane.io/claim-name"]),
+				Services: exoscalev1.ServicesSpec{
+					SOS: exoscalev1.SOSSpec{
+						Buckets: []string{
+							bucket.Spec.Parameters.BucketName,
+						},
+					},
 				},
 			},
 		},
 	}
 
-	cd, err := svc.GetObservedComposedResourceConnectionDetails("minio-user")
+	objName := util.GetBucketObjectName(svc, bucket, iamResName, user.DeepCopy())
+
+	user.ObjectMeta.Name = objName
+	user.Spec.WriteConnectionSecretToReference.Name = objName
+
+	cd, err := svc.GetObservedComposedResourceConnectionDetails(iamResName)
 	if err != nil && err != runtime.ErrNotFound {
 		return err
 	}
@@ -114,35 +122,14 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 		svc.SetConnectionDetail(v, k)
 	}
 
-	return svc.SetDesiredComposedResourceWithName(user, "minio-user")
-}
-
-func addPolicy(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
-
-	policy := &miniov1.Policy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: bucket.Spec.Parameters.BucketName,
-		},
-		Spec: miniov1.PolicySpec{
-			ResourceSpec: xpv1.ResourceSpec{
-				ProviderConfigReference: &xpv1.Reference{
-					Name: config,
-				},
-			},
-			ForProvider: miniov1.PolicyParameters{
-				AllowBucket: bucket.Spec.Parameters.BucketName,
-			},
-		},
-	}
-
-	return svc.SetDesiredComposedResourceWithName(policy, "minio-policy")
+	return svc.SetDesiredComposedResourceWithName(user, iamResName)
 }
 
 func populateEndpointConnectionDetails(svc *runtime.ServiceRuntime) error {
 
-	bucket := &miniov1.Bucket{}
+	bucket := &exoscalev1.Bucket{}
 
-	err := svc.GetObservedComposedResource(bucket, "minio-bucket")
+	err := svc.GetObservedComposedResource(bucket, bucketResName)
 	if err != nil && err == runtime.ErrNotFound {
 		return nil
 	} else if err != nil {

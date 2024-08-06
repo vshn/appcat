@@ -324,8 +324,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"/opt/keycloak/bin/kc-with-setup.sh",
 			"--verbose",
 			"start",
-			"--http-enabled=true",
-			"--http-port=8080",
 			"--hostname-strict=false",
 			"--spi-events-listener-jboss-logging-success-level=info",
 			"--spi-events-listener-jboss-logging-error-level=warn",
@@ -344,10 +342,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": true,
 		},
 		"extraServiceMonitor": map[string]any{
-			"enabled": false,
+			"enabled": true,
 		},
 		"serviceMonitor": map[string]any{
-			"enabled": false,
+			"enabled": true,
 		},
 		"resources": map[string]any{
 			"requests": map[string]any{
@@ -390,7 +388,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"http": map[string]any{
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
-			//	"internalPort": "http-internal",
 		},
 		"podSecurityContext": nil,
 	}

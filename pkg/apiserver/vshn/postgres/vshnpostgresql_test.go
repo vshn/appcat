@@ -11,22 +11,31 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_ListVSHNPostgreSQL(t *testing.T) {
+func Test_ListXVSHNPostgreSQL(t *testing.T) {
 	tests := map[string]struct {
 		namespace           string
-		postgresqls         *vshnv1.VSHNPostgreSQLList
-		expectedPostgresqls *vshnv1.VSHNPostgreSQLList
+		postgresqls         *vshnv1.XVSHNPostgreSQLList
+		expectedPostgresqls *vshnv1.XVSHNPostgreSQLList
 	}{
 		"GivenAListOfPostgreSQLs_ThenFilter": {
 			namespace: "namespace-prod",
-			postgresqls: &vshnv1.VSHNPostgreSQLList{
-				Items: []vshnv1.VSHNPostgreSQL{
+			postgresqls: &vshnv1.XVSHNPostgreSQLList{
+				Items: []vshnv1.XVSHNPostgreSQL{
 					getInstance("prod", "namespace-prod", "instance-namespace"),
+					getInstance("prod-2", "namespace-prod-2", "instance-namespace"),
+					getInstanceWithoutLabels("prod-3"),
+					getInstanceWithoutLabels("prod"),
+					getInstanceWithoutClaimName("prod", "namespace-prod"),
+					getInstanceWithoutClaimName("prod-3", "namespace-prod-2"),
+					getInstanceWithoutClaimNamespace("prod"),
+					getInstanceWithoutClaimNamespace("prod-3"),
+					getInstance("test", "namespace-test-2", "instance-namespace"),
 					getInstance("test", "namespace-prod", "instance-namespace"),
+					getInstanceWithoutInstanceNamespace("test", "namespace-prod"),
 				},
 			},
-			expectedPostgresqls: &vshnv1.VSHNPostgreSQLList{
-				Items: []vshnv1.VSHNPostgreSQL{
+			expectedPostgresqls: &vshnv1.XVSHNPostgreSQLList{
+				Items: []vshnv1.XVSHNPostgreSQL{
 					getInstance("prod", "namespace-prod", "instance-namespace"),
 					getInstance("test", "namespace-prod", "instance-namespace"),
 				},
@@ -34,11 +43,23 @@ func Test_ListVSHNPostgreSQL(t *testing.T) {
 		},
 		"GivenAListOfPostgreSQLs_ThenFilter_2": {
 			namespace: "namespace-not-match",
-			postgresqls: &vshnv1.VSHNPostgreSQLList{
-				Items: []vshnv1.VSHNPostgreSQL{},
+			postgresqls: &vshnv1.XVSHNPostgreSQLList{
+				Items: []vshnv1.XVSHNPostgreSQL{
+					getInstance("prod", "namespace-prod", "instance-namespace"),
+					getInstance("prod", "namespace-prod", "instance-namespace"),
+					getInstance("prod-2", "namespace-prod-2", "instance-namespace"),
+					getInstanceWithoutLabels("prod-3"),
+					getInstanceWithoutLabels("prod"),
+					getInstanceWithoutClaimName("prod", "namespace-prod"),
+					getInstanceWithoutClaimName("prod-3", "namespace-prod-2"),
+					getInstanceWithoutClaimNamespace("prod"),
+					getInstanceWithoutClaimNamespace("prod-3"),
+					getInstance("test", "namespace-test-2", "instance-namespace"),
+					getInstance("test", "namespace-prod", "instance-namespace"),
+				},
 			},
-			expectedPostgresqls: &vshnv1.VSHNPostgreSQLList{
-				Items: []vshnv1.VSHNPostgreSQL{},
+			expectedPostgresqls: &vshnv1.XVSHNPostgreSQLList{
+				Items: []vshnv1.XVSHNPostgreSQL{},
 			},
 		},
 	}
@@ -50,17 +71,17 @@ func Test_ListVSHNPostgreSQL(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			client := mocks.NewMockClient(ctrl)
-			provider := kubeVSHNPostgresqlProvider{
+			provider := kubeXVSHNPostgresqlProvider{
 				client,
 			}
 
 			client.EXPECT().
-				List(gomock.Any(), gomock.Any(), gomock.Any()).
+				List(gomock.Any(), gomock.Any()).
 				SetArg(1, *tc.postgresqls).
 				Times(1)
 
 			// WHEN
-			instances, err := provider.ListVSHNPostgreSQL(context.Background(), tc.namespace)
+			instances, err := provider.ListXVSHNPostgreSQL(context.Background(), tc.namespace)
 
 			// THEN
 			assert.NoError(t, err)
@@ -69,8 +90,8 @@ func Test_ListVSHNPostgreSQL(t *testing.T) {
 	}
 }
 
-func getInstanceWithoutClaimName(name, namespace string) vshnv1.VSHNPostgreSQL {
-	return vshnv1.VSHNPostgreSQL{
+func getInstanceWithoutClaimName(name, namespace string) vshnv1.XVSHNPostgreSQL {
+	return vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name + "-tty",
 			Labels: map[string]string{
@@ -80,8 +101,8 @@ func getInstanceWithoutClaimName(name, namespace string) vshnv1.VSHNPostgreSQL {
 	}
 }
 
-func getInstanceWithoutClaimNamespace(name string) vshnv1.VSHNPostgreSQL {
-	return vshnv1.VSHNPostgreSQL{
+func getInstanceWithoutClaimNamespace(name string) vshnv1.XVSHNPostgreSQL {
+	return vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name + "-tty",
 			Labels: map[string]string{
@@ -91,16 +112,16 @@ func getInstanceWithoutClaimNamespace(name string) vshnv1.VSHNPostgreSQL {
 	}
 }
 
-func getInstanceWithoutLabels(name string) vshnv1.VSHNPostgreSQL {
-	return vshnv1.VSHNPostgreSQL{
+func getInstanceWithoutLabels(name string) vshnv1.XVSHNPostgreSQL {
+	return vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name + "-tty",
 		},
 	}
 }
 
-func getInstanceWithoutInstanceNamespace(name, namespace string) vshnv1.VSHNPostgreSQL {
-	return vshnv1.VSHNPostgreSQL{
+func getInstanceWithoutInstanceNamespace(name, namespace string) vshnv1.XVSHNPostgreSQL {
+	return vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name + "-tty",
 			Labels: map[string]string{
@@ -111,8 +132,8 @@ func getInstanceWithoutInstanceNamespace(name, namespace string) vshnv1.VSHNPost
 	}
 }
 
-func getInstance(name, namespace, instanceNamespace string) vshnv1.VSHNPostgreSQL {
-	return vshnv1.VSHNPostgreSQL{
+func getInstance(name, namespace, instanceNamespace string) vshnv1.XVSHNPostgreSQL {
+	return vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name + "-tty",
 			Labels: map[string]string{
@@ -120,8 +141,10 @@ func getInstance(name, namespace, instanceNamespace string) vshnv1.VSHNPostgreSQ
 				claimNamespaceLabel: namespace,
 			},
 		},
-		Status: vshnv1.VSHNPostgreSQLStatus{
-			InstanceNamespace: instanceNamespace,
+		Status: vshnv1.XVSHNPostgreSQLStatus{
+			VSHNPostgreSQLStatus: vshnv1.VSHNPostgreSQLStatus{
+				InstanceNamespace: instanceNamespace,
+			},
 		},
 	}
 }

@@ -21,7 +21,7 @@ import (
 
 func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 	tests := map[string]struct {
-		postgresqls    *vshnv1.VSHNPostgreSQLList
+		postgresqls    *vshnv1.XVSHNPostgreSQLList
 		postgresqlsErr error
 
 		backupInfoCalls func(mocks.MocksgbackupProvider, error)
@@ -51,7 +51,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 			},
 		},
 		"GivenNoPostgresData_ThenReturnEmpty": {
-			postgresqls:     &vshnv1.VSHNPostgreSQLList{},
+			postgresqls:     &vshnv1.XVSHNPostgreSQLList{},
 			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error) {},
 			vshnBackups: &v1.VSHNPostgresBackupList{
 				Items: []v1.VSHNPostgresBackup(nil),
@@ -75,14 +75,16 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 			},
 		},
 		"GivenBackupErrList_ThenReturnError": {
-			postgresqls: &vshnv1.VSHNPostgreSQLList{
-				Items: []vshnv1.VSHNPostgreSQL{
+			postgresqls: &vshnv1.XVSHNPostgreSQLList{
+				Items: []vshnv1.XVSHNPostgreSQL{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "postgres-two",
 						},
-						Status: vshnv1.VSHNPostgreSQLStatus{
-							InstanceNamespace: "namespace-two",
+						Status: vshnv1.XVSHNPostgreSQLStatus{
+							VSHNPostgreSQLStatus: vshnv1.VSHNPostgreSQLStatus{
+								InstanceNamespace: "namespace-two",
+							},
 						},
 					},
 				},
@@ -104,7 +106,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 			stor, backupsProvider, vshnPostgresProvider := newMockedVSHNPostgresBackupStorage(t, ctrl)
 
 			vshnPostgresProvider.EXPECT().
-				ListVSHNPostgreSQL(gomock.Any(), gomock.Any()).
+				ListXVSHNPostgreSQL(gomock.Any(), gomock.Any()).
 				Return(tc.postgresqls, nil).
 				Times(1)
 
@@ -142,7 +144,7 @@ func (w *testWatcher) ResultChan() <-chan watch.Event {
 
 func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 	tests := map[string]struct {
-		postgresqls    *vshnv1.VSHNPostgreSQLList
+		postgresqls    *vshnv1.XVSHNPostgreSQLList
 		postgresqlsErr error
 
 		unstructuredEvents []watch.Event
@@ -193,14 +195,16 @@ func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 			},
 		},
 		"GivenErrNotFound_ThenErrNotFound": {
-			postgresqls: &vshnv1.VSHNPostgreSQLList{
-				Items: []vshnv1.VSHNPostgreSQL{
+			postgresqls: &vshnv1.XVSHNPostgreSQLList{
+				Items: []vshnv1.XVSHNPostgreSQL{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "postgres-one",
 						},
-						Status: vshnv1.VSHNPostgreSQLStatus{
-							InstanceNamespace: "namespace-one",
+						Status: vshnv1.XVSHNPostgreSQLStatus{
+							VSHNPostgreSQLStatus: vshnv1.VSHNPostgreSQLStatus{
+								InstanceNamespace: "namespace-one",
+							},
 						},
 					},
 				},
@@ -247,7 +251,7 @@ func TestVSHNPostgresBackupStorage_Watch(t *testing.T) {
 			}
 
 			vshnPostgresProvider.EXPECT().
-				ListVSHNPostgreSQL(gomock.Any(), gomock.Any()).
+				ListXVSHNPostgreSQL(gomock.Any(), gomock.Any()).
 				Return(tc.postgresqls, tc.postgresqlsErr).
 				Times(1)
 

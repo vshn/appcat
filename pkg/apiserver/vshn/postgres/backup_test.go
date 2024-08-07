@@ -107,8 +107,8 @@ var (
 		},
 	}
 
-	vshnPostgreSQLInstances = &vshnv1.XVSHNPostgreSQLList{
-		Items: []vshnv1.XVSHNPostgreSQL{
+	vshnPostgreSQLInstances = &vshnv1.VSHNPostgreSQLList{
+		Items: []vshnv1.VSHNPostgreSQL{
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "postgres-one-tty",
@@ -117,10 +117,8 @@ var (
 						claimNamespaceLabel: "namespace-claim",
 					},
 				},
-				Status: vshnv1.XVSHNPostgreSQLStatus{
-					VSHNPostgreSQLStatus: vshnv1.VSHNPostgreSQLStatus{
-						InstanceNamespace: "namespace-one",
-					},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					InstanceNamespace: "namespace-one",
 				},
 			},
 			{
@@ -131,10 +129,8 @@ var (
 						claimNamespaceLabel: "namespace-claim",
 					},
 				},
-				Status: vshnv1.XVSHNPostgreSQLStatus{
-					VSHNPostgreSQLStatus: vshnv1.VSHNPostgreSQLStatus{
-						InstanceNamespace: "namespace-two",
-					},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					InstanceNamespace: "namespace-two",
 				},
 			},
 		},

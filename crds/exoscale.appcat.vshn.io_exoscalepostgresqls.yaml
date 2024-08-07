@@ -107,12 +107,14 @@ spec:
                       description: Service contains Exoscale PostgreSQL DBaaS specific properties
                       properties:
                         majorVersion:
-                          default: "14"
+                          default: "16"
                           description: |-
                             MajorVersion contains the major version for PostgreSQL.
-                            Currently only "14" is supported. Leave it empty to always get the latest supported version.
+                            Leave it empty to always get the latest supported version.
                           enum:
                             - "14"
+                            - "15"
+                            - "16"
                           type: string
                         pgSettings:
                           description: PGSettings contains additional PostgreSQL settings.

@@ -58,11 +58,11 @@ type ExoscalePostgreSQLParameters struct {
 type ExoscalePostgreSQLServiceSpec struct {
 	ExoscaleDBaaSServiceSpec `json:",inline"`
 
-	// +kubebuilder:validation:Enum="14"
-	// +kubebuilder:default="14"
+	// +kubebuilder:validation:Enum="14";"15";"16"
+	// +kubebuilder:default="16"
 
 	// MajorVersion contains the major version for PostgreSQL.
-	// Currently only "14" is supported. Leave it empty to always get the latest supported version.
+	// Leave it empty to always get the latest supported version.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
 	// PGSettings contains additional PostgreSQL settings.

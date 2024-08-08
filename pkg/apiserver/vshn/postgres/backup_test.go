@@ -111,7 +111,7 @@ var (
 		Items: []vshnv1.XVSHNPostgreSQL{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "postgres-one-tty",
+					Name: "postgres-one",
 					Labels: map[string]string{
 						claimNameLabel:      "postgres-one",
 						claimNamespaceLabel: "namespace-claim",
@@ -125,7 +125,7 @@ var (
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "postgres-two-bbf",
+					Name: "postgres-two",
 					Labels: map[string]string{
 						claimNameLabel:      "postgres-two",
 						claimNamespaceLabel: "namespace-claim",

@@ -195,6 +195,12 @@ type Security struct {
 	// DeletionProtection blocks the deletion of the instance if it is enabled (enabled by default)
 	// +kubebuilder:default=true
 	DeletionProtection bool `json:"deletionProtection,omitempty"`
+
+	// AllowedGroups defines a list of Groups that have limited access to the instance namespace
+	AllowedGroups []string `json:"allowedGroups,omitempty"`
+
+	// AllowedUsers defines a list of Users that have limited access to instance namespace.
+	AllowedUsers []string `json:"allowedUsers,omitempty"`
 }
 
 type VSHNAccess struct {

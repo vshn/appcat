@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/vshn/appcat/v4/apis/metadata"
+	v1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -45,7 +46,7 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 	}
 
 	l.Info("Creating rbac rules for " + serviceName + " instance")
-	err = createNamespacePermissions(compositionName, instanceNs, namespaceResName, svc)
+	err = createNamespacePermissions(compositionName, instanceNs, namespaceResName, *comp.GetSecurity(), svc)
 	if err != nil {
 		return fmt.Errorf("cannot create rbac rules for %s instance: %w", serviceName, err)
 	}
@@ -139,7 +140,7 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 	return svc.SetDesiredKubeObjectWithName(ns, instanceNamespace, namespaceResName)
 }
 
-func createNamespacePermissions(instance string, instanceNs string, namespaceResName string, svc *runtime.ServiceRuntime) error {
+func createNamespacePermissions(instance string, instanceNs string, namespaceResName string, security v1.Security, svc *runtime.ServiceRuntime) error {
 	ns := &corev1.Namespace{}
 	err := svc.GetObservedKubeObject(ns, namespaceResName)
 	if err != nil {
@@ -158,7 +159,37 @@ func createNamespacePermissions(instance string, instanceNs string, namespaceRes
 		return fmt.Errorf("cannot get claim namespace: %w", err)
 	}
 
-	if org == "" {
+	subjects := []rbacv1.Subject{}
+
+	if org != "" {
+		subjects = append(subjects, rbacv1.Subject{
+			Kind:     "Group",
+			Name:     org,
+			APIGroup: "rbac.authorization.k8s.io",
+		})
+	}
+
+	if security.AllowedGroups != nil {
+		for _, group := range security.AllowedGroups {
+			subjects = append(subjects, rbacv1.Subject{
+				Kind:     "Group",
+				Name:     group,
+				APIGroup: "rbac.authorization.k8s.io",
+			})
+		}
+	}
+
+	if security.AllowedUsers != nil {
+		for _, user := range security.AllowedUsers {
+			subjects = append(subjects, rbacv1.Subject{
+				Kind:     "User",
+				Name:     user,
+				APIGroup: "rbac.authorization.k8s.io",
+			})
+		}
+	}
+
+	if len(subjects) == 0 {
 		return nil
 	}
 
@@ -167,13 +198,7 @@ func createNamespacePermissions(instance string, instanceNs string, namespaceRes
 			Name:      roleBindingName,
 			Namespace: instanceNs,
 		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:     "Group",
-				Name:     org,
-				APIGroup: "rbac.authorization.k8s.io",
-			},
-		},
+		Subjects: subjects,
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "ClusterRole",
 			Name:     roleBindingName,

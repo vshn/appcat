@@ -4819,8 +4819,18 @@ spec:
                           default: false
                           description: AllowAllNamespaces allows the service to be accessible from all namespaces, this supersedes the AllowedNamespaces field
                           type: boolean
+                        allowedGroups:
+                          description: AllowedGroups defines a list of Groups that have limited access to the instance namespace
+                          items:
+                            type: string
+                          type: array
                         allowedNamespaces:
                           description: AllowedNamespaces defines a list of namespaces from where the service can be reached in the claim namespace
+                          items:
+                            type: string
+                          type: array
+                        allowedUsers:
+                          description: AllowedUsers defines a list of Users that have limited access to instance namespace.
                           items:
                             type: string
                           type: array

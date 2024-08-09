@@ -25,13 +25,13 @@ func (v *vshnNextcloudBackupStorage) ConvertToTable(_ context.Context, obj runti
 	if meta.IsListType(obj) {
 		backupList, ok := obj.(*appcatv1.VSHNNextcloudBackupList)
 		if !ok {
-			return nil, fmt.Errorf("not a vshn redis backup: %#v", obj)
+			return nil, fmt.Errorf("not a vshn nextcloud backup: %#v", obj)
 		}
 		backups = backupList.Items
 	} else {
 		backup, ok := obj.(*appcatv1.VSHNNextcloudBackup)
 		if !ok {
-			return nil, fmt.Errorf("not a vshn redis backup: %#v", obj)
+			return nil, fmt.Errorf("not a vshn nextcloud backup: %#v", obj)
 		}
 		backups = append(backups, *backup)
 	}
@@ -50,12 +50,12 @@ func (v *vshnNextcloudBackupStorage) ConvertToTable(_ context.Context, obj runti
 // ToDo Once k8up exposes start time, update the code here
 func backupToTableRow(backup *appcatv1.VSHNNextcloudBackup) metav1.TableRow {
 	return apiserver.GetBackupTable(
-		trimStringLength(backup.Status.ID),
-		backup.Status.Instance,
+		trimStringLength(backup.Status.NextcloudFileBackup.ID),
+		backup.Status.NextcloudFileBackup.Instance,
 		"Completed",
 		duration.HumanDuration(time.Since(backup.GetCreationTimestamp().Time)),
-		backup.Status.Date.Format(time.RFC3339),
-		backup.Status.Date.Format(time.RFC3339),
+		backup.Status.NextcloudFileBackup.Date.Format(time.RFC3339),
+		backup.Status.NextcloudFileBackup.Date.Format(time.RFC3339),
 		backup,
 	)
 }

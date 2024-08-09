@@ -17,12 +17,12 @@ type vshnPostgresqlProvider interface {
 	ListVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.VSHNPostgreSQLList, error)
 }
 
-type kubeVSHNPostgresqlProvider struct {
+type KubeVSHNPostgresqlProvider struct {
 	client.Client
 }
 
 // ListXVSHNPostgreSQL fetches a list of XVSHNPostgreSQL.
-func (k *kubeVSHNPostgresqlProvider) ListVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.VSHNPostgreSQLList, error) {
+func (k *KubeVSHNPostgresqlProvider) ListVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.VSHNPostgreSQLList, error) {
 	list := &vshnv1.VSHNPostgreSQLList{}
 	err := k.Client.List(ctx, list, &client.ListOptions{Namespace: namespace})
 	cleanedList := make([]vshnv1.VSHNPostgreSQL, 0)

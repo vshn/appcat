@@ -44,9 +44,11 @@ func (v *vshnNextcloudBackupStorage) Get(ctx context.Context, name string, _ *me
 		nextcloudSnap = &appcatv1.VSHNNextcloudBackup{
 			ObjectMeta: backupMeta,
 			Status: appcatv1.VSHNNextcloudBackupStatus{
-				ID:       deRefString(snap.Spec.ID),
-				Date:     deRefMetaTime(snap.Spec.Date),
-				Instance: instance.GetName(),
+				NextcloudFileBackup: appcatv1.VSHNNextcloudFileBackupStatus{
+					ID:       deRefString(snap.Spec.ID),
+					Date:     deRefMetaTime(snap.Spec.Date),
+					Instance: instance.GetName(),
+				},
 			},
 		}
 	}

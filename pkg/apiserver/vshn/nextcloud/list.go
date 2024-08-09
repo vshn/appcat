@@ -44,9 +44,11 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, _ *metainternalve
 			nextcloudSnapshots.Items = append(nextcloudSnapshots.Items, appcatv1.VSHNNextcloudBackup{
 				ObjectMeta: backupMeta,
 				Status: appcatv1.VSHNNextcloudBackupStatus{
-					ID:       deRefString(snap.Spec.ID),
-					Date:     deRefMetaTime(snap.Spec.Date),
-					Instance: instance.GetName(),
+					NextcloudFileBackup: appcatv1.VSHNNextcloudFileBackupStatus{
+						ID:       deRefString(snap.Spec.ID),
+						Date:     deRefMetaTime(snap.Spec.Date),
+						Instance: instance.GetName(),
+					},
 				},
 			})
 		}

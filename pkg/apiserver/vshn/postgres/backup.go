@@ -41,7 +41,7 @@ func New() restbuilder.ResourceHandlerProvider {
 			sgbackups: &kubeSGBackupProvider{
 				DynamicClient: dc.Resource(sgbackupGroupVersionResource),
 			},
-			vshnpostgresql: &kubeVSHNPostgresqlProvider{
+			vshnpostgresql: &KubeVSHNPostgresqlProvider{
 				Client: c,
 			},
 			Noop: *noopImplementation,

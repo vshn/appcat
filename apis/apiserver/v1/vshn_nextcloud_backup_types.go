@@ -22,6 +22,12 @@ type VSHNNextcloudBackup struct {
 
 // +k8s:openapi-gen=true
 type VSHNNextcloudBackupStatus struct {
+	NextcloudFileBackup  VSHNNextcloudFileBackupStatus `json:"nextcloudFileBackup,omitempty"`
+	DatabaseBackupStatus VSHNPostgresBackupStatus      `json:"databaseBackupStatus,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type VSHNNextcloudFileBackupStatus struct {
 	ID       string      `json:"id,omitempty"`
 	Date     metav1.Time `json:"date,omitempty"`
 	Instance string      `json:"instance,omitempty"`

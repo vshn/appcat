@@ -50,7 +50,7 @@ func Test_ListVSHNPostgreSQL(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			client := mocks.NewMockClient(ctrl)
-			provider := kubeVSHNPostgresqlProvider{
+			provider := KubeVSHNPostgresqlProvider{
 				client,
 			}
 

@@ -888,6 +888,7 @@ func (in *VSHNNextcloudSizeSpec) DeepCopy() *VSHNNextcloudSizeSpec {
 func (in *VSHNNextcloudSpec) DeepCopyInto(out *VSHNNextcloudSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.ResourceRef = in.ResourceRef
 	out.WriteConnectionSecretToRef = in.WriteConnectionSecretToRef
 }
 

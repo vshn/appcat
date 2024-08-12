@@ -44,6 +44,9 @@ type VSHNNextcloudSpec struct {
 	// Parameters are the configurable fields of a VSHNNextcloud.
 	Parameters VSHNNextcloudParameters `json:"parameters,omitempty"`
 
+	// ResourceRef tracks the internal composite belonging to this claim
+	ResourceRef xpv1.TypedReference `json:"resourceRef,omitempty"`
+
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
 	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
@@ -185,6 +188,8 @@ type XVSHNNextcloud struct {
 type XVSHNNextcloudSpec struct {
 	// Parameters are the configurable fields of a VSHNNextcloud.
 	Parameters VSHNNextcloudParameters `json:"parameters,omitempty"`
+
+	ResourceRefs []xpv1.TypedReference `json:"resourceRefs,omitempty"`
 
 	xpv1.ResourceSpec `json:",inline"`
 }

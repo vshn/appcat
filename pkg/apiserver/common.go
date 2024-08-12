@@ -84,7 +84,7 @@ func GetBackupColumnDefinition() []metav1.TableColumnDefinition {
 	desc := metav1.ObjectMeta{}.SwaggerDoc()
 	return []metav1.TableColumnDefinition{
 		{Name: "Backup ID", Type: "string", Format: "name", Description: desc["name"]},
-		{Name: "Database Instance", Type: "string", Description: "The database instance"},
+		{Name: "Instance", Type: "string", Description: "The instance that this backup belongs to"},
 		{Name: "Started", Type: "string", Description: "The backup start time"},
 		{Name: "Finished", Type: "string", Description: "The data is available up to this time"},
 		{Name: "Status", Type: "string", Description: "The state of this backup"},

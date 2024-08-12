@@ -43,7 +43,7 @@ func (c *ConcreteSnapshotHandler) Get(ctx context.Context, id, instanceNamespace
 
 	err := c.client.Get(ctx, client.ObjectKey{Namespace: instanceNamespace, Name: id}, snapshot)
 	if err != nil {
-		return snapshot, err
+		return nil, err
 	}
 
 	return snapshot, nil

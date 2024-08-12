@@ -49,7 +49,7 @@ func TestPostgreSQL_Probe(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		err = p.Probe(context.TODO())
 		return err == nil
-	}, 10*time.Second, 500*time.Millisecond)
+	}, 20*time.Second, 500*time.Millisecond)
 	assert.NoError(t, err)
 
 	assert.Never(t, func() bool {

@@ -24,6 +24,7 @@ type Alerts struct {
 const (
 	SynTeam                                       string          = "schedar"
 	SeverityCritical                              string          = "critical"
+	SeverityWarning                               string          = "warning"
 	MinuteInterval, HourInterval, TwoHourInterval promV1.Duration = "1m", "1h", "2h"
 )
 
@@ -82,6 +83,25 @@ var (
 					StrVal: "label_replace( topk(1, (max(container_memory_working_set_bytes{container=\"" + name + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"vshn-" + namespace + "-(.+)-.+\")",
 				},
 				For: TwoHourInterval,
+				Labels: map[string]string{
+					"severity": SeverityCritical,
+					"syn_team": SynTeam,
+				},
+			}
+		},
+		memCritical: func(name, namespace string) promV1.Rule {
+			return promV1.Rule{
+				Alert: "ReplicaMissMatch",
+				Annotations: map[string]string{
+					"description": "Not all pods are currently running for instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }}.\n  Please check the reason as to why some pods are down.",
+					"runbook_url": "https://hub.syn.tools/appcat/runbooks/vshn-generic.html#ReplicaMissMatch",
+					"summary":     "Pods not ready.",
+				},
+				Expr: intstr.IntOrString{
+					Type:   intstr.String,
+					StrVal: "label_replace( kube_replicaset_status_replicas{namespace=\"" + namespace + "\", replicaset=~\"appcat-apiserver-.*\"} - kube_replicaset_status_ready_replicas{namespace=\"syn-appcat\", replicaset=~\"appcat-apiserver-.*\"} > 0)",
+				},
+				For: MinuteInterval,
 				Labels: map[string]string{
 					"severity": SeverityCritical,
 					"syn_team": SynTeam,

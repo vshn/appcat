@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	sgbackupGroupVersionResource = schema.GroupVersionResource{
+	SGbackupGroupVersionResource = schema.GroupVersionResource{
 		Group:    "stackgres.io",
 		Version:  "v1",
 		Resource: "sgbackups",
@@ -29,12 +29,12 @@ type sgbackupProvider interface {
 	WatchSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (watch.Interface, error)
 }
 
-type kubeSGBackupProvider struct {
+type KubeSGBackupProvider struct {
 	DynamicClient client.NamespaceableResourceInterface
 }
 
 // GetSGBackup fetches SGBackup resource into unstructured.Unstructured. Relevant data is saved to v1.SGBackupInfo
-func (k *kubeSGBackupProvider) GetSGBackup(ctx context.Context, name, namespace string) (*v1.SGBackupInfo, error) {
+func (k *KubeSGBackupProvider) GetSGBackup(ctx context.Context, name, namespace string) (*v1.SGBackupInfo, error) {
 	unstructuredObject, err := k.DynamicClient.Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (k *kubeSGBackupProvider) GetSGBackup(ctx context.Context, name, namespace 
 }
 
 // ListSGBackup fetches SGBackup resources into unstructured.UnstructuredList. Relevant data is saved to v1.SGBackupInfo
-func (k *kubeSGBackupProvider) ListSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (*[]v1.SGBackupInfo, error) {
+func (k *KubeSGBackupProvider) ListSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (*[]v1.SGBackupInfo, error) {
 	unstructuredList, err := k.DynamicClient.Namespace(namespace).List(ctx, metav1.ListOptions{
 		Limit:    options.Limit,
 		Continue: options.Continue,
@@ -64,7 +64,7 @@ func (k *kubeSGBackupProvider) ListSGBackup(ctx context.Context, namespace strin
 }
 
 // WatchSGBackup watches SGBackup resources.
-func (k *kubeSGBackupProvider) WatchSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (watch.Interface, error) {
+func (k *KubeSGBackupProvider) WatchSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (watch.Interface, error) {
 	return k.DynamicClient.Namespace(namespace).Watch(ctx, metav1.ListOptions{
 		TypeMeta:      options.TypeMeta,
 		LabelSelector: options.LabelSelector.String(),

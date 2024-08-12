@@ -107,34 +107,22 @@ var (
 		},
 	}
 
-	vshnPostgreSQLInstances = &vshnv1.XVSHNPostgreSQLList{
-		Items: []vshnv1.XVSHNPostgreSQL{
+	vshnPostgreSQLInstances = &vshnv1.VSHNPostgreSQLList{
+		Items: []vshnv1.VSHNPostgreSQL{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "postgres-one-tty",
-					Labels: map[string]string{
-						claimNameLabel:      "postgres-one",
-						claimNamespaceLabel: "namespace-claim",
-					},
+					Name: "postgres-one",
 				},
-				Status: vshnv1.XVSHNPostgreSQLStatus{
-					VSHNPostgreSQLStatus: vshnv1.VSHNPostgreSQLStatus{
-						InstanceNamespace: "namespace-one",
-					},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					InstanceNamespace: "namespace-one",
 				},
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "postgres-two-bbf",
-					Labels: map[string]string{
-						claimNameLabel:      "postgres-two",
-						claimNamespaceLabel: "namespace-claim",
-					},
+					Name: "postgres-two",
 				},
-				Status: vshnv1.XVSHNPostgreSQLStatus{
-					VSHNPostgreSQLStatus: vshnv1.VSHNPostgreSQLStatus{
-						InstanceNamespace: "namespace-two",
-					},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					InstanceNamespace: "namespace-two",
 				},
 			},
 		},

@@ -264,7 +264,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
-	stsLabels := map[string]any{}
+	podAnnotations := map[string]any{}
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
 		extraVolumesMap = append(extraVolumesMap, map[string]any{
 			"name": "keycloak-configs",
@@ -272,7 +272,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"name": comp.Spec.Parameters.Service.CustomConfigurationRef,
 			},
 		})
-		stsLabels["customConfigurationHashedData"] = hashedCustomConfig
+		podAnnotations["checksum/keycloak-config"] = hashedCustomConfig
 	}
 
 	extraVolumes, err := toYAML(extraVolumesMap)
@@ -396,7 +396,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			//	"internalPort": "http-internal",
 		},
 		"podSecurityContext": nil,
-		"statefulsetLabels":  stsLabels,
+		"podAnnotations":     podAnnotations,
 	}
 
 	jsonned, _ := json.Marshal(values)

@@ -2,6 +2,7 @@ package vshnkeycloak
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -165,7 +166,7 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 	return res, nil
 }
 
-func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret string) (map[string]any, error) {
+func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, hashedCustomConfig string) (map[string]any, error) {
 	values := map[string]any{}
 
 	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + common.PgInstanceNameSuffix)
@@ -263,6 +264,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
+	podAnnotations := map[string]any{}
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
 		extraVolumesMap = append(extraVolumesMap, map[string]any{
 			"name": "keycloak-configs",
@@ -270,6 +272,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"name": comp.Spec.Parameters.Service.CustomConfigurationRef,
 			},
 		})
+		podAnnotations["checksum/keycloak-config"] = hashedCustomConfig
 	}
 
 	extraVolumes, err := toYAML(extraVolumesMap)
@@ -393,6 +396,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			//	"internalPort": "http-internal",
 		},
 		"podSecurityContext": nil,
+		"podAnnotations":     podAnnotations,
 	}
 
 	jsonned, _ := json.Marshal(values)
@@ -402,9 +406,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret string) (*xhelmv1.Release, error) {
-
+	var hashedCustomConfig string
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
-		err := copyConfigMap(comp, svc)
+		customCM, err := copyConfigMap(comp, svc)
+		hashedCustomConfig = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", customCM.Data))))
 		if err != nil {
 			return nil, fmt.Errorf("cannot copy keycloak config configmap to instance namespace: %w", err)
 		}
@@ -416,7 +421,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	values, err := newValues(ctx, svc, comp, adminSecret)
+	values, err := newValues(ctx, svc, comp, adminSecret, hashedCustomConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +618,7 @@ exit 0`,
 	return extraInitContainersMap, nil
 }
 
-func copyConfigMap(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+func copyConfigMap(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) (*corev1.ConfigMap, error) {
 
 	cmObjectName := comp.GetName() + "-config-claim-observer"
 
@@ -647,7 +652,7 @@ func copyConfigMap(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error
 		Data: configMapClaim.Data,
 	}
 
-	return svc.SetDesiredKubeObject(configMapInstance, comp.GetName()+"-config-map")
+	return configMapInstance, svc.SetDesiredKubeObject(configMapInstance, comp.GetName()+"-config-map")
 }
 
 func copySecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {

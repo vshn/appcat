@@ -7,6 +7,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// +kubebuilder:rbac:groups="vshn.appcat.vshn.io",resources=vshnpostgresqls,verbs=get;list;watch
+
 // vshnPostgresqlProvider is an abstraction to interact with the K8s API
 type vshnPostgresqlProvider interface {
 	ListVSHNPostgreSQL(ctx context.Context, namespace string) (*vshnv1.VSHNPostgreSQLList, error)

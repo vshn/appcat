@@ -14,6 +14,8 @@ import (
 	client "k8s.io/client-go/dynamic"
 )
 
+// +kubebuilder:rbac:groups="stackgres.io",resources=sgbackups,verbs=get;list;watch
+
 var (
 	SGbackupGroupVersionResource = schema.GroupVersionResource{
 		Group:    "stackgres.io",

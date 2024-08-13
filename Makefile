@@ -90,6 +90,7 @@ generate:  get-crds generate-stackgres-crds protobuf-gen ## Generate code with c
 	rm -rf crds && cp -r apis/generated crds
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-sli-exporter paths="{./pkg/sliexporter/...}" output:artifacts:config=config/sliexporter/rbac
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-controller paths="{./pkg/controller/...}" output:rbac:stdout > config/controller/cluster-role.yaml
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-controller paths="{./pkg/apiserver/...}" output:rbac:stdout > config/apiserver/role.yaml
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen webhook paths="{./pkg/controller/...}" output:stdout > config/controller/webhooks.yaml
 
 .PHONY: generate-stackgres-crds

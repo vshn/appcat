@@ -7,6 +7,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// +kubebuilder:rbac:groups="vshn.appcat.vshn.io",resources=vshnnextclouds,verbs=get;list;watch
+// +kubebuilder:rbac:groups="vshn.appcat.vshn.io",resources=xvshnnextclouds,verbs=get;list;watch
+// +kubebuilder:rbac:groups="vshn.appcat.vshn.io",resources=xvshnpostgresqls,verbs=get;list;watch
+
 type vshnNextcloudProvider interface {
 	ListVSHNnextcloud(ctx context.Context, namespace string) (*vshnv1.VSHNNextcloudList, error)
 }

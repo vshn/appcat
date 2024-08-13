@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: appcat
+  name: appcat-controller
 rules:
 - apiGroups:
   - ""
@@ -73,7 +73,45 @@ rules:
   - vshn.appcat.vshn.io
   resources:
   - vshnmariadbs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - vshnnextclouds
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - vshnpostgresqls
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
   - vshnredis
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnnextclouds
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
   - xvshnpostgresqls
   verbs:
   - get

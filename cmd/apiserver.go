@@ -7,6 +7,7 @@ import (
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	"github.com/vshn/appcat/v4/pkg/apiserver/appcat"
 	vshnmariadb "github.com/vshn/appcat/v4/pkg/apiserver/vshn/mariadb"
+	vshnnextcloud "github.com/vshn/appcat/v4/pkg/apiserver/vshn/nextcloud"
 	vshnpostgres "github.com/vshn/appcat/v4/pkg/apiserver/vshn/postgres"
 	vshnredis "github.com/vshn/appcat/v4/pkg/apiserver/vshn/redis"
 	appcatopenapi "github.com/vshn/appcat/v4/pkg/openapi"
@@ -26,6 +27,8 @@ func newAPIServerCMD() *cobra.Command {
 	b.WithResourceAndHandler(&appcatv1.VSHNRedisBackup{}, vshnredis.New())
 
 	b.WithResourceAndHandler(&appcatv1.VSHNMariaDBBackup{}, vshnmariadb.New())
+
+	b.WithResourceAndHandler(&appcatv1.VSHNNextcloudBackup{}, vshnnextcloud.New())
 
 	b.WithoutEtcd().
 		ExposeLoopbackAuthorizer().

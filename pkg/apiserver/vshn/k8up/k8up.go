@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// +kubebuilder:rbac:groups="k8up.io",resources=snapshots,verbs=get;list;watch
+
 var (
 	K8upGVR = schema.GroupVersionResource{
 		Group:    k8upv1.GroupVersion.Group,
@@ -43,7 +45,7 @@ func (c *ConcreteSnapshotHandler) Get(ctx context.Context, id, instanceNamespace
 
 	err := c.client.Get(ctx, client.ObjectKey{Namespace: instanceNamespace, Name: id}, snapshot)
 	if err != nil {
-		return snapshot, err
+		return nil, err
 	}
 
 	return snapshot, nil

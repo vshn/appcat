@@ -29,7 +29,7 @@ func New() restbuilder.ResourceHandlerProvider {
 
 		noopImplementation := noop.New(s, &appcatv1.VSHNPostgresBackup{}, &appcatv1.VSHNPostgresBackupList{})
 
-		if !apiserver.IsTypeAvailable(vshnv1.GroupVersion.String(), "XVSHNPostgreSQL") {
+		if !apiserver.IsTypeAvailable(vshnv1.GroupVersion.String(), "VSHNPostgreSQL") {
 			return noopImplementation, nil
 		}
 
@@ -38,10 +38,10 @@ func New() restbuilder.ResourceHandlerProvider {
 			return nil, err
 		}
 		return &vshnPostgresBackupStorage{
-			sgbackups: &kubeSGBackupProvider{
-				DynamicClient: dc.Resource(sgbackupGroupVersionResource),
+			sgbackups: &KubeSGBackupProvider{
+				DynamicClient: dc.Resource(SGbackupGroupVersionResource),
 			},
-			vshnpostgresql: &kubeXVSHNPostgresqlProvider{
+			vshnpostgresql: &kubeVSHNPostgresqlProvider{
 				Client: c,
 			},
 			Noop: *noopImplementation,

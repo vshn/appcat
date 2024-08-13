@@ -22,7 +22,7 @@ func (v *vshnPostgresBackupStorage) Get(ctx context.Context, name string, _ *met
 		return nil, fmt.Errorf("cannot get namespace from resource")
 	}
 
-	instances, err := v.vshnpostgresql.ListXVSHNPostgreSQL(ctx, namespace)
+	instances, err := v.vshnpostgresql.ListVSHNPostgreSQL(ctx, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("cannot list VSHNPostgreSQL instances")
 	}
@@ -31,14 +31,14 @@ func (v *vshnPostgresBackupStorage) Get(ctx context.Context, name string, _ *met
 	for _, value := range instances.Items {
 		backupInfo, err := v.sgbackups.GetSGBackup(ctx, name, value.Status.InstanceNamespace)
 		if err != nil {
-			resolvedErr := apiserver.ResolveError(sgbackupGroupVersionResource.GroupResource(), err)
+			resolvedErr := apiserver.ResolveError(SGbackupGroupVersionResource.GroupResource(), err)
 			if apierrors.IsNotFound(resolvedErr) {
 				continue
 			}
 			return nil, err
 		}
 
-		vshnBackup = v1.NewVSHNPostgresBackup(backupInfo, value.Labels[claimNameLabel], namespace)
+		vshnBackup = v1.NewVSHNPostgresBackup(backupInfo, value.GetName(), namespace)
 	}
 
 	if vshnBackup == nil {

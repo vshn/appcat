@@ -898,6 +898,7 @@ func (in *VSHNNextcloudSizeSpec) DeepCopy() *VSHNNextcloudSizeSpec {
 func (in *VSHNNextcloudSpec) DeepCopyInto(out *VSHNNextcloudSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.ResourceRef = in.ResourceRef
 	out.WriteConnectionSecretToRef = in.WriteConnectionSecretToRef
 }
 
@@ -1817,6 +1818,11 @@ func (in *XVSHNNextcloudList) DeepCopyObject() runtime.Object {
 func (in *XVSHNNextcloudSpec) DeepCopyInto(out *XVSHNNextcloudSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	if in.ResourceRefs != nil {
+		in, out := &in.ResourceRefs, &out.ResourceRefs
+		*out = make([]commonv1.TypedReference, len(*in))
+		copy(*out, *in)
+	}
 	in.ResourceSpec.DeepCopyInto(&out.ResourceSpec)
 }
 

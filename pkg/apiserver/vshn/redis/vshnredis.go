@@ -7,6 +7,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// +kubebuilder:rbac:groups="vshn.appcat.vshn.io",resources=vshnredis,verbs=get;list;watch
+
 type vshnRedisProvider interface {
 	ListVSHNRedis(ctx context.Context, namespace string) (*vshnv1.VSHNRedisList, error)
 }

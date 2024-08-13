@@ -310,6 +310,12 @@ func (s *ServiceRuntime) GetResponse() (*fnv1beta1.RunFunctionResponse, error) {
 
 	comp.ConnectionDetails = s.connectionDetails
 	if s.desiredComposite != nil {
+		// Spec needs to be nil or empty or we can run into issues where we
+		// have slight differences between the claim and the composite definitions.
+		err = s.desiredComposite.SetValue("spec", nil)
+		if err != nil {
+			return nil, err
+		}
 		comp.Resource = s.desiredComposite
 	}
 

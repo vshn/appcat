@@ -3,6 +3,10 @@ name: PR Automation
 on:
   pull_request: {}
 
+env:
+  APP_NAME: appcat
+  REPO: kidswiss/component-appcat
+
 jobs:
   publish-branch-images:
     runs-on: ubuntu-latest
@@ -35,3 +39,32 @@ jobs:
 
       - name: Build branch and push Functions
         run: make function-push-package-branchtag
+  open-pr-component:
+    # if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.REPO }}
+          token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Update defaults.yml and create branch
+        run: |
+          yq e '.parameters.appcat.images.${{ env.APP_NAME }}.tag="${{ steps.extract_branch.outputs.branch }}"' class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml - || true
+
+          git --no-pager diff
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+          title: 'PR for ${{ env.APP_NAME }} on ${{ steps.extract_branch.outputs.branch }}'
+          body: 'foo'
+          branch: "${{ steps.extract_branch.outputs.branch }}"
+          base: master
+          draft: false

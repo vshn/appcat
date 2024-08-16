@@ -3,7 +3,10 @@
     "merged": true,
     "labels": [
       {
-        "name": "enhancement"
+        "name": "breaking"
+      },
+      {
+        "name": "bug"
       }
     ]
   }

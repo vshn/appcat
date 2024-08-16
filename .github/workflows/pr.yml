@@ -9,9 +9,10 @@ env:
 
 jobs:
   publish-branch-images:
+    if: github.event.pull_request.merged != true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Determine Go version from go.mod
         run: echo "GO_VERSION=$(grep "go 1." go.mod | cut -d " " -f 2)" >> $GITHUB_ENV
@@ -68,3 +69,45 @@ jobs:
           branch: "${{ steps.extract_branch.outputs.branch }}"
           base: master
           draft: false
+  create-release:
+    if: github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for bug label
+        if: contains(github.event.pull_request.labels.*.name, 'bug')
+        id: bug
+        run: |
+          echo "set=true" >> $GITHUB_OUTPUT
+      - name: Check for bug label
+        if: contains(github.event.pull_request.labels.*.name, 'enhancement')
+        id: enhancement
+        run: |
+          echo "set=true" >> $GITHUB_OUTPUT
+      - name: Check for breaking label
+        if: contains(github.event.pull_request.labels.*.name, 'breaking')
+        id: breaking
+        run: |
+          echo "set=true" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@v4
+        with:
+          ref: 'master'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: set tag env
+        run: |
+          git checkout master
+          echo "TAG_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Increase Tag
+        run: |
+          bug=${{ steps.bug.outputs.set }}
+          enhancement=${{ steps.enhancement.outputs.set }}
+          breaking=${{ steps.breaking.outputs.set }}
+
+          type=""
+          [ ! -z "$bug" ] && type="bug" || true
+          [ ! -z "$enhancement" ] && type="enhancement" || true
+          [ ! -z "$breaking" ] && type="breaking" || true
+
+          echo ${{ env.TAG_VERSION }}

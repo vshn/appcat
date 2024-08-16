@@ -1,6 +1,10 @@
 {
-  "action": "opened",
-  "github": {
-    "head_ref": "add/ci_improvements"
+  "pull_request": {
+    "merged": true,
+    "labels": [
+      {
+        "name": "enhancement"
+      }
+    ]
   }
 }

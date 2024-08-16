@@ -111,10 +111,15 @@ jobs:
 
           breaking_ver="${breaking_ver:1}"
 
-          tag=""
-          [ ! -z "$bug" ] && ((bug_ver++)) || true
-          [ ! -z "$enhancement" ] && ((enhancement_ver++)) || true
+          [ ! -z "$bug" ] && [ -z "$enhancement" ] && [ -z "$breaking" ] && ((bug_ver++)) || true
+          [ ! -z "$enhancement" ] && [ -z "$breaking" ] && ((enhancement_ver++)) || true
           [ ! -z "$breaking" ] && ((breaking_ver++)) || true
 
-          echo "v$breaking_ver.$enhancement_ver.$bug_ver"
-          echo ${{ env.TAG_VERSION }}
+          tag="v$breaking_ver.$enhancement_ver.$bug_ver"
+          echo "new tag $tag"
+          git tag $tag
+      - uses: actions-js/push@v1.4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tags: true
+          branch: master

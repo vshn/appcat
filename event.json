@@ -3,9 +3,6 @@
     "merged": true,
     "labels": [
       {
-        "name": "breaking"
-      },
-      {
         "name": "bug"
       }
     ]

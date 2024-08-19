@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO }}
-          token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract branch name
         shell: bash

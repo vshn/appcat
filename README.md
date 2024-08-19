@@ -248,7 +248,7 @@ spec:
   type: ExternalName
   externalName: 172.21.0.1 # Change to host IP
 EOF
-``
+```
 
 After the above steps just run the API server via IDE with the following arguments.
 ```

@@ -11,6 +11,16 @@ env:
   REPO: kidswiss/component-appcat
 
 jobs:
+  check-labels:
+    # Act doesn't set a pull request number by default, so we skip if it's 0
+    if: github.event.pull_request.number != 0
+    name: Check labels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker://agilepathway/pull-request-label-checker:v1.6.51
+        with:
+          one_of: breaking,minor,bug
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
   publish-branch-images:
     if: github.event.pull_request.merged != true
     runs-on: ubuntu-latest
@@ -68,7 +78,7 @@ jobs:
         with:
           token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
           title: 'PR for ${{ env.APP_NAME }} on ${{ steps.extract_branch.outputs.branch }}'
-          body: 'foo'
+          body: ${{ github.event.pull_request.body}}
           branch: "${{ steps.extract_branch.outputs.branch }}"
           base: master
           draft: false

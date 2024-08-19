@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: docker://agilepathway/pull-request-label-checker:v1.6.51
         with:
-          one_of: breaking,minor,bug
+          one_of: breaking,enhancement,bug
           repo_token: ${{ secrets.GITHUB_TOKEN }}
   publish-branch-images:
     if: github.event.pull_request.merged != true

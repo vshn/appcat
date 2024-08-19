@@ -1,0 +1,10 @@
+{
+  "pull_request": {
+    "merged": true,
+    "labels": [
+      {
+        "name": "bug"
+      }
+    ]
+  }
+}

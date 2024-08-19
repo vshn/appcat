@@ -1,0 +1,125 @@
+name: PR Automation
+
+on:
+  pull_request: {}
+
+env:
+  APP_NAME: appcat
+  REPO: kidswiss/component-appcat
+
+jobs:
+  publish-branch-images:
+    if: github.event.pull_request.merged != true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine Go version from go.mod
+        run: echo "GO_VERSION=$(grep "go 1." go.mod | cut -d " " -f 2)" >> $GITHUB_ENV
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build branch and push AppCat
+        run: make docker-push-branchtag
+
+      - name: Build branch and push Functions
+        run: make function-push-package-branchtag
+  open-pr-component:
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Update defaults.yml and create branch
+        run: |
+          yq e '.parameters.appcat.images.${{ env.APP_NAME }}.tag="${{ steps.extract_branch.outputs.branch }}"' class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml - || true
+
+          git --no-pager diff
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+          title: 'PR for ${{ env.APP_NAME }} on ${{ steps.extract_branch.outputs.branch }}'
+          body: 'foo'
+          branch: "${{ steps.extract_branch.outputs.branch }}"
+          base: master
+          draft: false
+  create-release:
+    if: github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for bug label
+        if: contains(github.event.pull_request.labels.*.name, 'bug')
+        id: bug
+        run: |
+          echo "set=true" >> $GITHUB_OUTPUT
+      - name: Check for bug label
+        if: contains(github.event.pull_request.labels.*.name, 'enhancement')
+        id: enhancement
+        run: |
+          echo "set=true" >> $GITHUB_OUTPUT
+      - name: Check for breaking label
+        if: contains(github.event.pull_request.labels.*.name, 'breaking')
+        id: breaking
+        run: |
+          echo "set=true" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@v4
+        with:
+          ref: 'master'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-tags: true
+
+      - name: set tag env
+        run: |
+          echo "TAG_VERSION=$(git describe --tags)" >>  $GITHUB_ENV
+
+      - name: Increase Tag
+        run: |
+          bug=${{ steps.bug.outputs.set }}
+          enhancement=${{ steps.enhancement.outputs.set }}
+          breaking=${{ steps.breaking.outputs.set }}
+
+          breaking_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f1)
+          enhancement_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f2)
+          bug_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f3)
+
+          breaking_ver="${breaking_ver:1}"
+
+          [ ! -z "$bug" ] && [ -z "$enhancement" ] && [ -z "$breaking" ] && ((bug_ver++)) || true
+          [ ! -z "$enhancement" ] && [ -z "$breaking" ] && ((enhancement_ver++)) || true
+          [ ! -z "$breaking" ] && ((breaking_ver++)) || true
+
+          tag="v$breaking_ver.$enhancement_ver.$bug_ver"
+          echo "new tag $tag"
+          git tag $tag
+      - uses: actions-js/push@v1.5
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tags: true
+          branch: master

@@ -41,7 +41,7 @@ jobs:
       - name: Build branch and push Functions
         run: make function-push-package-branchtag
   open-pr-component:
-    # if: github.event.action == 'opened'
+    if: github.event.action == 'opened'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

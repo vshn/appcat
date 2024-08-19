@@ -73,7 +73,7 @@ jobs:
           base: master
           draft: false
   create-release:
-    if: github.event.pull_request.merged
+    # if: github.event.pull_request.merged
     runs-on: ubuntu-latest
     steps:
       - name: Check for bug label
@@ -96,11 +96,14 @@ jobs:
         with:
           ref: 'master'
           token: ${{ secrets.GITHUB_TOKEN }}
+          # This is broken in checkout@v4...
+          # https://github.com/actions/checkout/issues/1781
           fetch-tags: true
 
       - name: set tag env
         run: |
-          echo "TAG_VERSION=$(git describe --tags)" >>  $GITHUB_ENV
+          git fetch --tags
+          echo "TAG_VERSION=$(git describe --tags "$(git rev-list --tags --max-count=1)")" >>  $GITHUB_ENV
 
       - name: Increase Tag
         run: |
@@ -121,8 +124,8 @@ jobs:
           tag="v$breaking_ver.$enhancement_ver.$bug_ver"
           echo "new tag $tag"
           git tag $tag
-      - uses: actions-js/push@v1.5
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tags: true
-          branch: master
+      # - uses: actions-js/push@v1.5
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     tags: true
+      #     branch: master

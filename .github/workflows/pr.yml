@@ -134,9 +134,21 @@ jobs:
 
           breaking_ver="${breaking_ver:1}"
 
+          # Check for bug label
           [ ! -z "$bug" ] && [ -z "$enhancement" ] && [ -z "$breaking" ] && ((bug_ver++)) || true
-          [ ! -z "$enhancement" ] && [ -z "$breaking" ] && ((enhancement_ver++)) || true
-          [ ! -z "$breaking" ] && ((breaking_ver++)) || true
+
+          # check for enhancement label
+          if [ ! -z "$enhancement" ] && [ -z "$breaking" ]; then
+            ((enhancement_ver++))
+            bug_ver=0
+          fi
+
+          # Check for breaking label
+          if [ ! -z "$breaking" ]; then
+            ((breaking_ver++))
+            enhancement_ver=0
+            bug_ver=0
+          fi
 
           tag="v$breaking_ver.$enhancement_ver.$bug_ver"
           echo "new tag $tag"

@@ -5,6 +5,9 @@ on:
     tags:
       - "*"
 
+env:
+  APP_NAME: appcat
+
 jobs:
   dist:
     runs-on: ubuntu-latest
@@ -42,10 +45,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push docker image
-        run: make docker-push -e IMG_TAG=${GITHUB_REF##*/}
+        run: make docker-push -e IMG_TAG=${GITHUB_REF##*/} -e APP_NAME=${{ env.APP_NAME }}
 
       - name: Build and push function package
-        run: make push-function-package -e IMG_TAG=${GITHUB_REF##*/}
+        run: make push-function-package -e IMG_TAG=${GITHUB_REF##*/} -e APP_NAME=${{ env.APP_NAME }}
 
       - name: Build changelog from PRs with labels
         id: build_changelog

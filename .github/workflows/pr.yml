@@ -10,7 +10,7 @@ on:
 
 env:
   APP_NAME: appcat
-  REPO: kidswiss/component-appcat
+  COMPONENT_REPO: kidswiss/component-appcat
 
 jobs:
   check-labels:
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: docker://agilepathway/pull-request-label-checker:v1.6.51
         with:
-          one_of: breaking,minor,bug
+          one_of: breaking,enhancement,bug
           repo_token: ${{ secrets.GITHUB_TOKEN }}
   publish-branch-images:
     if: github.event.pull_request.merged != true
@@ -62,7 +62,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.REPO }}
+          repository: ${{ env.COMPONENT_REPO }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract branch name

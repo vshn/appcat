@@ -115,32 +115,26 @@ jobs:
       - name: fetch tags
         run: |
           git fetch --tags
-          #echo "TAG_VERSION=$(git describe --tags "$(git rev-list --tags --max-count=1)")" >>  $GITHUB_ENV
+          echo "latest tag: $(git describe --tags "$(git rev-list --tags --max-count=1)")"
+          echo "TAG_VERSION=$(git describe --tags "$(git rev-list --tags --max-count=1)")" >>  $GITHUB_ENV
 
-      - name: 'Get Previous tag'
-        id: previoustag
-        uses: "WyriHaximus/github-action-get-previous-tag@v1"
-        # with:
-          # fallback: 1.0.0 # Optional fallback tag to use when no tag can be found
-          #workingDirectory: another/path/where/a/git/repo/is/checked/out # Optional alternative working directory
+      - name: Increase Tag
+        run: |
+          bug=${{ steps.bug.outputs.set }}
+          enhancement=${{ steps.enhancement.outputs.set }}
+          breaking=${{ steps.breaking.outputs.set }}
 
-      # - name: Increase Tag
-      #   run: |
-      #     bug=${{ steps.bug.outputs.set }}
-      #     enhancement=${{ steps.enhancement.outputs.set }}
-      #     breaking=${{ steps.breaking.outputs.set }}
+          breaking_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f1)
+          enhancement_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f2)
+          bug_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f3)
 
-      #     breaking_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f1)
-      #     enhancement_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f2)
-      #     bug_ver=$(echo '${{ env.TAG_VERSION }}' | cut -d "." -f3)
+          breaking_ver="${breaking_ver:1}"
 
-      #     breaking_ver="${breaking_ver:1}"
+          [ ! -z "$bug" ] && [ -z "$enhancement" ] && [ -z "$breaking" ] && ((bug_ver++)) || true
+          [ ! -z "$enhancement" ] && [ -z "$breaking" ] && ((enhancement_ver++)) || true
+          [ ! -z "$breaking" ] && ((breaking_ver++)) || true
 
-      #     [ ! -z "$bug" ] && [ -z "$enhancement" ] && [ -z "$breaking" ] && ((bug_ver++)) || true
-      #     [ ! -z "$enhancement" ] && [ -z "$breaking" ] && ((enhancement_ver++)) || true
-      #     [ ! -z "$breaking" ] && ((breaking_ver++)) || true
-
-      #     tag="v$breaking_ver.$enhancement_ver.$bug_ver"
-      #     echo "new tag $tag"
-      #     git tag $tag
-      #     git push --tags
+          tag="v$breaking_ver.$enhancement_ver.$bug_ver"
+          echo "new tag $tag"
+          git tag $tag
+          git push --tags

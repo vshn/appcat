@@ -2,6 +2,9 @@ name: PR Automation
 
 on:
   pull_request: {}
+  pull_request_target:
+    types:
+      - closed
 
 env:
   APP_NAME: appcat

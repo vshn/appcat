@@ -1,7 +1,8 @@
 # Image URL to use all building/pushing image targets
 IMG_TAG ?= latest
 APP_NAME ?= appcat
-GHCR_IMG ?= ghcr.io/vshn/$(APP_NAME):$(IMG_TAG)
+ORG ?= vshn
+GHCR_IMG ?= ghcr.io/$(ORG)/$(APP_NAME):$(IMG_TAG)
 DOCKER_CMD ?= docker
 
 # For alpine image it is required the following env before building the application

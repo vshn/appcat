@@ -96,11 +96,14 @@ jobs:
         with:
           ref: 'master'
           token: ${{ secrets.GITHUB_TOKEN }}
+          # This is broken in checkout@v4...
+          # https://github.com/actions/checkout/issues/1781
           fetch-tags: true
 
       - name: set tag env
         run: |
-          echo "TAG_VERSION=$(git describe --tags)" >>  $GITHUB_ENV
+          git fetch --tags
+          echo "TAG_VERSION=$(git describe --tags "$(git rev-list --tags --max-count=1)")" >>  $GITHUB_ENV
 
       - name: Increase Tag
         run: |

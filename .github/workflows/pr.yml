@@ -24,7 +24,7 @@ jobs:
           one_of: breaking,enhancement,bug
           repo_token: ${{ secrets.GITHUB_TOKEN }}
   publish-branch-images:
-    if: github.event.pull_request.merged != true || github.event.action != 'closed'
+    if: github.event.pull_request.merged != true && github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

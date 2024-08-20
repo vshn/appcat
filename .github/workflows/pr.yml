@@ -24,7 +24,7 @@ jobs:
           one_of: breaking,enhancement,bug
           repo_token: ${{ secrets.GITHUB_TOKEN }}
   publish-branch-images:
-    if: github.event.pull_request.merged != true
+    if: github.event.pull_request.merged != true || github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -182,3 +182,9 @@ jobs:
           yq e '.parameters.appcat.images.${{ env.APP_NAME }}.tag="${{ steps.tag.outputs.tag }}"' class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml - || true
 
           make gen-golden-all
+
+      - name: Commit & Push changes
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          message: "Update tag in component"

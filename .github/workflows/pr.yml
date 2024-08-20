@@ -174,7 +174,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.COMPONENT_REPO }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
           ref: "${{ env.APP_NAME }}/${{ github.event.pull_request.number }}/${{ steps.extract_branch.outputs.branch }}"
 
       - name: Update tag and run golden

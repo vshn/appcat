@@ -1,9 +1,11 @@
 {
+  "action": "closed",
+  "merged": false,
   "pull_request": {
     "merged": true,
     "labels": [
       {
-        "name": "breaking"
+        "name": "bug"
       }
     ]
   }

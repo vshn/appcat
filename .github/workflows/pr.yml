@@ -75,6 +75,11 @@ jobs:
           yq e '.parameters.appcat.images.${{ env.APP_NAME }}.tag="${{ steps.extract_branch.outputs.branch }}"' class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml - || true
 
           git --no-pager diff
+
+      - name: Generate new golden
+        run: |
+          make gen-golden-all
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
         with:

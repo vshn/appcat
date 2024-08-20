@@ -1,6 +1,6 @@
 {
   "action": "closed",
-  "merged": false,
+  "merged": true,
   "pull_request": {
     "merged": true,
     "labels": [

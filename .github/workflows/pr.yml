@@ -24,7 +24,7 @@ jobs:
           one_of: breaking,enhancement,bug
           repo_token: ${{ secrets.GITHUB_TOKEN }}
   publish-branch-images:
-    if: github.event.pull_request.merged != true
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +75,14 @@ jobs:
           yq e '.parameters.appcat.images.${{ env.APP_NAME }}.tag="${{ steps.extract_branch.outputs.branch }}"' class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml - || true
 
           git --no-pager diff
+
+      - name: Generate new golden
+        # Act uses the host's docker to run containers, but then
+        # they can't access the files that were previously cloned.
+        if: github.event.pull_request.number != 0
+        run: |
+          make gen-golden-all
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
         with:
@@ -123,6 +131,7 @@ jobs:
           echo "TAG_VERSION=$(git describe --tags "$(git rev-list --tags --max-count=1)")" >>  $GITHUB_ENV
 
       - name: Increase Tag
+        id: tag
         run: |
           bug=${{ steps.bug.outputs.set }}
           enhancement=${{ steps.enhancement.outputs.set }}
@@ -154,3 +163,28 @@ jobs:
           echo "new tag $tag"
           git tag $tag
           git push --tags
+          echo tag=$tag >> $GITHUB_OUTPUT
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Checkout component
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.COMPONENT_REPO }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: "${{ env.APP_NAME }}/${{ github.event.pull_request.number }}/${{ steps.extract_branch.outputs.branch }}"
+
+      - name: Update tag and run golden
+        run: |
+          yq e '.parameters.appcat.images.${{ env.APP_NAME }}.tag="${{ steps.tag.outputs.tag }}"' class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml - || true
+
+          make gen-golden-all
+
+      - name: Commit & Push changes
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          message: "Update tag in component"

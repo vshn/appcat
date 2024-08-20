@@ -130,6 +130,11 @@ jobs:
           echo "latest tag: $(git describe --tags "$(git rev-list --tags --max-count=1)")"
           echo "TAG_VERSION=$(git describe --tags "$(git rev-list --tags --max-count=1)")" >>  $GITHUB_ENV
 
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
       - name: Increase Tag
         id: tag
         run: |
@@ -165,26 +170,22 @@ jobs:
           git push --tags
           echo tag=$tag >> $GITHUB_OUTPUT
 
-      - name: Extract branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: extract_branch
-
       - name: Checkout component
         uses: actions/checkout@v4
         with:
           repository: ${{ env.COMPONENT_REPO }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
           ref: "${{ env.APP_NAME }}/${{ github.event.pull_request.number }}/${{ steps.extract_branch.outputs.branch }}"
 
       - name: Update tag and run golden
         run: |
           yq e '.parameters.appcat.images.${{ env.APP_NAME }}.tag="${{ steps.tag.outputs.tag }}"' class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml - || true
-
           make gen-golden-all
 
       - name: Commit & Push changes
         uses: actions-js/push@master
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          message: "Update tag in component"
+          github_token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+          branch: "${{ env.APP_NAME }}/${{ github.event.pull_request.number }}/${{ steps.extract_branch.outputs.branch }}"
+          message: "Update tag"
+          repository: ${{ env.COMPONENT_REPO }}

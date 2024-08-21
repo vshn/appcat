@@ -101,7 +101,7 @@ jobs:
         id: bug
         run: |
           echo "set=true" >> $GITHUB_OUTPUT
-      - name: Check for bug label
+      - name: Check for enhancement label
         if: contains(github.event.pull_request.labels.*.name, 'enhancement')
         id: enhancement
         run: |

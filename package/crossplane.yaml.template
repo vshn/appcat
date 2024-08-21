@@ -1,9 +1,0 @@
----
-apiVersion: meta.pkg.crossplane.io/v1beta1
-kind: Function
-metadata:
-  name: function-appcat
-spec:
-  image: ghcr.io/vshn/appcat:latest
-  crossplane:
-    version: ">=1.14.0"

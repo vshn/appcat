@@ -1,9 +1,7 @@
 .PHONY: package-function
 package-function: docker-build
-	yq e '.spec.image="${GHCR_IMG}"' package/crossplane.yaml.template > package/crossplane.yaml
 	rm -f package/*.xpkg
 	go run github.com/crossplane/crossplane/cmd/crank@v1.16.0 xpkg build -f package --verbose --embed-runtime-image=${GHCR_IMG} -o package/package-function-appcat.xpkg
-	git checkout package/crossplane.yaml
 
 .PHONY: install-proxy
 install-proxy:

@@ -22,11 +22,10 @@ import (
 var redisRelease = "release"
 
 // ManageRelease will update the release in line with other composition functions
-func ManageRelease(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func ManageRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
-	comp := &vshnv1.VSHNRedis{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))

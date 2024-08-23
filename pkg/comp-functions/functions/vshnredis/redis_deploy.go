@@ -10,10 +10,9 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-func DeployRedis(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	l := svc.Log
 
-	comp := &vshnv1.VSHNRedis{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		err = fmt.Errorf("cannot get observed composite: %w", err)

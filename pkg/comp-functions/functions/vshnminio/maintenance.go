@@ -14,9 +14,8 @@ import (
 var service = "minio"
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
-func AddMaintenanceJob(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNMinio{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		err = fmt.Errorf("cannot get observed composite: %w", err)

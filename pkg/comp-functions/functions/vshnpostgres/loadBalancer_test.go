@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 )
 
@@ -18,7 +19,7 @@ func TestNothingToDo(t *testing.T) {
 		svc.Config.Data["externalDatabaseConnectionsEnabled"] = "true"
 
 		// When
-		result := AddPrimaryService(ctx, svc)
+		result := AddPrimaryService(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		desired := svc.GetAllDesired()
 
@@ -40,7 +41,7 @@ func TestLoadBalancerParameterSet(t *testing.T) {
 		svc.Config.Data["externalDatabaseConnectionsEnabled"] = "true"
 
 		// When
-		result := AddPrimaryService(ctx, svc)
+		result := AddPrimaryService(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		// Then
 		assert.NotNil(t, result)
@@ -57,7 +58,7 @@ func TestLoadBalancerServiceObserverCreated(t *testing.T) {
 		svc.Config.Data["externalDatabaseConnectionsEnabled"] = "true"
 
 		// When
-		result := AddPrimaryService(ctx, svc)
+		result := AddPrimaryService(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		// Then
 		assert.Nil(t, result)
@@ -76,7 +77,7 @@ func TestLoadBalancerNotEnabled(t *testing.T) {
 		svc.Config.Data["externalDatabaseConnectionsEnabled"] = "false"
 
 		// When
-		result := AddPrimaryService(ctx, svc)
+		result := AddPrimaryService(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		// Then
 		assert.Nil(t, result)

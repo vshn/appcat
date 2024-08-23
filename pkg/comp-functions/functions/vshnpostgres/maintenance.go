@@ -102,8 +102,7 @@ var (
 )
 
 // addSchedules will add a job to do the maintenance in for the instance
-func addSchedules(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	comp := &vshnv1.VSHNPostgreSQL{}
+func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))

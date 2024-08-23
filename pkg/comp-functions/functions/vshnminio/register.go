@@ -8,8 +8,8 @@ import (
 )
 
 func init() {
-	runtime.RegisterService("minio", runtime.Service{
-		Steps: []runtime.Step{
+	runtime.RegisterService[*vshnv1.VSHNMinio]("minio", runtime.Service[*vshnv1.VSHNMinio]{
+		Steps: []runtime.Step[*vshnv1.VSHNMinio]{
 
 			{
 				Name:    "deploy",
@@ -25,7 +25,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNMinio{}, nonsla.NewAlertSetBuilder("minio", "minio").AddAll().GetAlerts()),
+				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNMinio](nonsla.NewAlertSetBuilder("minio", "minio").AddAll().GetAlerts()),
 			},
 			{
 				Name:    "securitycontext",
@@ -33,15 +33,15 @@ func init() {
 			},
 			{
 				Name:    "mailgun-alerting",
-				Execute: common.MailgunAlerting(&vshnv1.VSHNMinio{}),
+				Execute: common.MailgunAlerting[*vshnv1.VSHNMinio],
 			},
 			{
 				Name:    "user-alerting",
-				Execute: common.AddUserAlerting(&vshnv1.VSHNMinio{}),
+				Execute: common.AddUserAlerting[*vshnv1.VSHNMinio],
 			},
 			{
 				Name:    "pdb",
-				Execute: common.AddPDBSettings(&vshnv1.VSHNMinio{}),
+				Execute: common.AddPDBSettings[*vshnv1.VSHNMinio],
 			},
 		},
 	})

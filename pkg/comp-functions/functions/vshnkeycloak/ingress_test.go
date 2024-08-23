@@ -115,7 +115,7 @@ func TestAddIngress(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/02_withFQDN.yaml")
 
 	// When
-	res := AddIngress(context.TODO(), svc)
+	res := AddIngress(context.TODO(), &vshnv1.VSHNKeycloak{}, svc)
 	assert.Nil(t, res)
 
 	// Then

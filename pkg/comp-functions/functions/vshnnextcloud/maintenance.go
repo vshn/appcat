@@ -12,9 +12,8 @@ import (
 )
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
-func AddMaintenanceJob(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNNextcloud{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))

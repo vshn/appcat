@@ -13,13 +13,11 @@ import (
 )
 
 // DeployMinioProviderConfig will deploy a providerconfig with the claim's name
-func DeployMinioProviderConfig(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployMinioProviderConfig(_ context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	if !svc.GetBoolFromCompositionConfig("providerEnabled") {
 		return nil
 	}
-
-	comp := &vshnv1.VSHNMinio{}
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {

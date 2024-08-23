@@ -1,10 +1,13 @@
 package miniobucket
 
-import "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+import (
+	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+)
 
 func init() {
-	runtime.RegisterService("miniobucket", runtime.Service{
-		Steps: []runtime.Step{
+	runtime.RegisterService[*appcatv1.ObjectBucket]("miniobucket", runtime.Service[*appcatv1.ObjectBucket]{
+		Steps: []runtime.Step[*appcatv1.ObjectBucket]{
 			{
 				Name:    "provision-bucket",
 				Execute: ProvisionMiniobucket,

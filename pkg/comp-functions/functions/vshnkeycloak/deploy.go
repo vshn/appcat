@@ -45,9 +45,8 @@ const (
 )
 
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
-func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNKeycloak{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))

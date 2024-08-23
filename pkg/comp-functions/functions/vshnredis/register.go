@@ -8,8 +8,8 @@ import (
 )
 
 func init() {
-	runtime.RegisterService("redis", runtime.Service{
-		Steps: []runtime.Step{
+	runtime.RegisterService[*vshnv1.VSHNRedis]("redis", runtime.Service[*vshnv1.VSHNRedis]{
+		Steps: []runtime.Step[*vshnv1.VSHNRedis]{
 			{
 				Name:    "deploy",
 				Execute: DeployRedis,
@@ -40,15 +40,15 @@ func init() {
 			},
 			{
 				Name:    "mailgun-alerting",
-				Execute: common.MailgunAlerting(&vshnv1.VSHNRedis{}),
+				Execute: common.MailgunAlerting[*vshnv1.VSHNRedis],
 			},
 			{
 				Name:    "user-alerting",
-				Execute: common.AddUserAlerting(&vshnv1.VSHNRedis{}),
+				Execute: common.AddUserAlerting[*vshnv1.VSHNRedis],
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNRedis{}, nonsla.NewAlertSetBuilder("redis", "redis").AddAll().GetAlerts()),
+				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNRedis](nonsla.NewAlertSetBuilder("redis", "redis").AddAll().GetAlerts()),
 			},
 		},
 	})

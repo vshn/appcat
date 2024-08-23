@@ -15,8 +15,7 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func UserManagement(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	comp := &vshnv1.VSHNPostgreSQL{}
+func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetDesiredComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))

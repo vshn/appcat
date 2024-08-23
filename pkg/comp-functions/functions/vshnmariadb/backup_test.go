@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -15,7 +16,7 @@ import (
 func Test_AddBackupMariadb(t *testing.T) {
 	svc, comp := getMariadbComp(t)
 
-	assert.Nil(t, AddBackupMariadb(context.TODO(), svc))
+	assert.Nil(t, AddBackupMariadb(context.TODO(), &vshnv1.VSHNMariaDB{}, svc))
 
 	cm := &corev1.ConfigMap{}
 	assert.NoError(t, svc.GetDesiredKubeObject(cm, comp.GetName()+"-backup-script"))

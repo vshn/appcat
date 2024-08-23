@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
@@ -26,7 +27,7 @@ func TestRestoreBackup_NoConfig(t *testing.T) {
 		io := commontest.LoadRuntimeFromFile(t, "vshnredis/restore/01-GivenNoRestoreConfig.yaml")
 
 		// When
-		result := RestoreBackup(ctx, io)
+		result := RestoreBackup(ctx, &vshnv1.VSHNRedis{}, io)
 
 		// Then
 		assert.Equal(t, expectResult, result)
@@ -43,7 +44,7 @@ func TestRestoreBackup_IncompleteConfig(t *testing.T) {
 		// Given
 		io := commontest.LoadRuntimeFromFile(t, "vshnredis/restore/01-GivenRestoreConfigNoCN.yaml")
 		// When
-		resultCN := RestoreBackup(ctx, io)
+		resultCN := RestoreBackup(ctx, &vshnv1.VSHNRedis{}, io)
 
 		// Then
 		assert.Equal(t, expectResultCN, resultCN)
@@ -52,7 +53,7 @@ func TestRestoreBackup_IncompleteConfig(t *testing.T) {
 		io = commontest.LoadRuntimeFromFile(t, "vshnredis/restore/01-GivenRestoreConfigNoBN.yaml")
 
 		// When
-		resultBN := RestoreBackup(ctx, io)
+		resultBN := RestoreBackup(ctx, &vshnv1.VSHNRedis{}, io)
 
 		// Then
 		assert.Equal(t, expectResultCN, resultBN)
@@ -65,7 +66,7 @@ func TestRestoreBackup(t *testing.T) {
 	// return Normal and new job resources in Desired
 	io := commontest.LoadRuntimeFromFile(t, "vshnredis/restore/01-GivenRestoreConfig.yaml")
 
-	result := RestoreBackup(ctx, io)
+	result := RestoreBackup(ctx, &vshnv1.VSHNRedis{}, io)
 	assert.Nil(t, result)
 
 	resNamePrepJob := "redis-gc9x4-bar-prepare-job"

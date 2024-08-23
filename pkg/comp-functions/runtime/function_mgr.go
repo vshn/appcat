@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -28,18 +29,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
-	serviceRegistry = map[string]Service{}
+	serviceRegistry = map[string]any{}
 	// the default provider kubernetes name
 	providerConfigRefName = "kubernetes"
 	// ErrNotFound is the errur returned, if the requested resource is not in the
 	// the given function state (desired,observed).
 	ErrNotFound = errors.New("not found")
+	scheme      = pkg.SetupScheme()
 )
 
 const (
@@ -53,9 +56,11 @@ const (
 
 // Step describes a single change within a service.
 // It's essentially what was previously called a TransformFunc.
-type Step struct {
+// We use reflect heavily with this, any changes in the ordering of the fields
+// need to be adjusted in the `RunFunction` function.
+type Step[T client.Object] struct {
 	Name    string
-	Execute func(context.Context, *ServiceRuntime) *xfnproto.Result
+	Execute func(context.Context, T, *ServiceRuntime) *xfnproto.Result
 }
 
 // ServiceRuntime holds the state for one given service.
@@ -75,11 +80,14 @@ type ServiceRuntime struct {
 	results           []*xfnproto.Result
 	desiredComposite  *composite.Unstructured
 	observedComposite *composite.Unstructured
+	gvk               schema.GroupVersionKind
 }
 
 // Service contains all steps necessary to provide the service (except the legacy P+T portion).
-type Service struct {
-	Steps []Step
+// We use reflect heavily with this, any changes in the ordering of the fields
+// need to be adjusted in the `RunFunction` function.
+type Service[T client.Object] struct {
+	Steps []Step[T]
 }
 
 // Manager manages all services and their steps.
@@ -98,7 +106,7 @@ type KubeObjectOption func(obj *xkube.Object)
 type ComposedResourceOption func(obj xpresource.Managed)
 
 // RegisterService will register a service to the map of all services.
-func RegisterService(name string, function Service) {
+func RegisterService[T client.Object](name string, function Service[T]) {
 	serviceRegistry[name] = function
 }
 
@@ -153,15 +161,28 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequ
 
 	ctx = controllerruntime.LoggerInto(ctx, sr.Log)
 
-	for _, step := range function.Steps {
+	// Unfortunately Golang's generics are very limitted when it comes to collection types.
+	// While it's possible to have generics in collections like maps and slices,
+	// they can only take types of the exact instantiation of the generic.
+	// So if we'd use a `map[string]Service[client.Object]` we cannot
+	// save a `Service[VSHNPostgreSQL]` in it, because the types don't match up.
+	// That's why these reflect functions are necessary.
+	for _, step := range m.extractSteps(function) {
 
-		m.log.Info("Running step", "name", step.Name)
+		stepName := m.getStepName(step)
 
-		result := step.Execute(ctx, sr)
+		m.log.Info("Running step", "name", stepName)
+
+		obj, err := scheme.New(sr.getCleanGVK())
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse object for step execution: %w", err)
+		}
+
+		result := m.executeStep(ctx, obj.(client.Object), sr, step)
 		if result == nil {
-			result = NewNormalResult(fmt.Sprintf("%s step %s result: ran successfully", service, step.Name))
+			result = NewNormalResult(fmt.Sprintf("%s step %s result: ran successfully", service, stepName))
 		} else {
-			result.Message = fmt.Sprintf("%s step %s result: %s", service, step.Name, result.Message)
+			result.Message = fmt.Sprintf("%s step %s result: %s", service, stepName, result.Message)
 		}
 		sr.AddResult(result)
 	}
@@ -176,6 +197,45 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequ
 	}
 
 	return sr.GetResponse()
+}
+
+func (m *Manager) extractSteps(service any) []any {
+	// We get the first and only field of the service struct
+	v := reflect.ValueOf(service).Field(0)
+	values := make([]any, v.Len())
+
+	for i := 0; i < v.Len(); i++ {
+		values[i] = v.Index(i).Interface()
+	}
+	return values
+}
+
+func (m *Manager) getStepName(step any) string {
+	v := reflect.ValueOf(step).Field(0)
+	if v.Kind() != reflect.String {
+		panic(fmt.Sprintf("%s not a string, can't get step name", v.Kind()))
+	}
+
+	return v.String()
+}
+
+func (m *Manager) executeStep(ctx context.Context, obj client.Object, sr *ServiceRuntime, step any) *xfnproto.Result {
+	v := reflect.ValueOf(step).Field(1)
+	if v.Kind() != reflect.Func {
+		panic(fmt.Sprintf("%s not a function, cannot run step", v.Kind()))
+	}
+	res := v.Call([]reflect.Value{
+		reflect.ValueOf(ctx),
+		reflect.ValueOf(obj),
+		reflect.ValueOf(sr),
+	})
+
+	vRes := res[0]
+	if vRes.IsNil() {
+		return nil
+	}
+
+	return vRes.Interface().(*xfnproto.Result)
 }
 
 func (m *Manager) proxyFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequest) (*fnv1beta1.RunFunctionResponse, error) {
@@ -278,6 +338,7 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 		results:           []*xfnproto.Result{},
 		desiredComposite:  desiredComposite.Resource,
 		observedComposite: observedComposite.Resource,
+		gvk:               comp.Resource.GetObjectKind().GroupVersionKind(),
 	}, nil
 }
 
@@ -1125,4 +1186,23 @@ func (s *ServiceRuntime) ForwardEvents() error {
 
 func isKubeObject(r *composed.Unstructured) bool {
 	return r.GetKind() == "Object" && strings.HasPrefix(r.GetAPIVersion(), "kubernetes.crossplane.io")
+}
+
+// getCleanGVK will remove the leadin `X` in the Kind.
+// Crossplane actuall delivers to us the Composite (XVSHN) object not the Claim
+// (VSHN) object. However, in all functions we operate using the Claim objects.
+// This leads to a missmatch, when generating the empty object that gets passed to the
+// functions.
+// This function removes the leading `X` from the Kind to fix this.
+func (s *ServiceRuntime) getCleanGVK() schema.GroupVersionKind {
+	kind := s.gvk.Kind
+	if strings.HasPrefix(kind, "X") {
+		kind = kind[1:]
+	}
+
+	return schema.GroupVersionKind{
+		Group:   s.gvk.Group,
+		Version: s.gvk.Version,
+		Kind:    kind,
+	}
 }

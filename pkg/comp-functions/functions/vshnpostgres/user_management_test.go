@@ -85,7 +85,7 @@ func TestUserManagement(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/usermanagement/01-emptyaccess.yaml")
 
 	// when applied
-	assert.Nil(t, UserManagement(context.TODO(), svc))
+	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
 
 	// then expect no database
 	comp := &vshnv1.VSHNPostgreSQL{}
@@ -102,7 +102,7 @@ func TestUserManagement(t *testing.T) {
 	}
 
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
-	assert.Nil(t, UserManagement(context.TODO(), svc))
+	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
 
 	// then expect database
 	db = &pgv1alpha1.Database{}
@@ -115,7 +115,7 @@ func TestUserManagement(t *testing.T) {
 	})
 
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
-	assert.Nil(t, UserManagement(context.TODO(), svc))
+	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
 
 	// then expect database
 	db = &pgv1alpha1.Database{}

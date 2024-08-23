@@ -17,9 +17,7 @@ import (
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
-func AddIngress(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	comp := &vshnv1.VSHNKeycloak{}
+func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {

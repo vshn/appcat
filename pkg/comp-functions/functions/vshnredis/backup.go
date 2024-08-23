@@ -23,11 +23,10 @@ const (
 var redisBackupScript string
 
 // AddBackup creates an object bucket and a K8up schedule to do the actual backup.
-func AddBackup(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
-	comp := &vshnv1.VSHNRedis{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))

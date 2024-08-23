@@ -15,9 +15,7 @@ import (
 )
 
 // AddIngress adds an inrgess to the Nextcloud instance.
-func AddIngress(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	comp := &vshnv1.VSHNNextcloud{}
+func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {

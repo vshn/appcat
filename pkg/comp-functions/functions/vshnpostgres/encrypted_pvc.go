@@ -19,11 +19,10 @@ import (
 )
 
 // AddPvcSecret adds a secret for the encrypted PVC for the  PostgreSQL instance.
-func AddPvcSecret(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	log := controllerruntime.LoggerFrom(ctx)
 
-	comp := &vshnv1.VSHNPostgreSQL{}
 	err := svc.GetObservedComposite(comp)
 
 	if err != nil {

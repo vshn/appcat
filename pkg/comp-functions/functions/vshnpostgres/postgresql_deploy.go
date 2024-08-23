@@ -37,10 +37,9 @@ const (
 //go:embed scripts/copy-pg-backup.sh
 var postgresqlCopyJobScript string
 
-func DeployPostgreSQL(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	l := svc.Log
 
-	comp := &vshnv1.VSHNPostgreSQL{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get observed composite: %w", err))

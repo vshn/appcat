@@ -31,11 +31,10 @@ const (
 )
 
 // DeployMariadb will deploy the objects to provision mariadb instance
-func DeployMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	l := svc.Log
 
-	comp := &vshnv1.VSHNMariaDB{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get observed composite: %w", err))

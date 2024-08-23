@@ -23,7 +23,7 @@ func TestPVCResize(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.Nil(t, ResizePVCs(ctx, svc))
+	assert.Nil(t, ResizePVCs(ctx, &vshnv1.VSHNRedis{}, svc))
 
 	job := &batchv1.Job{}
 	assert.NoError(t, svc.GetDesiredKubeObject(job, "redis-gc9x4-sts-deleter"))
@@ -33,7 +33,7 @@ func TestPVCResize(t *testing.T) {
 
 	// Second reconcile, check for removed job
 	svc = commontest.LoadRuntimeFromFile(t, "vshnredis/pvcresize/01_job.yaml")
-	assert.Nil(t, ResizePVCs(ctx, svc))
+	assert.Nil(t, ResizePVCs(ctx, &vshnv1.VSHNRedis{}, svc))
 	assert.Error(t, svc.GetDesiredKubeObject(job, "redis-gc9x4-sts-deleter"))
 
 }

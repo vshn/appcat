@@ -24,11 +24,10 @@ var restoreScript string
 //go:embed script/cleanupRestore.sh
 var cleanupRestoreScript string
 
-func RestoreBackup(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func RestoreBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Starting RestoreBackup function")
 
-	comp := &vshnv1.VSHNRedis{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))

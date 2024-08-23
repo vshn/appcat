@@ -21,7 +21,7 @@ func TestTransformSchedule_SetRandomSchedule(t *testing.T) {
 		t.Run(fmt.Sprintf("Round %d", i), func(t *testing.T) {
 			svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
-			res := TransformSchedule(context.TODO(), svc)
+			res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 			assert.Nil(t, res)
 
 			out := &vshnv1.VSHNPostgreSQL{}
@@ -51,7 +51,7 @@ func TestTransformSchedule_DontOverwriteBackup(t *testing.T) {
 	err = svc.GetDesiredComposite(comp)
 	assert.NoError(t, err)
 
-	res := TransformSchedule(context.TODO(), svc)
+	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Nil(t, res)
 
 	err = svc.GetDesiredComposite(comp)
@@ -72,7 +72,7 @@ func TestTransformSchedule_DontOverwriteMaintenance(t *testing.T) {
 	err = svc.SetDesiredCompositeStatus(comp)
 	assert.NoError(t, err)
 
-	res := TransformSchedule(context.TODO(), svc)
+	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Nil(t, res)
 
 	err = svc.GetDesiredComposite(comp)
@@ -95,7 +95,7 @@ func TestTransformSchedule_DontOverwriteBackupOrMaintenance(t *testing.T) {
 	err = iof.SetDesiredCompositeStatus(comp)
 	assert.NoError(t, err)
 
-	res := TransformSchedule(context.TODO(), iof)
+	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQL{}, iof)
 	assert.Nil(t, res)
 
 	err = iof.GetDesiredComposite(comp)

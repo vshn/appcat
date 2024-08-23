@@ -17,41 +17,39 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func MailgunAlerting(obj client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	return func(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-		log := controllerruntime.LoggerFrom(ctx)
-		log.Info("Starting mailgun-alerting function")
+func MailgunAlerting(obj client.Object, ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	log := controllerruntime.LoggerFrom(ctx)
+	log.Info("Starting mailgun-alerting function")
 
-		err := svc.GetObservedComposite(obj)
-		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("Can't get composite: %w", err))
-		}
-		alertConfig, ok := obj.(Alerter)
-		if !ok {
-			return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
-		}
+	err := svc.GetObservedComposite(obj)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("Can't get composite: %w", err))
+	}
+	alertConfig, ok := obj.(Alerter)
+	if !ok {
+		return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
+	}
 
-		email := alertConfig.GetVSHNMonitoring().Email
-		instanceNamespace := alertConfig.GetInstanceNamespace()
-		name := obj.GetName()
+	email := alertConfig.GetVSHNMonitoring().Email
+	instanceNamespace := alertConfig.GetInstanceNamespace()
+	name := obj.GetName()
 
-		if email == "" {
-			return nil
-		}
-		if !mailAlertingEnabled(&svc.Config) {
-			return runtime.NewWarningResult("Email Alerting is not enabled")
-		}
-
-		log.Info("Deploying AlertmanagerConfig for mail alerting...")
-		err = deployAlertmanagerConfig(ctx, name, email, instanceNamespace, svc)
-		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("Can't deploy AlertmanagerConfig "+name+"-alertmanagerconfig-mailgun for mail alerting: %w", err))
-		}
-
-		log.Info("Finishing mailgun-alerting function with NewNormal")
-
+	if email == "" {
 		return nil
 	}
+	if !mailAlertingEnabled(&svc.Config) {
+		return runtime.NewWarningResult("Email Alerting is not enabled")
+	}
+
+	log.Info("Deploying AlertmanagerConfig for mail alerting...")
+	err = deployAlertmanagerConfig(ctx, name, email, instanceNamespace, svc)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("Can't deploy AlertmanagerConfig "+name+"-alertmanagerconfig-mailgun for mail alerting: %w", err))
+	}
+
+	log.Info("Finishing mailgun-alerting function with NewNormal")
+
+	return nil
 }
 
 func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespace string, svc *runtime.ServiceRuntime) error {

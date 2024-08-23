@@ -45,14 +45,14 @@ const (
 )
 
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
-func DeployKeycloak(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployKeycloak(comp *vshnv1.VSHNKeycloak, ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNKeycloak{}
-	err := svc.GetObservedComposite(comp)
+	obj, err := svc.GetObservedComposite()
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
+	comp := getKeycloakFromObject(obj)
 	svc.Log.Info("Adding postgresql instance")
 
 	pgBuncerConfig := map[string]string{

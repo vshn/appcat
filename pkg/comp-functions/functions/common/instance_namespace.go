@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/vshn/appcat/v4/apis/metadata"
 	v1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -309,9 +308,8 @@ func addInitialNamespaceQuotas(ctx context.Context, svc *runtime.ServiceRuntime,
 		}
 	}
 
-	objectMeta := &metadata.MetadataOnlyObject{}
+	obj, err := svc.GetObservedComposite()
 
-	err = svc.GetObservedComposite(objectMeta)
 	if err != nil {
 		return fmt.Errorf("cannot get composite meta: %w", err)
 	}
@@ -323,7 +321,7 @@ func addInitialNamespaceQuotas(ctx context.Context, svc *runtime.ServiceRuntime,
 
 	// We only act if either the quotas were missing or the organization label is not on the
 	// namespace. Otherwise we ignore updates. This is to prevent any unwanted overwriting.
-	if quotas.AddInitalNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind) {
+	if quotas.AddInitalNamespaceQuotas(ctx, ns, s, obj.TypeMeta.Kind) {
 		err = svc.SetDesiredKubeObjectWithName(ns, ns.GetName(), namespaceKon)
 		if err != nil {
 			return fmt.Errorf("cannot save namespace quotas: %w", err)

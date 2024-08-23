@@ -142,7 +142,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 			svc := commontest.LoadRuntimeFromFile(t, "common/quotas/01_default.yaml")
 			objectMeta := &metadata.MetadataOnlyObject{}
 
-			err := svc.GetObservedComposite(objectMeta)
+			err := svc.GetObservedComposite()
 			assert.NoError(t, err)
 
 			if tt.instanceNS != nil {

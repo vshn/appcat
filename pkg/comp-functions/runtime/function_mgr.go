@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"strconv"
 	"strings"
 
@@ -34,7 +36,7 @@ import (
 )
 
 var (
-	serviceRegistry = map[string]Service{}
+	serviceRegistry = map[string]Service[client.Object]{}
 	// the default provider kubernetes name
 	providerConfigRefName = "kubernetes"
 	// ErrNotFound is the errur returned, if the requested resource is not in the
@@ -53,9 +55,9 @@ const (
 
 // Step describes a single change within a service.
 // It's essentially what was previously called a TransformFunc.
-type Step struct {
+type Step[T client.Object] struct {
 	Name    string
-	Execute func(context.Context, *ServiceRuntime) *xfnproto.Result
+	Execute func(T, context.Context, *ServiceRuntime) *xfnproto.Result
 }
 
 // ServiceRuntime holds the state for one given service.
@@ -75,11 +77,12 @@ type ServiceRuntime struct {
 	results           []*xfnproto.Result
 	desiredComposite  *composite.Unstructured
 	observedComposite *composite.Unstructured
+	gvk               schema.GroupVersionKind
 }
 
 // Service contains all steps necessary to provide the service (except the legacy P+T portion).
-type Service struct {
-	Steps []Step
+type Service[T client.Object] struct {
+	Steps []Step[T]
 }
 
 // Manager manages all services and their steps.
@@ -98,7 +101,7 @@ type KubeObjectOption func(obj *xkube.Object)
 type ComposedResourceOption func(obj xpresource.Managed)
 
 // RegisterService will register a service to the map of all services.
-func RegisterService(name string, function Service) {
+func RegisterService[T client.Object](name string, function Service[T]) {
 	serviceRegistry[name] = function
 }
 
@@ -154,10 +157,12 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequ
 	ctx = controllerruntime.LoggerInto(ctx, sr.Log)
 
 	for _, step := range function.Steps {
+		s := []Step[*vshnv1.VSHNKeycloak]{}
 
 		m.log.Info("Running step", "name", step.Name)
 
-		result := step.Execute(ctx, sr)
+		obj := &vshnv1.VSHNKeycloak{}
+		result := step.Execute(obj, ctx, sr)
 		if result == nil {
 			result = NewNormalResult(fmt.Sprintf("%s step %s result: ran successfully", service, step.Name))
 		} else {
@@ -278,6 +283,7 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 		results:           []*xfnproto.Result{},
 		desiredComposite:  desiredComposite.Resource,
 		observedComposite: observedComposite.Resource,
+		gvk:               comp.Resource.GetObjectKind().GroupVersionKind(),
 	}, nil
 }
 

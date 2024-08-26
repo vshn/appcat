@@ -18,66 +18,65 @@ import (
 )
 
 // AddUserAlerting adds user alerting to the Redis instance.
-func AddUserAlerting(obj client.Object) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
-	return func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
+func AddUserAlerting[T client.Object](ctx context.Context, obj T, svc *runtime.ServiceRuntime) *fnproto.Result {
 
-		log := controllerruntime.LoggerFrom(ctx)
-		log.Info("Checking if alerting references are set")
+	log := controllerruntime.LoggerFrom(ctx)
+	log.Info("Checking if alerting references are set")
 
-		log.V(1).Info("Transforming", "obj", svc)
+	log.V(1).Info("Transforming", "obj", svc)
 
-		err := svc.GetObservedComposite(obj)
-		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("Can't get composite: %w", err))
-		}
-		alertConfig, ok := obj.(Alerter)
-		if !ok {
-			return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
-		}
-
-		monitoringSpec := alertConfig.GetVSHNMonitoring()
-		refName := monitoringSpec.AlertmanagerConfigRef
-
-		if monitoringSpec.AlertmanagerConfigRef != "" {
-
-			if monitoringSpec.AlertmanagerConfigSecretRef == "" {
-				return runtime.NewFatalResult(fmt.Errorf("Found AlertmanagerConfigRef but no AlertmanagerConfigSecretRef, please specify as well"))
-			}
-
-			log.Info("Found an AlertmanagerConfigRef, deploying...", "refName", refName)
-
-			err = deployAlertmanagerFromRef(ctx, refName, obj.GetLabels()["crossplane.io/claim-namespace"], obj.GetName(), alertConfig.GetInstanceNamespace(), svc)
-			if err != nil {
-				return runtime.NewFatalResult(fmt.Errorf("Could not deploy alertmanager from ref: %w", err))
-			}
-		}
-
-		if monitoringSpec.AlertmanagerConfigSpecTemplate != nil {
-
-			if monitoringSpec.AlertmanagerConfigSecretRef == "" {
-				return runtime.NewFatalResult(fmt.Errorf("Found AlertmanagerConfigTemplate but no AlertmanagerConfigSecretRef, please specify as well"))
-			}
-
-			log.Info("Found an AlertmanagerConfigTemplate, deploying...")
-
-			err = deployAlertmanagerFromTemplate(ctx, refName, obj.GetLabels()["crossplane.io/claim-namespace"], obj.GetName(), alertConfig.GetInstanceNamespace(), monitoringSpec.AlertmanagerConfigSpecTemplate, svc)
-			if err != nil {
-				return runtime.NewFatalResult(fmt.Errorf("Cannot deploy alertmanager from template: %w", err))
-			}
-		}
-
-		if monitoringSpec.AlertmanagerConfigSecretRef != "" {
-			refName := monitoringSpec.AlertmanagerConfigSecretRef
-			log.Info("Found an AlertmanagerConfigSecretRef, deploying...", "refName", refName)
-
-			err = deploySecretRef(ctx, refName, obj.GetLabels()["crossplane.io/claim-namespace"], obj.GetName(), alertConfig.GetInstanceNamespace(), svc)
-			if err != nil {
-				return runtime.NewFatalResult(fmt.Errorf("Cannot deploy secret ref: %w", err))
-			}
-		}
-
-		return nil
+	err := svc.GetObservedComposite(obj)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("Can't get composite: %w", err))
 	}
+	objCopy := obj.DeepCopyObject()
+	alertConfig, ok := objCopy.(Alerter)
+	if !ok {
+		return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
+	}
+
+	monitoringSpec := alertConfig.GetVSHNMonitoring()
+	refName := monitoringSpec.AlertmanagerConfigRef
+
+	if monitoringSpec.AlertmanagerConfigRef != "" {
+
+		if monitoringSpec.AlertmanagerConfigSecretRef == "" {
+			return runtime.NewFatalResult(fmt.Errorf("Found AlertmanagerConfigRef but no AlertmanagerConfigSecretRef, please specify as well"))
+		}
+
+		log.Info("Found an AlertmanagerConfigRef, deploying...", "refName", refName)
+
+		err = deployAlertmanagerFromRef(ctx, refName, obj.GetLabels()["crossplane.io/claim-namespace"], obj.GetName(), alertConfig.GetInstanceNamespace(), svc)
+		if err != nil {
+			return runtime.NewFatalResult(fmt.Errorf("Could not deploy alertmanager from ref: %w", err))
+		}
+	}
+
+	if monitoringSpec.AlertmanagerConfigSpecTemplate != nil {
+
+		if monitoringSpec.AlertmanagerConfigSecretRef == "" {
+			return runtime.NewFatalResult(fmt.Errorf("Found AlertmanagerConfigTemplate but no AlertmanagerConfigSecretRef, please specify as well"))
+		}
+
+		log.Info("Found an AlertmanagerConfigTemplate, deploying...")
+
+		err = deployAlertmanagerFromTemplate(ctx, refName, obj.GetLabels()["crossplane.io/claim-namespace"], obj.GetName(), alertConfig.GetInstanceNamespace(), monitoringSpec.AlertmanagerConfigSpecTemplate, svc)
+		if err != nil {
+			return runtime.NewFatalResult(fmt.Errorf("Cannot deploy alertmanager from template: %w", err))
+		}
+	}
+
+	if monitoringSpec.AlertmanagerConfigSecretRef != "" {
+		refName := monitoringSpec.AlertmanagerConfigSecretRef
+		log.Info("Found an AlertmanagerConfigSecretRef, deploying...", "refName", refName)
+
+		err = deploySecretRef(ctx, refName, obj.GetLabels()["crossplane.io/claim-namespace"], obj.GetName(), alertConfig.GetInstanceNamespace(), svc)
+		if err != nil {
+			return runtime.NewFatalResult(fmt.Errorf("Cannot deploy secret ref: %w", err))
+		}
+	}
+
+	return nil
 }
 
 func deployAlertmanagerFromRef(ctx context.Context, AlertmanagerConfigSecretRef, claimNamespace, name, instanceNamespace string, svc *runtime.ServiceRuntime) error {

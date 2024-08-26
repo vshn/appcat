@@ -18,7 +18,7 @@ func TestAddBackupObjectCreation(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.Nil(t, AddBackup(ctx, svc))
+	assert.Nil(t, AddBackup(ctx, &vshnv1.VSHNRedis{}, svc))
 
 	bucket := &appcatv1.XObjectBucket{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(bucket, comp.Name+"-backup"))

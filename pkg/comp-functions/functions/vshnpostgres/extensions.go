@@ -21,12 +21,11 @@ const (
 )
 
 // AddExtensions adds the user specified extensions to the SGCluster.
-func AddExtensions(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddExtensions(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Starting extensions function")
 
-	comp := &vshnv1.VSHNPostgreSQL{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))

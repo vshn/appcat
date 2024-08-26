@@ -14,9 +14,8 @@ import (
 
 // SetSecurityContext patches the Minio statefulset to contain the correct securityContext.
 // Unfortunately the helm chart does not expose this value.
-func SetSecurityContext(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func SetSecurityContext(_ context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNMinio{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		err = fmt.Errorf("cannot get observed composite: %w", err)

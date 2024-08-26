@@ -28,7 +28,7 @@ func TestHelmValueUpdate(t *testing.T) {
 	svc, _ := getRedisReleaseComp(t, "01_default")
 	ctx := context.TODO()
 
-	assert.Nil(t, ManageRelease(ctx, svc))
+	assert.Nil(t, ManageRelease(ctx, &vshnv1.VSHNRedis{}, svc))
 
 	release := &xhelm.Release{}
 	// IMPORTANT: this resource name must not change! Or crossplane will delete the release.
@@ -62,7 +62,7 @@ func TestHelmValueUpdate_noObservered(t *testing.T) {
 	iof, _ := getRedisReleaseComp(t, "02_no_observed")
 	ctx := context.TODO()
 
-	assert.Nil(t, ManageRelease(ctx, iof))
+	assert.Nil(t, ManageRelease(ctx, &vshnv1.VSHNRedis{}, iof))
 
 	release := &xhelm.Release{}
 	// IMPORTANT: this resource name must not change! Or crossplane will delete the release.
@@ -161,7 +161,7 @@ func TestAllowVersionUpgrade(t *testing.T) {
 			ctx := context.TODO()
 			iof := loadRuntimeFromTemplate(t, "vshnredis/release/03_version_update.yaml.tmpl", tc)
 
-			res := ManageRelease(ctx, iof)
+			res := ManageRelease(ctx, &vshnv1.VSHNRedis{}, iof)
 			if tc.Fail {
 				return
 			}

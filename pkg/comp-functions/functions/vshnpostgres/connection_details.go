@@ -33,10 +33,9 @@ const (
 )
 
 // AddConnectionDetails changes the desired state of a FunctionIO
-func AddConnectionDetails(ctx context.Context, svc *runtime.ServiceRuntime) *v1beta1.Result {
+func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *v1beta1.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 
-	comp := &vshnv1.VSHNPostgreSQL{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))

@@ -27,9 +27,8 @@ const (
 )
 
 // DeployMinio will add deploy the objects to deploy minio
-func DeployMinio(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployMinio(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNMinio{}
 	serviceName := comp.GetServiceName()
 	err := svc.GetObservedComposite(comp)
 	if err != nil {

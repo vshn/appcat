@@ -25,8 +25,8 @@ func TestPostgreSqlDeploy(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.Nil(t, DeployPostgreSQL(ctx, svc))
-	assert.Nil(t, addSchedules(ctx, svc))
+	assert.Nil(t, DeployPostgreSQL(ctx, &vshnv1.VSHNPostgreSQL{}, svc))
+	assert.Nil(t, addSchedules(ctx, &vshnv1.VSHNPostgreSQL{}, svc))
 
 	ns := &corev1.Namespace{}
 	assert.NoError(t, svc.GetDesiredKubeObject(ns, "namespace-conditions"))
@@ -102,7 +102,7 @@ func TestPostgreSqlDeployWithPgConfig(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.Nil(t, DeployPostgreSQL(ctx, svc))
+	assert.Nil(t, DeployPostgreSQL(ctx, &vshnv1.VSHNPostgreSQL{}, svc))
 
 	ns := &corev1.Namespace{}
 	assert.NoError(t, svc.GetDesiredKubeObject(ns, "namespace-conditions"))
@@ -126,7 +126,7 @@ func TestPostgreSqlDeployWithRestore(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.Nil(t, DeployPostgreSQL(ctx, svc))
+	assert.Nil(t, DeployPostgreSQL(ctx, &vshnv1.VSHNPostgreSQL{}, svc))
 
 	ns := &corev1.Namespace{}
 	assert.NoError(t, svc.GetDesiredKubeObject(ns, "namespace-conditions"))

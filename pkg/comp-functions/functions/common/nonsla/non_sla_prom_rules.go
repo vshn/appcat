@@ -13,8 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GenerateNonSLAPromRules(obj client.Object, alerts Alerts) func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
-	return func(ctx context.Context, svc *runtime.ServiceRuntime) *fnproto.Result {
+func GenerateNonSLAPromRules[T client.Object](alerts Alerts) func(ctx context.Context, obj T, svc *runtime.ServiceRuntime) *fnproto.Result {
+	return func(ctx context.Context, obj T, svc *runtime.ServiceRuntime) *fnproto.Result {
 		log := controllerruntime.LoggerFrom(ctx)
 		log.Info("Starting non SLA prometheus rules")
 
@@ -24,7 +24,8 @@ func GenerateNonSLAPromRules(obj client.Object, alerts Alerts) func(ctx context.
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 		}
-		elem, ok := obj.(common.InfoGetter)
+		objCopy := obj.DeepCopyObject()
+		elem, ok := objCopy.(common.InfoGetter)
 		if !ok {
 			return runtime.NewFatalResult(err)
 		}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	v1 "github.com/vshn/appcat/v4/apis/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
 )
@@ -16,7 +17,7 @@ func TestProvisionCloudscalebucket(t *testing.T) {
 
 	bucketName := "mytest"
 
-	res := ProvisionCloudscalebucket(ctx, svc)
+	res := ProvisionCloudscalebucket(ctx, &v1.ObjectBucket{}, svc)
 	assert.Nil(t, res)
 
 	bucket := &cloudscalev1.Bucket{}
@@ -35,7 +36,7 @@ func TestExistingBuckets(t *testing.T) {
 
 	ctx := context.TODO()
 
-	res := ProvisionCloudscalebucket(ctx, svc)
+	res := ProvisionCloudscalebucket(ctx, &v1.ObjectBucket{}, svc)
 	assert.Nil(t, res)
 
 	bucket := &cloudscalev1.Bucket{}

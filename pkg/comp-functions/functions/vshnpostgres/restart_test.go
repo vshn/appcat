@@ -16,7 +16,7 @@ import (
 func TestTransformRestart_NoopNoPending(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/restart/01-NoPendingReboot.yaml")
 
-	res := TransformRestart(context.TODO(), svc)
+	res := TransformRestart(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Nil(t, res)
 
 	comp := &vshnv1.XVSHNPostgreSQL{}
@@ -29,7 +29,7 @@ func TestTransformRestart_NoopNoPending(t *testing.T) {
 func TestTransformRestart_NoopPendingOnRestart(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/restart/02-PendingRebootNoRestart.yaml")
 
-	res := TransformRestart(context.TODO(), svc)
+	res := TransformRestart(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Nil(t, res)
 
 	comp := &vshnv1.XVSHNPostgreSQL{}
@@ -43,7 +43,7 @@ func TestTransformRestart_NoopPendingOnRestart(t *testing.T) {
 func TestTransformRestart_RestartPending(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/restart/02-PendingReboot.yaml")
 
-	res := TransformRestart(context.TODO(), svc)
+	res := TransformRestart(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Nil(t, res)
 
 	comp := &vshnv1.XVSHNPostgreSQL{}

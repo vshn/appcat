@@ -18,8 +18,7 @@ import (
 //go:embed files/backup.sh
 var nextcloudBackupScript string
 
-func AddBackup(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	comp := &vshnv1.VSHNNextcloud{}
+func AddBackup(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetDesiredComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))

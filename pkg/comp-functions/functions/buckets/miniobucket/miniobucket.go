@@ -15,9 +15,7 @@ import (
 // ProvisionMiniobucket will create a bucket in a pre-deployed minio instance.
 // This function will leverage provider-minio to deploy proper policies and users
 // alongside the bucket.
-func ProvisionMiniobucket(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	bucket := &appcatv1.ObjectBucket{}
+func ProvisionMiniobucket(_ context.Context, bucket *appcatv1.ObjectBucket, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(bucket)
 	if err != nil {

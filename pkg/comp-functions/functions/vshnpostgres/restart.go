@@ -19,7 +19,7 @@ import (
 var sgDbOpsRestartRetention time.Duration = 30 * 24 * time.Hour
 
 // TransformRestart triggers a restart of the postgreqsql instance if there is a pending restart and the composite is configured to restart on update.
-func TransformRestart(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func TransformRestart(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	return transformRestart(ctx, svc, time.Now)
 }
 

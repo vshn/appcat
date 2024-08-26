@@ -7,6 +7,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/stretchr/testify/assert"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"k8s.io/utils/ptr"
 )
@@ -124,7 +125,7 @@ func TestAddExtensions(t *testing.T) {
 		iof := commontest.LoadRuntimeFromFile(t, tt.iofFile)
 
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, AddExtensions(ctx, iof))
+			assert.Equal(t, tt.want, AddExtensions(ctx, &vshnv1.VSHNPostgreSQL{}, iof))
 
 			cluster := &stackgresv1.SGCluster{}
 

@@ -72,12 +72,12 @@ func TestMailgunAlerting(t *testing.T) {
 }
 
 func runForGivenInputMailgun(t *testing.T, ctx context.Context, input *runtime.ServiceRuntime, res *xfnproto.Result) {
-	fnc := MailgunAlerting(&vshnv1.VSHNRedis{})
+	fnc := MailgunAlerting[*vshnv1.VSHNRedis](context.TODO(), &vshnv1.VSHNRedis{}, input)
 
-	assert.Equal(t, res, fnc(ctx, input))
+	assert.Equal(t, res, fnc)
 
-	fnc = MailgunAlerting(&vshnv1.VSHNPostgreSQL{})
+	fnc = MailgunAlerting[*vshnv1.VSHNPostgreSQL](context.TODO(), &vshnv1.VSHNPostgreSQL{}, input)
 
-	assert.Equal(t, res, fnc(ctx, input))
+	assert.Equal(t, res, fnc)
 
 }

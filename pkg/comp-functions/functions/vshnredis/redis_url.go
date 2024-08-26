@@ -24,10 +24,9 @@ const (
 )
 
 // AddUrlToConnectionDetails changes the desired state of a FunctionIO
-func AddUrlToConnectionDetails(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddUrlToConnectionDetails(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 
-	comp := &vshnv1.VSHNRedis{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))

@@ -52,7 +52,7 @@ func TestNoEncryptedPVC(t *testing.T) {
 			svc := commontest.LoadRuntimeFromFile(t, tt.args.inputFuncIO)
 			expSvc := commontest.LoadRuntimeFromFile(t, tt.args.expectedFuncIO)
 
-			r := AddPvcSecret(ctx, svc)
+			r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 			assert.Equal(t, tt.expResult, r)
 			assert.Equal(t, expSvc, svc)
@@ -68,7 +68,7 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParams.yaml")
 
-		r := AddPvcSecret(ctx, svc)
+		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		assert.Nil(t, r)
 
@@ -93,7 +93,7 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
 
-		r := AddPvcSecret(ctx, iof)
+		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, iof)
 
 		assert.Nil(t, r)
 

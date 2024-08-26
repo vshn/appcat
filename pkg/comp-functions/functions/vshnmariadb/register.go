@@ -8,8 +8,8 @@ import (
 )
 
 func init() {
-	runtime.RegisterService("mariadb", runtime.Service{
-		Steps: []runtime.Step{
+	runtime.RegisterService[*vshnv1.VSHNMariaDB]("mariadb", runtime.Service[*vshnv1.VSHNMariaDB]{
+		Steps: []runtime.Step[*vshnv1.VSHNMariaDB]{
 
 			{
 				Name:    "deploy",
@@ -25,15 +25,15 @@ func init() {
 			},
 			{
 				Name:    "mailgun-alerting",
-				Execute: common.MailgunAlerting(&vshnv1.VSHNMariaDB{}),
+				Execute: common.MailgunAlerting[*vshnv1.VSHNMariaDB],
 			},
 			{
 				Name:    "user-alerting",
-				Execute: common.AddUserAlerting(&vshnv1.VSHNMariaDB{}),
+				Execute: common.AddUserAlerting[*vshnv1.VSHNMariaDB],
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules(&vshnv1.VSHNMariaDB{}, nonsla.NewAlertSetBuilder("mariadb", "mariadb").AddAll().GetAlerts()),
+				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNMariaDB](nonsla.NewAlertSetBuilder("mariadb", "mariadb").AddAll().GetAlerts()),
 			},
 		},
 	})

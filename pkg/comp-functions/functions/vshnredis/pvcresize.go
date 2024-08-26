@@ -24,9 +24,8 @@ import (
 var stsRecreateScript string
 
 // ResizePVCs will add a job to do the pvc resize for the instance
-func ResizePVCs(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func ResizePVCs(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNRedis{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))

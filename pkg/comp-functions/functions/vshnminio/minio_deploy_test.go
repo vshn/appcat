@@ -25,7 +25,7 @@ func TestMinioDeploy(t *testing.T) {
 	rootPassword := "minio123"
 	minioHost := "http://10.0.0.1:9000"
 
-	assert.Nil(t, DeployMinio(ctx, svc))
+	assert.Nil(t, DeployMinio(ctx, &vshnv1.VSHNMinio{}, svc))
 
 	ns := &corev1.Namespace{}
 	assert.NoError(t, svc.GetObservedKubeObject(ns, comp.Name+"-ns"))

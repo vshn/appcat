@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	v1 "github.com/vshn/appcat/v4/apis/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
 )
@@ -16,7 +17,7 @@ func TestProvisionMiniobucket(t *testing.T) {
 
 	bucketName := "mytest"
 
-	res := ProvisionMiniobucket(ctx, svc)
+	res := ProvisionMiniobucket(ctx, &v1.ObjectBucket{}, svc)
 	assert.Nil(t, res)
 
 	bucket := &miniov1.Bucket{}

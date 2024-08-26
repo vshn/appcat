@@ -52,9 +52,8 @@ var nextcloudPostInstallation string
 var nextcloudPostUpgrade string
 
 // DeployNextcloud deploys a nexctloud instance via the codecentric Helm Chart.
-func DeployNextcloud(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNNextcloud{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))

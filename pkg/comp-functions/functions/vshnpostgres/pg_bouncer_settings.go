@@ -6,6 +6,7 @@ import (
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -13,7 +14,7 @@ import (
 
 const pgBouncerSettingName = "pgbouncer-settings"
 
-func addPGBouncerSettings(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func addPGBouncerSettings(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	comp, err := getVSHNPostgreSQL(ctx, svc)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))

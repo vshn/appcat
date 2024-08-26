@@ -19,10 +19,9 @@ import (
 var mariadbBackupScript string
 
 // AddBackupMariadb adds k8up backup to a MariaDB deployment.
-func AddBackupMariadb(ctx context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddBackupMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	l := controllerruntime.LoggerFrom(ctx)
 
-	comp := &vshnv1.VSHNMariaDB{}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))

@@ -22,9 +22,7 @@ const (
 // ProvisionCloudscalebucket will create a bucket in cloudscale.
 // This function will leverage provider-cloudscale to deploy proper users
 // alongside the bucket.
-func ProvisionCloudscalebucket(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	bucket := &appcatv1.ObjectBucket{}
+func ProvisionCloudscalebucket(_ context.Context, bucket *appcatv1.ObjectBucket, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(bucket)
 	if err != nil {

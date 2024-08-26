@@ -1,12 +1,13 @@
 package vshnnextcloud
 
 import (
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
 func init() {
-	runtime.RegisterService("nextcloud", runtime.Service{
-		Steps: []runtime.Step{
+	runtime.RegisterService[*vshnv1.VSHNNextcloud]("nextcloud", runtime.Service[*vshnv1.VSHNNextcloud]{
+		Steps: []runtime.Step[*vshnv1.VSHNNextcloud]{
 
 			{
 				Name:    "deploy",

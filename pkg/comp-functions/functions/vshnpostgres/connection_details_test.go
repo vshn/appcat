@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -22,7 +23,7 @@ func TestTransform_NoInstanceNamespace(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/secrets/01_input_no-instance-namespace.yaml")
 
 		// When
-		result := AddConnectionDetails(ctx, svc)
+		result := AddConnectionDetails(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		// Then
 		assert.Equal(t, expectResult, result)
@@ -41,7 +42,7 @@ func TestTransform(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/secrets/02_input_function-io.yaml")
 
 		// When
-		result := AddConnectionDetails(ctx, svc)
+		result := AddConnectionDetails(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		// Then
 		assert.Nil(t, result)

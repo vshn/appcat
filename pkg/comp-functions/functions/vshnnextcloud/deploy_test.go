@@ -19,7 +19,7 @@ func Test_addNextcloud(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.Nil(t, DeployNextcloud(ctx, svc))
+	assert.Nil(t, DeployNextcloud(ctx, &vshnv1.VSHNNextcloud{}, svc))
 
 	pg := &vshnv1.XVSHNPostgreSQL{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))
@@ -41,7 +41,7 @@ func Test_addReleaseInternalDB(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.Nil(t, DeployNextcloud(ctx, svc))
+	assert.Nil(t, DeployNextcloud(ctx, &vshnv1.VSHNNextcloud{}, svc))
 
 	pg := &vshnv1.XVSHNPostgreSQL{}
 	assert.Error(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+pgInstanceNameSuffix))

@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
@@ -13,7 +14,7 @@ import (
 func TestDelayClusterDeployment(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/delay_cluster/01_GivenNoDependency.yaml")
 
-	res := DelayClusterDeployment(context.TODO(), svc)
+	res := DelayClusterDeployment(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Equal(t, runtime.NewWarningResult("sgProfile is not yet ready, skipping creation of cluster"), res)
 
 	cluster := &stackgresv1.SGCluster{}
@@ -22,7 +23,7 @@ func TestDelayClusterDeployment(t *testing.T) {
 
 	svc = commontest.LoadRuntimeFromFile(t, "vshn-postgres/delay_cluster/01_GivenAllDependencies.yaml")
 
-	res = DelayClusterDeployment(context.TODO(), svc)
+	res = DelayClusterDeployment(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Nil(t, res)
 
 	err = svc.GetDesiredKubeObject(cluster, "cluster")

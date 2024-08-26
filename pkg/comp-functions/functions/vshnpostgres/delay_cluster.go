@@ -15,9 +15,8 @@ import (
 
 // DelayClusterDeployment adds the dependencies on the sgcluster object, so that the provider-kubernetes doesn't loop anymore.
 // The actual cluster object will only be deployed once the dependencies are deployed, synced and ready.
-func DelayClusterDeployment(_ context.Context, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DelayClusterDeployment(_ context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	comp := &vshnv1.VSHNPostgreSQL{}
 	err := svc.GetObservedComposite(comp)
 
 	if err != nil {

@@ -6,6 +6,8 @@ permissions:
 on:
   schedule:
     - cron: "0 * * * *" # Once per hour
+  workflow_dispatch: {}
+
 jobs:
   update:
     runs-on: ubuntu-latest

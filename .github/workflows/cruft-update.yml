@@ -5,8 +5,8 @@ permissions:
   pull-requests: write
   actions: write
 on:
-  schedule:
-    - cron: "0 * * * *" # Once per hour
+  # schedule:
+    # - cron: "0 * * * *" # Once per hour
   workflow_dispatch: {}
 
 jobs:

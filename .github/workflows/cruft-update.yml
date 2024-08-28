@@ -9,9 +9,6 @@ on:
     # - cron: "0 * * * *" # Once per hour
   workflow_dispatch: {}
 
-env:
-  GH_TOKEN: ${{ github.token }}
-
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -64,9 +61,6 @@ jobs:
 
           cruft update --skip-apply-ask --refresh-private-variables
           git restore --staged .
-
-          gh auth login -s workflow
-          gh auth status
 
       - name: Create pull request
         if: steps.check.outputs.has_changes == '1'

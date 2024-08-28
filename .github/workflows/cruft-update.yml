@@ -64,14 +64,13 @@ jobs:
 
       - name: Create pull request
         if: steps.check.outputs.has_changes == '1'
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
           add-paths: ${{ matrix.add-paths }}
           commit-message: ${{ matrix.commit-message }}
           branch: ${{ matrix.branch }}
           delete-branch: true
-          branch-suffix: none
           title: ${{ matrix.title }}
           labels: dependencies
           body: |

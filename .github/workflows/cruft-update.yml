@@ -62,6 +62,9 @@ jobs:
           cruft update --skip-apply-ask --refresh-private-variables
           git restore --staged .
 
+          gh auth login -s workflow
+          gh auth status
+
       - name: Create pull request
         if: steps.check.outputs.has_changes == '1'
         uses: peter-evans/create-pull-request@v4

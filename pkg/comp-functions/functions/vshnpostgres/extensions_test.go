@@ -33,8 +33,17 @@ func Test_enableTimescaleDB(t *testing.T) {
 		ctx := context.TODO()
 		svc := commontest.LoadRuntimeFromFile(t, tt.iofFile)
 
+		comp := &vshnv1.VSHNPostgreSQL{}
+
+		err := svc.GetDesiredComposite(comp)
+		if err != nil {
+			t.Fatal("Can't get composite", err)
+		}
+
+		t.Log("Composite", comp.GetName())
+
 		t.Run(tt.name, func(t *testing.T) {
-			if err := enableTimescaleDB(ctx, svc); (err != nil) != tt.wantErr {
+			if err := enableTimescaleDB(ctx, svc, comp.GetName()); (err != nil) != tt.wantErr {
 				t.Errorf("enableTimescaleDB() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

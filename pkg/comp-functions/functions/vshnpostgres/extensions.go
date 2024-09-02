@@ -47,7 +47,7 @@ func AddExtensions(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtim
 	}
 
 	if _, ok := extensionsMap["timescaledb"]; ok {
-		err := enableTimescaleDB(ctx, svc)
+		err := enableTimescaleDB(ctx, svc, comp.GetName())
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("cannot add timescaldb to config: %w", err))
 		}
@@ -84,7 +84,7 @@ func AddExtensions(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtim
 	return nil
 }
 
-func enableTimescaleDB(ctx context.Context, svc *runtime.ServiceRuntime) error {
+func enableTimescaleDB(ctx context.Context, svc *runtime.ServiceRuntime, name string) error {
 
 	config := &stackgresv1.SGPostgresConfig{}
 
@@ -105,7 +105,7 @@ func enableTimescaleDB(ctx context.Context, svc *runtime.ServiceRuntime) error {
 		config.Spec.PostgresqlConf[sharedLibraries] = fmt.Sprintf("%s,%s", toAppend, timescaleExtName)
 	}
 
-	return svc.SetDesiredKubeObject(config, configResourceName)
+	return svc.SetDesiredKubeObjectWithName(config, name+"-"+configResourceName, configResourceName)
 }
 
 func disableTimescaleDB(ctx context.Context, svc *runtime.ServiceRuntime) error {

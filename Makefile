@@ -1,8 +1,6 @@
-
-# Image URL to use all building/pushing image targets
-IMG_TAG ?= latest
-GHCR_IMG ?= ghcr.io/vshn/appcat:$(IMG_TAG)
-DOCKER_CMD ?= docker
+PROJECT_ROOT_DIR = .
+PROJECT_NAME ?= appcat
+PROJECT_OWNER ?= vshn
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -17,14 +15,6 @@ ifeq ($(OS), Darwin)
 else
 	sed ?= sed
 endif
-
-# For alpine image it is required the following env before building the application
-DOCKER_IMAGE_GOOS = linux
-DOCKER_IMAGE_GOARCH = amd64
-
-PROJECT_ROOT_DIR = .
-PROJECT_NAME ?= appcat
-PROJECT_OWNER ?= vshn
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 BIN_FILENAME ?= $(PROJECT_DIR)/appcat
@@ -58,6 +48,7 @@ $(protoc_bin): | $(go_bin)
 
 -include docs/antora-preview.mk docs/antora-build.mk
 -include package/package.mk
+-include ci.mk
 
 .PHONY: help
 help: ## Display this help.
@@ -156,25 +147,10 @@ build:
 test: ## Run tests
 	go test ./... -count=1
 
-.PHONY: docker-build
-docker-build:
-	env CGO_ENABLED=0 GOOS=$(DOCKER_IMAGE_GOOS) GOARCH=$(DOCKER_IMAGE_GOARCH) \
-		go build -o ${BIN_FILENAME}
-	docker build --platform $(DOCKER_IMAGE_GOOS)/$(DOCKER_IMAGE_GOARCH) -t ${GHCR_IMG} .
-
-.PHONY: docker-build-branchtag
-docker-build-branchtag: docker-build ## Build docker image with current branch name
-	tag=$$(git rev-parse --abbrev-ref HEAD) && \
-	docker tag ${GHCR_IMG} ghcr.io/vshn/appcat:"$${tag////_}"
-
 .PHONY: kind-load-branch-tag
 kind-load-branch-tag: ## load docker image with current branch tag into kind
 	tag=$$(git rev-parse --abbrev-ref HEAD) && \
 	kind load docker-image --name kindev ghcr.io/vshn/appcat:"$${tag////_}"
-
-.PHONY: docker-push
-docker-push: docker-build ## Push docker image with the manager.
-	docker push ${GHCR_IMG}
 
 # Generate webhook certificates.
 # This is only relevant when debugging.

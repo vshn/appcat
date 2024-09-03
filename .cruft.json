@@ -1,0 +1,20 @@
+{
+  "template": "https://github.com/vshn/appcat-cookiecutter",
+  "commit": "128d270ba199a581122ff74c2f82b8e3019490f0",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "app_name": "appcat",
+      "component_repo": "vshn/component-appcat",
+      "push_upbound": false,
+      "push_package": true,
+      "push_image": true,
+      "_copy_without_render": [
+        ".github/workflows/cruft-update.yml",
+        ".github/changelog-configuration.json"
+      ],
+      "_template": "https://github.com/vshn/appcat-cookiecutter"
+    }
+  },
+  "directory": null
+}

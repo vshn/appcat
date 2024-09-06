@@ -94,7 +94,7 @@ func getPendingRestart(ctx context.Context, svc *runtime.ServiceRuntime) (time.T
 	return time.Time{}, nil
 }
 
-// In case the operator was updated and the PostgreSQL clusters requires immediate restart we will postpone it during the maintenance
+// In case the operator was updated and the PostgreSQL clusters require a security maintenance, we ensure that it only happens during the maintenance window
 func hasPendingUpgrade(items []sgv1.SGClusterStatusConditionsItem) bool {
 	for _, i := range items {
 		if *i.Type == sgv1.SGClusterConditionTypePendingUpgrade && *i.Status == "True" {

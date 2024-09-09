@@ -27,3 +27,6 @@ __debug_bin*
 
 # Ignore crossplane packages
 *.xpkg
+
+hack/res
+hack/tmp

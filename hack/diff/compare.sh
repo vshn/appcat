@@ -1,10 +1,12 @@
 #!/bin/bash
 
+set -e
+
 # get the state and all objects from each composite
 function get_state() {
   type="$1"
   name="$2"
-  dir_name="tmp/$type-$name"
+  dir_name="hack/tmp/$type-$name"
 
   mkdir -p "$dir_name"
 
@@ -19,7 +21,7 @@ function get_state() {
 function get_claim_namespace() {
   type="$1"
   name="$2"
-  dir_name="tmp/$type-$name"
+  dir_name="hack/tmp/$type-$name"
 
   ns=$(kubectl get "$type" "$name" -oyaml | yq -r '.metadata.labels["crossplane.io/claim-namespace"]')
   kubectl get ns "$ns" -oyaml > "$dir_name/namespace.yaml"
@@ -38,16 +40,16 @@ function stop_func() {
 function run_single_diff() {
   type="$1"
   name="$2"
-  dir_name="tmp/$type-$name"
-  res_dir_name="res/$type/$name"
+  dir_name="hack/tmp/$type-$name"
+  res_dir_name="hack/res/$type/$name"
 
   mkdir -p "$res_dir_name"
 
-  kubectl get "$type" "$name" -oyaml > xr.yaml
+  kubectl get "$type" "$name" -oyaml > hack/tmp/xr.yaml
   comp=$(kubectl get "$type" "$name" -oyaml | yq -r '.spec.compositionRef.name')
   echo "composition: $comp"
-  kubectl get compositions.apiextensions.crossplane.io "$comp" -oyaml > composition.yaml
-  go run github.com/crossplane/crossplane/cmd/crank@v1.17.0 render hack/diff/xr.yaml hack/diff/composition.yaml hack/diff/function.yaml -o "$dir_name" > "$res_dir_name/$3.yaml"
+  kubectl get compositions.apiextensions.crossplane.io "$comp" -oyaml > hack/tmp/composition.yaml
+  go run github.com/crossplane/crossplane/cmd/crank@v1.17.0 render hack/tmp/xr.yaml hack/tmp/composition.yaml hack/diff/function.yaml -o "$dir_name" > "$res_dir_name/$3.yaml"
 }
 
 function get_running_func_version() {
@@ -55,7 +57,7 @@ function get_running_func_version() {
   echo "${version%"-func"}"
 }
 
-function diff() {
+function diff_func() {
   run_func "$1"
   trap stop_func EXIT
 
@@ -65,20 +67,42 @@ function diff() {
     get_claim_namespace "$type" "$name"
     run_single_diff "$type" "$name" "$2"
   done <<< "$(kubectl get composite --no-headers | sed 's/\// /g' )"
+
+  stop_func
 }
 
 # do the diff
 function first_diff() {
-  diff "$(get_running_func_version)" "first"
+  diff_func "$(get_running_func_version)" "first"
 }
 
 function second_diff() {
-  diff "$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')" "second"
+  diff_func "$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')" "second"
+}
+
+
+function compare() {
+  for f in hack/res/*/*;
+  do
+    go run github.com/homeport/dyff/cmd/dyff@v1.9.0 between --omit-header "$f/first.yaml" "$f/second.yaml"
+    # diff "$f/first.yaml" "$f/second.yaml"
+  done
+}
+
+function clean() {
+  rm -rf hack/tmp
+  rm -rf hack/res
 }
 
 stop_func
-rm -rf tmp
-rm -rf res
+clean
 
+echo "Render live manifests"
 first_diff
-seconf_diff
+
+echo "Render against branch"
+second_diff
+
+echo "Comparing"
+compare
+clean

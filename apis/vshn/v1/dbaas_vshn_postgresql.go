@@ -391,7 +391,7 @@ func (v *VSHNPostgreSQL) GetInstances() int {
 
 func (v *VSHNPostgreSQL) GetPDBLabels() map[string]string {
 	return map[string]string{
-		"app": "StackGresCluster",
+		"stackgres.io/cluster": "true",
 	}
 }
 

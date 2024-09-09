@@ -5,10 +5,11 @@ import (
 )
 
 const SGClusterConditionTypePendingRestart = "PendingRestart"
+const SGClusterConditionTypePendingUpgrade = "PendingUpgrade"
 
 // +kubebuilder:object:root=true
 
-// VSHNPostgreSQL is the API for creating Postgresql clusters.
+// SGCluster is the API for creating Postgresql clusters.
 type SGCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

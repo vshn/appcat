@@ -68,10 +68,15 @@ func getPendingRestart(ctx context.Context, svc *runtime.ServiceRuntime) (time.T
 		return time.Time{}, nil
 	}
 
+	if hasPendingUpgrade(*cluster.Status.Conditions) {
+		return time.Time{}, nil
+	}
+
 	for _, cond := range *cluster.Status.Conditions {
 		if cond.Type == nil || *cond.Type != sgv1.SGClusterConditionTypePendingRestart || cond.Status == nil || cond.LastTransitionTime == nil {
 			continue
 		}
+
 		status, err := strconv.ParseBool(*cond.Status)
 		if err != nil || !status {
 			continue
@@ -87,6 +92,16 @@ func getPendingRestart(ctx context.Context, svc *runtime.ServiceRuntime) (time.T
 	}
 
 	return time.Time{}, nil
+}
+
+// In case the operator was updated and the PostgreSQL clusters require a security maintenance, we ensure that it only happens during the maintenance window
+func hasPendingUpgrade(items []sgv1.SGClusterStatusConditionsItem) bool {
+	for _, i := range items {
+		if *i.Type == sgv1.SGClusterConditionTypePendingUpgrade && *i.Status == "True" {
+			return true
+		}
+	}
+	return false
 }
 
 func scheduleRestart(ctx context.Context, svc *runtime.ServiceRuntime, compName string, restartTime time.Time) error {

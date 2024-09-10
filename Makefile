@@ -209,3 +209,7 @@ api-bootstrap:
 
 .PHONY: bootstrap
 bootstrap: api-bootstrap generate ## API bootstrapping, create a new claim/composite API ready to be used
+
+.PHONY: install-proxy
+install-proxy:
+	kubectl apply -f hack/functionproxy

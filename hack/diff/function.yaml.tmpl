@@ -8,3 +8,10 @@ spec:
   # The tag here doesn't matter, as the annotation above instructs
   # crank to connect to a local grpc endpoint.
   package: ghcr.io/vshn/appcat:v4.92.0-func
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:$PNT_VERSION

@@ -2,6 +2,8 @@
 
 set -e
 
+[ -z "${KUBECONFIG}" ] && echo "Please export KUBECONFIG" && exit 1
+
 # get the state and all objects from each composite
 function get_state() {
   type="$1"
@@ -57,6 +59,15 @@ function get_running_func_version() {
   echo "${version%"-func"}"
 }
 
+function get_pnt_func_version() {
+  kubectl get function function-patch-and-transform -oyaml | yq -r '.spec.package' | cut -d ":" -f2
+}
+
+function template_func_file() {
+  PNT_VERSION=$1
+  cat "$(dirname "$0")/function.yaml.tmpl" > "$(dirname "$0")/function.yaml"
+}
+
 function diff_func() {
   run_func "$1"
   trap stop_func EXIT
@@ -92,10 +103,14 @@ function compare() {
 function clean() {
   rm -rf hack/tmp
   rm -rf hack/res
+  rm -rf "$(dirname "$0")/function.yaml"
 }
 
 stop_func
 clean
+trap clean EXIT
+
+template_func_file "$(get_pnt_func_version)"
 
 echo "Render live manifests"
 first_diff
@@ -105,4 +120,3 @@ second_diff
 
 echo "Comparing"
 compare
-clean

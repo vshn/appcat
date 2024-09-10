@@ -3,6 +3,7 @@ package nonsla
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	promV1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -37,6 +38,11 @@ func GenerateNonSLAPromRules[T client.Object](alerts Alerts) func(ctx context.Co
 			rules = append(rules, r)
 		}
 		rules = append(rules, alerts.customRules...)
+
+		// Sort the alerts to avoid random diff changes
+		sort.Slice(rules, func(i, j int) bool {
+			return rules[i].Alert < rules[j].Alert
+		})
 
 		err = generatePromeRules(elem.GetName(), elem.GetInstanceNamespace(), rules, svc)
 		if err != nil {

@@ -214,3 +214,7 @@ bootstrap: api-bootstrap generate ## API bootstrapping, create a new claim/compo
 .PHONY: install-proxy
 install-proxy:
 	kubectl apply -f hack/functionproxy
+
+.PHONY: render-diff
+render-diff: docker-build-branchtag ## Render diff between the cluter in KUBECONF and the local branch
+	hack/diff/compare.sh

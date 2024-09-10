@@ -317,7 +317,7 @@ func validatePgConf(pg *vshnv1.VSHNPostgreSQL) (fErros field.ErrorList) {
 		}
 	}
 
-	for key := range pgConf {
+	for key, _ := range pgConf {
 		if key == "listen_addresses" {
 			fErros = append(fErros, &field.Error{
 				Field:    "spec.parameters.service.postgresqlSettings[listen_addresses]",
@@ -438,7 +438,6 @@ func validatePgConf(pg *vshnv1.VSHNPostgreSQL) (fErros field.ErrorList) {
 				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
 			})
 		}
-		return fErros
 	}
-	return nil
+	return fErros
 }

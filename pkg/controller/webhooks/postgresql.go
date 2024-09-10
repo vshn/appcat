@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -105,6 +106,11 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 		})
 	}
 
+	errList := validatePgConf(pg)
+	if errList != nil {
+		allErrs = append(allErrs, errList...)
+	}
+
 	if len(allErrs) != 0 {
 		return nil, apierrors.NewInvalid(
 			pgGK,
@@ -165,6 +171,11 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 			BadValue: pg.GetName(),
 			Type:     field.ErrorTypeTooLong,
 		})
+	}
+
+	errList := validatePgConf(pg)
+	if errList != nil {
+		allErrs = append(allErrs, errList...)
 	}
 
 	// We aggregate and return all errors at the same time.
@@ -284,6 +295,150 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(pg *vshnv1.VSHNPo
 func validateVacuumRepack(vacuum, repack bool) error {
 	if !vacuum && !repack {
 		return fmt.Errorf("repack cannot be enabled without vacuum")
+	}
+	return nil
+}
+
+func validatePgConf(pg *vshnv1.VSHNPostgreSQL) (fErros field.ErrorList) {
+
+	pgConfBytes := pg.Spec.Parameters.Service.PostgreSQLSettings
+
+	pgConf := map[string]string{}
+	if pgConfBytes.Raw != nil {
+		err := json.Unmarshal(pgConfBytes.Raw, &pgConf)
+		if err != nil {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings",
+				Detail:   fmt.Sprintf("Error parsing pgConf: %s", err.Error()),
+				Type:     field.ErrorTypeInvalid,
+				BadValue: pgConfBytes,
+			})
+			return fErros
+		}
+	}
+
+	for key := range pgConf {
+		if key == "listen_addresses" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[listen_addresses]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "port" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[port]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "cluster_name" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[cluster_name]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "hot_standby" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[hot_standby]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "fsync" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[fsync]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "full_page_writes" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[full_page_writes]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "log_destination" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[log_destination]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "logging_collector" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[logging_collector]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "max_replication_slots" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[max_replication_slots]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "max_wal_senders" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[max_wal_senders]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "wal_keep_segments" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[wal_keep_segments]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "wal_level" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[wal_level]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "wal_log_hints" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[wal_log_hints]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "archive_mode" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[archive_mode]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		if key == "archive_command" {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings[archive_command]",
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+		return fErros
 	}
 	return nil
 }

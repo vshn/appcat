@@ -35,6 +35,24 @@ var (
 
 var _ webhook.CustomValidator = &PostgreSQLWebhookHandler{}
 
+var blocklist = map[string]string{
+	"listen_addresses":      "",
+	"port":                  "",
+	"cluster_name":          "",
+	"hot_standby":           "",
+	"fsync":                 "",
+	"full_page_writes":      "",
+	"log_destination":       "",
+	"logging_collector":     "",
+	"max_replication_slots": "",
+	"max_wal_senders":       "",
+	"wal_keep_segments":     "",
+	"wal_level":             "",
+	"wal_log_hints":         "",
+	"archive_mode":          "",
+	"archive_command":       "",
+}
+
 // PostgreSQLWebhookHandler handles all quota webhooks concerning postgresql by vshn.
 type PostgreSQLWebhookHandler struct {
 	DefaultWebhookHandler
@@ -315,24 +333,6 @@ func validatePgConf(pg *vshnv1.VSHNPostgreSQL) (fErros field.ErrorList) {
 			})
 			return fErros
 		}
-	}
-
-	blocklist := map[string]string{
-		"listen_addresses":      "",
-		"port":                  "",
-		"cluster_name":          "",
-		"hot_standby":           "",
-		"fsync":                 "",
-		"full_page_writes":      "",
-		"log_destination":       "",
-		"logging_collector":     "",
-		"max_replication_slots": "",
-		"max_wal_senders":       "",
-		"wal_keep_segments":     "",
-		"wal_level":             "",
-		"wal_log_hints":         "",
-		"archive_mode":          "",
-		"archive_command":       "",
 	}
 
 	for key := range pgConf {

@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -33,6 +34,24 @@ var (
 )
 
 var _ webhook.CustomValidator = &PostgreSQLWebhookHandler{}
+
+var blocklist = map[string]string{
+	"listen_addresses":      "",
+	"port":                  "",
+	"cluster_name":          "",
+	"hot_standby":           "",
+	"fsync":                 "",
+	"full_page_writes":      "",
+	"log_destination":       "",
+	"logging_collector":     "",
+	"max_replication_slots": "",
+	"max_wal_senders":       "",
+	"wal_keep_segments":     "",
+	"wal_level":             "",
+	"wal_log_hints":         "",
+	"archive_mode":          "",
+	"archive_command":       "",
+}
 
 // PostgreSQLWebhookHandler handles all quota webhooks concerning postgresql by vshn.
 type PostgreSQLWebhookHandler struct {
@@ -105,6 +124,11 @@ func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runti
 		})
 	}
 
+	errList := validatePgConf(pg)
+	if errList != nil {
+		allErrs = append(allErrs, errList...)
+	}
+
 	if len(allErrs) != 0 {
 		return nil, apierrors.NewInvalid(
 			pgGK,
@@ -165,6 +189,11 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 			BadValue: pg.GetName(),
 			Type:     field.ErrorTypeTooLong,
 		})
+	}
+
+	errList := validatePgConf(pg)
+	if errList != nil {
+		allErrs = append(allErrs, errList...)
 	}
 
 	// We aggregate and return all errors at the same time.
@@ -286,4 +315,35 @@ func validateVacuumRepack(vacuum, repack bool) error {
 		return fmt.Errorf("repack cannot be enabled without vacuum")
 	}
 	return nil
+}
+
+func validatePgConf(pg *vshnv1.VSHNPostgreSQL) (fErros field.ErrorList) {
+
+	pgConfBytes := pg.Spec.Parameters.Service.PostgreSQLSettings
+
+	pgConf := map[string]string{}
+	if pgConfBytes.Raw != nil {
+		err := json.Unmarshal(pgConfBytes.Raw, &pgConf)
+		if err != nil {
+			fErros = append(fErros, &field.Error{
+				Field:    "spec.parameters.service.postgresqlSettings",
+				Detail:   fmt.Sprintf("Error parsing pgConf: %s", err.Error()),
+				Type:     field.ErrorTypeInvalid,
+				BadValue: pgConfBytes,
+			})
+			return fErros
+		}
+	}
+
+	for key := range pgConf {
+		if _, ok := blocklist[key]; ok {
+			fErros = append(fErros, &field.Error{
+				Field:    fmt.Sprintf("spec.parameters.service.postgresqlSettings[%s]", key),
+				Type:     field.ErrorTypeForbidden,
+				BadValue: key,
+				Detail:   "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist",
+			})
+		}
+	}
+	return fErros
 }

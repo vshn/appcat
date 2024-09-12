@@ -12,6 +12,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -230,6 +231,103 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	pgInvalid.Spec.Parameters.Instances = 1
 	pgInvalid.Spec.Parameters.Service.ServiceLevel = "guaranteed"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
+	assert.Error(t, err)
+
+	// check pgSettings
+	pgValid := pgOrig.DeepCopy()
+	pgValid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
+		Raw: []byte(`{"foo": "bar"}`),
+	}
+	_, err = handler.ValidateCreate(ctx, pgValid)
+	assert.NoError(t, err)
+
+	// check pgSettings
+	pgInvalid = pgOrig.DeepCopy()
+	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
+		Raw: []byte(`{"fsync": "bar"}`),
+	}
+	_, err = handler.ValidateCreate(ctx, pgInvalid)
+	assert.Error(t, err)
+
+	// check pgSettings
+	pgInvalid = pgOrig.DeepCopy()
+	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
+		Raw: []byte(`{"fsync": "bar", "wal_level": "foo", "max_connections": "bar"}`),
+	}
+
+	_, err = handler.ValidateCreate(ctx, pgInvalid)
+	assert.Error(t, err)
+}
+
+func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
+	ctx := context.TODO()
+	claimNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "claimns",
+			Labels: map[string]string{
+				utils.OrgLabelName: "myorg",
+			},
+		},
+	}
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(claimNS).
+		Build()
+
+	viper.Set("PLANS_NAMESPACE", "testns")
+	viper.AutomaticEnv()
+
+	handler := PostgreSQLWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:    fclient,
+			log:       logr.Discard(),
+			withQuota: false,
+			obj:       &vshnv1.VSHNPostgreSQL{},
+			name:      "postgresql",
+		},
+	}
+	pgOrig := &vshnv1.VSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "claimns",
+		},
+		Spec: vshnv1.VSHNPostgreSQLSpec{
+			Parameters: vshnv1.VSHNPostgreSQLParameters{
+				Size: vshnv1.VSHNSizeSpec{
+					CPU:    "500m",
+					Memory: "1Gi",
+				},
+				Instances: 1,
+				Service: vshnv1.VSHNPostgreSQLServiceSpec{
+					RepackEnabled: true,
+				},
+			},
+		},
+	}
+
+	// check pgSettings with single good setting
+	pgValid := pgOrig.DeepCopy()
+	pgValid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
+		Raw: []byte(`{"foo": "bar"}`),
+	}
+	_, err := handler.ValidateUpdate(ctx, pgOrig, pgValid)
+	assert.NoError(t, err)
+
+	// check pgSettings with single bad setting
+	pgInvalid := pgOrig.DeepCopy()
+	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
+		Raw: []byte(`{"fsync": "bar"}`),
+	}
+	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
+	assert.Error(t, err)
+
+	// check pgSettings, startiong with valid settings
+	pgInvalid = pgOrig.DeepCopy()
+	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
+		Raw: []byte(`{"foo": "bar", "fsync": "bar", "wal_level": "foo", "max_connections": "bar"}`),
+	}
+
+	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
 	assert.Error(t, err)
 }
 

@@ -1,7 +1,7 @@
 package v1
 
 import (
-	v1 "github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -34,7 +34,7 @@ type ExoscaleRedisSpec struct {
 	Parameters ExoscaleRedisParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef vshnv1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
 type ExoscaleRedisParameters struct {
@@ -59,5 +59,5 @@ type ExoscaleRedisServiceSpec struct {
 
 type ExoscaleRedisStatus struct {
 	// RedisConditions contains the status conditions of the backing object.
-	RedisConditions []v1.Condition `json:"redisConditions,omitempty"`
+	RedisConditions []vshnv1.Condition `json:"redisConditions,omitempty"`
 }

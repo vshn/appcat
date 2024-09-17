@@ -3,6 +3,7 @@ package v1
 import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,7 +37,7 @@ type ObjectBucketSpec struct {
 	Parameters ObjectBucketParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef LocalObjectReference            `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef vshnv1.LocalObjectReference     `json:"writeConnectionSecretToRef,omitempty"`
 	CompositionReference       crossplane.CompositionReference `json:"compositionRef,omitempty"`
 }
 
@@ -64,15 +65,15 @@ type ObjectBucketParameters struct {
 	BucketDeletionPolicy BucketDeletionPolicy `json:"bucketDeletionPolicy,omitempty"`
 
 	// Security defines the security of a service
-	Security Security `json:"security,omitempty"`
+	Security vshnv1.Security `json:"security,omitempty"`
 }
 
 // ObjectBucketStatus reflects the observed state of a ObjectBucket.
 type ObjectBucketStatus struct {
 	// AccessUserConditions contains a copy of the claim's underlying user account conditions.
-	AccessUserConditions []Condition `json:"accessUserConditions,omitempty"`
+	AccessUserConditions []vshnv1.Condition `json:"accessUserConditions,omitempty"`
 	// BucketConditions contains a copy of the claim's underlying bucket conditions.
-	BucketConditions []Condition `json:"bucketConditions,omitempty"`
+	BucketConditions []vshnv1.Condition `json:"bucketConditions,omitempty"`
 
 	xpv1.ResourceStatus `json:",inline"`
 }
@@ -102,13 +103,6 @@ type NamespacedName struct {
 	Name      string `json:"name,omitempty"`
 }
 
-// Security defines the security of a service
-type Security struct {
-	// DeletionProtection blocks the deletion of the instance if it is enabled (enabled by default)
-	// +kubebuilder:default=true
-	DeletionProtection bool `json:"deletionProtection,omitempty"`
-}
-
-func (v *ObjectBucket) GetSecurity() *Security {
+func (v *ObjectBucket) GetSecurity() *vshnv1.Security {
 	return &v.Spec.Parameters.Security
 }

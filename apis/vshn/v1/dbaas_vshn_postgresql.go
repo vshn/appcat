@@ -5,7 +5,6 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
-	v1 "github.com/vshn/appcat/v4/apis/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -227,17 +226,17 @@ type VSHNPostgreSQLStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// PostgreSQLConditions contains the status conditions of the backing object.
-	PostgreSQLConditions         []v1.Condition `json:"postgresqlConditions,omitempty"`
-	NamespaceConditions          []v1.Condition `json:"namespaceConditions,omitempty"`
-	ProfileConditions            []v1.Condition `json:"profileConditions,omitempty"`
-	PGConfigConditions           []v1.Condition `json:"pgconfigConditions,omitempty"`
-	PGClusterConditions          []v1.Condition `json:"pgclusterConditions,omitempty"`
-	SecretsConditions            []v1.Condition `json:"secretConditions,omitempty"`
-	ObjectBucketConditions       []v1.Condition `json:"objectBucketConditions,omitempty"`
-	ObjectBackupConfigConditions []v1.Condition `json:"objectBackupConfigConditions,omitempty"`
-	NetworkPolicyConditions      []v1.Condition `json:"networkPolicyConditions,omitempty"`
-	LocalCAConditions            []v1.Condition `json:"localCAConditions,omitempty"`
-	CertificateConditions        []v1.Condition `json:"certificateConditions,omitempty"`
+	PostgreSQLConditions         []Condition `json:"postgresqlConditions,omitempty"`
+	NamespaceConditions          []Condition `json:"namespaceConditions,omitempty"`
+	ProfileConditions            []Condition `json:"profileConditions,omitempty"`
+	PGConfigConditions           []Condition `json:"pgconfigConditions,omitempty"`
+	PGClusterConditions          []Condition `json:"pgclusterConditions,omitempty"`
+	SecretsConditions            []Condition `json:"secretConditions,omitempty"`
+	ObjectBucketConditions       []Condition `json:"objectBucketConditions,omitempty"`
+	ObjectBackupConfigConditions []Condition `json:"objectBackupConfigConditions,omitempty"`
+	NetworkPolicyConditions      []Condition `json:"networkPolicyConditions,omitempty"`
+	LocalCAConditions            []Condition `json:"localCAConditions,omitempty"`
+	CertificateConditions        []Condition `json:"certificateConditions,omitempty"`
 
 	// IsEOL indicates if this instance is using an EOL version of PostgreSQL.
 	IsEOL bool `json:"isEOL,omitempty"`

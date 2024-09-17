@@ -1,7 +1,7 @@
 package v1
 
 import (
-	v1 "github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -35,7 +35,7 @@ type ExoscalePostgreSQLSpec struct {
 	Parameters ExoscalePostgreSQLParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef vshnv1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
 type ExoscalePostgreSQLParameters struct {
@@ -71,5 +71,5 @@ type ExoscalePostgreSQLServiceSpec struct {
 
 type ExoscalePostgreSQLStatus struct {
 	// PostgreSQLConditions contains the status conditions of the backing object.
-	PostgreSQLConditions []v1.Condition `json:"postgresqlConditions,omitempty"`
+	PostgreSQLConditions []vshnv1.Condition `json:"postgresqlConditions,omitempty"`
 }

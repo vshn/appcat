@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	v1 "github.com/vshn/appcat/v4/apis/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -55,12 +55,12 @@ func (p *ObjectbucketDeletionProtectionHandler) ValidateDelete(ctx context.Conte
 
 	allErrs := field.ErrorList{}
 
-	bucket, ok := obj.(common.Composite)
+	bucket, ok := obj.(*v1.ObjectBucket)
 	if !ok {
 		return nil, fmt.Errorf("object is not valid")
 	}
 
-	allErrs = GetClaimDeletionProtection(bucket.GetSecurity(), allErrs)
+	allErrs = GetClaimDeletionProtection(&bucket.Spec.Parameters.Security, allErrs)
 
 	if len(allErrs) != 0 {
 		return nil, apierrors.NewInvalid(

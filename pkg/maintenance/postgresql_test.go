@@ -403,42 +403,40 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 			server:           getVersionTestHTTPServer(t),
 			shouldSkipRepack: true,
 		},
-		// This test fills up the watcher channel, which is currently hardcoded to size 100
-		// See https://github.com/kubernetes/kubernetes/issues/116700
-		// {
-		// 	name:         "GivenMaintenanceTooLong_WithUnrelatedSecupdate_ThenExpectNoRepack",
-		// 	maintTimeout: 2 * time.Second,
-		// 	objs: []client.Object{
-		// 		&stackgresv1.SGCluster{
-		// 			ObjectMeta: metav1.ObjectMeta{
-		// 				Name:      "cluster",
-		// 				Namespace: "default",
-		// 			},
-		// 			Spec: stackgresv1.SGClusterSpec{
-		// 				Postgres: stackgresv1.SGClusterSpecPostgres{
-		// 					Version: "15.0",
-		// 				},
-		// 			},
-		// 		},
-		// 		&stackgresv1.SGDbOps{
-		// 			ObjectMeta: metav1.ObjectMeta{
-		// 				Name:      "unrelated-securitymaintenance",
-		// 				Namespace: "default",
-		// 			},
-		// 			Spec: stackgresv1.SGDbOpsSpec{
-		// 				Op:         "securityUpgrade",
-		// 				SgCluster:  "cluster",
-		// 				MaxRetries: pointer.Int(1),
-		// 				SecurityUpgrade: &stackgresv1.SGDbOpsSpecSecurityUpgrade{
-		// 					Method: pointer.String("InPlace"),
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// 	server:           getVersionTestHTTPServer(t),
-		// 	updatedOps:       "securityUpgrade",
-		// 	shouldSkipRepack: true,
-		// },
+		{
+			name:         "GivenMaintenanceTooLong_WithUnrelatedSecupdate_ThenExpectNoRepack",
+			maintTimeout: 2 * time.Second,
+			objs: []client.Object{
+				&stackgresv1.SGCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster",
+						Namespace: "default",
+					},
+					Spec: stackgresv1.SGClusterSpec{
+						Postgres: stackgresv1.SGClusterSpecPostgres{
+							Version: "15.0",
+						},
+					},
+				},
+				&stackgresv1.SGDbOps{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "unrelated-securitymaintenance",
+						Namespace: "default",
+					},
+					Spec: stackgresv1.SGDbOpsSpec{
+						Op:         "securityUpgrade",
+						SgCluster:  "cluster",
+						MaxRetries: pointer.Int(1),
+						SecurityUpgrade: &stackgresv1.SGDbOpsSpecSecurityUpgrade{
+							Method: pointer.String("InPlace"),
+						},
+					},
+				},
+			},
+			server:           getVersionTestHTTPServer(t),
+			updatedOps:       "securityUpgrade",
+			shouldSkipRepack: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

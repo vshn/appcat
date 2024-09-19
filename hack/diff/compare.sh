@@ -10,6 +10,8 @@ function get_state() {
   name="$2"
   dir_name="hack/tmp/$type-$name"
 
+  echo "getting state of $type/$name"
+
   mkdir -p "$dir_name"
 
   while read -r res_type res_name
@@ -49,7 +51,7 @@ function run_single_diff() {
 
   kubectl get "$type" "$name" -oyaml > hack/tmp/xr.yaml
   comp=$(kubectl get "$type" "$name" -oyaml | yq -r '.spec.compositionRef.name')
-  echo "composition: $comp"
+  echo "composition: $comp $type/$name"
   kubectl get compositions.apiextensions.crossplane.io "$comp" -oyaml > hack/tmp/composition.yaml
   go run github.com/crossplane/crossplane/cmd/crank@v1.17.0 render hack/tmp/xr.yaml hack/tmp/composition.yaml hack/diff/function.yaml -o "$dir_name" > "$res_dir_name/$3.yaml"
 }
@@ -65,21 +67,25 @@ function get_pnt_func_version() {
 
 function template_func_file() {
   export PNT_VERSION=$1
+  export APPCAT_VERSION=$2
   cat "$(dirname "$0")/function.yaml.tmpl" | envsubst > "$(dirname "$0")/function.yaml"
 }
 
 function diff_func() {
-  run_func "$1"
+  # run_func "$1"
   trap stop_func EXIT
 
   while read -r type name rest
   do
-    get_state "$type" "$name"
+    # we only get the state on the first run for two reasons:
+    # speed things up
+    # avoid any diffs that could come from actual changes on the cluster
+    [ "first" == "$2" ] && get_state "$type" "$name"
     get_claim_namespace "$type" "$name"
     run_single_diff "$type" "$name" "$2"
   done <<< "$(kubectl get composite --no-headers | sed 's/\// /g' )"
 
-  stop_func
+  # stop_func
 }
 
 # do the diff
@@ -115,11 +121,11 @@ function clean() {
   rm -rf "$(dirname "$0")/function.yaml"
 }
 
-stop_func
+# stop_func
 clean
 trap clean EXIT
 
-template_func_file "$(get_pnt_func_version)"
+template_func_file "$(get_pnt_func_version)" "$(get_running_func_version)"
 
 echo "Render live manifests"
 first_diff

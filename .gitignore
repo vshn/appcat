@@ -30,3 +30,4 @@ __debug_bin*
 
 hack/res
 hack/tmp
+hack/diff/function.yaml

@@ -3,15 +3,15 @@ kind: Function
 metadata:
   name: function-appcat
   annotations:
-    render.crossplane.io/runtime: Development
+    render.crossplane.io/runtime-docker-cleanup: Stop
 spec:
-  # The tag here doesn't matter, as the annotation above instructs
-  # crank to connect to a local grpc endpoint.
-  package: ghcr.io/vshn/appcat:v4.92.0-func
+  package: ghcr.io/vshn/appcat:$APPCAT_VERSION
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:
   name: function-patch-and-transform
+  annotations:
+    render.crossplane.io/runtime-docker-cleanup: Stop
 spec:
   package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:$PNT_VERSION

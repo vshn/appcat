@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -35,7 +35,7 @@ type ExoscaleKafkaSpec struct {
 	Parameters ExoscaleKafkaParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef vshnv1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
 type ExoscaleKafkaParameters struct {
@@ -75,7 +75,7 @@ type ExoscaleKafkaServiceSpec struct {
 
 type ExoscaleKafkaStatus struct {
 	// KafkaConditions contains the status conditions of the backing object.
-	KafkaConditions []v1.Condition `json:"kafkaConditions,omitempty"`
+	KafkaConditions []vshnv1.Condition `json:"kafkaConditions,omitempty"`
 
 	// The actual observed Kafka version.
 	Version string `json:"version,omitempty"`

@@ -5,7 +5,7 @@
 package v1
 
 import (
-	apisv1 "github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -189,7 +189,7 @@ func (in *ExoscaleKafkaStatus) DeepCopyInto(out *ExoscaleKafkaStatus) {
 	*out = *in
 	if in.KafkaConditions != nil {
 		in, out := &in.KafkaConditions, &out.KafkaConditions
-		*out = make([]apisv1.Condition, len(*in))
+		*out = make([]vshnv1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -292,7 +292,7 @@ func (in *ExoscaleMySQLStatus) DeepCopyInto(out *ExoscaleMySQLStatus) {
 	*out = *in
 	if in.MySQLConditions != nil {
 		in, out := &in.MySQLConditions, &out.MySQLConditions
-		*out = make([]apisv1.Condition, len(*in))
+		*out = make([]vshnv1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -395,7 +395,7 @@ func (in *ExoscaleOpenSearchStatus) DeepCopyInto(out *ExoscaleOpenSearchStatus) 
 	*out = *in
 	if in.OpenSearchConditions != nil {
 		in, out := &in.OpenSearchConditions, &out.OpenSearchConditions
-		*out = make([]apisv1.Condition, len(*in))
+		*out = make([]vshnv1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -498,7 +498,7 @@ func (in *ExoscalePostgreSQLStatus) DeepCopyInto(out *ExoscalePostgreSQLStatus) 
 	*out = *in
 	if in.PostgreSQLConditions != nil {
 		in, out := &in.PostgreSQLConditions, &out.PostgreSQLConditions
-		*out = make([]apisv1.Condition, len(*in))
+		*out = make([]vshnv1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -600,7 +600,7 @@ func (in *ExoscaleRedisStatus) DeepCopyInto(out *ExoscaleRedisStatus) {
 	*out = *in
 	if in.RedisConditions != nil {
 		in, out := &in.RedisConditions, &out.RedisConditions
-		*out = make([]apisv1.Condition, len(*in))
+		*out = make([]vshnv1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

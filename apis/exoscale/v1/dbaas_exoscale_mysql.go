@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -35,7 +35,7 @@ type ExoscaleMySQLSpec struct {
 	Parameters ExoscaleMySQLParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef vshnv1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
 type ExoscaleMySQLParameters struct {
@@ -71,5 +71,5 @@ type ExoscaleMySQLServiceSpec struct {
 
 type ExoscaleMySQLStatus struct {
 	// MySQLConditions contains the status conditions of the backing object.
-	MySQLConditions []v1.Condition `json:"mysqlConditions,omitempty"`
+	MySQLConditions []vshnv1.Condition `json:"mysqlConditions,omitempty"`
 }

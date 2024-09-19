@@ -197,7 +197,7 @@ get-crds:
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-helm provider-helm apis/release apis/helm
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-kubernetes provider-kubernetes apis/object/v1alpha2 apis/kubernetes
 	# There is currently a bug with the serialization if `inline` and  `omitempty` are set: https://github.com/crossplane/function-sdk-go/issues/161
-	sed -i 's/inline,omitempty/inline/g' apis/helm/release/v1beta1/types.go
+	$(sed) -i 's/inline,omitempty/inline/g' apis/helm/release/v1beta1/types.go
 	# provider-sql needs manual fixes... Running this every time would break them.
 	# The crossplane code generator only works if the code is valid, but the code is not valid until the code generator has run...
 	#./hack/get_crds.sh https://github.com/crossplane-contrib/provider-sql provider-sql apis/ apis/sql

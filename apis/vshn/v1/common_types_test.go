@@ -1,10 +1,11 @@
 package v1
 
 import (
-	"github.com/stretchr/testify/assert"
-	"k8s.io/utils/ptr"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/ptr"
 )
 
 func Test_GetTime(t *testing.T) {

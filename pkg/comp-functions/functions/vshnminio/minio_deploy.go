@@ -296,7 +296,7 @@ func createSliBucket(comp *vshnv1.VSHNMinio, xminioName string, svc *runtime.Ser
 				BucketName: SLIBucketName,
 				Region:     "us-east-1",
 			},
-			WriteConnectionSecretToRef: v1.LocalObjectReference{
+			WriteConnectionSecretToRef: vshnv1.LocalObjectReference{
 				Name:      SLIBucketName,
 				Namespace: comp.GetInstanceNamespace(),
 			},

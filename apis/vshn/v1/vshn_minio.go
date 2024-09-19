@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	v1 "github.com/vshn/appcat/v4/apis/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,7 +44,7 @@ type VSHNMinioSpec struct {
 	Parameters VSHNMinioParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
 // VSHNMinioParameters are the configurable fields of a VSHNMinio.
@@ -96,7 +95,7 @@ type VSHNMinioServiceSpec struct {
 // VSHNMinioStatus reflects the observed state of a VSHNMinio.
 type VSHNMinioStatus struct {
 	// MinioConditions contains the status conditions of the backing object.
-	NamespaceConditions []v1.Condition `json:"namespaceConditions,omitempty"`
+	NamespaceConditions []Condition `json:"namespaceConditions,omitempty"`
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

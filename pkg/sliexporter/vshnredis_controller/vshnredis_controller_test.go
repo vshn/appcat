@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	v1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
@@ -585,7 +584,7 @@ func newTestVSHNRedis(namespace, name, cred string, tlsEnabled bool) (*corev1.Na
 					TLSAuthClients: tlsEnabled,
 				},
 			},
-			WriteConnectionSecretToRef: v1.LocalObjectReference{
+			WriteConnectionSecretToRef: vshnv1.LocalObjectReference{
 				Name:      cred,
 				Namespace: namespace,
 			},

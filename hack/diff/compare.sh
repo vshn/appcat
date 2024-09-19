@@ -64,8 +64,8 @@ function get_pnt_func_version() {
 }
 
 function template_func_file() {
-  PNT_VERSION=$1
-  cat "$(dirname "$0")/function.yaml.tmpl" > "$(dirname "$0")/function.yaml"
+  export PNT_VERSION=$1
+  cat "$(dirname "$0")/function.yaml.tmpl" | envsubst > "$(dirname "$0")/function.yaml"
 }
 
 function diff_func() {
@@ -95,7 +95,16 @@ function second_diff() {
 function compare() {
   for f in hack/res/*/*;
   do
-    go run github.com/homeport/dyff/cmd/dyff@v1.9.0 between --omit-header "$f/first.yaml" "$f/second.yaml"
+    # ignore changed array order
+    # exclude nested managedFields in kube objects
+    # exclude nested resourceVersion
+    # don't print the huge dyff header
+    go run github.com/homeport/dyff/cmd/dyff@v1.9.0 between \
+    -i \
+    --exclude-regexp "spec.forProvider.manifest.metadata.managedFields.*" \
+    --exclude "spec.forProvider.manifest.metadata.resourceVersion" \
+    --omit-header \
+    "$f/first.yaml" "$f/second.yaml"
     # diff "$f/first.yaml" "$f/second.yaml"
   done
 }

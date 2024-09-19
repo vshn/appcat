@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/cmd"
 )
@@ -22,6 +23,16 @@ func init() {
 
 func main() {
 
+	cmd, _, err := rootCmd.Find(os.Args[1:])
+
+	// default to functions if no cmd is given
+	// necessary to properly support `crank render`
+	// from https://github.com/spf13/cobra/issues/823#issuecomment-870027246
+	if err == nil && cmd.Use == rootCmd.Use && cmd.Flags().Parse(os.Args[1:]) != pflag.ErrHelp {
+		args := append([]string{"functions"}, os.Args[1:]...)
+		rootCmd.SetArgs(args)
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -35,6 +46,7 @@ var (
 		Short:             "AppCat",
 		Long:              "AppCat controllers, api servers, grpc servers and probers",
 		PersistentPreRunE: setupLogging,
+		Use:               "appcat",
 	}
 )
 

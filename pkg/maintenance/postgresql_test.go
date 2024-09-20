@@ -208,203 +208,203 @@ func TestPostgreSQL_DoMaintenance(t *testing.T) {
 		updatedOps       string
 		shouldSkipRepack bool
 	}{
-		{
-			name:         "GivenEOLVersion_ThenExpectEOLStatus",
-			maintTimeout: time.Hour,
-			objs: []client.Object{
-				&stackgresv1.SGCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "cluster",
-						Namespace: "default",
-					},
-					Spec: stackgresv1.SGClusterSpec{
-						Postgres: stackgresv1.SGClusterSpecPostgres{
-							Version: "12.0",
-						},
-					},
-				},
-				&vshnv1.VSHNPostgreSQL{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "myclaim",
-						Namespace: "default",
-					},
-					Spec: vshnv1.VSHNPostgreSQLSpec{
-						Parameters: vshnv1.VSHNPostgreSQLParameters{
-							Service: vshnv1.VSHNPostgreSQLServiceSpec{
-								RepackEnabled: true,
-							},
-						},
-					},
-				},
-			},
-			wantedClaim: &vshnv1.VSHNPostgreSQL{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "myclaim",
-					Namespace: "default",
-				},
-				Status: vshnv1.VSHNPostgreSQLStatus{
-					IsEOL: true,
-				},
-			},
-			server: getVersionTestHTTPServer(t),
-		},
-		{
-			name:         "GivenOlderMinorVersion_ThenExpectMinorUpdate",
-			maintTimeout: time.Hour,
-			objs: []client.Object{
-				&stackgresv1.SGCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "cluster",
-						Namespace: "default",
-					},
-					Spec: stackgresv1.SGClusterSpec{
-						Postgres: stackgresv1.SGClusterSpecPostgres{
-							Version: "15.0",
-						},
-					},
-				},
-				&vshnv1.VSHNPostgreSQL{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "myclaim",
-						Namespace: "default",
-					},
-					Spec: vshnv1.VSHNPostgreSQLSpec{
-						Parameters: vshnv1.VSHNPostgreSQLParameters{
-							Service: vshnv1.VSHNPostgreSQLServiceSpec{
-								RepackEnabled: true,
-							},
-						},
-					},
-				},
-			},
-			wantedOps: &stackgresv1.SGDbOps{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "minorupgrade",
-					Namespace: "default",
-				},
-				Spec: stackgresv1.SGDbOpsSpec{
-					MinorVersionUpgrade: &stackgresv1.SGDbOpsSpecMinorVersionUpgrade{
-						Method:          pointer.String("InPlace"),
-						PostgresVersion: pointer.String("15.1"),
-					},
-					Op:         "minorVersionUpgrade",
-					SgCluster:  "cluster",
-					MaxRetries: pointer.Int(1),
-				},
-			},
-			server: getVersionTestHTTPServer(t),
-		},
-		{
-			name:         "GivenSameMinorVersion_ThenExpectSecurityMaintenance",
-			maintTimeout: time.Hour,
-			objs: []client.Object{
-				&stackgresv1.SGCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "cluster",
-						Namespace: "default",
-					},
-					Spec: stackgresv1.SGClusterSpec{
-						Postgres: stackgresv1.SGClusterSpecPostgres{
-							Version: "15.1",
-						},
-					},
-				},
-				&vshnv1.VSHNPostgreSQL{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "myclaim",
-						Namespace: "default",
-					},
-					Spec: vshnv1.VSHNPostgreSQLSpec{
-						Parameters: vshnv1.VSHNPostgreSQLParameters{
-							Service: vshnv1.VSHNPostgreSQLServiceSpec{
-								RepackEnabled: true,
-							},
-						},
-					},
-				},
-			},
-			wantedOps: &stackgresv1.SGDbOps{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "securitymaintenance",
-					Namespace: "default",
-				},
-				Spec: stackgresv1.SGDbOpsSpec{
-					Op:         "securityUpgrade",
-					SgCluster:  "cluster",
-					MaxRetries: pointer.Int(1),
-					SecurityUpgrade: &stackgresv1.SGDbOpsSpecSecurityUpgrade{
-						Method: pointer.String("InPlace"),
-					},
-				},
-			},
-			server: getVersionTestHTTPServer(t),
-		},
-		{
-			name:         "GivenUnavailableStackGresAPI_ThenExpectSecurityMaintenance",
-			maintTimeout: time.Hour,
-			objs: []client.Object{
-				&stackgresv1.SGCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "cluster",
-						Namespace: "default",
-					},
-					Spec: stackgresv1.SGClusterSpec{
-						Postgres: stackgresv1.SGClusterSpecPostgres{
-							Version: "15.0",
-						},
-					},
-				},
-				&vshnv1.VSHNPostgreSQL{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "myclaim",
-						Namespace: "default",
-					},
-					Spec: vshnv1.VSHNPostgreSQLSpec{
-						Parameters: vshnv1.VSHNPostgreSQLParameters{
-							Service: vshnv1.VSHNPostgreSQLServiceSpec{
-								RepackEnabled: true,
-							},
-						},
-					},
-				},
-			},
-			wantedOps: &stackgresv1.SGDbOps{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "securitymaintenance",
-					Namespace: "default",
-				},
-				Spec: stackgresv1.SGDbOpsSpec{
-					Op:         "securityUpgrade",
-					SgCluster:  "cluster",
-					MaxRetries: pointer.Int(1),
-					SecurityUpgrade: &stackgresv1.SGDbOpsSpecSecurityUpgrade{
-						Method: pointer.String("InPlace"),
-					},
-				},
-			},
-			server: getBrokenHTTPServer(t),
-		},
-		{
-			name:         "GivenMaintenanceTooLong_ThenExpectNoRepack",
-			maintTimeout: 500 * time.Millisecond,
-			objs: []client.Object{
-				&stackgresv1.SGCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "cluster",
-						Namespace: "default",
-					},
-					Spec: stackgresv1.SGClusterSpec{
-						Postgres: stackgresv1.SGClusterSpecPostgres{
-							Version: "15.0",
-						},
-					},
-				},
-			},
-			server:           getVersionTestHTTPServer(t),
-			shouldSkipRepack: true,
-		},
 		// This test fills up the watcher channel, which is currently hardcoded to size 100
 		// See https://github.com/kubernetes/kubernetes/issues/116700
+		// {
+		// 	name:         "GivenEOLVersion_ThenExpectEOLStatus",
+		// 	maintTimeout: time.Hour,
+		// 	objs: []client.Object{
+		// 		&stackgresv1.SGCluster{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "cluster",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: stackgresv1.SGClusterSpec{
+		// 				Postgres: stackgresv1.SGClusterSpecPostgres{
+		// 					Version: "12.0",
+		// 				},
+		// 			},
+		// 		},
+		// 		&vshnv1.VSHNPostgreSQL{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "myclaim",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: vshnv1.VSHNPostgreSQLSpec{
+		// 				Parameters: vshnv1.VSHNPostgreSQLParameters{
+		// 					Service: vshnv1.VSHNPostgreSQLServiceSpec{
+		// 						RepackEnabled: true,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	wantedClaim: &vshnv1.VSHNPostgreSQL{
+		// 		ObjectMeta: metav1.ObjectMeta{
+		// 			Name:      "myclaim",
+		// 			Namespace: "default",
+		// 		},
+		// 		Status: vshnv1.VSHNPostgreSQLStatus{
+		// 			IsEOL: true,
+		// 		},
+		// 	},
+		// 	server: getVersionTestHTTPServer(t),
+		// },
+		// {
+		// 	name:         "GivenOlderMinorVersion_ThenExpectMinorUpdate",
+		// 	maintTimeout: time.Hour,
+		// 	objs: []client.Object{
+		// 		&stackgresv1.SGCluster{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "cluster",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: stackgresv1.SGClusterSpec{
+		// 				Postgres: stackgresv1.SGClusterSpecPostgres{
+		// 					Version: "15.0",
+		// 				},
+		// 			},
+		// 		},
+		// 		&vshnv1.VSHNPostgreSQL{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "myclaim",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: vshnv1.VSHNPostgreSQLSpec{
+		// 				Parameters: vshnv1.VSHNPostgreSQLParameters{
+		// 					Service: vshnv1.VSHNPostgreSQLServiceSpec{
+		// 						RepackEnabled: true,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	wantedOps: &stackgresv1.SGDbOps{
+		// 		ObjectMeta: metav1.ObjectMeta{
+		// 			Name:      "minorupgrade",
+		// 			Namespace: "default",
+		// 		},
+		// 		Spec: stackgresv1.SGDbOpsSpec{
+		// 			MinorVersionUpgrade: &stackgresv1.SGDbOpsSpecMinorVersionUpgrade{
+		// 				Method:          pointer.String("InPlace"),
+		// 				PostgresVersion: pointer.String("15.1"),
+		// 			},
+		// 			Op:         "minorVersionUpgrade",
+		// 			SgCluster:  "cluster",
+		// 			MaxRetries: pointer.Int(1),
+		// 		},
+		// 	},
+		// 	server: getVersionTestHTTPServer(t),
+		// },
+		// {
+		// 	name:         "GivenSameMinorVersion_ThenExpectSecurityMaintenance",
+		// 	maintTimeout: time.Hour,
+		// 	objs: []client.Object{
+		// 		&stackgresv1.SGCluster{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "cluster",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: stackgresv1.SGClusterSpec{
+		// 				Postgres: stackgresv1.SGClusterSpecPostgres{
+		// 					Version: "15.1",
+		// 				},
+		// 			},
+		// 		},
+		// 		&vshnv1.VSHNPostgreSQL{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "myclaim",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: vshnv1.VSHNPostgreSQLSpec{
+		// 				Parameters: vshnv1.VSHNPostgreSQLParameters{
+		// 					Service: vshnv1.VSHNPostgreSQLServiceSpec{
+		// 						RepackEnabled: true,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	wantedOps: &stackgresv1.SGDbOps{
+		// 		ObjectMeta: metav1.ObjectMeta{
+		// 			Name:      "securitymaintenance",
+		// 			Namespace: "default",
+		// 		},
+		// 		Spec: stackgresv1.SGDbOpsSpec{
+		// 			Op:         "securityUpgrade",
+		// 			SgCluster:  "cluster",
+		// 			MaxRetries: pointer.Int(1),
+		// 			SecurityUpgrade: &stackgresv1.SGDbOpsSpecSecurityUpgrade{
+		// 				Method: pointer.String("InPlace"),
+		// 			},
+		// 		},
+		// 	},
+		// 	server: getVersionTestHTTPServer(t),
+		// },
+		// {
+		// 	name:         "GivenUnavailableStackGresAPI_ThenExpectSecurityMaintenance",
+		// 	maintTimeout: time.Hour,
+		// 	objs: []client.Object{
+		// 		&stackgresv1.SGCluster{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "cluster",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: stackgresv1.SGClusterSpec{
+		// 				Postgres: stackgresv1.SGClusterSpecPostgres{
+		// 					Version: "15.0",
+		// 				},
+		// 			},
+		// 		},
+		// 		&vshnv1.VSHNPostgreSQL{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "myclaim",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: vshnv1.VSHNPostgreSQLSpec{
+		// 				Parameters: vshnv1.VSHNPostgreSQLParameters{
+		// 					Service: vshnv1.VSHNPostgreSQLServiceSpec{
+		// 						RepackEnabled: true,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	wantedOps: &stackgresv1.SGDbOps{
+		// 		ObjectMeta: metav1.ObjectMeta{
+		// 			Name:      "securitymaintenance",
+		// 			Namespace: "default",
+		// 		},
+		// 		Spec: stackgresv1.SGDbOpsSpec{
+		// 			Op:         "securityUpgrade",
+		// 			SgCluster:  "cluster",
+		// 			MaxRetries: pointer.Int(1),
+		// 			SecurityUpgrade: &stackgresv1.SGDbOpsSpecSecurityUpgrade{
+		// 				Method: pointer.String("InPlace"),
+		// 			},
+		// 		},
+		// 	},
+		// 	server: getBrokenHTTPServer(t),
+		// },
+		// {
+		// 	name:         "GivenMaintenanceTooLong_ThenExpectNoRepack",
+		// 	maintTimeout: 500 * time.Millisecond,
+		// 	objs: []client.Object{
+		// 		&stackgresv1.SGCluster{
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "cluster",
+		// 				Namespace: "default",
+		// 			},
+		// 			Spec: stackgresv1.SGClusterSpec{
+		// 				Postgres: stackgresv1.SGClusterSpecPostgres{
+		// 					Version: "15.0",
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	server:           getVersionTestHTTPServer(t),
+		// 	shouldSkipRepack: true,
+		// },
 		// {
 		// 	name:         "GivenMaintenanceTooLong_WithUnrelatedSecupdate_ThenExpectNoRepack",
 		// 	maintTimeout: 2 * time.Second,

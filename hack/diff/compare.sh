@@ -73,7 +73,7 @@ function template_func_file() {
 
 function diff_func() {
   # run_func "$1"
-  trap stop_func EXIT
+  # trap stop_func EXIT
 
   while read -r type name rest
   do

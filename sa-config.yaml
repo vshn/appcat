@@ -1,0 +1,18 @@
+apiVersion: v1
+clusters:
+- cluster:
+    server: https://api.lab-cloudscale-rma-0.appuio.cloud:6443
+  name: api-lab-cloudscale-rma-0-appuio-cloud:6443
+contexts:
+- context:
+    cluster: api-lab-cloudscale-rma-0-appuio-cloud:6443
+    namespace: syn-appcat
+    user: crossplane-diff
+  name: default/api-lab-cloudscale-rma-0-appuio-cloud:6443/simon.beck
+current-context: default/api-lab-cloudscale-rma-0-appuio-cloud:6443/simon.beck
+kind: Config
+preferences: {}
+users:
+- name: crossplane-diff
+  user:
+    token: eyJhbGciOiJSUzI1NiIsImtpZCI6IlRXbUJaMjlPUy10SDdJMFhVdk1PVENqdmhOa3lVbHJsTXBnVUg0c2R6QlEifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjIl0sImV4cCI6MTcyNzA5NTkzMCwiaWF0IjoxNzI3MDkyMzMwLCJpc3MiOiJodHRwczovL2t1YmVybmV0ZXMuZGVmYXVsdC5zdmMiLCJrdWJlcm5ldGVzLmlvIjp7Im5hbWVzcGFjZSI6InN5bi1hcHBjYXQiLCJzZXJ2aWNlYWNjb3VudCI6eyJuYW1lIjoiY3Jvc3NwbGFuZS1kaWZmIiwidWlkIjoiYmE0MTYxZmMtZWEwMy00YjRlLWJlNzQtZDVjMjJhNGQ1ODYxIn19LCJuYmYiOjE3MjcwOTIzMzAsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpzeW4tYXBwY2F0OmNyb3NzcGxhbmUtZGlmZiJ9.K3d6e0QWmeWzD-cq-TFR3Z8Liagsdow5giiri_6rA8te5TPH_DHHYAV8gZg-ix_p_nrE4Xs0FvC2O2ZLjNAAd2EqROWcKKFpSmE0p8k-9ys-6GTYuFti3l55TzlejomIp2LTQP-7RLwWWPPu5oTXHOWDCTw8QSs4RZxiGqJeZDtpJDtc0aPSs7qxHcWj4aLEkBkVjUALy61e3866B3YoPO7cqohYckywaSSGMPeQ71vuZm9uE0Ed080tvVNRqEmG9u9a_drfgSGc-iynlr0ew0k-FBbAwjDvdzmoBl_krIJ-_gcYuCL-c5mcQMYuDcOEFeejKgO068SWcfcdH7Hch85iwAw-3l07fQO9QTzsm7OkJNVet2yIKmjWExOtz1L-pwp5nIONOzwTlrc8vqWXkm1c7-khOXNQ6QxG5i--Bdb2n2Ah1ZhWMGFnTKa5VKgEWwifoprdy1WsggrF8h1tHLYoMZ_Oitlsr9cdoImX4nsD5P3gwQ1n2w0q4jIIwoWAwH5i4fPW9rbU8cbM6uQ0H-jeAuA-xHy2cSB5A8NEcPb2oCv3kuQ_9whs7tMp5QPn8DC__d-fVK9pCR5aCeUqUr_AnGZbXtxD_9CWHiSAqXpUN_-HFa-HDxERYIkN9DexU0ggJbho9_yFNwlbeQcGJYtrRoV84D63mx_M5cm0O9c

@@ -32,15 +32,6 @@ function get_claim_namespace() {
 
 }
 
-function run_func() {
-  docker run -d --name func -p 9443:9443 ghcr.io/vshn/appcat:"$1" functions --insecure
-  sleep 3
-}
-
-function stop_func() {
-  docker rm -f func
-}
-
 function run_single_diff() {
   type="$1"
   name="$2"
@@ -72,8 +63,6 @@ function template_func_file() {
 }
 
 function diff_func() {
-  # run_func "$1"
-  # trap stop_func EXIT
 
   while read -r type name rest
   do
@@ -85,7 +74,6 @@ function diff_func() {
     run_single_diff "$type" "$name" "$2"
   done <<< "$(kubectl get composite --no-headers | sed 's/\// /g' )"
 
-  # stop_func
 }
 
 # do the diff
@@ -121,7 +109,6 @@ function clean() {
   rm -rf "$(dirname "$0")/function.yaml"
 }
 
-# stop_func
 clean
 trap clean EXIT
 

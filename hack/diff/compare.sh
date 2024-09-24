@@ -77,20 +77,20 @@ function diff_func() {
     # we only get the state on the first run for two reasons:
     # speed things up
     # avoid any diffs that could come from actual changes on the cluster
-    [ "first" == "$2" ] && get_state "$type" "$name"
+    [ "first" == "$1" ] && get_state "$type" "$name"
     get_claim_namespace "$type" "$name"
-    run_single_diff "$type" "$name" "$2"
+    run_single_diff "$type" "$name" "$1"
   done <<< "$(kubectl get composite --no-headers | sed 's/\// /g' )"
 
 }
 
 # do the diff
 function first_diff() {
-  diff_func "$(get_running_func_version)" "first"
+  diff_func "first"
 }
 
 function second_diff() {
-  diff_func "$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')" "second"
+  diff_func "second"
 }
 
 
@@ -136,6 +136,8 @@ template_func_file "$(get_pnt_func_version)" "$(get_running_func_version)"
 
 echo "Render live manifests"
 first_diff
+
+template_func_file "$(get_pnt_func_version)" "$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')"
 
 echo "Render against branch"
 second_diff

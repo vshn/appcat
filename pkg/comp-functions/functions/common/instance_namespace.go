@@ -117,6 +117,7 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 				"appuio.io/no-rbac-creation":     "true",
 				"appuio.io/billing-name":         "appcat-" + serviceName,
 				"appuio.io/organization":         org,
+				"myannotation":                   "bar",
 			},
 		},
 	}

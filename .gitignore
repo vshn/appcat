@@ -27,3 +27,7 @@ __debug_bin*
 
 # Ignore crossplane packages
 *.xpkg
+
+hack/res
+hack/tmp
+hack/diff/function.yaml

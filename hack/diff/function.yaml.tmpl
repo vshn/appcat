@@ -1,0 +1,17 @@
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: function-appcat
+  annotations:
+    render.crossplane.io/runtime-docker-cleanup: Stop
+spec:
+  package: ghcr.io/vshn/appcat:$APPCAT_VERSION
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+  annotations:
+    render.crossplane.io/runtime-docker-cleanup: Stop
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:$PNT_VERSION

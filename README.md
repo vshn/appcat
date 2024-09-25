@@ -197,6 +197,23 @@ Crank will return a list of all the objects this specific request would have pro
 
 Please have a look at the `hack/` folder for an example.
 
+### Generate a Diff against a live version
+
+Make sure you have the `KUBECONFIG` exported for the cluster you want to run the diff.
+This can be kindev or even another live cluster.
+Also make sure, that AppCat is checked out at the branch you want the diff of.
+
+Then run `make render-diff`.
+
+This will:
+* Check the live cluster which version AppCat and PnT func version are running
+* Apply them to the local functions template
+* Get all composites and their respective state, by downloading all the managed resources
+* Use `crank render` to render the resulting list of managed resources
+* Switch the functions template to the current branch
+* Run `crank` again with the state already downloaded, to avoid any unintended diffs
+* Use `dyff` to generate the diffs between both results
+
 # Run API Server locally
 To run the API server on your local machine you need to register the IDE running instance with kind cluster.
 This can be achieved with the following guide.

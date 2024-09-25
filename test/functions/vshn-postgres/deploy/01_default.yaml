@@ -27,7 +27,41 @@ desired:
         writeConnectionSecretToRef: {}
       status:
         instanceNamespace: vshn-postgresql-pgsql-gc9x4
-
+  "pg-bucket":   
+    resource:
+      apiVersion: appcat.vshn.io/v1
+      kind: XObjectBucket
+      metadata:
+        name: pgsql-gc9x4
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+      spec:
+        parameters:
+          bucketName: pgsql-gc9x4
+          providerRef:
+            name: s3
+          region: ch-gva-2
+          security:
+            deletionProtection: false
+            allowAllNamespaces: false
+        writeConnectionSecretToRef:
+          name: pgsql-gc9x4
+          namespace: vshn-postgresql-pgsql-gc9x4
+      status:
+        conditions:
+        - lastTransitionTime: "2024-09-27T08:06:34Z"
+          reason: ReconcileSuccess
+          status: "True"
+          type: Synced
+        - lastTransitionTime: "2024-09-26T14:37:37Z"
+          reason: Available
+          status: "True"
+          type: Ready
+        connectionDetails:
+          lastPublishedTime: "2024-09-26T14:37:37Z"
 input:
   apiVersion: v1
   data:
@@ -120,7 +154,51 @@ observed:
             timeOfDay: '12:34:56'
       status:
         instanceNamespace: vshn-postgresql-pgsql-gc9x4
+        #here
   resources:
+    "pg-bucket":
+      connection_details:
+        AWS_ACCESS_KEY_ID: whatever
+        AWS_REGION: whatever
+        AWS_SECRET_ACCESS_KEY: whatever
+        BUCKET_NAME: whatever
+        ENDPOINT: whatever
+        ENDPOINT_URL: whatever    
+      resource:
+        apiVersion: appcat.vshn.io/v1
+        kind: XObjectBucket
+        metadata:
+          name: pgsql-gc9x4
+          labels:
+            appuio.io/organization: vshn
+            crossplane.io/claim-name: pgsql
+            crossplane.io/claim-namespace: unit-test
+            crossplane.io/composite: pgsql-gc9x4
+        spec:
+          parameters:
+            bucketName: pgsql-gc9x4
+            providerRef:
+              name: s3
+            region: ch-gva-2
+            security:
+              deletionProtection: false
+              allowAllNamespaces: false
+          writeConnectionSecretToRef:
+            name: pgsql-gc9x4
+            namespace: vshn-postgresql-pgsql-gc9x4
+        status:
+          conditions:
+          - lastTransitionTime: "2024-09-27T08:06:34Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+          - lastTransitionTime: "2024-09-26T14:37:37Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          connectionDetails:
+            lastPublishedTime: "2024-09-26T14:37:37Z"
+ 
     namespace-conditions:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
@@ -298,4 +376,94 @@ observed:
                   pendingRestart: false
                   primary: true
                   replicationGroup: 0
-
+    certificate:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          annotations:
+            crossplane.io/composition-resource-name: certificate
+            crossplane.io/external-create-pending: "2024-09-26T14:37:32Z"
+            crossplane.io/external-create-succeeded: "2024-09-26T14:37:32Z"
+            crossplane.io/external-name: pgsql-gc9x4-certificate
+          creationTimestamp: "2024-09-26T14:37:32Z"
+          finalizers:
+          - finalizer.managedresource.crossplane.io
+          generateName: pgsql-gc9x4-
+          generation: 38
+          labels:
+            appcat.vshn.io/ownerapiversion: v1
+            appcat.vshn.io/ownergroup: vshn.appcat.vshn.io
+            appcat.vshn.io/ownerkind: XVSHNPostgreSQL
+            crossplane.io/claim-name: postgresql-widera-test3
+            crossplane.io/claim-namespace: widera-testing
+            crossplane.io/composite: pgsql-gc9x4
+            manager: crossplane-kubernetes-provider
+            operation: Update
+            subresource: status
+            time: "2024-09-26T14:37:34Z"
+          name: pgsql-gc9x4-certificate
+          ownerReferences:
+          - apiVersion: vshn.appcat.vshn.io/v1
+            blockOwnerDeletion: true
+            controller: true
+            kind: XVSHNPostgreSQL
+            name: pgsql-gc9x4
+            uid: 4d072f13-029d-4d9d-bc24-0e4f622a9d3a
+          resourceVersion: "531293"
+          uid: 1ffeef69-4add-4d17-98ae-5c210cdd0503
+        spec:
+          deletionPolicy: Delete
+          forProvider:
+            manifest:
+              apiVersion: cert-manager.io/v1
+              kind: Certificate
+              metadata:
+                annotations:
+                  appcat.vshn.io/forward-events-to: vshn.appcat.vshn.io/v1/VSHNPostgreSQL/widera-testing/postgresql-widera-test3
+                labels:
+                  appcat.vshn.io/ownerapiversion: v1
+                  appcat.vshn.io/ownergroup: vshn.appcat.vshn.io
+                  appcat.vshn.io/ownerkind: XVSHNPostgreSQL
+                  crossplane.io/composite: pgsql-gc9x4
+                name: pgsql-gc9x4
+                namespace: vshn-postgresql-pgsql-gc9x4
+              spec:
+                dnsNames:
+                - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc.cluster.local
+                - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc
+                duration: 87600h0m0s
+                issuerRef:
+                  group: cert-manager.io
+                  kind: Issuer
+                  name: pgsql-gc9x4
+                privateKey:
+                  algorithm: RSA
+                  encoding: PKCS1
+                  size: 4096
+                renewBefore: 2400h0m0s
+                secretName: tls-certificate
+                subject:
+                  organizations:
+                  - vshn-appcat
+                usages:
+                - server auth
+                - client auth
+              status: {}
+          managementPolicies:
+          - '*'
+          providerConfigRef:
+            name: kubernetes
+          readiness:
+            policy: SuccessfulCreate
+          watch: false
+        status:
+          conditions:
+          - lastTransitionTime: "2024-09-26T14:37:33Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          - lastTransitionTime: "2024-09-26T14:37:32Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced

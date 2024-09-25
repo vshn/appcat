@@ -480,6 +480,16 @@ func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime
 
 func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 
+	sgBackupExists, err := svc.WaitForObservedDependenciesWithConnectionDetails("sgbackup-"+comp.GetName(), map[string][]string{
+		"pg-bucket": {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
+	})
+
+	certificateExists := svc.WaitForObservedDependencies("sgbackup-"+comp.GetName(), "certificate")
+
+	if err != nil || !sgBackupExists || !certificateExists {
+		return fmt.Errorf("waiting for dependencies: %w", err)
+	}
+
 	sgObjectStorage := &sgv1beta1.SGObjectStorage{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "sgbackup-" + comp.GetName(),
@@ -507,9 +517,9 @@ func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRunt
 			},
 		},
 	}
-	err := svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup")
+	err = svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup")
 	if err != nil {
-		err = fmt.Errorf("cannot create xObjectBucket: %w", err)
+		err = fmt.Errorf("cannot create sgBackup: %w", err)
 		return err
 	}
 
@@ -559,7 +569,7 @@ func createPodMonitor(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) 
 
 	err = svc.SetDesiredKubeObjectWithName(podMonitor, comp.GetName()+"-podmonitor", "podmonitor")
 	if err != nil {
-		err = fmt.Errorf("cannot create xObjectBucket: %w", err)
+		err = fmt.Errorf("cannot create podMonitor: %w", err)
 		return err
 	}
 	return nil
@@ -610,7 +620,7 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 
 	err := svc.SetDesiredKubeObjectWithName(copyJob, comp.GetName()+"-copyjob", "copy-job")
 	if err != nil {
-		err = fmt.Errorf("cannot create xObjectBucket: %w", err)
+		err = fmt.Errorf("cannot create copyJob: %w", err)
 		return err
 	}
 

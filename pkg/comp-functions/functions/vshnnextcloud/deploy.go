@@ -87,7 +87,7 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 			},
 		}
 
-		ready, err := svc.WaitForDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
+		ready, err := svc.WaitForObservedDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
 		if err != nil {
 			// We're returning a fatal here, so in case something is wrong we won't delete anything by mistake.
 			return runtime.NewFatalResult(err)

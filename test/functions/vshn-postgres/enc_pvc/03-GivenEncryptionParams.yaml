@@ -88,6 +88,7 @@ observed:
           name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
         parameters:
+          instances: 1
           encryption:
             enabled: true
       status:

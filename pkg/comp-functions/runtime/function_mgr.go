@@ -995,11 +995,11 @@ func (s *ServiceRuntime) areResourcesReady(names []string) bool {
 	return true
 }
 
-// WaitForDependencies takes two arguments, the name of the main resource, which should be deployed after the dependencies.
+// WaitForObservedDependencies takes two arguments, the name of the main resource, which should be deployed after the dependencies.
 // It also takes a list of names for objects to depend on. It does NOT deploy any objects, but check for their existence.
 // If true is returned it is safe to continue with adding your main object to the desired resources.
 // If the main resource already exists in the observed state it will always return true.
-func (s *ServiceRuntime) WaitForDependencies(mainResource string, dependencies ...string) bool {
+func (s *ServiceRuntime) WaitForObservedDependencies(mainResource string, dependencies ...string) bool {
 	if _, ok := s.req.Observed.Resources[mainResource]; ok {
 		return true
 	}
@@ -1011,17 +1011,33 @@ func (s *ServiceRuntime) WaitForDependencies(mainResource string, dependencies .
 	return true
 }
 
-// WaitForDependenciesWithConnectionDetails does the same as WaitForDependencies but additionally also checks the given list of fields against the
+// WaitForDesiredDependencies takes two arguments, the name of the main resource, which should be deployed after the dependencies.
+// It also takes a list of names for objects to depend on. It does NOT deploy any objects, but check for their existence.
+// If true is returned it is safe to continue with adding your main object to the desired resources.
+// If the main resource already exists in the observed state it will always return true.
+func (s *ServiceRuntime) WaitForDesiredDependencies(mainResource string, dependencies ...string) bool {
+	if _, ok := s.req.Desired.Resources[mainResource]; ok {
+		return true
+	}
+
+	if !s.areResourcesReady(dependencies) {
+		return false
+	}
+
+	return true
+}
+
+// WaitForObservedDependenciesWithConnectionDetails does the same as WaitForDependencies but additionally also checks the given list of fields against the
 // available connection details.
 // objectCDMap should contain a map where the key is the name of the dependeny and the string slice the necessary connection detail fields.
-func (s *ServiceRuntime) WaitForDependenciesWithConnectionDetails(mainResource string, objectCDMap map[string][]string) (bool, error) {
+func (s *ServiceRuntime) WaitForObservedDependenciesWithConnectionDetails(mainResource string, objectCDMap map[string][]string) (bool, error) {
 	// If the main resource already exists we're done here
 	if _, ok := s.req.Observed.Resources[mainResource]; ok {
 		return true, nil
 	}
 
 	for dep, cds := range objectCDMap {
-		ready := s.WaitForDependencies(mainResource, dep)
+		ready := s.WaitForObservedDependencies(mainResource, dep)
 		if !ready {
 			return false, nil
 		}

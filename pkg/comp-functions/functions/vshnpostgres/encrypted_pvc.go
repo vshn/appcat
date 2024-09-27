@@ -41,6 +41,19 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 
 	log.Info("Adding secret to composite")
 
+	pods := comp.GetInstances()
+
+	for i := 0; i < pods; i++ {
+		result := writeLuksSecret(svc, log, comp, i)
+		if result != nil {
+			return result
+		}
+		ready := svc.WaitForDesiredDependencies(comp.GetName(), fmt.Sprintf("%s-luks-key-%d", comp.Name, i))
+		if !ready {
+			return runtime.NewWarningResult("luks secret not yet ready")
+		}
+	}
+
 	cluster := &stackgresv1.SGCluster{}
 	err = svc.GetDesiredKubeObject(cluster, "cluster")
 	if err != nil {
@@ -54,19 +67,10 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		return runtime.NewFatalResult(fmt.Errorf("Cannot edit SGCluster object: %w", err))
 	}
 
-	pods := cluster.Spec.Instances
-
-	for i := 0; i < pods; i++ {
-		result := writeLuksSecret(ctx, svc, log, comp, i)
-		if result != nil {
-			return result
-		}
-	}
-
 	return nil
 }
 
-func writeLuksSecret(ctx context.Context, svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.VSHNPostgreSQL, i int) *xfnproto.Result {
+func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.VSHNPostgreSQL, i int) *xfnproto.Result {
 	// luksSecretResourceName is the resource name defined in the composition
 	// This name is different from metadata.name of the same resource
 	// The value is hardcoded in the composition for each resource and due to crossplane limitation

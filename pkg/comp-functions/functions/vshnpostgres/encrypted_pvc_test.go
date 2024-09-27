@@ -12,6 +12,7 @@ import (
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/yaml"
@@ -70,6 +71,27 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
+		assert.Equal(t, r, runtime.NewWarningResult("luks secret not yet ready"))
+
+		comp := &vshnv1.VSHNPostgreSQL{}
+
+		assert.NoError(t, svc.GetObservedComposite(comp))
+
+		resName := comp.Name + "-luks-key-0"
+		kubeObject := &xkube.Object{}
+		assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, resName))
+
+		s := &v1.Secret{}
+		assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
+		assert.NotEmpty(t, s.Data["luksKey"])
+	})
+
+	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
+
+		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
+
+		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
+
 		assert.Nil(t, r)
 
 		comp := &vshnv1.VSHNPostgreSQL{}
@@ -87,27 +109,6 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 		cluster := &stackgresv1.SGCluster{}
 		assert.NoError(t, svc.GetDesiredKubeObject(cluster, "cluster"))
 		assert.Equal(t, pointer.String("ssd-encrypted"), cluster.Spec.Pods.PersistentVolume.StorageClass)
-	})
-
-	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
-
-		iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
-
-		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, iof)
-
-		assert.Nil(t, r)
-
-		comp := &vshnv1.VSHNPostgreSQL{}
-
-		assert.NoError(t, iof.GetObservedComposite(comp))
-
-		resName := comp.Name + "-luks-key-0"
-		kubeObject := &xkube.Object{}
-		assert.NoError(t, iof.GetDesiredComposedResourceByName(kubeObject, resName))
-
-		s := &v1.Secret{}
-		assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
-		assert.NotEmpty(t, s.Data["luksKey"])
 	})
 
 }

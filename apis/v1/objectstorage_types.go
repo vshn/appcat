@@ -18,7 +18,6 @@ const (
 type BucketDeletionPolicy string
 
 //go:generate yq -i e ../generated/appcat.vshn.io_objectbuckets.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
-
 // +kubebuilder:object:root=true
 // +kubebuilder:printcolumn:name="Bucket Name",type="string",JSONPath=".spec.parameters.bucketName"
 // +kubebuilder:printcolumn:name="Region",type="string",JSONPath=".spec.parameters.region"

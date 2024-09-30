@@ -27,11 +27,9 @@ func TestPostgreSqlDeploy(t *testing.T) {
 
 	assert.Nil(t, DeployPostgreSQL(ctx, &vshnv1.VSHNPostgreSQL{}, svc))
 	assert.Nil(t, addSchedules(ctx, &vshnv1.VSHNPostgreSQL{}, svc))
-
 	ns := &corev1.Namespace{}
 	assert.NoError(t, svc.GetDesiredKubeObject(ns, "namespace-conditions"))
 	assert.Equal(t, string("vshn"), ns.GetLabels()[utils.OrgLabelName])
-
 	roleBinding := &rbacv1.RoleBinding{}
 	assert.NoError(t, svc.GetDesiredKubeObject(roleBinding, "namespace-permissions"))
 

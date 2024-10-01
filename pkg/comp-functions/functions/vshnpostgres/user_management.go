@@ -60,6 +60,9 @@ func addUser(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, username 
 			Annotations: map[string]string{
 				"crossplane.io/external-name": username,
 			},
+			Labels: map[string]string{
+				runtime.ProviderConfigIgnoreLabel: "true",
+			},
 		},
 		Spec: pgv1alpha1.RoleSpec{
 			ForProvider: pgv1alpha1.RoleParameters{
@@ -209,6 +212,9 @@ func addDatabase(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, name 
 			Annotations: map[string]string{
 				"crossplane.io/external-name": name,
 			},
+			Labels: map[string]string{
+				runtime.ProviderConfigIgnoreLabel: "true",
+			},
 		},
 		Spec: pgv1alpha1.DatabaseSpec{
 			ForProvider: pgv1alpha1.DatabaseParameters{},
@@ -241,6 +247,9 @@ func addGrants(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, usernam
 	grant := &pgv1alpha1.Grant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), username, dbname),
+			Labels: map[string]string{
+				runtime.ProviderConfigIgnoreLabel: "true",
+			},
 		},
 		Spec: pgv1alpha1.GrantSpec{
 			ForProvider: pgv1alpha1.GrantParameters{

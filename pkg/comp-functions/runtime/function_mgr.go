@@ -46,12 +46,14 @@ var (
 )
 
 const (
-	OwnerKindAnnotation    = "appcat.vshn.io/ownerkind"
-	OwnerVersionAnnotation = "appcat.vshn.io/ownerapiversion"
-	OwnerGroupAnnotation   = "appcat.vshn.io/ownergroup"
-	ProtectedByAnnotation  = "appcat.vshn.io/protectedby"
-	ProtectsAnnotation     = "appcat.vshn.io/protects"
-	EventForwardAnnotation = "appcat.vshn.io/forward-events-to"
+	OwnerKindAnnotation       = "appcat.vshn.io/ownerkind"
+	OwnerVersionAnnotation    = "appcat.vshn.io/ownerapiversion"
+	OwnerGroupAnnotation      = "appcat.vshn.io/ownergroup"
+	ProtectedByAnnotation     = "appcat.vshn.io/protectedby"
+	ProtectsAnnotation        = "appcat.vshn.io/protects"
+	EventForwardAnnotation    = "appcat.vshn.io/forward-events-to"
+	providerConfigLabel       = "appcat.vshn.io/provider-config"
+	ProviderConfigIgnoreLabel = "appcat.vshn.io/ignore-config"
 )
 
 // Step describes a single change within a service.
@@ -355,6 +357,11 @@ func (s *ServiceRuntime) GetResponse() (*fnv1beta1.RunFunctionResponse, error) {
 	resp := response.To(s.req, response.DefaultTTL)
 
 	err := s.checkReadiness()
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.setProviderConfigs()
 	if err != nil {
 		return nil, err
 	}
@@ -1104,6 +1111,14 @@ func (s *ServiceRuntime) UsageOfBy(of, by string) error {
 	ofAPIVersion, ofKind := ofUnstructured.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
 	byAPIVersion, byKind := byUnstructured.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
 
+	removed, err := s.unwrapUsage(name)
+	if err != nil {
+		return fmt.Errorf("cannot remove kube object wrapper from uage: %w", err)
+	}
+	if !removed {
+		return nil
+	}
+
 	usage := &xpapi.Usage{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -1127,7 +1142,60 @@ func (s *ServiceRuntime) UsageOfBy(of, by string) error {
 		},
 	}
 
-	return s.SetDesiredKubeObject(usage, name)
+	composedRes, err := composed.From(usage)
+	if err != nil {
+		return fmt.Errorf("cannot convert usage object to managed resource: %w", err)
+	}
+
+	s.desiredResources[resource.Name(name)] = &resource.DesiredComposed{Resource: composedRes}
+
+	return nil
+}
+
+// unwrapUsage will check if the usage is wrapped into an object.
+// It will set the wrapping obect to only observe it. Then on the next reconcile
+// after it ensures that the right management policy is set, it will not add it
+// to the desired state again. And finally on the third reconcile it will
+// return true to indicate that it got removed properly. Allowing Crossplane
+// to adopt the Usage objects without wrapping in a kube object.
+func (s *ServiceRuntime) unwrapUsage(name string) (bool, error) {
+	usage := &xkube.Object{}
+	err := s.GetObservedComposedResource(usage, name)
+	if err != nil {
+		if err == ErrNotFound {
+			return true, nil
+		}
+		return false, err
+	}
+
+	resources, err := request.GetObservedComposedResources(s.req)
+	if err != nil {
+		return false, err
+	}
+	res := resources[resource.Name(name)]
+	if res.Resource.GetKind() != "Object" {
+		return true, nil
+	}
+
+	// we need to clean the objectmeta, or Crossplane will struggle with adding
+	// it to the `resourceRefs` array.
+	usage.ObjectMeta = metav1.ObjectMeta{
+		Name:            usage.GetName(),
+		Annotations:     usage.Annotations,
+		Labels:          usage.Labels,
+		OwnerReferences: usage.OwnerReferences,
+	}
+
+	if len(usage.Spec.ManagementPolicies) == 0 || usage.Spec.ManagementPolicies[0] != xpv1.ManagementActionObserve {
+		usage.Spec.ManagementPolicies = xpv1.ManagementPolicies{
+			xpv1.ManagementActionObserve,
+		}
+		err := s.SetDesiredComposedResourceWithName(usage, name)
+		if err != nil {
+			return false, err
+		}
+	}
+	return false, nil
 }
 
 func (s *ServiceRuntime) addUsages() error {
@@ -1221,4 +1289,36 @@ func (s *ServiceRuntime) getCleanGVK() schema.GroupVersionKind {
 		Version: s.gvk.Version,
 		Kind:    kind,
 	}
+}
+
+// setProviderConfigs loops over all desired objects and adds the providerConfigs
+// according to the annotations on the claim/composite.
+func (s *ServiceRuntime) setProviderConfigs() error {
+	if val, exists := s.observedComposite.GetLabels()[providerConfigLabel]; !exists || val == "" || val == "local" {
+		return nil
+	}
+
+	configName := s.observedComposite.GetLabels()[providerConfigLabel]
+
+	for i := range s.desiredResources {
+		if _, exists := s.desiredResources[i].Resource.GetLabels()[ProviderConfigIgnoreLabel]; exists {
+			continue
+		}
+		// we set the providerConfig Ref
+		err := s.desiredResources[i].Resource.SetString("spec.providerConfigRef.name", configName)
+		if err != nil {
+			return fmt.Errorf("cannot set providerConfig for %s: %w", s.desiredResources[i].Resource.GetName(), err)
+		}
+
+		// We also propagate the label, so if the resource is a composite, then
+		// it will automagically also set the right providerConfigs.
+		labels := s.desiredResources[i].Resource.GetLabels()
+		if labels == nil {
+			labels = map[string]string{}
+		}
+		labels[providerConfigLabel] = configName
+		s.desiredResources[i].Resource.SetLabels(labels)
+	}
+
+	return nil
 }

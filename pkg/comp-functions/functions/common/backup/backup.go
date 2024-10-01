@@ -56,6 +56,9 @@ func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtim
 	ob := &appcatv1.XObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName() + "-backup",
+			Labels: map[string]string{
+				runtime.ProviderConfigIgnoreLabel: "true",
+			},
 		},
 		Spec: appcatv1.XObjectBucketSpec{
 			Parameters: appcatv1.ObjectBucketParameters{

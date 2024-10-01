@@ -100,7 +100,7 @@ func addConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntim
 
 	compositeCD := svc.GetConnectionDetails()
 
-	url := getPostgresURLCustomUser(compositeCD, string(userpassCD["userpass"]), username)
+	url := getPostgresURLCustomUser(compositeCD, string(compositeCD["POSTGRESQL_HOST"]), username)
 
 	om := metav1.ObjectMeta{
 		Name:      comp.GetLabels()["crossplane.io/claim-name"] + "-" + username,

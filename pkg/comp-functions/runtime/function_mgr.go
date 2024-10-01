@@ -53,7 +53,7 @@ const (
 	ProtectsAnnotation        = "appcat.vshn.io/protects"
 	EventForwardAnnotation    = "appcat.vshn.io/forward-events-to"
 	providerConfigLabel       = "appcat.vshn.io/provider-config"
-	ProviderConfigIgnoreLabel = "appcat.vshn.io/ignore-config"
+	ProviderConfigIgnoreLabel = "appcat.vshn.io/ignore-provider-config"
 )
 
 // Step describes a single change within a service.

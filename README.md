@@ -218,8 +218,8 @@ This will:
 
 If you want to print the diff while using the debugger you can simply do this:
 
-* Star the local debugging session as described
-* Run `make render-diff -e DEBUG=Developmen`
+* Start the local debugging session as described
+* Run `make render-diff -e DEBUG=Development`
 
 NOTE: `crank render` has a 60s timeout, so you might run into it, if your debugging takes longer
 

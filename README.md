@@ -214,6 +214,15 @@ This will:
 * Run `crank` again with the state already downloaded, to avoid any unintended diffs
 * Use `dyff` to generate the diffs between both results
 
+### Generate diff against live version with debugger
+
+If you want to print the diff while using the debugger you can simply do this:
+
+* Start the local debugging session as described
+* Run `make render-diff -e DEBUG=Development`
+
+NOTE: `crank render` has a 60s timeout, so you might run into it, if your debugging takes longer
+
 # Run API Server locally
 To run the API server on your local machine you need to register the IDE running instance with kind cluster.
 This can be achieved with the following guide.

@@ -25,3 +25,4 @@
 * xref:explanations/disable-billing.adoc[]
 * xref:explanations/webhook-protection.adoc[]
 * xref:explanations/ordered-deletion.adoc[]
+* xref:explanations/providerconfig-management.adoc[]

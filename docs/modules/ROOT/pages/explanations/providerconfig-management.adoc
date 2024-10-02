@@ -1,0 +1,11 @@
+= ProviderConfig Management
+
+AppCat is able to inject a given `ProviderConfig` reference into all managed resources.
+
+That can be controlled by setting the `appcat.vshn.io/provider-config` label on any given claim or composite. The value of this label will be injected as the `ProviderConfig` name.
+
+There are managed resources that should have the `ProviderConfig` overwritten. In such cases it's possible to deploy them with the `appcat.vshn.io/ignore-provider-config` and then no overwrite will happen.
+
+The `ProviderConfig` objects have to be provisioned beforehand, via `component-appcat` for example.
+
+If no labels are given, AppCat will use the hardcoded default `ProviderConfigs` for each provider. These also have to be provided by external means like `component-appcat`.

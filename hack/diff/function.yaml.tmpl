@@ -4,6 +4,7 @@ metadata:
   name: function-appcat
   annotations:
     render.crossplane.io/runtime-docker-cleanup: Stop
+    render.crossplane.io/runtime: $DEBUG
 spec:
   package: ghcr.io/vshn/appcat:$APPCAT_VERSION
 ---

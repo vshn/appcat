@@ -454,6 +454,9 @@ func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime
 	xObjectBucket := &appcatv1.XObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName(),
+			Labels: map[string]string{
+				runtime.ProviderConfigIgnoreLabel: "true",
+			},
 		},
 		Spec: appcatv1.XObjectBucketSpec{
 			Parameters: appcatv1.ObjectBucketParameters{

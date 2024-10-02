@@ -216,9 +216,10 @@ install-proxy:
 	kubectl apply -f hack/functionproxy
 
 .PHONY: render-diff
+DEBUG=""
 render-diff: export IMG_TAG=$(shell git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')
 render-diff: ## Render diff between the cluster in KUBECONF and the local branch
 	# We check if the image is pullable, if so we pull it, otherwise we build the image
 	# this will speed up the compare in CI/CD environments.
 	if ! docker pull $(IMG); then $(MAKE) docker-build-branchtag; fi
-	hack/diff/compare.sh
+	hack/diff/compare.sh $(DEBUG)

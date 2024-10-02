@@ -2,6 +2,8 @@
 
 set -e
 
+debug=$1
+
 [ -z "${KUBECONFIG}" ] && echo "Please export KUBECONFIG" && exit 1
 
 # get the state and all objects from each composite
@@ -14,10 +16,11 @@ function get_state() {
 
   mkdir -p "$dir_name"
 
-  while read -r res_type res_name
+  while read -r res_type res_name api_version
   do
-    kubectl get "$res_type" "$res_name" -oyaml > "$dir_name/$res_type-$res_name.yaml"
-  done <<< "$(kubectl get "$type" "$name" -oyaml | yq -r '.spec.resourceRefs | .[] | .kind + " " + .name')"
+    group=$(echo "$api_version" | cut -d "/" -f1)
+    kubectl get "$res_type"."$group" "$res_name" -oyaml > "$dir_name/$res_type-$res_name.yaml"
+  done <<< "$(kubectl get "$type" "$name" -oyaml | yq -r '.spec.resourceRefs | .[] | .kind + " " + .name + " " + .apiVersion')"
 
 }
 
@@ -67,6 +70,7 @@ function get_pnt_func_version() {
 function template_func_file() {
   export PNT_VERSION=$1
   export APPCAT_VERSION=$2
+  export DEBUG=$3
   cat "$(dirname "$0")/function.yaml.tmpl" | envsubst > "$(dirname "$0")/function.yaml"
 }
 
@@ -132,12 +136,12 @@ function clean() {
 clean
 trap clean EXIT
 
-template_func_file "$(get_pnt_func_version)" "$(get_running_func_version)"
+template_func_file "$(get_pnt_func_version)" "$(get_running_func_version)" ""
 
 echo "Render live manifests"
 first_diff
 
-template_func_file "$(get_pnt_func_version)" "$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')"
+template_func_file "$(get_pnt_func_version)" "$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')" "$debug"
 
 echo "Render against branch"
 second_diff

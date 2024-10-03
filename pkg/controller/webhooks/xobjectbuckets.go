@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
@@ -55,6 +56,16 @@ func (p *XObjectbucketDeletionProtectionHandler) ValidateDelete(ctx context.Cont
 		return nil, fmt.Errorf("object is not valid")
 	}
 
+	creationTimestamp := bucket.GetCreationTimestamp()
+	allowedDeletionTime := creationTimestamp.Add(61 * time.Minute)
+
+	now := time.Now()
+	age := now.Sub(creationTimestamp.Time)
+
+	if age < 61*time.Minute {
+		return nil, fmt.Errorf("XObjectBucket is too young to be deleted, need to wait another %.1f minutes to ensure correct billing", allowedDeletionTime.Sub(now).Minutes())
+	}
+
 	l := p.log.WithValues("object", bucket.GetName(), "namespace", bucket.GetNamespace(), "GVK", bucket.GetObjectKind().GroupVersionKind().String())
 
 	compInfo, err := checkManagedObject(ctx, bucket, p.client, l)
@@ -67,7 +78,7 @@ func (p *XObjectbucketDeletionProtectionHandler) ValidateDelete(ctx context.Cont
 		return nil, fmt.Errorf(protectedMessage, "XObjectBucket", compInfo.Name)
 	}
 
-	l.Info("Allowing deletion of XObjectBucket", "parent", compInfo.Name)
+	l.Info("Allowing deletion of XObjectBucket", "parent", compInfo.Name, "age", age.String())
 
 	return nil, nil
 }

@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -272,4 +271,12 @@ func (v *VSHNMariaDB) GetPDBLabels() map[string]string {
 
 func (v *VSHNMariaDB) GetSecurity() *Security {
 	return &v.Spec.Parameters.Security
+}
+
+func (v *VSHNMariaDB) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+	return &StatefulSetManager{}
+}
+
+func (v *VSHNMariaDB) GetWorkloadName() string {
+	return v.GetName()
 }

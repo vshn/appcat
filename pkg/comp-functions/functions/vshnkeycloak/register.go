@@ -39,6 +39,10 @@ func init() {
 				Name:    "pdb",
 				Execute: common.AddPDBSettings[*vshnv1.VSHNKeycloak],
 			},
+			{
+				Name:    "billing",
+				Execute: AddServiceBillingLabel,
+			},
 		},
 	})
 }

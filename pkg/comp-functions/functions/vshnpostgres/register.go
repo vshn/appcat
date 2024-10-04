@@ -81,6 +81,10 @@ func init() {
 				Name:    "pdb",
 				Execute: common.AddPDBSettings[*vshnv1.VSHNPostgreSQL],
 			},
+			{
+				Name:    "billing",
+				Execute: AddServiceBillingLabel,
+			},
 		},
 	})
 }

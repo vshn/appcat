@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -246,4 +245,15 @@ func (v *VSHNMinio) GetPDBLabels() map[string]string {
 
 func (v *VSHNMinio) GetSecurity() *Security {
 	return &v.Spec.Parameters.Security
+}
+
+func (v *VSHNMinio) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+	if v.GetInstances() == 1 {
+		return &DeploymentManager{}
+	}
+	return &StatefulSetManager{}
+}
+
+func (v *VSHNMinio) GetWorkloadName() string {
+	return v.GetName()
 }

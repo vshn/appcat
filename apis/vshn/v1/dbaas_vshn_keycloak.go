@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -333,4 +332,12 @@ func (v *VSHNKeycloak) GetPDBLabels() map[string]string {
 
 func (v *VSHNKeycloak) GetSecurity() *Security {
 	return &v.Spec.Parameters.Security
+}
+
+func (v *VSHNKeycloak) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+	return &StatefulSetManager{}
+}
+
+func (v *VSHNKeycloak) GetWorkloadName() string {
+	return v.GetName() + "-keycloakx"
 }

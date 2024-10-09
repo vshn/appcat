@@ -43,6 +43,10 @@ func init() {
 				Name:    "pdb",
 				Execute: common.AddPDBSettings[*vshnv1.VSHNMinio],
 			},
+			{
+				Name:    "billing",
+				Execute: AddServiceBillingLabel,
+			},
 		},
 	})
 }

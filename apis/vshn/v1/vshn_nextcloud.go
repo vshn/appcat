@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -13,6 +14,7 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.collabora.default={})"
 
 // +kubebuilder:object:root=true
 
@@ -86,6 +88,8 @@ type VSHNNextcloudParameters struct {
 
 // VSHNNextcloudServiceSpec contains nextcloud DBaaS specific properties
 type VSHNNextcloudServiceSpec struct {
+	// Collabora contains settings to control the Collabora integration.
+	Collabora CollaboraSpec `json:"collabora,omitempty"`
 	// +kubebuilder:validation:Required
 
 	// FQDN contains the FQDN which will be used for the ingress.
@@ -172,6 +176,15 @@ func (v *XVSHNNextcloud) GetInstanceNamespace() string {
 
 func (v *VSHNNextcloud) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
+type CollaboraSpec struct {
+	// Enabled enables the Collabora integration. It will autoconfigure the Collabora server URL in Your Nextcloud instance.
+	//+kubebuilder:default=false
+	Enabled bool `json:"enabled"`
+	// FQDN contains the FQDN of the Collabora server. This is used to configure the Collabora server URL in Your Nextcloud instance.
+	//+kubebuilder:validation:Required
+	FQDN string `json:"fqdn,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

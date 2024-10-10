@@ -528,6 +528,20 @@ func KubeOptionProtects(resName string) KubeObjectOption {
 	}
 }
 
+// KubeOptionLabeler adds the given labels to the kube object.
+func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		current := obj.GetLabels()
+		if current == nil {
+			current = map[string]string{}
+		}
+		for val, key := range labels {
+			current[val] = key
+		}
+		obj.SetLabels(current)
+	}
+}
+
 func addProtectionAnnotation(resName, protectionType string, obj client.Object) {
 	annotations := obj.GetAnnotations()
 	if annotations == nil {

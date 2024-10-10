@@ -48,6 +48,25 @@ observed:
           name: vshnnextcloud.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
   resources:
+    # necessary for collabora tests
+    nextcloud-gc9x4-release:
+      resource:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        metadata:
+          name: nextcloud-gc9x4
+        spec: {}
+        status:
+          atProvider:
+            conditions:
+            - lastTransitionTime: "2024-07-08T14:50:19Z"
+              reason: Available
+              status: "True"
+              type: Ready
+            - lastTransitionTime: "2024-07-08T14:50:18Z"
+              reason: ReconcileSuccess
+              status: "True"
+              type: Synced
     nextcloud-gc9x4-claim-ns-observer:
       resource:
         apiVersion: v1

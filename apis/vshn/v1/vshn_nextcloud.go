@@ -87,6 +87,7 @@ type VSHNNextcloudParameters struct {
 
 // VSHNNextcloudServiceSpec contains nextcloud DBaaS specific properties
 type VSHNNextcloudServiceSpec struct {
+	Collabora CollaboraSpec `json:"collabora,omitempty"`
 	// +kubebuilder:validation:Required
 
 	// FQDN contains the FQDN which will be used for the ingress.
@@ -169,6 +170,11 @@ func (v *XVSHNNextcloud) GetInstanceNamespace() string {
 
 func (v *VSHNNextcloud) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
+type CollaboraSpec struct {
+	FQDN string       `json:"fqdn,omitempty"`
+	Size VSHNSizeSpec `json:"size,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

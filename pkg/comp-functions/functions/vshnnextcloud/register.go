@@ -25,6 +25,10 @@ func init() {
 				Name:    "backup",
 				Execute: AddBackup,
 			},
+			{
+				Name:    "collabora",
+				Execute: DeployCollabora,
+			},
 		},
 	})
 }

@@ -53,7 +53,7 @@ func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
-			Namespace: comp.GetNamespace(),
+			Namespace: comp.GetInstanceNamespace(),
 			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
 		},
 		Spec: v1.DeploymentSpec{
@@ -63,7 +63,8 @@ func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: comp.GetName() + "-collabora-code",
+					Name:   comp.GetName() + "-collabora-code",
+					Labels: map[string]string{"app": comp.GetName() + "-collabora-code"},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -99,7 +100,7 @@ func AddCollaboraService(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *r
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
-			Namespace: comp.GetNamespace(),
+			Namespace: comp.GetInstanceNamespace(),
 			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
 		},
 		Spec: corev1.ServiceSpec{
@@ -120,7 +121,7 @@ func AddCollaboraIngress(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *r
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
-			Namespace: comp.GetNamespace(),
+			Namespace: comp.GetInstanceNamespace(),
 			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
 			Annotations: map[string]string{
 				"cert-manager.io/cluster-issuer":              "letsencrypt-staging",

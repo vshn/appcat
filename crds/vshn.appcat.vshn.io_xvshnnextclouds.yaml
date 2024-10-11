@@ -5577,6 +5577,9 @@ spec:
                     properties:
                       collabora:
                         properties:
+                          enabled:
+                            default: false
+                            type: boolean
                           fqdn:
                             type: string
                           size:
@@ -5613,6 +5616,8 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                        required:
+                        - enabled
                         type: object
                       fqdn:
                         description: |-

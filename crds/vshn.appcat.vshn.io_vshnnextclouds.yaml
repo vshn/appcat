@@ -4853,6 +4853,9 @@ spec:
                       properties:
                         collabora:
                           properties:
+                            enabled:
+                              default: false
+                              type: boolean
                             fqdn:
                               type: string
                             size:
@@ -4881,6 +4884,8 @@ spec:
                                       type: string
                                   type: object
                               type: object
+                          required:
+                            - enabled
                           type: object
                         fqdn:
                           description: |-
@@ -9951,6 +9956,8 @@ spec:
                       required:
                         - fqdn
                       type: object
+                      collabora:
+                        default: {}
                     size:
                       description: Size contains settings to control the sizing of a service.
                       properties:

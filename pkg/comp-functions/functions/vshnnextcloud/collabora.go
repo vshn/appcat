@@ -23,6 +23,10 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
+	if !comp.Spec.Parameters.Service.Collabora.Enabled {
+		return runtime.NewNormalResult("Collabora not enabled")
+	}
+
 	if !valid.IsDNSName(comp.Spec.Parameters.Service.Collabora.FQDN) {
 		return runtime.NewFatalResult(fmt.Errorf("invalid FQDN"))
 	}

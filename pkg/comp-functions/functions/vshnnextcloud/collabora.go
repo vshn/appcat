@@ -70,7 +70,7 @@ func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc
 					Containers: []corev1.Container{
 						{
 							Name:  comp.GetName() + "-collabora-code",
-							Image: "collabora/code",
+							Image: "collabora/code:24.04.8.1.1",
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 9980,
@@ -124,8 +124,13 @@ func AddCollaboraIngress(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *r
 			Namespace: comp.GetInstanceNamespace(),
 			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
 			Annotations: map[string]string{
-				"cert-manager.io/cluster-issuer":              "letsencrypt-staging",
-				"nginx.ingress.kubernetes.io/proxy-body-size": "0",
+				// this is the certificate we will use for the ingress
+				"cert-manager.io/cluster-issuer": "letsencrypt-staging",
+				// collabora is so nice that during startup it generates a self-signed certificate
+				// and then uses it for the https connection. This certificate is not trusted by the
+				// nginx, so we need to disable ssl verification.
+				"nginx.ingress.kubernetes.io/proxy-ssl-verify": "off",
+				"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 			},
 		},
 		Spec: networkingv1.IngressSpec{
@@ -154,8 +159,7 @@ func AddCollaboraIngress(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *r
 			},
 			TLS: []networkingv1.IngressTLS{
 				{
-					Hosts:      []string{comp.Spec.Parameters.Service.Collabora.FQDN},
-					SecretName: comp.GetName() + "-collabora-code-ingress-cert",
+					Hosts: []string{comp.Spec.Parameters.Service.Collabora.FQDN},
 				},
 			},
 		},

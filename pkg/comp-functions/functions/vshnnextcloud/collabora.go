@@ -107,9 +107,16 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 									Name:  "DONT_GEN_SSL_CERT",
 									Value: "true",
 								},
+								{
+									// https://github.com/nextcloud/all-in-one/discussions/2314
+									// https://github.com/CollaboraOnline/online/issues/3102
+									Name:  "extra_params",
+									Value: "--o:net.proto=IPv4",
+								},
 							},
 							Image: "collabora/code:24.04.8.1.1",
-							Name:  comp.GetName() + "-collabora-code",
+							//Image: "collabora/code:latest",
+							Name: comp.GetName() + "-collabora-code",
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 9980,
@@ -117,26 +124,27 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("1800m"),
-									corev1.ResourceMemory: resource.MustParse("2000Mi"),
+									corev1.ResourceCPU:    resource.MustParse("900m"),
+									corev1.ResourceMemory: resource.MustParse("1200Mi"),
 								},
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("1800m"),
-									corev1.ResourceMemory: resource.MustParse("2000Mi"),
+									corev1.ResourceCPU:    resource.MustParse("900m"),
+									corev1.ResourceMemory: resource.MustParse("1200Mi"),
 								},
 							},
-							// SecurityContext: &corev1.SecurityContext{
-							// 	Capabilities: &corev1.Capabilities{
-							// 		Add: []corev1.Capability{
-							// 			// https://help.nextcloud.com/t/nextcloud-office-could-not-establish-connection-to-the-collabora-online-server/185721/8
-							// 			"FOWNER",
-							// 			"SYS_CHROOT",
-							// 			"CHOWN",
-							// 			// https://github.com/chrisingenhaag/helm/blob/main/charts/collabora-code/values.yaml#L64
-							// 			"MKNOD",
-							// 		},
-							// 	},
-							// },
+							SecurityContext: &corev1.SecurityContext{
+								// Capabilities: &corev1.Capabilities{
+								// 	Add: []corev1.Capability{
+								// 		// https://help.nextcloud.com/t/nextcloud-office-could-not-establish-connection-to-the-collabora-online-server/185721/8
+								// 		"FOWNER",
+								// 		"SYS_CHROOT",
+								// 		"CHOWN",
+								// 		// https://github.com/chrisingenhaag/helm/blob/main/charts/collabora-code/values.yaml#L64
+								// 		"MKNOD",
+								// 	},
+								// },
+								AllowPrivilegeEscalation: ptr.To(true),
+							},
 							// Mount certificates
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -168,7 +176,7 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 								{
 									// it reports an error if this file is missing
 									Name:      "coolwsd-config",
-									MountPath: "/etc/coolwsd/sample-key.rsa",
+									MountPath: "/etc/coolwsd/proof_key",
 									SubPath:   "sample-key.rsa",
 								},
 								{

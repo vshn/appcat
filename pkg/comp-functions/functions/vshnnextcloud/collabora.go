@@ -2,9 +2,10 @@ package vshnnextcloud
 
 import (
 	"context"
-	"fmt"
 
 	valid "github.com/asaskevich/govalidator"
+	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	certmgrv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -20,7 +21,7 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
+		return runtime.NewWarningResult(err.Error())
 	}
 
 	if !comp.Spec.Parameters.Service.Collabora.Enabled {
@@ -28,25 +29,37 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	}
 
 	if !valid.IsDNSName(comp.Spec.Parameters.Service.Collabora.FQDN) {
-		return runtime.NewFatalResult(fmt.Errorf("invalid FQDN"))
+		return runtime.NewWarningResult(err.Error())
+	}
+
+	// Create issuer
+	err = createIssuer(ctx, comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(err.Error())
+	}
+
+	// Create certificate
+	err = createCertificate(ctx, comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(err.Error())
 	}
 
 	// Add Collabora deployment
 	err = AddCollaboraDeployment(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot add Collabora deployment: %w", err))
+		return runtime.NewWarningResult(err.Error())
 	}
 
 	// Add Collabora service
 	err = AddCollaboraService(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot add Collabora service: %w", err))
+		return runtime.NewWarningResult(err.Error())
 	}
 
 	// Add Collabora ingress
 	err = AddCollaboraIngress(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot add Collabora ingress: %w", err))
+		return runtime.NewWarningResult(err.Error())
 	}
 
 	return runtime.NewNormalResult("Collabora deployed")
@@ -54,13 +67,13 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 
 func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
-	deployment := &v1.StatefulSet{
+	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
 			Namespace: comp.GetInstanceNamespace(),
 			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
 		},
-		Spec: v1.StatefulSetSpec{
+		Spec: v1.DeploymentSpec{
 			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": comp.GetName() + "-collabora-code"},
@@ -75,6 +88,12 @@ func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc
 						{
 							Name:  comp.GetName() + "-collabora-code",
 							Image: "collabora/code:24.04.8.1.1",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "DONT_GEN_SSL_CERT",
+									Value: "true",
+								},
+							},
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 9980,
@@ -88,6 +107,34 @@ func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("400Mi"),
+								},
+							},
+							// Mount certificates
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "collabora-code-tls",
+									MountPath: "/etc/coolwsd/cert.pem",
+									SubPath:   "tls.crt",
+								},
+								{
+									Name:      "collabora-code-tls",
+									MountPath: "/etc/coolwsd/key.pem",
+									SubPath:   "tls.key",
+								},
+								{
+									Name:      "collabora-code-tls",
+									MountPath: "/etc/coolwsd/ca-chain.cert.pem",
+									SubPath:   "ca.crt",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "collabora-code-tls",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "collabora-code-tls",
 								},
 							},
 						},
@@ -171,4 +218,38 @@ func AddCollaboraIngress(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *r
 
 	return svc.SetDesiredKubeObject(ingress, comp.GetName()+"-collabora-code-ingress")
 
+}
+
+func createIssuer(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	issuer := &cmv1.Issuer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-collabora-code-issuer",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: cmv1.IssuerSpec{
+			IssuerConfig: cmv1.IssuerConfig{
+				SelfSigned: &cmv1.SelfSignedIssuer{},
+			},
+		},
+	}
+
+	return svc.SetDesiredKubeObject(issuer, comp.GetName()+"-collabora-code-issuer")
+}
+
+func createCertificate(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	certificate := &cmv1.Certificate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-collabora-code-certificate",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: cmv1.CertificateSpec{
+			SecretName: "collabora-code-tls",
+			DNSNames:   []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+			IssuerRef: certmgrv1.ObjectReference{
+				Name: comp.GetName() + "-collabora-code-issuer",
+			},
+		},
+	}
+
+	return svc.SetDesiredKubeObject(certificate, comp.GetName()+"-collabora-code-certificate")
 }

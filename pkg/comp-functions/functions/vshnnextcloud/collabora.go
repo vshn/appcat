@@ -54,13 +54,13 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 
 func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
-	deployment := &v1.Deployment{
+	deployment := &v1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
 			Namespace: comp.GetInstanceNamespace(),
 			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
 		},
-		Spec: v1.DeploymentSpec{
+		Spec: v1.StatefulSetSpec{
 			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": comp.GetName() + "-collabora-code"},

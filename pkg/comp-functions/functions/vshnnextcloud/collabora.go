@@ -2,6 +2,7 @@ package vshnnextcloud
 
 import (
 	"context"
+	_ "embed"
 
 	valid "github.com/asaskevich/govalidator"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -16,6 +17,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
+
+//go:embed files/coolwsd.xml
+var coolwsd string
 
 func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -32,32 +36,38 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult(err.Error())
 	}
 
+	// Create coolwsd config map
+	err = createCoolWSDConfigMap(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(err.Error())
+	}
+
 	// Create issuer
-	err = createIssuer(ctx, comp, svc)
+	err = createIssuer(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(err.Error())
 	}
 
 	// Create certificate
-	err = createCertificate(ctx, comp, svc)
+	err = createCertificate(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(err.Error())
 	}
 
 	// Add Collabora deployment
-	err = AddCollaboraDeployment(ctx, comp, svc)
+	err = AddCollaboraDeployment(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(err.Error())
 	}
 
 	// Add Collabora service
-	err = AddCollaboraService(ctx, comp, svc)
+	err = AddCollaboraService(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(err.Error())
 	}
 
 	// Add Collabora ingress
-	err = AddCollaboraIngress(ctx, comp, svc)
+	err = AddCollaboraIngress(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(err.Error())
 	}
@@ -65,7 +75,7 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	return runtime.NewNormalResult("Collabora deployed")
 }
 
-func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -126,6 +136,11 @@ func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc
 									MountPath: "/etc/coolwsd/ca-chain.cert.pem",
 									SubPath:   "ca.crt",
 								},
+								{
+									Name:      "coolwsd-config",
+									MountPath: "/etc/coolwsd/coolwsd.xml",
+									SubPath:   "coolwsd.xml",
+								},
 							},
 						},
 					},
@@ -138,6 +153,16 @@ func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc
 								},
 							},
 						},
+						{
+							Name: "coolwsd-config",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: comp.GetName() + "-collabora-coolwsd-config",
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -146,7 +171,7 @@ func AddCollaboraDeployment(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc
 
 	return svc.SetDesiredKubeObject(deployment, comp.GetName()+"-collabora-code-deployment")
 }
-func AddCollaboraService(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -167,7 +192,7 @@ func AddCollaboraService(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *r
 	return svc.SetDesiredKubeObject(service, comp.GetName()+"-collabora-code-service")
 
 }
-func AddCollaboraIngress(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -220,7 +245,7 @@ func AddCollaboraIngress(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *r
 
 }
 
-func createIssuer(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+func createIssuer(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 	issuer := &cmv1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code-issuer",
@@ -236,7 +261,7 @@ func createIssuer(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.
 	return svc.SetDesiredKubeObject(issuer, comp.GetName()+"-collabora-code-issuer")
 }
 
-func createCertificate(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+func createCertificate(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 	certificate := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code-certificate",
@@ -252,4 +277,18 @@ func createCertificate(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *run
 	}
 
 	return svc.SetDesiredKubeObject(certificate, comp.GetName()+"-collabora-code-certificate")
+}
+
+func createCoolWSDConfigMap(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "collabora-coolwsd-config",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Data: map[string]string{
+			"coolwsd.xml": coolwsd,
+		},
+	}
+
+	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-collabora-coolwsd-config")
 }

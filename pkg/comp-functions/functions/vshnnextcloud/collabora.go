@@ -13,8 +13,10 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 )
 
@@ -39,6 +41,24 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	}
 
 	if !valid.IsDNSName(comp.Spec.Parameters.Service.Collabora.FQDN) {
+		return runtime.NewWarningResult(err.Error())
+	}
+
+	// Create service account
+	err = createServiceAccount(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(err.Error())
+	}
+
+	// Create security context role
+	err = createSecurityContextRole(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(err.Error())
+	}
+
+	// Create security context role binding
+	err = createSecurityContextRoleBinding(comp, svc)
+	if err != nil {
 		return runtime.NewWarningResult(err.Error())
 	}
 
@@ -87,7 +107,9 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
 			Namespace: comp.GetInstanceNamespace(),
-			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
+			Labels: map[string]string{
+				"app": comp.GetName() + "-collabora-code",
+			},
 		},
 		Spec: v1.DeploymentSpec{
 			Replicas: ptr.To[int32](1),
@@ -100,6 +122,11 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 					Labels: map[string]string{"app": comp.GetName() + "-collabora-code"},
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: comp.GetName() + "-collabora-code-sa",
+					SecurityContext: &corev1.PodSecurityContext{
+						// https://github.com/CollaboraOnline/online/blob/master/docker/from-packages/Dockerfile#L138
+						RunAsUser: ptr.To[int64](100),
+					},
 					Containers: []corev1.Container{
 						{
 							Env: []corev1.EnvVar{
@@ -132,6 +159,7 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 									corev1.ResourceMemory: resource.MustParse("1200Mi"),
 								},
 							},
+
 							SecurityContext: &corev1.SecurityContext{
 								// Capabilities: &corev1.Capabilities{
 								// 	Add: []corev1.Capability{
@@ -145,6 +173,7 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 								// },
 								AllowPrivilegeEscalation: ptr.To(true),
 							},
+
 							// Mount certificates
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -243,7 +272,8 @@ func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 			Selector: map[string]string{"app": comp.GetName() + "-collabora-code"},
 			Ports: []corev1.ServicePort{
 				{
-					Port: 9980,
+					Port:       9980,
+					TargetPort: intstr.FromInt(9980),
 				},
 			},
 		},
@@ -267,6 +297,7 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 				// nginx, so we need to disable ssl verification.
 				"nginx.ingress.kubernetes.io/proxy-ssl-verify": "off",
 				"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+				"nginx.ingress.kubernetes.io/proxy-ssl-secret": comp.GetName() + "-collabora-code-certificate",
 			},
 		},
 		Spec: networkingv1.IngressSpec{
@@ -295,7 +326,8 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 			},
 			TLS: []networkingv1.IngressTLS{
 				{
-					Hosts: []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+					Hosts:      []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+					SecretName: comp.GetName() + "-collabora-code-tls",
 				},
 			},
 		},
@@ -353,4 +385,57 @@ func createCoolWSDConfigMap(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 	}
 
 	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-collabora-coolwsd-config")
+}
+
+func createServiceAccount(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-collabora-code-sa",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+	}
+
+	return svc.SetDesiredKubeObject(sa, comp.GetName()+"-collabora-code-sa")
+}
+
+func createSecurityContextRole(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-collabora-code-role",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups:     []string{"security.openshift.io"},
+				Resources:     []string{"securitycontextconstraints"},
+				ResourceNames: []string{"privileged"},
+				Verbs:         []string{"use"},
+			},
+		},
+	}
+
+	return svc.SetDesiredKubeObject(role, comp.GetName()+"-collabora-code-role")
+}
+
+func createSecurityContextRoleBinding(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-collabora-code-role-binding",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      comp.GetName() + "-collabora-code-sa",
+				Namespace: comp.GetInstanceNamespace(),
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "Role",
+			Name:     comp.GetName() + "-collabora-code-role",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+
+	return svc.SetDesiredKubeObject(roleBinding, comp.GetName()+"-collabora-code-role-binding")
 }

@@ -18,6 +18,8 @@ type InfoGetter interface {
 	GetSecurity() *vshnv1.Security
 	InstanceNamespaceInfo
 	GetPDBLabels() map[string]string
+	GetWorkloadPodTemplateLabelsManager() vshnv1.PodTemplateLabelsManager
+	GetWorkloadName() string
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create

@@ -39,6 +39,10 @@ func init() {
 				Name:    "billing",
 				Execute: AddServiceBillingLabel,
 			},
+			{
+				Name:    "user-management",
+				Execute: UserManagement,
+			},
 		},
 	})
 }

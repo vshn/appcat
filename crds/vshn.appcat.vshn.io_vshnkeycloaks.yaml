@@ -9776,6 +9776,7 @@ spec:
                               description: Service contains PostgreSQL DBaaS specific properties
                               properties:
                                 access:
+                                  description: Access defines additional users and databases for this instance.
                                   items:
                                     properties:
                                       database:

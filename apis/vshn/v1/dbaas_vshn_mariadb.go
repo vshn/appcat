@@ -98,8 +98,8 @@ type VSHNMariaDBServiceSpec struct {
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 
-	// +kubebuilder:default="standalone"
-	// +kubebuilder:validation:Enum=replication;standalone
+	// Access defines additional users and databases for this instance.
+	Access []VSHNAccess `json:"access,omitempty"`
 }
 
 // VSHNMariaDBTLSSpec contains settings to control tls traffic of a service.

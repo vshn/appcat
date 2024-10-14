@@ -153,6 +153,7 @@ type VSHNPostgreSQLServiceSpec struct {
 	// +kubebuilder:default=false
 	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
 
+	// Access defines additional users and databases for this instance.
 	Access []VSHNAccess `json:"access,omitempty"`
 }
 

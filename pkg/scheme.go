@@ -11,6 +11,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
+	my1alpha1 "github.com/vshn/appcat/v4/apis/sql/mysql/v1alpha1"
 	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	stackgresv1beta1 "github.com/vshn/appcat/v4/apis/stackgres/v1beta1"
@@ -62,4 +63,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = cloudscalev1.SchemeBuilder.AddToScheme(s)
 	_ = exoscalev1.SchemeBuilder.AddToScheme(s)
 	_ = spksv1alpha1.SchemeBuilder.AddToScheme(s)
+	_ = my1alpha1.SchemeBuilder.AddToScheme(s)
 }

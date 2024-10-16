@@ -9,7 +9,7 @@ COLLABORA_URL="https://$COLLABORA_FQDN"
 
 if [ "$IS_OPENSHIFT" == "true" ]; then
     #check if collabora is already installed
-    /usr/bin/kubectl exec -n "$NAMESPACE" "deployments/$NEXTCLOUD_INSTANCE" --/var/www/html/occ app:get richdocuments
+    /usr/bin/kubectl exec -n "$NAMESPACE" "deployments/$NEXTCLOUD_INSTANCE" -- /var/www/html/occ app:get richdocuments
     RC=$?
     if [ "$RC" == 0 ]; then
         echo "Collabora already installed"

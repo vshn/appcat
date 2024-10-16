@@ -2,7 +2,7 @@ package vshnnextcloud
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/md5"
 	_ "embed"
 	"fmt"
 
@@ -12,6 +12,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -321,13 +322,7 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
 			Annotations: map[string]string{
 				// this is the certificate we will use for the ingress
-				"cert-manager.io/cluster-issuer": "letsencrypt-staging",
-				// collabora is so nice that during startup it generates a self-signed certificate
-				// and then uses it for the https connection. This certificate is not trusted by the
-				// nginx, so we need to disable ssl verification.
-				"nginx.ingress.kubernetes.io/proxy-ssl-verify":         "off",
-				"nginx.ingress.kubernetes.io/backend-protocol":         "HTTPS",
-				"nginx.ingress.kubernetes.io/proxy-ssl-secret":         comp.GetName() + "-collabora-code-ingress-certificate",
+				"cert-manager.io/cluster-issuer":                       "letsencrypt-staging",
 				"route.openshift.io/termination":                       "reencrypt",
 				"route.openshift.io/destination-ca-certificate-secret": comp.GetName() + "-collabora-code-ingress-certificate",
 			},
@@ -365,8 +360,20 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 		},
 	}
 
-	return svc.SetDesiredKubeObject(ingress, comp.GetName()+"-collabora-code-ingress")
+	if svc.Config.Data["ingress_annotations"] != "" {
+		annotations := map[string]string{}
 
+		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), annotations)
+		if err != nil {
+			return fmt.Errorf("cannot unmarshal ingress annotations from input: %w", err)
+		}
+
+		if val, ok := annotations["cert-manager.io/cluster-issuer"]; ok {
+			ingress.Annotations["cert-manager.io/cluster-issuer"] = val
+		}
+	}
+
+	return svc.SetDesiredKubeObject(ingress, comp.GetName()+"-collabora-code-ingress")
 }
 
 func createIssuer(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
@@ -535,11 +542,9 @@ func createInstallCollaboraConfigMap(comp *vshnv1.VSHNNextcloud, svc *runtime.Se
 
 func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
-	//occCommand := fmt.Sprintf("occ config:app:set --value %s richdocuments wopi_url", comp.Spec.Parameters.Service.Collabora.FQDN)
+	// get hash from config, se job will be triggered if script changes
 
-	// get hash from string
-
-	hash := sha256.New()
+	hash := md5.New()
 
 	_, err := hash.Write([]byte(installCollabora))
 	if err != nil {
@@ -547,14 +552,13 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 	}
 
 	checksum := hash.Sum(nil)
-
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-install-collabora",
 			Namespace: comp.GetInstanceNamespace(),
 			Labels: map[string]string{
-				"app":               "appcat",
-				"installScriptHash": fmt.Sprintf("%x", checksum),
+				"app":    "appcat",
+				"script": fmt.Sprintf("%x", checksum),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -562,22 +566,18 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   comp.GetName() + "-install-collabora",
-					Labels: map[string]string{"app": comp.GetName() + "-install-collabora"},
+					Name: comp.GetName() + "-install-collabora",
+					Labels: map[string]string{
+						"app":    comp.GetName() + "-install-collabora",
+						"script": fmt.Sprintf("%x", checksum),
+					},
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: comp.GetName() + "-collabora-code-sa",
 					Containers: []corev1.Container{
 						{
 							Name:  comp.GetName() + "-install-collabora",
-							Image: "quay.io/appuio/oc:v4.15",
-							// Command: []string{
-							// 	"bash",
-							// 	"-cefx",
-							// 	"kubectl exec -n " + comp.GetInstanceNamespace() + " deployments/" + comp.GetName() + " -- /usr/bin/su -s /bin/sh www-data -c  \"/var/www/html/occ app:install richdocuments\"",
-							// 	"kubectl exec -n " + comp.GetInstanceNamespace() + " deployments/" + comp.GetName() + fmt.Sprintf(" -- /usr/bin/su -s /bin/sh www-data -c  \"/var/www/html/occ %s\"", occCommand),
-							// 	"kubectl exec -n " + comp.GetInstanceNamespace() + " deployments/" + comp.GetName() + " -- /usr/bin/su -s /bin/sh www-data -c  \"/var/www/html/occ app:enable richdocuments\"",
-							// },
+							Image: "quay.io/appuio/oc:v4.13",
 							Command: []string{
 								"bash",
 								"-c",
@@ -588,7 +588,7 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 									Name:      "collabora-install-script",
 									MountPath: "/install-collabora.sh",
 									SubPath:   "install-collabora.sh",
-									ReadOnly:  true,
+									ReadOnly:  false,
 								},
 							},
 						},
@@ -598,6 +598,7 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 							Name: "collabora-install-script",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
+									DefaultMode: ptr.To[int32](0755),
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "collabora-install-script",
 									},

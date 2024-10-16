@@ -39,11 +39,65 @@ rules:
   - update
   - watch
 - apiGroups:
-  - kubernetes.crossplane.io
+  - syn.tools
   resources:
-  - objects
+  - compositemariadbdatabaseinstances
   verbs:
-  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - syn.tools
+  resources:
+  - compositemariadbinstances
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - syn.tools
+  resources:
+  - compositemariadbinstances/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - syn.tools
+  resources:
+  - compositemariadbuserinstances
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - syn.tools
+  resources:
+  - compositeredisinstances
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - syn.tools
+  resources:
+  - compositeredisinstances/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
@@ -137,17 +191,6 @@ rules:
   resources:
   - xvshnpostgresqls
   verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - xvshnpostgresqls/finalizers
-  verbs:
-  - create
   - get
   - list
   - patch

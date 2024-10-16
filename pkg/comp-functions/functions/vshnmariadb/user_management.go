@@ -61,7 +61,8 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 				"crossplane.io/external-name": username,
 			},
 			Labels: map[string]string{
-				runtime.ProviderConfigIgnoreLabel: "true",
+				runtime.ProviderConfigIgnoreLabel:      "true",
+				"appcat.vshn.io/webhook-allowdeletion": "true",
 			},
 		},
 		Spec: my1alpha1.UserSpec{
@@ -205,7 +206,8 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 				"crossplane.io/external-name": name,
 			},
 			Labels: map[string]string{
-				runtime.ProviderConfigIgnoreLabel: "true",
+				runtime.ProviderConfigIgnoreLabel:      "true",
+				"appcat.vshn.io/webhook-allowdeletion": "true",
 			},
 		},
 		Spec: my1alpha1.DatabaseSpec{
@@ -240,7 +242,8 @@ func addGrants(comp common.Composite, svc *runtime.ServiceRuntime, username, dbn
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), username, dbname),
 			Labels: map[string]string{
-				runtime.ProviderConfigIgnoreLabel: "true",
+				runtime.ProviderConfigIgnoreLabel:      "true",
+				"appcat.vshn.io/webhook-allowdeletion": "true",
 			},
 		},
 		Spec: my1alpha1.GrantSpec{

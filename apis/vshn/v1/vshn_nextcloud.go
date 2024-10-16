@@ -177,8 +177,7 @@ type CollaboraSpec struct {
 	//+kubebuilder:default=false
 	Enabled bool `json:"enabled"`
 	//+kubebuilder:validation:Required
-	FQDN string       `json:"fqdn,omitempty"`
-	Size VSHNSizeSpec `json:"size,omitempty"`
+	FQDN string `json:"fqdn,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

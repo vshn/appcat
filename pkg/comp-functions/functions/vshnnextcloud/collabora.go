@@ -48,7 +48,7 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	}
 
 	if !valid.IsDNSName(comp.Spec.Parameters.Service.Collabora.FQDN) {
-		return runtime.NewWarningResult(err.Error())
+		return runtime.NewWarningResult("Collabora FQDN is not a valid DNS name")
 	}
 
 	// Create service account

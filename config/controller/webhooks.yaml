@@ -10,6 +10,44 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-mysql-sql-crossplane-io-v1alpha1-database
+  failurePolicy: Fail
+  name: databases.mysql.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - mysql.sql.crossplane.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - DELETE
+    resources:
+    - databases
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-mysql-sql-crossplane-io-v1alpha1-grant
+  failurePolicy: Fail
+  name: grants.mysql.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - mysql.sql.crossplane.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - DELETE
+    resources:
+    - grants
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate--v1-namespace
   failurePolicy: Fail
   name: namespace.vshn.appcat.vshn.io
@@ -41,6 +79,44 @@ webhooks:
     - DELETE
     resources:
     - objectbuckets
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-kubernetes-crossplane-io-v1alpha2-object
+  failurePolicy: Fail
+  name: objects.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - kubernetes.crossplane.io
+    apiVersions:
+    - v1alpha2
+    operations:
+    - DELETE
+    resources:
+    - objects
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-kubernetes-crossplane-io-v1alpha1-object
+  failurePolicy: Fail
+  name: objectsv1alpha1.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - kubernetes.crossplane.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - DELETE
+    resources:
+    - objects
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -81,6 +157,44 @@ webhooks:
     - DELETE
     resources:
     - persistentvolumeclaims
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-helm-crossplane-io-v1beta1-release
+  failurePolicy: Fail
+  name: releases.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - helm.crossplane.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - DELETE
+    resources:
+    - releases
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-mysql-sql-crossplane-io-v1alpha1-user
+  failurePolicy: Fail
+  name: users.mysql.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - mysql.sql.crossplane.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - DELETE
+    resources:
+    - users
   sideEffects: None
 - admissionReviewVersions:
   - v1

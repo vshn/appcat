@@ -202,7 +202,6 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 										"MKNOD",
 									},
 								},
-								// AllowPrivilegeEscalation: ptr.To(true),
 							},
 
 							// Mount certificates
@@ -240,7 +239,6 @@ func AddCollaboraDeployment(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunt
 									SubPath:   "sample-key.rsa",
 								},
 								{
-									// for generation of certs, might be superfluous now
 									Name:      "tmp",
 									MountPath: "/tmp",
 								},
@@ -544,14 +542,23 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 
 	// get hash from config, se job will be triggered if script changes
 
+	observedJob := &batchv1.Job{}
 	hash := md5.New()
 
-	_, err := hash.Write([]byte(installCollabora))
-	if err != nil {
-		panic(err)
+	_, _ = hash.Write([]byte(installCollabora))
+	checksum := hash.Sum(nil)
+
+	strChecksum := fmt.Sprintf("%x", checksum)
+	err := svc.GetObservedKubeObject(observedJob, comp.GetName()+"-collabora-install-job")
+	if err == nil {
+		observedHash, ok := observedJob.Labels["script"]
+		if ok && (observedHash != strChecksum) {
+			// in this place I want to return no job and with next reconciliation I recreate it
+			// whole point is, that there are immutable fields everywhere in job and I cannot update it effectively
+			return nil
+		}
 	}
 
-	checksum := hash.Sum(nil)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-install-collabora",
@@ -568,8 +575,7 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 				ObjectMeta: metav1.ObjectMeta{
 					Name: comp.GetName() + "-install-collabora",
 					Labels: map[string]string{
-						"app":    comp.GetName() + "-install-collabora",
-						"script": fmt.Sprintf("%x", checksum),
+						"app": comp.GetName() + "-install-collabora",
 					},
 				},
 				Spec: corev1.PodSpec{

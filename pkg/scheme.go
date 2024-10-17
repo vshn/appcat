@@ -10,6 +10,7 @@ import (
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	xkubev1alpha1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	my1alpha1 "github.com/vshn/appcat/v4/apis/sql/mysql/v1alpha1"
 	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
@@ -41,6 +42,7 @@ func SetupScheme() *runtime.Scheme {
 func AddToScheme(s *runtime.Scheme) {
 	_ = corev1.SchemeBuilder.AddToScheme(s)
 	_ = xkube.SchemeBuilder.AddToScheme(s)
+	_ = xkubev1alpha1.SchemeBuilder.AddToScheme(s)
 	_ = vshnv1.SchemeBuilder.SchemeBuilder.AddToScheme(s)
 	_ = stackgresv1.SchemeBuilder.AddToScheme(s)
 	_ = stackgresv1beta1.SchemeBuilder.AddToScheme(s)

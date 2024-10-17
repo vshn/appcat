@@ -4,6 +4,66 @@ package v1alpha1
 
 import xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 
+// GetCondition of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetDeletionPolicy of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) GetDeletionPolicy() xpv1.DeletionPolicy {
+	return mg.Spec.DeletionPolicy
+}
+
+// GetManagementPolicies of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) GetManagementPolicies() xpv1.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// GetProviderConfigReference of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) GetProviderConfigReference() *xpv1.Reference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// GetPublishConnectionDetailsTo of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
+	return mg.Spec.PublishConnectionDetailsTo
+}
+
+// GetWriteConnectionSecretToReference of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetDeletionPolicy of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+	mg.Spec.DeletionPolicy = r
+}
+
+// SetManagementPolicies of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) SetManagementPolicies(r xpv1.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// SetProviderConfigReference of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) SetProviderConfigReference(r *xpv1.Reference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// SetPublishConnectionDetailsTo of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
+	mg.Spec.PublishConnectionDetailsTo = r
+}
+
+// SetWriteConnectionSecretToReference of this CompositeMariaDBDatabaseInstance.
+func (mg *CompositeMariaDBDatabaseInstance) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
 // GetCondition of this CompositeMariaDBInstance.
 func (mg *CompositeMariaDBInstance) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
 	return mg.Status.GetCondition(ct)
@@ -61,6 +121,66 @@ func (mg *CompositeMariaDBInstance) SetPublishConnectionDetailsTo(r *xpv1.Publis
 
 // SetWriteConnectionSecretToReference of this CompositeMariaDBInstance.
 func (mg *CompositeMariaDBInstance) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
+// GetCondition of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetDeletionPolicy of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) GetDeletionPolicy() xpv1.DeletionPolicy {
+	return mg.Spec.DeletionPolicy
+}
+
+// GetManagementPolicies of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) GetManagementPolicies() xpv1.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// GetProviderConfigReference of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) GetProviderConfigReference() *xpv1.Reference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// GetPublishConnectionDetailsTo of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
+	return mg.Spec.PublishConnectionDetailsTo
+}
+
+// GetWriteConnectionSecretToReference of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetDeletionPolicy of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+	mg.Spec.DeletionPolicy = r
+}
+
+// SetManagementPolicies of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) SetManagementPolicies(r xpv1.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// SetProviderConfigReference of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) SetProviderConfigReference(r *xpv1.Reference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// SetPublishConnectionDetailsTo of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
+	mg.Spec.PublishConnectionDetailsTo = r
+}
+
+// SetWriteConnectionSecretToReference of this CompositeMariaDBUserInstance.
+func (mg *CompositeMariaDBUserInstance) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 

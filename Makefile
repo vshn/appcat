@@ -196,6 +196,8 @@ clean:
 get-crds:
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-helm provider-helm apis/release apis/helm
 	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-kubernetes provider-kubernetes apis/object/v1alpha2 apis/kubernetes
+	# We don't need the conversion function and it messes with the v1alpha1 version
+	rm apis/kubernetes/v1alpha2/conversion.go
 	# There is currently a bug with the serialization if `inline` and  `omitempty` are set: https://github.com/crossplane/function-sdk-go/issues/161
 	$(sed) -i 's/inline,omitempty/inline/g' apis/helm/release/v1beta1/types.go
 	# provider-sql needs manual fixes... Running this every time would break them.

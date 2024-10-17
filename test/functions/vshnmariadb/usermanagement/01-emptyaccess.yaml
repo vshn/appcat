@@ -1,0 +1,32 @@
+desired:
+  composite:
+    connection_details:
+      MARIADB_USER: cm9vdA== #root
+      MARIADB_PASSWORD: cm9vdA== #root
+      MARIADB_HOST: bG9jYWxob3N0IC1uCg== #localhost
+      MARIADB_PORT: NTQzMgo=
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNMariaDB
+      metadata:
+        name: my-gc9x4
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}
+observed:
+  composite:
+    connection_details:
+      MARIADB_USER: cm9vdA== #root
+      MARIADB_PASSWORD: cm9vdA== #root
+      MARIADB_HOST: bG9jYWxob3N0IC1uCg== #localhost
+      MARIADB_PORT: NTQzMgo=
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNMariaDB
+      metadata:
+        name: my-gc9x4
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}

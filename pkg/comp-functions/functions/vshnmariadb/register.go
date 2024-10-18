@@ -35,6 +35,14 @@ func init() {
 				Name:    "non-sla-prometheus-rules",
 				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNMariaDB](nonsla.NewAlertSetBuilder("mariadb", "mariadb").AddAll().GetAlerts()),
 			},
+			{
+				Name:    "billing",
+				Execute: AddServiceBillingLabel,
+			},
+			{
+				Name:    "user-management",
+				Execute: UserManagement,
+			},
 		},
 	})
 }

@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,7 +125,7 @@ type VSHNPostgreSQLUpdateStrategy struct {
 
 // VSHNPostgreSQLServiceSpec contains PostgreSQL DBaaS specific properties
 type VSHNPostgreSQLServiceSpec struct {
-	// +kubebuilder:validation:Enum="12";"13";"14";"15"
+	// +kubebuilder:validation:Enum="12";"13";"14";"15";"16"
 	// +kubebuilder:default="15"
 
 	// MajorVersion contains supported version of PostgreSQL.
@@ -154,6 +153,7 @@ type VSHNPostgreSQLServiceSpec struct {
 	// +kubebuilder:default=false
 	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
 
+	// Access defines additional users and databases for this instance.
 	Access []VSHNAccess `json:"access,omitempty"`
 }
 
@@ -396,4 +396,12 @@ func (v *VSHNPostgreSQL) GetPDBLabels() map[string]string {
 
 func (v *VSHNPostgreSQL) GetSecurity() *Security {
 	return &v.Spec.Parameters.Security
+}
+
+func (v *VSHNPostgreSQL) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+	return &StatefulSetManager{}
+}
+
+func (v *VSHNPostgreSQL) GetWorkloadName() string {
+	return v.GetName()
 }

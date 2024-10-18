@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -297,4 +296,12 @@ func (v *VSHNRedis) GetPDBLabels() map[string]string {
 
 func (v *VSHNRedis) GetSecurity() *Security {
 	return &v.Spec.Parameters.Security
+}
+
+func (v *VSHNRedis) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+	return &StatefulSetManager{}
+}
+
+func (v *VSHNRedis) GetWorkloadName() string {
+	return "redis-master"
 }

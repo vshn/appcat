@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -99,8 +98,8 @@ type VSHNMariaDBServiceSpec struct {
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 
-	// +kubebuilder:default="standalone"
-	// +kubebuilder:validation:Enum=replication;standalone
+	// Access defines additional users and databases for this instance.
+	Access []VSHNAccess `json:"access,omitempty"`
 }
 
 // VSHNMariaDBTLSSpec contains settings to control tls traffic of a service.
@@ -272,4 +271,12 @@ func (v *VSHNMariaDB) GetPDBLabels() map[string]string {
 
 func (v *VSHNMariaDB) GetSecurity() *Security {
 	return &v.Spec.Parameters.Security
+}
+
+func (v *VSHNMariaDB) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+	return &StatefulSetManager{}
+}
+
+func (v *VSHNMariaDB) GetWorkloadName() string {
+	return v.GetName()
 }

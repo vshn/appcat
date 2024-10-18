@@ -9776,6 +9776,7 @@ spec:
                               description: Service contains PostgreSQL DBaaS specific properties
                               properties:
                                 access:
+                                  description: Access defines additional users and databases for this instance.
                                   items:
                                     properties:
                                       database:
@@ -9837,6 +9838,7 @@ spec:
                                     - "13"
                                     - "14"
                                     - "15"
+                                    - "16"
                                   type: string
                                 pgBouncerSettings:
                                   description: PgBouncerSettings passes additional configuration to the pgBouncer instance.

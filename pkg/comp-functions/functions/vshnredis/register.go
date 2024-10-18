@@ -50,6 +50,10 @@ func init() {
 				Name:    "non-sla-prometheus-rules",
 				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNRedis](nonsla.NewAlertSetBuilder("redis", "redis").AddAll().GetAlerts()),
 			},
+			{
+				Name:    "billing",
+				Execute: AddServiceBillingLabel,
+			},
 		},
 	})
 }

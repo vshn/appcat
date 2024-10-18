@@ -1,4 +1,4 @@
-package vshnpostgres
+package vshnmariadb
 
 import (
 	"context"
@@ -6,16 +6,16 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
-	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
+	my1alpha1 "github.com/vshn/appcat/v4/apis/sql/mysql/v1alpha1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 )
 
-func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func UserManagement(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
+
 	err := svc.GetDesiredComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
@@ -54,7 +54,7 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot deploy user password secret: %s", err)))
 	}
 
-	role := &pgv1alpha1.Role{
+	role := &my1alpha1.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s-role", comp.GetName(), username),
 			Annotations: map[string]string{
@@ -64,19 +64,8 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 				runtime.ProviderConfigIgnoreLabel: "true",
 			},
 		},
-		Spec: pgv1alpha1.RoleSpec{
-			ForProvider: pgv1alpha1.RoleParameters{
-				Privileges: pgv1alpha1.RolePrivilege{
-					Login: ptr.To(true),
-				},
-				PasswordSecretRef: &xpv1.SecretKeySelector{
-					SecretReference: xpv1.SecretReference{
-						Name:      secretName,
-						Namespace: comp.GetInstanceNamespace(),
-					},
-					Key: "userpass",
-				},
-			},
+		Spec: my1alpha1.UserSpec{
+			ForProvider: my1alpha1.UserParameters{},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
@@ -103,7 +92,7 @@ func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, sec
 
 	compositeCD := svc.GetConnectionDetails()
 
-	url := getPostgresURLCustomUser(compositeCD, string(compositeCD["POSTGRESQL_HOST"]), username)
+	url := fmt.Sprintf("mysql://%s:%s@%s:%s", username, userpassCD["userpass"], compositeCD["MARIADB_HOST"], compositeCD["MARIADB_PORT"])
 
 	om := metav1.ObjectMeta{
 		Name:      comp.GetLabels()["crossplane.io/claim-name"] + "-" + username,
@@ -118,15 +107,13 @@ func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, sec
 		ObjectMeta: om,
 		Type:       corev1.SecretType("connection.crossplane.io/v1alpha1"),
 		Data: map[string][]byte{
-			"POSTGRESQL_USER":     []byte(username),
-			"POSTGRESQL_PASSWORD": userpassCD["userpass"],
-			"POSTGRESQL_DB":       []byte(dbname),
-			"POSTGRESQL_HOST":     compositeCD["POSTGRESQL_HOST"],
-			"POSTGRESQL_PORT":     compositeCD["POSTGRESQL_PORT"],
-			"POSTGRESQL_URL":      []byte(url),
-			"ca.crt":              compositeCD["ca.crt"],
-			"tls.crt":             compositeCD["tls.crt"],
-			"tls.key":             compositeCD["tls.key"],
+			"MARIADB_USERNAME": []byte(username),
+			"MARIADB_PASSWORD": userpassCD["userpass"],
+			"MARIADB_DB":       []byte(dbname),
+			"MARIADB_HOST":     compositeCD["MARIADB_HOST"],
+			"MARIADB_PORT":     compositeCD["MARIADB_PORT"],
+			"MARIADB_URL":      []byte(url),
+			"ca.crt":           compositeCD["ca.crt"],
 		},
 	}
 
@@ -137,7 +124,7 @@ func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, sec
 	}
 }
 
-func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime) {
+func addProviderConfig(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) {
 	cd := svc.GetConnectionDetails()
 
 	secret := &corev1.Secret{
@@ -146,10 +133,10 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime) {
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Data: map[string][]byte{
-			"username": cd["POSTGRESQL_USER"],
-			"password": cd["POSTGRESQL_PASSWORD"],
-			"endpoint": cd["POSTGRESQL_HOST"],
-			"port":     cd["POSTGRESQL_PORT"],
+			"username": cd["MARIADB_USERNAME"],
+			"password": cd["MARIADB_PASSWORD"],
+			"endpoint": cd["MARIADB_HOST"],
+			"port":     cd["MARIADB_PORT"],
 		},
 	}
 
@@ -162,16 +149,21 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime) {
 		svc.Log.Error(err, "cannot set credential secret for provider-sql")
 	}
 
-	config := &pgv1alpha1.ProviderConfig{
+	tls := "preferred"
+	if comp.Spec.Parameters.TLS.TLSEnabled {
+		// We need to skip-verify here as with the postgresql.
+		// provider-sql does not support custom CA certs.
+		tls = "skip-verify"
+	}
+
+	config := &my1alpha1.ProviderConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName(),
 		},
-		Spec: pgv1alpha1.ProviderConfigSpec{
-			// Porvider-SQL doesn't support passing certificates to the config
-			// se we're stuck with require, which doesn't actually verify the certs.
-			SSLMode: ptr.To("require"),
-			Credentials: pgv1alpha1.ProviderCredentials{
-				Source: "PostgreSQLConnectionSecret",
+		Spec: my1alpha1.ProviderConfigSpec{
+			TLS: &tls,
+			Credentials: my1alpha1.ProviderCredentials{
+				Source: "MySQLConnectionSecret",
 				ConnectionSecretRef: &xpv1.SecretReference{
 					Name:      "provider-conf-credentials",
 					Namespace: comp.GetInstanceNamespace(),
@@ -194,7 +186,7 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime) {
 func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string) {
 	resname := fmt.Sprintf("%s-%s-database", comp.GetName(), name)
 
-	xdb := &pgv1alpha1.Database{}
+	xdb := &my1alpha1.Database{}
 
 	// If there's a database with the same name we will just return
 	err := svc.GetDesiredComposedResourceByName(xdb, resname)
@@ -206,7 +198,7 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 		svc.Log.Error(err, "cannot check if database exists")
 	}
 
-	xdb = &pgv1alpha1.Database{
+	xdb = &my1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: resname,
 			Annotations: map[string]string{
@@ -216,8 +208,8 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 				runtime.ProviderConfigIgnoreLabel: "true",
 			},
 		},
-		Spec: pgv1alpha1.DatabaseSpec{
-			ForProvider: pgv1alpha1.DatabaseParameters{},
+		Spec: my1alpha1.DatabaseSpec{
+			ForProvider: my1alpha1.DatabaseParameters{},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
@@ -234,27 +226,27 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 }
 
 func addGrants(comp common.Composite, svc *runtime.ServiceRuntime, username, dbname string, privileges []string) {
-	privs := []pgv1alpha1.GrantPrivilege{}
+	privs := []my1alpha1.GrantPrivilege{}
 
 	if len(privileges) == 0 {
 		privs = append(privs, "ALL")
 	}
 
 	for _, priv := range privileges {
-		privs = append(privs, pgv1alpha1.GrantPrivilege(priv))
+		privs = append(privs, my1alpha1.GrantPrivilege(priv))
 	}
 
-	grant := &pgv1alpha1.Grant{
+	grant := &my1alpha1.Grant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), username, dbname),
 			Labels: map[string]string{
 				runtime.ProviderConfigIgnoreLabel: "true",
 			},
 		},
-		Spec: pgv1alpha1.GrantSpec{
-			ForProvider: pgv1alpha1.GrantParameters{
+		Spec: my1alpha1.GrantSpec{
+			ForProvider: my1alpha1.GrantParameters{
 				Privileges: privs,
-				Role:       &username,
+				User:       &username,
 				Database:   &dbname,
 			},
 			ResourceSpec: xpv1.ResourceSpec{

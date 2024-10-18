@@ -45,7 +45,7 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Service
 	}
 
 	l.Info("Creating backup config map")
-	err = createScriptCM(ctx, comp, svc)
+	err = createScriptCM(comp, svc)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create backup config map: %w", err))
 	}
@@ -53,7 +53,7 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Service
 	return nil
 }
 
-func createScriptCM(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
+func createScriptCM(comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
 
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

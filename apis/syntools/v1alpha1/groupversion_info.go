@@ -26,5 +26,9 @@ func init() {
 		&CompositeRedisInstanceList{},
 		&CompositeMariaDBInstance{},
 		&CompositeMariaDBInstanceList{},
+		&CompositeMariaDBDatabaseInstance{},
+		&CompositeMariaDBDatabaseInstanceList{},
+		&CompositeMariaDBUserInstance{},
+		&CompositeMariaDBUserInstanceList{},
 	)
 }

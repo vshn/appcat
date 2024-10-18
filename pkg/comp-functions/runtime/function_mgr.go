@@ -54,6 +54,7 @@ const (
 	EventForwardAnnotation    = "appcat.vshn.io/forward-events-to"
 	providerConfigLabel       = "appcat.vshn.io/provider-config"
 	ProviderConfigIgnoreLabel = "appcat.vshn.io/ignore-provider-config"
+	WebhookAllowDeletionLabel = "appcat.vshn.io/webhook-allowdeletion"
 )
 
 // Step describes a single change within a service.

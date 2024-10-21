@@ -190,6 +190,10 @@ func (v *VSHNKeycloak) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
+func (v *VSHNKeycloak) GetClaimName() string {
+	return v.GetLabels()["crossplane.io/claim-name"]
+}
+
 func (v *VSHNKeycloak) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-keycloak-%s", v.GetName())
 }
@@ -340,4 +344,12 @@ func (v *VSHNKeycloak) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsMa
 
 func (v *VSHNKeycloak) GetWorkloadName() string {
 	return v.GetName() + "-keycloakx"
+}
+
+func (v *VSHNKeycloak) GetBillingName() string {
+	return "appcat-" + v.GetServiceName()
+}
+
+func (v *VSHNKeycloak) GetSLA() string {
+	return string(v.Spec.Parameters.Service.ServiceLevel)
 }

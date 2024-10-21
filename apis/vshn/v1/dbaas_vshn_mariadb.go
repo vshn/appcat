@@ -133,6 +133,10 @@ func (v *VSHNMariaDB) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
+func (v *VSHNMariaDB) GetClaimName() string {
+	return v.GetLabels()["crossplane.io/claim-name"]
+}
+
 func (v *VSHNMariaDB) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-mariadb-%s", v.GetName())
 }
@@ -279,4 +283,12 @@ func (v *VSHNMariaDB) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsMan
 
 func (v *VSHNMariaDB) GetWorkloadName() string {
 	return v.GetName()
+}
+
+func (v *VSHNMariaDB) GetBillingName() string {
+	return "appcat-" + v.GetServiceName()
+}
+
+func (v *VSHNMariaDB) GetSLA() string {
+	return string(v.Spec.Parameters.Service.ServiceLevel)
 }

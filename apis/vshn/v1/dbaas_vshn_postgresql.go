@@ -248,6 +248,10 @@ func (v *VSHNPostgreSQL) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
+func (v *VSHNPostgreSQL) GetClaimName() string {
+	return v.GetLabels()["crossplane.io/claim-name"]
+}
+
 // +kubebuilder:object:root=true
 
 // VSHNPostgreSQLList defines a list of VSHNPostgreSQL
@@ -403,4 +407,12 @@ func (v *VSHNPostgreSQL) GetWorkloadPodTemplateLabelsManager() PodTemplateLabels
 
 func (v *VSHNPostgreSQL) GetWorkloadName() string {
 	return v.GetName()
+}
+
+func (v *VSHNPostgreSQL) GetBillingName() string {
+	return "appcat-" + v.GetServiceName()
+}
+
+func (v *VSHNPostgreSQL) GetSLA() string {
+	return string(v.Spec.Parameters.Service.ServiceLevel)
 }

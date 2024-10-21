@@ -106,6 +106,10 @@ func (v *VSHNMinio) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
+func (v *VSHNMinio) GetClaimName() string {
+	return v.GetLabels()["crossplane.io/claim-name"]
+}
+
 func (v *VSHNMinio) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-minio-%s", v.GetName())
 }
@@ -256,4 +260,12 @@ func (v *VSHNMinio) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManag
 
 func (v *VSHNMinio) GetWorkloadName() string {
 	return v.GetName()
+}
+
+func (v *VSHNMinio) GetBillingName() string {
+	return "appcat-" + v.GetServiceName()
+}
+
+func (v *VSHNMinio) GetSLA() string {
+	return string(BestEffort)
 }

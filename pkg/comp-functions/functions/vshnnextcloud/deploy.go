@@ -242,6 +242,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	externalDb := map[string]any{}
+	extraInitContainers := []map[string]any{}
 
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
 		cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + pgInstanceNameSuffix)
@@ -263,6 +264,24 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"database": string(cd[vshnpostgres.PostgresqlDb]),
 			"user":     string(cd[vshnpostgres.PostgresqlUser]),
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
+		}
+
+		extraInitContainers = []map[string]any{
+			{
+				"name":  "dbchecker",
+				"image": "docker.io/busybox",
+				"command": []string{
+					"sh",
+					"-c",
+					`echo 'Waiting for Database to become ready...'
+
+              until printf "." && nc -z -w 2 ` + string(cd[vshnpostgres.PostgresqlHost]) + " " + string(cd[vshnpostgres.PostgresqlPort]) + `; do
+                  sleep 2;
+              done;
+
+              echo 'Database OK ✓'`,
+				},
+			},
 		}
 	}
 
@@ -297,8 +316,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"configs": map[string]string{
 				"vshn-nextcloud.config.php": updatedNextcloudConfig,
 			},
-			"containerPort":      8080,
-			"podSecurityContext": securityContext,
+			"extraInitContainers": extraInitContainers,
+			"containerPort":       8080,
+			"podSecurityContext":  securityContext,
 			"extraVolumes": []map[string]any{
 				{
 					"name": "apache-config",

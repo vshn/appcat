@@ -26,6 +26,10 @@ func init() {
 				Execute: AddBackup,
 			},
 			{
+				Name:    "collabora",
+				Execute: DeployCollabora,
+			},
+			{
 				Name:    "billing",
 				Execute: AddServiceBillingLabel,
 			},

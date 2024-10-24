@@ -9526,7 +9526,7 @@ spec:
                                   x-kubernetes-preserve-unknown-fields: true
                                 repackEnabled:
                                   default: true
-                                  description: This is default option if neither repack or vacuum are selected
+                                  description: RepackEnabled defines if `pg_repack` should be performed during the maintenance. Defaults to true.
                                   type: boolean
                                 serviceLevel:
                                   default: besteffort
@@ -9548,6 +9548,7 @@ spec:
                                   default: {}
                                 vacuumEnabled:
                                   default: false
+                                  description: VacuumEnabled defines if `VACUUM` should be performed during the maintenace. Defaults to false.
                                   type: boolean
                               type: object
                               default: {}

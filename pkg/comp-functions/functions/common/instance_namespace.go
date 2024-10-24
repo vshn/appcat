@@ -29,6 +29,7 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 	compositionName := comp.GetName()
 	instanceNs := comp.GetInstanceNamespace()
 	claimName, ok := comp.GetLabels()[claimNameLabel]
+	billingName := comp.GetBillingName()
 	if !ok {
 		return errors.New("no claim name available in composite labels")
 	}
@@ -40,7 +41,7 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 	}
 
 	l.Info("Creating namespace for " + serviceName + " instance")
-	err = createInstanceNamespace(serviceName, compositionName, claimNs, instanceNs, namespaceResName, claimName, svc)
+	err = createInstanceNamespace(serviceName, compositionName, claimNs, instanceNs, namespaceResName, claimName, billingName, svc)
 	if err != nil {
 		return fmt.Errorf("cannot create %s namespace: %w", serviceName, err)
 	}
@@ -93,7 +94,7 @@ func createNamespaceObserver(claimNs string, instance string, svc *runtime.Servi
 }
 
 // Create the namespace for the service instance
-func createInstanceNamespace(serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName string, svc *runtime.ServiceRuntime) error {
+func createInstanceNamespace(serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName, billingName string, svc *runtime.ServiceRuntime) error {
 
 	org, err := getOrg(compName, svc)
 	if err != nil {
@@ -111,12 +112,13 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 		ObjectMeta: metav1.ObjectMeta{
 			Name: instanceNamespace,
 			Labels: map[string]string{
-				"appcat.vshn.io/servicename":     serviceName + "-" + mode,
-				"appcat.vshn.io/claim-namespace": claimNamespace,
-				"appcat.vshn.io/claim-name":      claimName,
-				"appuio.io/no-rbac-creation":     "true",
-				"appuio.io/billing-name":         "appcat-" + serviceName,
-				"appuio.io/organization":         org,
+				"appcat.vshn.io/servicename":      serviceName + "-" + mode,
+				"appcat.vshn.io/claim-namespace":  claimNamespace,
+				"appcat.vshn.io/claim-name":       claimName,
+				"appuio.io/no-rbac-creation":      "true",
+				"appuio.io/billing-name":          billingName,
+				"appuio.io/organization":          org,
+				"openshift.io/cluster-monitoring": "true",
 			},
 		},
 	}

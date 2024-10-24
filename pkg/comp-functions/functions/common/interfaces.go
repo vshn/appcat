@@ -20,6 +20,9 @@ type InfoGetter interface {
 	GetPDBLabels() map[string]string
 	GetWorkloadPodTemplateLabelsManager() vshnv1.PodTemplateLabelsManager
 	GetWorkloadName() string
+	GetClaimName() string
+	GetSLA() string
+	GetBillingName() string
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create

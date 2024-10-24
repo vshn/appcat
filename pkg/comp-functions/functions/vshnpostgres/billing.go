@@ -16,5 +16,5 @@ func AddServiceBillingLabel(ctx context.Context, comp *v1.VSHNPostgreSQL, svc *r
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	return common.InjectBillingLabelToService(ctx, svc, comp)
+	return common.CreateBillingRecord(ctx, svc, comp)
 }

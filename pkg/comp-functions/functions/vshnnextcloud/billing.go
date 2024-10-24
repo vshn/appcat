@@ -11,6 +11,7 @@ import (
 
 // AddServiceBillingLabel adds billingLabel to all the objects of a services that must be billed
 func AddServiceBillingLabel(ctx context.Context, comp *v1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
+
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))

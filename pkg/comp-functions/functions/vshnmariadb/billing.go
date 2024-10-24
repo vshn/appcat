@@ -16,7 +16,5 @@ func AddServiceBillingLabel(ctx context.Context, comp *v1.VSHNMariaDB, svc *runt
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	common.InjectBillingLabelToService(ctx, svc, comp)
-
 	return common.CreateBillingRecord(ctx, svc, comp)
 }

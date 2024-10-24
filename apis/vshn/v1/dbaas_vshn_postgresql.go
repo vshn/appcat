@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -148,9 +149,11 @@ type VSHNPostgreSQLServiceSpec struct {
 	PgBouncerSettings *sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni `json:"pgBouncerSettings,omitempty"`
 
 	// +kubebuilder:default=true
-	// This is default option if neither repack or vacuum are selected
+	// RepackEnabled defines if `pg_repack` should be performed during the maintenance. Defaults to true.
 	RepackEnabled bool `json:"repackEnabled,omitempty"`
+
 	// +kubebuilder:default=false
+	// VacuumEnabled defines if `VACUUM` should be performed during the maintenace. Defaults to false.
 	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
 
 	// Access defines additional users and databases for this instance.

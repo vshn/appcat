@@ -112,12 +112,13 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 		ObjectMeta: metav1.ObjectMeta{
 			Name: instanceNamespace,
 			Labels: map[string]string{
-				"appcat.vshn.io/servicename":     serviceName + "-" + mode,
-				"appcat.vshn.io/claim-namespace": claimNamespace,
-				"appcat.vshn.io/claim-name":      claimName,
-				"appuio.io/no-rbac-creation":     "true",
-				"appuio.io/billing-name":         billingName,
-				"appuio.io/organization":         org,
+				"appcat.vshn.io/servicename":      serviceName + "-" + mode,
+				"appcat.vshn.io/claim-namespace":  claimNamespace,
+				"appcat.vshn.io/claim-name":       claimName,
+				"appuio.io/no-rbac-creation":      "true",
+				"appuio.io/billing-name":          billingName,
+				"appuio.io/organization":          org,
+				"openshift.io/cluster-monitoring": "true",
 			},
 		},
 	}

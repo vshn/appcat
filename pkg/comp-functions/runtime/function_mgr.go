@@ -482,6 +482,14 @@ func KubeOptionAddRefs(refs ...xkube.Reference) KubeObjectOption {
 	}
 }
 
+// KubeOptionAllowDeletion adds the allow deletion label to the object
+func KubeOptionAllowDeletion(obj *xkube.Object) {
+	if obj.ObjectMeta.Labels == nil {
+		obj.ObjectMeta.Labels = map[string]string{}
+	}
+	obj.ObjectMeta.Labels[WebhookAllowDeletionLabel] = "true"
+}
+
 // KubeOptionAddConnectionDetails adds the given connection details to the kube object.
 // DestNamespace speficies the namespace where the associated secret should be saved.
 // The associated secret will have the UID of the parent object as the name.
@@ -667,7 +675,8 @@ func (s *ServiceRuntime) SetDesiredCompositeStatus(obj client.Object) error {
 		return err
 	}
 
-	err = mergo.Merge(&s.desiredComposite.Unstructured, tmp.Unstructured)
+	// Mergo won't update fields without override
+	err = mergo.Merge(&s.desiredComposite.Unstructured, tmp.Unstructured, mergo.WithOverride)
 	if err != nil {
 		return err
 	}

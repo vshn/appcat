@@ -22,9 +22,9 @@ func TestMariadbDeploy(t *testing.T) {
 
 	rootUser := "root"
 	rootPassword := "mariadb123"
-	mariadbHost := "mariadb-gc9x4.vshn-mariadb-mariadb-gc9x4.svc.cluster.local"
+	mariadbHost := "mariadb.vshn-mariadb-mariadb-gc9x4.svc.cluster.local"
 	mariadbPort := "3306"
-	mariadbUrl := "mysql://root:mariadb123@mariadb-gc9x4.vshn-mariadb-mariadb-gc9x4.svc.cluster.local:3306"
+	mariadbUrl := "mysql://root:mariadb123@mariadb.vshn-mariadb-mariadb-gc9x4.svc.cluster.local:3306"
 
 	assert.Nil(t, DeployMariadb(ctx, &vshnv1.VSHNMariaDB{}, svc))
 

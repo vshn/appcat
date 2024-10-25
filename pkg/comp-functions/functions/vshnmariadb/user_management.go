@@ -141,10 +141,18 @@ func addProviderConfig(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) {
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(secret, comp.GetName()+"-provider-conf-credentials",
-		runtime.KubeOptionProtects("namespace-conditions"),
-		runtime.KubeOptionProtects("cluster"),
-		runtime.KubeOptionProtects(comp.GetName()+"-netpol"))
+	opts := []runtime.KubeObjectOption{
+		runtime.KubeOptionProtects(comp.GetName() + "-instanceNs"),
+		runtime.KubeOptionProtects(comp.GetName() + "-release"),
+		runtime.KubeOptionProtects(comp.GetName() + "-netpol"),
+		runtime.KubeOptionProtects(comp.GetName() + "-main-service"),
+	}
+
+	if comp.GetInstances() != 1 {
+		opts = append(opts, runtime.KubeOptionProtects(comp.GetName()+"-proxysql-sts"))
+	}
+
+	err := svc.SetDesiredKubeObject(secret, comp.GetName()+"-provider-conf-credentials", opts...)
 	if err != nil {
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set credential secret for provider-sql: %s", err)))
 		svc.Log.Error(err, "cannot set credential secret for provider-sql")

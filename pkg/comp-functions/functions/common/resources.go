@@ -133,3 +133,19 @@ func getHigherQuantity(a, b resource.Quantity) resource.Quantity {
 	}
 	return a
 }
+
+// GetBitnamiNano returns a "nano" bitnami resource termplate, but without the
+// ephemeral storage.
+// See for more details: https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15
+func GetBitnamiNano() map[string]any {
+	return map[string]any{
+		"requests": map[string]string{
+			"cpu":    "100m",
+			"memory": "128Mi",
+		},
+		"limits": map[string]string{
+			"cpu":    "150m",
+			"memory": "192Mi",
+		},
+	}
+}

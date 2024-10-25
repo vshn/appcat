@@ -67,6 +67,18 @@ spec:
                           type: string
                       type: object
                       default: {}
+                    instances:
+                      default: 1
+                      description: |-
+                        Instances configures the number of MariaDB instances for the cluster.
+                        Each instance contains one MariaDB server.
+                        These serves will form a Galera cluster.
+                        An additional ProxySQL statefulset will be deployed to make failovers
+                        as seamless as possible.
+                      enum:
+                        - 1
+                        - 3
+                      type: integer
                     maintenance:
                       description: Maintenance contains settings to control the maintenance of an instance.
                       properties:
@@ -4895,7 +4907,7 @@ spec:
                             - guaranteed
                           type: string
                         version:
-                          default: "11.2"
+                          default: "11.5"
                           description: |-
                             Version contains supported version of MariaDB.
                             Multiple versions are supported. The latest version "11.2" is the default version.
@@ -4909,6 +4921,9 @@ spec:
                             - "11.0"
                             - "11.1"
                             - "11.2"
+                            - "11.3"
+                            - "11.4"
+                            - "11.5"
                           type: string
                       type: object
                       default: {}
@@ -5047,6 +5062,11 @@ spec:
                         type: string
                     type: object
                   type: array
+                currentInstances:
+                  description: |-
+                    CurrentInstances tracks the current amount of instances.
+                    Mainly used to detect if there was a change in instances
+                  type: integer
                 instanceNamespace:
                   description: InstanceNamespace contains the name of the namespace where the instance resides
                   type: string
@@ -5231,8 +5251,6 @@ spec:
                     type: object
                   type: array
               type: object
-          required:
-            - spec
           type: object
       served: true
       storage: true

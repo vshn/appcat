@@ -150,6 +150,10 @@ func (v *VSHNRedis) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
+func (v *VSHNRedis) GetClaimName() string {
+	return v.GetLabels()["crossplane.io/claim-name"]
+}
+
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
@@ -304,4 +308,12 @@ func (v *VSHNRedis) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManag
 
 func (v *VSHNRedis) GetWorkloadName() string {
 	return "redis-master"
+}
+
+func (v *VSHNRedis) GetBillingName() string {
+	return "appcat-" + v.GetServiceName()
+}
+
+func (v *VSHNRedis) GetSLA() string {
+	return string(v.Spec.Parameters.Service.ServiceLevel)
 }

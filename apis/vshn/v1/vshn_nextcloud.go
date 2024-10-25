@@ -158,6 +158,10 @@ func (v *VSHNNextcloud) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
+func (v *VSHNNextcloud) GetClaimName() string {
+	return v.GetLabels()["crossplane.io/claim-name"]
+}
+
 func (v *VSHNNextcloud) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-nextcloud-%s", v.GetName())
 }
@@ -310,4 +314,12 @@ func (v *VSHNNextcloud) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsM
 
 func (v *VSHNNextcloud) GetWorkloadName() string {
 	return v.GetName()
+}
+
+func (v *VSHNNextcloud) GetBillingName() string {
+	return "appcat-" + v.GetServiceName()
+}
+
+func (v *VSHNNextcloud) GetSLA() string {
+	return string(v.Spec.Parameters.Service.ServiceLevel)
 }

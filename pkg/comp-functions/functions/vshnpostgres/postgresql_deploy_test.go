@@ -82,7 +82,7 @@ func TestPostgreSqlDeploy(t *testing.T) {
 	assert.Nil(t, sgInstanceProfile.Spec.HugePages)
 
 	sgPostgresConfig := &sgv1.SGPostgresConfig{}
-	assert.NoError(t, svc.GetDesiredKubeObject(sgPostgresConfig, "pg-conf"))
+	assert.NoError(t, svc.GetDesiredKubeObject(sgPostgresConfig, comp.GetName()+"-"+configResourceName))
 	assert.Equal(t, comp.Spec.Parameters.Service.MajorVersion, sgPostgresConfig.Spec.PostgresVersion)
 	assert.Equal(t, map[string]string{}, sgPostgresConfig.Spec.PostgresqlConf)
 
@@ -113,7 +113,7 @@ func TestPostgreSqlDeployWithPgConfig(t *testing.T) {
 	assert.NoError(t, svc.GetDesiredKubeObject(cluster, "cluster"))
 
 	sgPostgresConfig := &sgv1.SGPostgresConfig{}
-	assert.NoError(t, svc.GetDesiredKubeObject(sgPostgresConfig, "pg-conf"))
+	assert.NoError(t, svc.GetDesiredKubeObject(sgPostgresConfig, "pgsql-gc9x4-"+configResourceName))
 	assert.Contains(t, sgPostgresConfig.Spec.PostgresqlConf, "timezone")
 	assert.Equal(t, "Europe/Zurich", sgPostgresConfig.Spec.PostgresqlConf["timezone"])
 }

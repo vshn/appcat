@@ -334,7 +334,7 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 		},
 	}
 
-	err := svc.SetDesiredKubeObjectWithName(sgPostgresConfig, comp.GetName()+"-pgconf", "pg-conf")
+	err := svc.SetDesiredKubeObject(sgPostgresConfig, comp.GetName()+"-"+configResourceName)
 	if err != nil {
 		err = fmt.Errorf("cannot create sgInstanceProfile: %w", err)
 		return err

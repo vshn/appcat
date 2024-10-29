@@ -9,8 +9,8 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-// AddServiceBillingLabel adds billingLabel to all the objects of a services that must be billed
-func AddServiceBillingLabel(ctx context.Context, comp *v1.VSHNMinio, svc *runtime.ServiceRuntime) *xfnproto.Result {
+// AddBilling enables billing for this service
+func AddBilling(ctx context.Context, comp *v1.VSHNMinio, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))

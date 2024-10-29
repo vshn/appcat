@@ -27,7 +27,7 @@ func init() {
 			},
 			{
 				Name:    "billing",
-				Execute: AddServiceBillingLabel,
+				Execute: AddBilling,
 			},
 		},
 	})

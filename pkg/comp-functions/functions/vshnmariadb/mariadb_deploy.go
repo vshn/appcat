@@ -176,7 +176,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": false,
 		},
 		"tls": map[string]interface{}{
-			"enabled":            true,
+			"enabled":            comp.Spec.Parameters.TLS.TLSEnabled,
 			"certificatesSecret": "tls-server-certificate",
 			"certFilename":       "tls.crt",
 			"certKeyFilename":    "tls.key",

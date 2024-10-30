@@ -185,10 +185,8 @@ func Test_needReleasePatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 
-		ctx := context.TODO()
-
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := needReleasePatch(ctx, tt.args.comp, tt.args.values)
+			got, got1 := needReleasePatch(tt.args.comp, tt.args.values)
 
 			assert.Equal(t, tt.want, got)
 

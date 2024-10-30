@@ -25,7 +25,6 @@ type KeycloakWebhookHandler struct {
 
 // SetupKeycloakWebhookHandlerWithManager registers the validation webhook with the manager.
 func SetupKeycloakWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&vshnv1.VSHNKeycloak{}).
 		WithValidator(&KeycloakWebhookHandler{

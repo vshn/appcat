@@ -19,18 +19,24 @@ var _ webhook.CustomValidator = &PVCDeletionProtectionHandler{}
 
 // PVCDeletionProtectionHandler
 type PVCDeletionProtectionHandler struct {
-	client client.Client
-	log    logr.Logger
+	client             client.Client
+	controlPlaneClient client.Client
+	log                logr.Logger
 }
 
 // SetupPVCDeletionProtectionHandlerWithManager registers the validation webhook with the manager.
 func SetupPVCDeletionProtectionHandlerWithManager(mgr ctrl.Manager) error {
+	cpClient, err := getControlPlaneClient(mgr)
+	if err != nil {
+		return err
+	}
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&corev1.PersistentVolumeClaim{}).
 		WithValidator(&PVCDeletionProtectionHandler{
-			client: mgr.GetClient(),
-			log:    mgr.GetLogger().WithName("webhook").WithName("pvc"),
+			client:             mgr.GetClient(),
+			controlPlaneClient: cpClient,
+			log:                mgr.GetLogger().WithName("webhook").WithName("pvc"),
 		}).
 		Complete()
 }
@@ -57,7 +63,7 @@ func (p *PVCDeletionProtectionHandler) ValidateDelete(ctx context.Context, obj r
 
 	l := p.log.WithValues("object", pvc.GetName(), "namespace", pvc.GetNamespace(), "GVK", pvc.GetObjectKind().GroupVersionKind().String())
 
-	compInfo, err := checkUnmanagedObject(ctx, pvc, p.client, l)
+	compInfo, err := checkUnmanagedObject(ctx, pvc, p.client, p.controlPlaneClient, l)
 	if err != nil {
 		return nil, err
 	}

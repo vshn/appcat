@@ -23,6 +23,7 @@ type controller struct {
 	leaderElect             bool
 	enableWebhooks          bool
 	enableAppcatWebhooks    bool
+	enableProviderWebhooks  bool
 	enableQuotas            bool
 	enableEventForwarding   bool
 	certDir                 string
@@ -46,6 +47,7 @@ func init() {
 		"Enabling this will ensure there is only one active controller manager.")
 	ControllerCMD.Flags().BoolVar(&c.enableWebhooks, "webhooks", true, "Disable the validation webhooks.")
 	ControllerCMD.Flags().BoolVar(&c.enableAppcatWebhooks, "appcat-webhooks", true, "Disable the appcat validation webhooks")
+	ControllerCMD.Flags().BoolVar(&c.enableProviderWebhooks, "provider-webhooks", true, "Disable the provider validation webhooks")
 	ControllerCMD.Flags().StringVar(&c.certDir, "certdir", "/etc/webhook/certs", "Set the webhook certificate directory")
 	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
@@ -96,7 +98,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("PLANS_NAMEPSACE env variable needs to be set for quota support")
 		}
 
-		err := setupWebhooks(mgr, c.enableQuotas, c.enableAppcatWebhooks)
+		err := setupWebhooks(mgr, c.enableQuotas, c.enableAppcatWebhooks, c.enableProviderWebhooks)
 		if err != nil {
 			return err
 		}
@@ -112,7 +114,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	return mgr.Start(ctrl.SetupSignalHandler())
 }
 
-func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool) error {
+func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool, withProviderWebhooks bool) error {
 	if withAppcatWebhooks {
 		err := webhooks.SetupPostgreSQLWebhookHandlerWithManager(mgr, withQuota)
 		if err != nil {
@@ -149,31 +151,34 @@ func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool)
 		}
 	}
 
+	if withProviderWebhooks {
+		err := webhooks.SetupReleaseDeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupMysqlDatabaseDeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupMysqlGrantDeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupMysqlUserDeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupObjectDeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
+
+		err = webhooks.SetupObjectv1alpha1DeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
+	}
 	err := webhooks.SetupNamespaceDeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupReleaseDeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupMysqlDatabaseDeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupMysqlGrantDeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupMysqlUserDeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupObjectDeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupObjectv1alpha1DeletionProtectionHandlerWithManager(mgr)
 	if err != nil {
 		return err
 	}

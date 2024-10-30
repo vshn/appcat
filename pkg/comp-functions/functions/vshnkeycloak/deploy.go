@@ -627,7 +627,7 @@ func copyConfigMap(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) (*cor
 			Namespace: comp.GetClaimNamespace(),
 		},
 	}
-	err := svc.SetDesiredKubeObserveObject(cmClaimObserver, cmObjectName)
+	err := svc.SetDesiredKubeObject(cmClaimObserver, cmObjectName, runtime.KubeOptionObserve)
 
 	if err != nil {
 		svc.Log.Info("Can't observe Keycloak config Configmap")
@@ -664,7 +664,7 @@ func copySecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
 			Namespace: comp.GetClaimNamespace(),
 		},
 	}
-	err := svc.SetDesiredKubeObserveObject(secretClaimObserver, secretObjectName)
+	err := svc.SetDesiredKubeObject(secretClaimObserver, secretObjectName, runtime.KubeOptionObserve)
 
 	if err != nil {
 		svc.Log.Info("Can't observe Keycloak env variable secret")

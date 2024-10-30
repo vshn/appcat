@@ -31,11 +31,11 @@ func ManageRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	desiredRelease, err := getRelease(ctx, svc)
+	desiredRelease, err := getRelease(svc)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get redis release from iof: %w", err))
 	}
-	observedRelease, err := getObservedRelease(ctx, svc)
+	observedRelease, err := getObservedRelease(svc)
 	if err != nil {
 		return runtime.NewWarningResult("cannot get observed release, skipping")
 	}
@@ -67,7 +67,7 @@ func ManageRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 	return nil
 }
 
-func getRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*xhelmv1.Release, error) {
+func getRelease(svc *runtime.ServiceRuntime) (*xhelmv1.Release, error) {
 	r := &xhelmv1.Release{}
 	err := svc.GetDesiredComposedResourceByName(r, redisRelease)
 	if err != nil {
@@ -76,7 +76,7 @@ func getRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*xhelmv1.Rele
 	return r, nil
 }
 
-func getObservedRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*xhelmv1.Release, error) {
+func getObservedRelease(svc *runtime.ServiceRuntime) (*xhelmv1.Release, error) {
 	r := &xhelmv1.Release{}
 	err := svc.GetObservedComposedResource(r, redisRelease)
 	if errors.Is(err, runtime.ErrNotFound) {

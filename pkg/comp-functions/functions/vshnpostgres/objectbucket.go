@@ -25,6 +25,9 @@ func EnsureObjectBucketLabels(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, 
 	if err != nil {
 		return runtime.NewWarningResult("cannot get xobjectbucket")
 	}
+	labels := bucket.GetLabels()
+	labels["appcat.vshn.io/ignore-provider-config"] = "true"
+	bucket.SetLabels(labels)
 
 	err = svc.SetDesiredComposedResourceWithName(bucket, "pg-bucket")
 	if err != nil {

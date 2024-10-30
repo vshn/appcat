@@ -100,7 +100,7 @@ observed:
               reason: ReconcileSuccess
               status: 'True'
               type: Synced
-    pg-conf:
+    pgsql-gc9x4-pg-conf:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha1
         kind: Object

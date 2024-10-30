@@ -81,14 +81,14 @@ func Test_disableTimescaleDB(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, tt.iofFile)
 
 		t.Run(tt.name, func(t *testing.T) {
-			if err := disableTimescaleDB(ctx, svc, configResourceName); (err != nil) != tt.wantErr {
+			if err := disableTimescaleDB(ctx, svc, "pgsql-gc9x4"); (err != nil) != tt.wantErr {
 				t.Errorf("disableTimescaleDB() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 
 		config := &stackgresv1.SGPostgresConfig{}
 
-		assert.NoError(t, svc.GetDesiredKubeObject(config, configResourceName))
+		assert.NoError(t, svc.GetDesiredKubeObject(config, "pgsql-gc9x4-"+configResourceName))
 
 		assert.NotContains(t, config.Spec.PostgresqlConf[sharedLibraries], timescaleExtName)
 

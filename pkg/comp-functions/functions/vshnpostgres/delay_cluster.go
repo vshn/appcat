@@ -48,7 +48,7 @@ func DelayClusterDeployment(_ context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		return runtime.NewWarningResult("SGObjectStorage is not yet ready, skipping creation of cluster")
 	}
 
-	if !kubeObjectSyncedAndReady("pg-conf", svc) {
+	if !kubeObjectSyncedAndReady(comp.GetName()+"-"+configResourceName, svc) {
 		return runtime.NewWarningResult("SGPostgresConfig is not yet ready, skipping creation of cluster")
 	}
 

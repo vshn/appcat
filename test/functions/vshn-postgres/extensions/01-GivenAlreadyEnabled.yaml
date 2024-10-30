@@ -23,7 +23,7 @@ desired:
         writeConnectionSecretToRef: {}
       status: {}
   resources:
-    pg-conf:
+    pgsql-gc9x4-pg-conf:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha1
         kind: Object

@@ -88,7 +88,7 @@ func enableTimescaleDB(ctx context.Context, svc *runtime.ServiceRuntime, name st
 
 	config := &stackgresv1.SGPostgresConfig{}
 
-	err := svc.GetDesiredKubeObject(config, configResourceName)
+	err := svc.GetDesiredKubeObject(config, name+"-"+configResourceName)
 	if err != nil && err == runtime.ErrNotFound {
 		controllerruntime.LoggerFrom(ctx).Info("no pg-conf found")
 		return nil
@@ -112,7 +112,7 @@ func disableTimescaleDB(ctx context.Context, svc *runtime.ServiceRuntime, name s
 
 	config := &stackgresv1.SGPostgresConfig{}
 
-	err := svc.GetDesiredKubeObject(config, configResourceName)
+	err := svc.GetDesiredKubeObject(config, name+"-"+configResourceName)
 	if err != nil && err == runtime.ErrNotFound {
 		controllerruntime.LoggerFrom(ctx).Info("no pg-conf found")
 		return nil

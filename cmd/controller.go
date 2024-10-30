@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
-	"github.com/vshn/appcat/v4/pkg/controller/postgres"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -23,7 +22,9 @@ type controller struct {
 	metricsAddr, healthAddr string
 	leaderElect             bool
 	enableWebhooks          bool
+	enableAppcatWebhooks    bool
 	enableQuotas            bool
+	enableEventForwarding   bool
 	certDir                 string
 }
 
@@ -44,8 +45,10 @@ func init() {
 	ControllerCMD.Flags().BoolVar(&c.leaderElect, "leader-elect", false, "Enable leader election for controller manager. "+
 		"Enabling this will ensure there is only one active controller manager.")
 	ControllerCMD.Flags().BoolVar(&c.enableWebhooks, "webhooks", true, "Disable the validation webhooks.")
+	ControllerCMD.Flags().BoolVar(&c.enableAppcatWebhooks, "appcat-webhooks", true, "Disable the appcat validation webhooks")
 	ControllerCMD.Flags().StringVar(&c.certDir, "certdir", "/etc/webhook/certs", "Set the webhook certificate directory")
 	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
+	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
 		viper.Set("PLANS_NAMESPACE", "syn-appcat")
@@ -74,25 +77,17 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	xpg := &postgres.XPostgreSQLReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}
+	if c.enableEventForwarding {
+		events := &events.EventHandler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}
 
-	err = xpg.SetupWithManager(mgr)
-	if err != nil {
-		return err
-	}
+		err = events.SetupWithManager(mgr)
 
-	events := &events.EventHandler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}
-
-	err = events.SetupWithManager(mgr)
-
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	if c.enableWebhooks {
@@ -101,7 +96,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("PLANS_NAMEPSACE env variable needs to be set for quota support")
 		}
 
-		err := setupWebhooks(mgr, c.enableQuotas)
+		err := setupWebhooks(mgr, c.enableQuotas, c.enableAppcatWebhooks)
 		if err != nil {
 			return err
 		}
@@ -117,45 +112,70 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	return mgr.Start(ctrl.SetupSignalHandler())
 }
 
-func setupWebhooks(mgr manager.Manager, withQuota bool) error {
-	err := webhooks.SetupPostgreSQLWebhookHandlerWithManager(mgr, withQuota)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupRedisWebhookHandlerWithManager(mgr, withQuota)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupMariaDBWebhookHandlerWithManager(mgr, withQuota)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupMinioWebhookHandlerWithManager(mgr, withQuota)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupNextcloudWebhookHandlerWithManager(mgr, withQuota)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupKeycloakWebhookHandlerWithManager(mgr, withQuota)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupNamespaceDeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
+func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool) error {
+	if withAppcatWebhooks {
+		err := webhooks.SetupPostgreSQLWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupRedisWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupMariaDBWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupMinioWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupNextcloudWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupKeycloakWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
+		err = webhooks.SetupXObjectbucketCDeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
+
+		err = webhooks.SetupObjectbucketDeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = webhooks.SetupXObjectbucketCDeletionProtectionHandlerWithManager(mgr)
+	err := webhooks.SetupNamespaceDeletionProtectionHandlerWithManager(mgr)
 	if err != nil {
 		return err
 	}
-
-	err = webhooks.SetupObjectbucketDeletionProtectionHandlerWithManager(mgr)
+	err = webhooks.SetupReleaseDeletionProtectionHandlerWithManager(mgr)
 	if err != nil {
 		return err
 	}
-
+	err = webhooks.SetupMysqlDatabaseDeletionProtectionHandlerWithManager(mgr)
+	if err != nil {
+		return err
+	}
+	err = webhooks.SetupMysqlGrantDeletionProtectionHandlerWithManager(mgr)
+	if err != nil {
+		return err
+	}
+	err = webhooks.SetupMysqlUserDeletionProtectionHandlerWithManager(mgr)
+	if err != nil {
+		return err
+	}
+	err = webhooks.SetupObjectDeletionProtectionHandlerWithManager(mgr)
+	if err != nil {
+		return err
+	}
+	err = webhooks.SetupObjectv1alpha1DeletionProtectionHandlerWithManager(mgr)
+	if err != nil {
+		return err
+	}
 	return webhooks.SetupPVCDeletionProtectionHandlerWithManager(mgr)
 }

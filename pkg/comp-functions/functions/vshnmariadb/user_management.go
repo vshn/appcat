@@ -62,6 +62,7 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 			},
 			Labels: map[string]string{
 				runtime.ProviderConfigIgnoreLabel: "true",
+				runtime.WebhookAllowDeletionLabel: "true",
 			},
 		},
 		Spec: my1alpha1.UserSpec{
@@ -206,6 +207,7 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 			},
 			Labels: map[string]string{
 				runtime.ProviderConfigIgnoreLabel: "true",
+				runtime.WebhookAllowDeletionLabel: "true",
 			},
 		},
 		Spec: my1alpha1.DatabaseSpec{
@@ -241,6 +243,7 @@ func addGrants(comp common.Composite, svc *runtime.ServiceRuntime, username, dbn
 			Name: fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), username, dbname),
 			Labels: map[string]string{
 				runtime.ProviderConfigIgnoreLabel: "true",
+				runtime.WebhookAllowDeletionLabel: "true",
 			},
 		},
 		Spec: my1alpha1.GrantSpec{

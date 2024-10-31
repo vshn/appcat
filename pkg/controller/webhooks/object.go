@@ -6,7 +6,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-//+kubebuilder:webhook:verbs=delete,path=/validate-kubernetes-crossplane-io-v1alpha1-object,mutating=false,failurePolicy=fail,groups="kubernetes.crossplane.io",resources=objects,versions=v1alpha1,name=objectsv1alpha1.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 //+kubebuilder:webhook:verbs=delete,path=/validate-kubernetes-crossplane-io-v1alpha2-object,mutating=false,failurePolicy=fail,groups="kubernetes.crossplane.io",resources=objects,versions=v1alpha2,name=objects.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
 //+kubebuilder:rbac:groups=syn.tools,resources=compositeredisinstances,verbs=get;list;watch;patch;update

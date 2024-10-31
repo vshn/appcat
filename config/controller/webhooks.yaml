@@ -105,25 +105,6 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-kubernetes-crossplane-io-v1alpha1-object
-  failurePolicy: Fail
-  name: objectsv1alpha1.vshn.appcat.vshn.io
-  rules:
-  - apiGroups:
-    - kubernetes.crossplane.io
-    apiVersions:
-    - v1alpha1
-    operations:
-    - DELETE
-    resources:
-    - objects
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
       path: /validate-vshn-appcat-vshn-io-v1-vshnpostgresql
   failurePolicy: Fail
   name: postgresql.vshn.appcat.vshn.io

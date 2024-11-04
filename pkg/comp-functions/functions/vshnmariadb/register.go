@@ -43,6 +43,10 @@ func init() {
 				Name:    "user-management",
 				Execute: UserManagement,
 			},
+			{
+				Name:    "proxySQL",
+				Execute: AddProxySQL,
+			},
 		},
 	})
 }

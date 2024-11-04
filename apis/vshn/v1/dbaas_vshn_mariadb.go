@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -23,7 +24,7 @@ type VSHNMariaDB struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the desired state of a VSHNMariaDB.
-	Spec VSHNMariaDBSpec `json:"spec"`
+	Spec VSHNMariaDBSpec `json:"spec,omitempty"`
 
 	// Status reflects the observed state of a VSHNMariaDB.
 	Status VSHNMariaDBStatus `json:"status,omitempty"`
@@ -78,15 +79,25 @@ type VSHNMariaDBParameters struct {
 
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
+
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Enum=1;3;
+
+	// Instances configures the number of MariaDB instances for the cluster.
+	// Each instance contains one MariaDB server.
+	// These serves will form a Galera cluster.
+	// An additional ProxySQL statefulset will be deployed to make failovers
+	// as seamless as possible.
+	Instances int `json:"instances,omitempty"`
 }
 
 // VSHNMariaDBServiceSpec contains MariaDB DBaaS specific properties
 type VSHNMariaDBServiceSpec struct {
-	// +kubebuilder:validation:Enum="10.4";"10.5";"10.6";"10.9";"10.10";"10.11";"11.0";"11.1";"11.2";
-	// +kubebuilder:default="11.2"
+	// +kubebuilder:validation:Enum="10.4";"10.5";"10.6";"10.9";"10.10";"10.11";"11.0";"11.1";"11.2";"11.3";"11.4";"11.5";
+	// +kubebuilder:default="11.5"
 
 	// Version contains supported version of MariaDB.
-	// Multiple versions are supported. The latest version "11.2" is the default version.
+	// Multiple versions are supported. The latest version "11.5" is the default version.
 	Version string `json:"version,omitempty"`
 
 	// MariadbSettings contains additional MariaDB settings.
@@ -127,6 +138,9 @@ type VSHNMariaDBStatus struct {
 	// Schedules keeps track of random generated schedules, is overwriten by
 	// schedules set in the service's spec.
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
+	// CurrentInstances tracks the current amount of instances.
+	// Mainly used to detect if there was a change in instances
+	CurrentInstances int `json:"currentInstances,omitempty"`
 }
 
 func (v *VSHNMariaDB) GetClaimNamespace() string {
@@ -264,7 +278,7 @@ func (v *VSHNMariaDB) GetMonitoring() VSHNMonitoring {
 }
 
 func (v *VSHNMariaDB) GetInstances() int {
-	return 1
+	return v.Spec.Parameters.Instances
 }
 
 func (v *VSHNMariaDB) GetPDBLabels() map[string]string {

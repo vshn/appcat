@@ -13,7 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *runtime.ServiceRuntime) error {
+// CreateTLSCerts creates ssl/tls certificates. Servicename will be concatenated with the given namespace to generate a proper k8s fqdn.
+// In addition to an error it also returns the name of the secret containing the server certifcates.
+func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *runtime.ServiceRuntime, additionalSANs ...string) (string, error) {
 
 	selfSignedIssuer := &cmv1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
@@ -32,8 +34,10 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 	err := svc.SetDesiredKubeObject(selfSignedIssuer, serviceName+"-selfsigned-issuer")
 	if err != nil {
 		err = fmt.Errorf("cannot create selfSignedIssuer object: %w", err)
-		return err
+		return "", err
 	}
+
+	serverCertsSecret := "tls-server-certificate"
 
 	caCert := &cmv1.Certificate{
 
@@ -72,7 +76,7 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 	err = svc.SetDesiredKubeObject(caCert, serviceName+"-ca-cert")
 	if err != nil {
 		err = fmt.Errorf("cannot create caCert object: %w", err)
-		return err
+		return serverCertsSecret, err
 	}
 
 	caIssuer := &cmv1.Issuer{
@@ -92,7 +96,7 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 	err = svc.SetDesiredKubeObject(caIssuer, serviceName+"-ca-issuer")
 	if err != nil {
 		err = fmt.Errorf("cannot create caIssuer object: %w", err)
-		return err
+		return serverCertsSecret, err
 	}
 
 	serverCert := &cmv1.Certificate{
@@ -101,7 +105,7 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 			Namespace: ns,
 		},
 		Spec: cmv1.CertificateSpec{
-			SecretName: "tls-server-certificate",
+			SecretName: serverCertsSecret,
 			Duration: &metav1.Duration{
 				Duration: time.Duration(87600 * time.Hour),
 			},
@@ -132,13 +136,15 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
+	serverCert.Spec.DNSNames = append(serverCert.Spec.DNSNames, additionalSANs...)
+
 	cd := []xkube.ConnectionDetail{
 		{
 			ObjectReference: corev1.ObjectReference{
 				APIVersion: "v1",
 				Kind:       "Secret",
 				Namespace:  ns,
-				Name:       "tls-server-certificate",
+				Name:       serverCertsSecret,
 				FieldPath:  "data[ca.crt]",
 			},
 			ToConnectionSecretKey: "ca.crt",
@@ -148,7 +154,7 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 				APIVersion: "v1",
 				Kind:       "Secret",
 				Namespace:  ns,
-				Name:       "tls-server-certificate",
+				Name:       serverCertsSecret,
 				FieldPath:  "data[tls.crt]",
 			},
 			ToConnectionSecretKey: "tls.crt",
@@ -158,7 +164,7 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 				APIVersion: "v1",
 				Kind:       "Secret",
 				Namespace:  ns,
-				Name:       "tls-server-certificate",
+				Name:       serverCertsSecret,
 				FieldPath:  "data[tls.key]",
 			},
 			ToConnectionSecretKey: "tls.key",
@@ -168,9 +174,9 @@ func CreateTlsCerts(ctx context.Context, ns string, serviceName string, svc *run
 	err = svc.SetDesiredKubeObject(serverCert, serviceName+"-server-cert", runtime.KubeOptionAddConnectionDetails(ns, cd...))
 	if err != nil {
 		err = fmt.Errorf("cannot create serverCert object: %w", err)
-		return err
+		return serverCertsSecret, err
 	}
 
-	return nil
+	return serverCertsSecret, nil
 
 }

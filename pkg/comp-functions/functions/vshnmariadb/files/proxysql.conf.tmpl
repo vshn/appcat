@@ -1,0 +1,42 @@
+datadir="/var/lib/proxysql"
+
+admin_variables=
+{
+    admin_credentials="admin:{{ .RootPassword }};radmin:{{ .RootPassword }}"
+    mysql_ifaces="0.0.0.0:6032"
+    refresh_interval=2000
+    cluster_username="radmin"
+    cluster_password="{{ .RootPassword }}"
+}
+
+{{ if eq .TLS 1 }}
+mysql_variables = {
+    ssl_p2s_ca = "/var/lib/proxysql/proxysql-ca.pem"
+}
+{{ end }}
+
+mysql_servers =
+(
+    { address="{{ .CompName }}-0.{{ .CompName }}-headless.{{ .Namespace }}.svc" , port=3306 , hostgroup=2, weight=120, use_ssl={{ .TLS }} },
+    { address="{{ .CompName }}-1.{{ .CompName }}-headless.{{ .Namespace }}.svc" , port=3306 , hostgroup=2, weight=110, use_ssl={{ .TLS }} },
+    { address="{{ .CompName }}-2.{{ .CompName }}-headless.{{ .Namespace }}.svc" , port=3306 , hostgroup=2, weight=100, use_ssl={{ .TLS }} }
+)
+
+mysql_users =
+(
+    { username = "root", password = "{{ .RootPassword }}", default_hostgroup = 2 },
+    {{range $val := .Users}}
+    { username = "{{ $val.Name }}", password = "{{ $val.Password }}", default_hostgroup = 2 },
+    {{end}}
+)
+
+mysql_galera_hostgroups =
+(
+    {writer_hostgroup=2,backup_writer_hostgroup=4,reader_hostgroup=3,offline_hostgroup=1,active=1,max_writers=1,writer_is_also_reader=1,max_transactions_behind=100}
+)
+
+proxysql_servers =
+(
+    { hostname = "proxysql-0.proxysqlcluster.{{ .Namespace }}.svc", port = 6032, weight = 1 },
+    { hostname = "proxysql-1.proxysqlcluster.{{ .Namespace }}.svc", port = 6032, weight = 1 }
+)

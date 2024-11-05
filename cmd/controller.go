@@ -18,14 +18,15 @@ import (
 )
 
 type controller struct {
-	scheme                  *runtime.Scheme
-	metricsAddr, healthAddr string
-	leaderElect             bool
-	enableWebhooks          bool
-	enableAppcatWebhooks    bool
-	enableQuotas            bool
-	enableEventForwarding   bool
-	certDir                 string
+	scheme                      *runtime.Scheme
+	metricsAddr, healthAddr     string
+	leaderElect                 bool
+	enableWebhooks              bool
+	enableAppcatWebhooks        bool
+	enableLegacyObjectsWebhooks bool
+	enableQuotas                bool
+	enableEventForwarding       bool
+	certDir                     string
 }
 
 var c = controller{
@@ -47,6 +48,7 @@ func init() {
 	ControllerCMD.Flags().BoolVar(&c.enableWebhooks, "webhooks", true, "Disable the validation webhooks.")
 	ControllerCMD.Flags().BoolVar(&c.enableAppcatWebhooks, "appcat-webhooks", true, "Disable the appcat validation webhooks")
 	ControllerCMD.Flags().StringVar(&c.certDir, "certdir", "/etc/webhook/certs", "Set the webhook certificate directory")
+	ControllerCMD.Flags().BoolVar(&c.enableLegacyObjectsWebhooks, "legacy-objects-webhooks", false, "Enable v1alpha1 objects for the appcat validation webhooks")
 	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
 	viper.AutomaticEnv()
@@ -96,7 +98,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("PLANS_NAMEPSACE env variable needs to be set for quota support")
 		}
 
-		err := setupWebhooks(mgr, c.enableQuotas, c.enableAppcatWebhooks)
+		err := setupWebhooks(mgr, c.enableQuotas, c.enableAppcatWebhooks, c.enableLegacyObjectsWebhooks)
 		if err != nil {
 			return err
 		}
@@ -112,7 +114,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	return mgr.Start(ctrl.SetupSignalHandler())
 }
 
-func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool) error {
+func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool, withLegacyObjectsWebhooks bool) error {
 	if withAppcatWebhooks {
 		err := webhooks.SetupPostgreSQLWebhookHandlerWithManager(mgr, withQuota)
 		if err != nil {
@@ -169,13 +171,16 @@ func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool)
 	if err != nil {
 		return err
 	}
-	err = webhooks.SetupObjectDeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
-	}
-	err = webhooks.SetupObjectv1alpha1DeletionProtectionHandlerWithManager(mgr)
-	if err != nil {
-		return err
+	if withLegacyObjectsWebhooks {
+		err = webhooks.SetupObjectv1alpha1DeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = webhooks.SetupObjectDeletionProtectionHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
 	}
 	return webhooks.SetupPVCDeletionProtectionHandlerWithManager(mgr)
 }

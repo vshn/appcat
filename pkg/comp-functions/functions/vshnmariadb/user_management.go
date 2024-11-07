@@ -142,7 +142,7 @@ func addProviderConfig(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) {
 	}
 
 	opts := []runtime.KubeObjectOption{
-		runtime.KubeOptionProtects(comp.GetName() + "-instanceNs"),
+		runtime.KubeOptionProtects(comp.GetName() + "-instancens"),
 		runtime.KubeOptionProtects(comp.GetName() + "-release"),
 		runtime.KubeOptionProtects(comp.GetName() + "-netpol"),
 		runtime.KubeOptionProtects(comp.GetName() + "-main-service"),

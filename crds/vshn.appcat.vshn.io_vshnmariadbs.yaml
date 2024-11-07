@@ -4910,7 +4910,7 @@ spec:
                           default: "11.5"
                           description: |-
                             Version contains supported version of MariaDB.
-                            Multiple versions are supported. The latest version "11.2" is the default version.
+                            Multiple versions are supported. The latest version "11.5" is the default version.
                           enum:
                             - "10.4"
                             - "10.5"

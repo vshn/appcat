@@ -16,6 +16,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/apps/v1"
@@ -56,22 +57,31 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult("Collabora FQDN is not a valid DNS name: " + comp.Spec.Parameters.Service.Collabora.FQDN)
 	}
 
-	// Create service account
-	err = createServiceAccount(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult("Failed to add Collabora SA: " + err.Error())
+	rules := []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Resources: []string{"pods", "pods/log", "pods/status", "pods/attach", "pods/exec"},
+			Verbs:     []string{"get", "list", "watch", "create", "watch", "patch", "update", "delete"},
+		},
+		{
+			APIGroups: []string{"apps"},
+			Resources: []string{"deployments", "statefulsets"},
+			Verbs:     []string{"get", "delete", "watch", "list", "patch", "update", "create"},
+		},
 	}
 
-	// Create security context role
-	err = createSecurityContextRole(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult("Failed to add Collabora SCCs Role: " + err.Error())
+	if svc.Config.Data["isOpenshift"] == "true" {
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups:     []string{"security.openshift.io"},
+			Resources:     []string{"securitycontextconstraints"},
+			ResourceNames: []string{"appcat-collabora"},
+			Verbs:         []string{"use"},
+		})
 	}
 
-	// Create security context role binding
-	err = createSecurityContextRoleBinding(comp, svc)
+	err = common.AddSaWithRole(ctx, svc, rules, comp.GetName(), comp.GetInstanceNamespace(), "collabora-code", true)
 	if err != nil {
-		return runtime.NewWarningResult("Failed to add Collabora SCCs RoleBinding: " + err.Error())
+		return runtime.NewWarningResult("Failed to add Collabora SA with Role: " + err.Error())
 	}
 
 	// Create coolwsd config map
@@ -474,74 +484,6 @@ func createSecretWithRSAKeys(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRun
 	}
 
 	return svc.SetDesiredKubeObject(secret, objName, runtime.KubeOptionAddLabels(labelMap))
-}
-
-func createServiceAccount(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + "-collabora-code-sa",
-			Namespace: comp.GetInstanceNamespace(),
-			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
-		},
-	}
-	return svc.SetDesiredKubeObject(sa, comp.GetName()+"-collabora-code-sa", runtime.KubeOptionAddLabels(labelMap))
-}
-
-func createSecurityContextRole(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-	role := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + "-collabora-code-role",
-			Namespace: comp.GetInstanceNamespace(),
-			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods", "pods/log", "pods/status", "pods/attach", "pods/exec"},
-				Verbs:     []string{"get", "list", "watch", "create", "watch", "patch", "update", "delete"},
-			},
-			{
-				APIGroups: []string{"apps"},
-				Resources: []string{"deployments", "statefulsets"},
-				Verbs:     []string{"get", "delete", "watch", "list", "patch", "update", "create"},
-			},
-		},
-	}
-
-	if svc.Config.Data["isOpenshift"] == "true" {
-		role.Rules = append(role.Rules, rbacv1.PolicyRule{
-			APIGroups:     []string{"security.openshift.io"},
-			Resources:     []string{"securitycontextconstraints"},
-			ResourceNames: []string{"appcat-collabora"},
-			Verbs:         []string{"use"},
-		})
-	}
-
-	return svc.SetDesiredKubeObject(role, comp.GetName()+"-collabora-code-role", runtime.KubeOptionAddLabels(labelMap))
-}
-
-func createSecurityContextRoleBinding(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-	roleBinding := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + "-collabora-code-role-binding",
-			Namespace: comp.GetInstanceNamespace(),
-			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      comp.GetName() + "-collabora-code-sa",
-				Namespace: comp.GetInstanceNamespace(),
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			Kind:     "Role",
-			Name:     comp.GetName() + "-collabora-code-role",
-			APIGroup: "rbac.authorization.k8s.io",
-		},
-	}
-
-	return svc.SetDesiredKubeObject(roleBinding, comp.GetName()+"-collabora-code-role-binding", runtime.KubeOptionAddLabels(labelMap))
 }
 
 func createWatchOnlyObject(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {

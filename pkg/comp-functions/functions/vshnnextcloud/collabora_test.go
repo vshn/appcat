@@ -28,10 +28,10 @@ func Test_addCollabora(t *testing.T) {
 	collabora_objects := []string{
 		comp.GetName() + "-collabora-code-coolwsd-config",
 		comp.GetName() + "-collabora-code-sts",
-		comp.GetName() + "-collabora-code-role-binding",
+		comp.GetName() + "-collabora-code-rolebinding",
 		comp.GetName() + "-collabora-code-ingress",
 		comp.GetName() + "-collabora-code-wo-secret",
-		comp.GetName() + "-collabora-code-sa",
+		comp.GetName() + "-collabora-code-serviceaccount",
 		comp.GetName() + "-collabora-code-certificate",
 		comp.GetName() + "-collabora-code-role",
 		comp.GetName() + "-collabora-code-issuer",

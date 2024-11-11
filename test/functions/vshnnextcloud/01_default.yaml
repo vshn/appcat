@@ -9,6 +9,12 @@ input:
     name: xfn-config
   data:
     defaultPlan: standard-2
+    collabora_image: docker.io/collabora/code:24.04.9.2.1
+    collaboraCPULimit: "1"
+    collaboraCPURequests: 250m
+    collaboraMemoryLimit: 1Gi
+    collaboraMemoryRequests: 256Mi
+    imageTag: nextcloud_collabora
     controlNamespace: appcat-control
     plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled":
             true, "memory": "2Gi"}}, "standard-4": {"size": {"cpu": "1", "disk": "16Gi",

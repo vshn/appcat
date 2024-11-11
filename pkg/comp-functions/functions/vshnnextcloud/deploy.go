@@ -9,9 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"dario.cat/mergo"
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -20,10 +17,9 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -38,6 +34,9 @@ const (
 	urlConnectionDetailsField     = "NEXTCLOUD_URL"
 	serviceSuffix                 = "nextcloud"
 )
+
+//go:embed files/install-collabora.sh
+var installCollabora string
 
 //go:embed files/000-default.conf
 var apacheVhostConfig string
@@ -127,6 +126,11 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult(fmt.Sprintf("Cannot add configmap for Nextcloud: %s", err))
 	}
 
+	err = createInstallCollaboraConfigMap(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("Cannot add configmap for Collabora: %s", err))
+	}
+
 	err = addRelease(ctx, svc, comp, adminSecret)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create release: %s", err))
@@ -135,70 +139,19 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	return nil
 }
 
-func addPostgreSQL(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
-	// Unfortunately k8up and stackgres backups don't match up very well...
-	// if no daily backup is set we just do the default.
-	retention := 6
-	if comp.Spec.Parameters.Backup.Retention.KeepDaily != 0 {
-		retention = comp.Spec.Parameters.Backup.Retention.KeepDaily
-	}
-
-	params := &vshnv1.VSHNPostgreSQLParameters{
-		Size:        comp.Spec.Parameters.Size,
-		Maintenance: comp.GetFullMaintenanceSchedule(),
-		Backup: vshnv1.VSHNPostgreSQLBackup{
-			Retention:          retention,
-			DeletionProtection: ptr.To(true),
-			DeletionRetention:  7,
-		},
-		Monitoring: comp.Spec.Parameters.Monitoring,
-	}
-
-	if comp.Spec.Parameters.Service.PostgreSQLParameters != nil {
-		err := mergo.Merge(params, comp.Spec.Parameters.Service.PostgreSQLParameters, mergo.WithOverride)
-		if err != nil {
-			return err
-		}
-
-		// Mergo doesn't override non-default values with default values. So
-		// changing true to false is not possible with a merge.
-		// This is a small hack to fix this.
-		// `mergo.WithOverwriteWithEmptyValue` opens a new can of worms, so it's
-		// not used here. https://github.com/darccio/mergo/issues/249
-		if comp.Spec.Parameters.Service.PostgreSQLParameters.Backup.DeletionProtection != nil {
-			params.Backup.DeletionProtection = comp.Spec.Parameters.Service.PostgreSQLParameters.Backup.DeletionProtection
-		}
-	}
-	// We need to set this after the merge, as the default instance count for PostgreSQL is always 1
-	// and would therefore override any value we set before the merge.
-	params.Instances = comp.Spec.Parameters.Instances
-
-	pg := &vshnv1.XVSHNPostgreSQL{
+func createInstallCollaboraConfigMap(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: comp.GetName() + pgInstanceNameSuffix,
+			Name:      "collabora-install-script",
+			Namespace: comp.GetInstanceNamespace(),
+			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
 		},
-		Spec: vshnv1.XVSHNPostgreSQLSpec{
-			Parameters: *params,
-			ResourceSpec: xpv1.ResourceSpec{
-				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      pgSecretName,
-					Namespace: comp.GetInstanceNamespace(),
-				},
-			},
+		Data: map[string]string{
+			"install-collabora.sh": installCollabora,
 		},
 	}
 
-	err := common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-nextcloud", false, svc)
-	if err != nil {
-		return err
-	}
-
-	err = common.DisableBilling(pg.GetInstanceNamespace(), svc)
-	if err != nil {
-		return err
-	}
-
-	return svc.SetDesiredComposedResource(pg)
+	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-collabora-install-script")
 }
 
 func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret string) error {
@@ -333,6 +286,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 						"defaultMode": 0754,
 					},
 				},
+				{
+					"name": "collabora-install-script",
+					"configMap": map[string]any{
+						"name":        "collabora-install-script",
+						"defaultMode": 0755,
+					},
+				},
 			},
 			"extraVolumeMounts": []map[string]any{
 				{
@@ -354,6 +314,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":      "nextcloud-hooks",
 					"mountPath": "/docker-entrypoint-hooks.d/post-upgrade/vshn-post-upgrade.sh",
 					"subPath":   "vshn-post-upgrade.sh",
+				},
+				{
+					"name":      "collabora-install-script",
+					"mountPath": "/install-collabora.sh",
+					"subPath":   "install-collabora.sh",
 				},
 			},
 		},

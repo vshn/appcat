@@ -2,7 +2,6 @@ package vshnnextcloud
 
 import (
 	"context"
-	"crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
 
@@ -41,9 +40,6 @@ var coolwsd string
 
 //go:embed files/coolkit.xml
 var coolkit string
-
-//go:embed files/install-collabora.sh
-var installCollabora string
 
 func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -143,12 +139,6 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	err = AddCollaboraIngress(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora Ingress: " + err.Error())
-	}
-
-	// Create install Collabora config map
-	err = createInstallCollaboraConfigMap(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult("Failed to add Collabora ConfigMap: " + err.Error())
 	}
 
 	// Create install Collabora job
@@ -595,49 +585,14 @@ func createSecretForOpenshiftRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 	return svc.SetDesiredKubeObject(secret, comp.GetName()+"collabora-code-ingress-certificate", runtime.KubeOptionAddLabels(labelMap))
 }
 
-func createInstallCollaboraConfigMap(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "collabora-install-script",
-			Namespace: comp.GetInstanceNamespace(),
-			Labels:    map[string]string{"app": comp.GetName() + "-collabora-code"},
-		},
-		Data: map[string]string{
-			"install-collabora.sh": installCollabora,
-		},
-	}
-
-	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-collabora-install-script", runtime.KubeOptionAddLabels(labelMap))
-}
-
 func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-
-	// get hash from config, so the job will be triggered if script changes
-
-	observedJob := &batchv1.Job{}
-	hash := md5.New()
-
-	_, _ = hash.Write([]byte(installCollabora))
-	checksum := hash.Sum(nil)
-
-	strChecksum := fmt.Sprintf("%x", checksum)
-	err := svc.GetObservedKubeObject(observedJob, comp.GetName()+"-collabora-install-job")
-	if err == nil {
-		observedHash, ok := observedJob.Labels["script"]
-		if ok && (observedHash != strChecksum) {
-			// in this place I want to return no job and with next reconciliation I recreate it
-			// whole point is, that there are immutable fields everywhere in job and I cannot update it effectively
-			return nil
-		}
-	}
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-install-collabora",
 			Namespace: comp.GetInstanceNamespace(),
 			Labels: map[string]string{
-				"app":    comp.GetName() + "-collabora-code",
-				"script": fmt.Sprintf("%x", checksum),
+				"app": comp.GetName() + "-collabora-code",
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -659,28 +614,7 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 							Command: []string{
 								"bash",
 								"-c",
-								fmt.Sprintf("/install-collabora.sh %s %s %s %s", svc.Config.Data["isOpenshift"], comp.GetInstanceNamespace(), comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "collabora-install-script",
-									MountPath: "/install-collabora.sh",
-									SubPath:   "install-collabora.sh",
-									ReadOnly:  false,
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "collabora-install-script",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									DefaultMode: ptr.To[int32](0755),
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "collabora-install-script",
-									},
-								},
+								fmt.Sprintf("oc exec deployments/%s -- /install-collabora.sh %s %s %s %s", comp.GetName(), svc.Config.Data["isOpenshift"], comp.GetInstanceNamespace(), comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
 							},
 						},
 					},

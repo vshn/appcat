@@ -181,7 +181,7 @@ func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) er
 					Labels: map[string]string{"app": comp.GetName() + "-collabora-code"},
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: comp.GetName() + "-collabora-code-sa",
+					ServiceAccountName: "sa-collabora-code",
 					Containers: []corev1.Container{
 						{
 							Env: []corev1.EnvVar{

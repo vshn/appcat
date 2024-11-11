@@ -161,10 +161,6 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 }
 
 func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-	res, err := getResources(context.Background(), svc, comp)
-	if err != nil {
-		return err
-	}
 
 	sts := &v1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -208,13 +204,13 @@ func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) er
 								},
 							},
 							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(res.ReqCPU.String()),
-									corev1.ResourceMemory: resource.MustParse(res.ReqMem.String()),
-								},
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(res.CPU.String()),
-									corev1.ResourceMemory: resource.MustParse(res.Mem.String()),
+									corev1.ResourceCPU:    resource.MustParse(svc.Config.Data["collaboraCPURequests"]),
+									corev1.ResourceMemory: resource.MustParse(svc.Config.Data["collaboraMemoryRequests"]),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse(svc.Config.Data["collaboraCPULimit"]),
+									corev1.ResourceMemory: resource.MustParse(svc.Config.Data["collaboraMemoryLimit"]),
 								},
 							},
 

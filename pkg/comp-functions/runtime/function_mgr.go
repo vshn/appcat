@@ -511,6 +511,10 @@ func KubeOptionObserveCreateUpdate(obj *xkube.Object) {
 	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionCreate, xpv1.ManagementActionUpdate, xpv1.ManagementActionObserve)
 }
 
+func KubeOptionObserve(obj *xkube.Object) {
+	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
+}
+
 // KubeOptionProtectedBy protects the given kube objects from deletion as long
 // as resName exists.
 // resName is the name of the resource in the desired map.
@@ -539,6 +543,13 @@ func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
 			current[val] = key
 		}
 		obj.SetLabels(current)
+	}
+}
+
+// KubeOptionWatchOnly sets the object to only observe.
+func KubeOptionWatchOnly(obj *xkube.Object) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
 	}
 }
 

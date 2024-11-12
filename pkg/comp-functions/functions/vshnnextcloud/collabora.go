@@ -84,37 +84,31 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult("Failed to add Collabora SA with Role: " + err.Error())
 	}
 
-	// Create coolwsd config map
 	err = createCoolWSDConfigMap(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora CoolWSD ConfigMap: " + err.Error())
 	}
 
-	// Create issuer
 	err = createIssuer(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora certificate Issuer: " + err.Error())
 	}
 
-	// Create certificate
 	err = createCertificate(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora Certificate: " + err.Error())
 	}
 
-	// Create watch-only object
-	err = createWatchOnlyObject(comp, svc)
+	err = observeCertManagedCertificate(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora watch-only Object: " + err.Error())
 	}
 
-	// Create secret with RSA keys
 	err = createSecretWithRSAKeys(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora RSA keys: " + err.Error())
 	}
 
-	// copy from watched certificate to new one
 	if svc.Config.Data["isOpenshift"] == "true" {
 		svc.Log.Info("Creating Collabora Secret for Openshift Route")
 		err = createSecretForOpenshiftRoute(comp, svc)
@@ -133,25 +127,21 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 
 	svc.Log.Info("Nextcloud release is ready, creating STS, Service, Ingress, Issuer, Certificate, ConfigMap, Job")
 
-	// Add Collabora STS
 	err = AddCollaboraSts(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora STS: " + err.Error())
 	}
 
-	// Add Collabora service
 	err = AddCollaboraService(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora Service: " + err.Error())
 	}
 
-	// Add Collabora ingress
 	err = AddCollaboraIngress(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora Ingress: " + err.Error())
 	}
 
-	// Create install Collabora job
 	err = createInstallCollaboraJob(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora install Job: " + err.Error())
@@ -486,7 +476,7 @@ func createSecretWithRSAKeys(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRun
 	return svc.SetDesiredKubeObject(secret, objName, runtime.KubeOptionAddLabels(labelMap))
 }
 
-func createWatchOnlyObject(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+func observeCertManagedCertificate(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 	/*
 		I'm creating here watch-only object, so it's possible for me get Secret{} values from it without
 		using kube client to fetch them. I can't use directly our svc.GetObservedKubeObject() because
@@ -501,7 +491,7 @@ func createWatchOnlyObject(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunti
 		},
 	}
 
-	return svc.SetDesiredKubeObject(wo, comp.GetName()+watchOnlySecretObjectName, runtime.KubeOptionAddLabels(labelMap))
+	return svc.SetDesiredKubeObject(wo, comp.GetName()+watchOnlySecretObjectName, runtime.KubeOptionAddLabels(labelMap), runtime.KubeOptionObserve)
 }
 
 func createSecretForOpenshiftRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {

@@ -529,7 +529,6 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: ptr.To[int32](100000),
-
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: comp.GetName() + "-install-collabora",
@@ -538,15 +537,15 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 					},
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: comp.GetName() + "-collabora-code-sa",
+					ServiceAccountName: "sa-collabora-code",
 					Containers: []corev1.Container{
 						{
 							Name:  comp.GetName() + "-install-collabora",
 							Image: "quay.io/appuio/oc:v4.13",
 							Command: []string{
 								"bash",
-								"-c",
-								fmt.Sprintf("oc exec deployments/%s -- /install-collabora.sh %s %s %s %s", comp.GetName(), svc.Config.Data["isOpenshift"], comp.GetInstanceNamespace(), comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
+								"-cefx",
+								fmt.Sprintf("oc exec -i deployments/%s -- /install-collabora.sh \"%s\" \"%s\" \"%s\"", comp.GetName(), svc.Config.Data["isOpenshift"], comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
 							},
 						},
 					},

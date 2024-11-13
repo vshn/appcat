@@ -373,7 +373,7 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts:      []string{comp.Spec.Parameters.Service.Collabora.FQDN},
-					SecretName: comp.GetName() + "-collabora-code-tls",
+					SecretName: comp.GetName() + "-collabora-code-ingress-tls",
 				},
 			},
 		},

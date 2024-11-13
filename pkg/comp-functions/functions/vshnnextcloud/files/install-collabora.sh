@@ -16,7 +16,7 @@ if [ "$IS_OPENSHIFT" == "true" ]; then
     set -e
     /var/www/html/occ app:install richdocuments
     /var/www/html/occ config:app:set --value "$COLLABORA_URL" richdocuments wopi_url
-    /var/www/html/occ app:enable richdocuments
+    /var/www/html/occ richdocuments:activate-config
 else
     /usr/bin/su -s /bin/sh www-data -c  "/var/www/html/occ app:get richdocuments"
     RC=$?
@@ -27,7 +27,7 @@ else
     set -e
     /usr/bin/su -s /bin/sh www-data -c  "/var/www/html/occ app:install richdocuments"
     /usr/bin/su -s /bin/sh www-data -c  "/var/www/html/occ config:app:set --value \"$COLLABORA_URL\" richdocuments wopi_url"
-    /usr/bin/su -s /bin/sh www-data -c  "/var/www/html/occ app:enable richdocuments"
+    /usr/bin/su -s /bin/sh www-data -c  "/var/www/html/occ richdocuments:activate-config"
 fi
 
 echo "Collabora installed, wopi_url configured and app enabled!"

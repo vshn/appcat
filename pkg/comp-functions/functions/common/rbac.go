@@ -11,7 +11,14 @@ import (
 )
 
 // AddSaWithRole creates a service account with the given policy and binds it to the role.
-func AddSaWithRole(ctx context.Context, svc *runtime.ServiceRuntime, policies []rbacv1.PolicyRule, compName, namespace, suffix string) error {
+// withDeletionProtectionDisabled will add a label to the sa, role and rolbinding's Object to allow deletion.
+func AddSaWithRole(ctx context.Context, svc *runtime.ServiceRuntime, policies []rbacv1.PolicyRule, compName, namespace, suffix string, withDeletionProtectionDisabled bool) error {
+	labelMap := map[string]string{}
+
+	if withDeletionProtectionDisabled {
+		labelMap[runtime.WebhookAllowDeletionLabel] = "true"
+	}
+
 	serviceAccountName := compName + "-" + suffix + "-serviceaccount"
 
 	sa := &corev1.ServiceAccount{
@@ -21,7 +28,7 @@ func AddSaWithRole(ctx context.Context, svc *runtime.ServiceRuntime, policies []
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(sa, serviceAccountName)
+	err := svc.SetDesiredKubeObject(sa, serviceAccountName, runtime.KubeOptionAddLabels(labelMap))
 	if err != nil {
 		return err
 	}
@@ -40,7 +47,7 @@ func AddSaWithRole(ctx context.Context, svc *runtime.ServiceRuntime, policies []
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(role, compName+"-"+suffix+"-role", runtime.KubeOptionAddRefs(saReference))
+	err = svc.SetDesiredKubeObject(role, compName+"-"+suffix+"-role", runtime.KubeOptionAddRefs(saReference), runtime.KubeOptionAddLabels(labelMap))
 	if err != nil {
 		return err
 	}
@@ -70,5 +77,5 @@ func AddSaWithRole(ctx context.Context, svc *runtime.ServiceRuntime, policies []
 		},
 	}
 
-	return svc.SetDesiredKubeObject(roleBinding, compName+"-"+suffix+"-rolebinding", runtime.KubeOptionAddRefs(roleReference, saReference))
+	return svc.SetDesiredKubeObject(roleBinding, compName+"-"+suffix+"-rolebinding", runtime.KubeOptionAddRefs(roleReference, saReference), runtime.KubeOptionAddLabels(labelMap))
 }

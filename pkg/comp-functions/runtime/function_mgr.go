@@ -508,7 +508,14 @@ func KubeOptionAddConnectionDetails(destNamespace string, cd ...xkube.Connection
 // KubeOptionObserveCreateUpdate sets the object to only create and update.
 // Provider-kubernetes will not delete it.
 func KubeOptionObserveCreateUpdate(obj *xkube.Object) {
+	obj.Spec.ManagementPolicies = nil
 	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionCreate, xpv1.ManagementActionUpdate, xpv1.ManagementActionObserve)
+}
+
+// KubeOptionObserve sets the object to only observe.
+func KubeOptionObserve(obj *xkube.Object) {
+	obj.Spec.ManagementPolicies = nil
+	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
 }
 
 // KubeOptionProtectedBy protects the given kube objects from deletion as long
@@ -525,6 +532,20 @@ func KubeOptionProtectedBy(resName string) KubeObjectOption {
 func KubeOptionProtects(resName string) KubeObjectOption {
 	return func(obj *xkube.Object) {
 		addProtectionAnnotation(resName, ProtectsAnnotation, obj)
+	}
+}
+
+// KubeOptionLabeler adds the given labels to the kube object.
+func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		current := obj.GetLabels()
+		if current == nil {
+			current = map[string]string{}
+		}
+		for val, key := range labels {
+			current[val] = key
+		}
+		obj.SetLabels(current)
 	}
 }
 

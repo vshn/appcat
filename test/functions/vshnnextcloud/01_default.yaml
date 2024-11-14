@@ -9,6 +9,12 @@ input:
     name: xfn-config
   data:
     defaultPlan: standard-2
+    collabora_image: docker.io/collabora/code:24.04.9.2.1
+    collaboraCPULimit: "1"
+    collaboraCPURequests: 250m
+    collaboraMemoryLimit: 1Gi
+    collaboraMemoryRequests: 256Mi
+    imageTag: nextcloud_collabora
     controlNamespace: appcat-control
     plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled":
             true, "memory": "2Gi"}}, "standard-4": {"size": {"cpu": "1", "disk": "16Gi",
@@ -48,6 +54,25 @@ observed:
           name: vshnnextcloud.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
   resources:
+    # necessary for collabora tests
+    nextcloud-gc9x4-release:
+      resource:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        metadata:
+          name: nextcloud-gc9x4
+        spec: {}
+        status:
+          atProvider:
+            conditions:
+            - lastTransitionTime: "2024-07-08T14:50:19Z"
+              reason: Available
+              status: "True"
+              type: Ready
+            - lastTransitionTime: "2024-07-08T14:50:18Z"
+              reason: ReconcileSuccess
+              status: "True"
+              type: Synced
     nextcloud-gc9x4-claim-ns-observer:
       resource:
         apiVersion: v1

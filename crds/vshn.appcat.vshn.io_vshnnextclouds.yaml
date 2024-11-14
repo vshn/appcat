@@ -4851,6 +4851,16 @@ spec:
                     service:
                       description: Service contains nextcloud DBaaS specific properties
                       properties:
+                        collabora:
+                          properties:
+                            enabled:
+                              default: false
+                              type: boolean
+                            fqdn:
+                              type: string
+                          required:
+                            - enabled
+                          type: object
                         fqdn:
                           description: |-
                             FQDN contains the FQDN which will be used for the ingress.
@@ -9923,6 +9933,8 @@ spec:
                       required:
                         - fqdn
                       type: object
+                      collabora:
+                        default: {}
                     size:
                       description: Size contains settings to control the sizing of a service.
                       properties:

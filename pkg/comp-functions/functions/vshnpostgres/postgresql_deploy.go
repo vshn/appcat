@@ -367,7 +367,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 
 	initialData := &sgv1.SGClusterSpecInitialData{}
 	backupRef := xkubev1.Reference{}
-	if comp.Spec.Parameters.Restore != nil {
+	if comp.Spec.Parameters.Restore != nil && comp.Spec.Parameters.Restore.BackupName != "" {
 		initialData = &sgv1.SGClusterSpecInitialData{
 			Restore: &sgv1.SGClusterSpecInitialDataRestore{
 				FromBackup: &sgv1.SGClusterSpecInitialDataRestoreFromBackup{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -575,6 +576,12 @@ func removeDuplicate(strSlice []string) []string {
 		}
 	}
 	return list
+}
+
+func (s *ServiceRuntime) AddLabels(obj client.Object, labels map[string]string) {
+	l := obj.GetLabels()
+	maps.Copy(l, labels)
+	obj.SetLabels(l)
 }
 
 // putIntoObject adds or updates the desired resource into its kube object

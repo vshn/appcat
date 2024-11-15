@@ -32,8 +32,8 @@ func GenerateNonSLAPromRules[T client.Object](alerts Alerts) func(ctx context.Co
 
 		rules := make([]promV1.Rule, 0)
 		for _, a := range alerts.alerts {
-			f := AlertDefinitions[a]
-			r := f(alerts.alertContainerName, alerts.namespace)
+			f := alerts.alertDefinitions[a]
+			r := f(alerts.alertContainerName, elem.GetInstanceNamespace())
 			rules = append(rules, r)
 		}
 		rules = append(rules, alerts.customRules...)

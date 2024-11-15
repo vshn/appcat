@@ -14,8 +14,9 @@ import (
 var _ webhook.CustomValidator = &GenericDeletionProtectionHandler{}
 
 type GenericDeletionProtectionHandler struct {
-	client client.Client
-	log    logr.Logger
+	client             client.Client
+	controlPlaneClient client.Client
+	log                logr.Logger
 }
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -40,7 +41,7 @@ func (p *GenericDeletionProtectionHandler) ValidateDelete(ctx context.Context, o
 
 	l := p.log.WithValues("object", resource.GetName(), "object", resource.GetNamespace(), "GVK", resource.GetObjectKind().GroupVersionKind().String())
 
-	compInfo, err := checkManagedObject(ctx, resource, p.client, l)
+	compInfo, err := checkManagedObject(ctx, resource, p.client, p.controlPlaneClient, l)
 	if err != nil {
 		return nil, err
 	}

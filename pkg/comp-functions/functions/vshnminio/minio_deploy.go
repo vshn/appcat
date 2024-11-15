@@ -214,7 +214,7 @@ func createServiceObserver(comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) 
 		},
 	}
 
-	return svc.SetDesiredKubeObserveObject(service, comp.Name+"-service-observer")
+	return svc.SetDesiredKubeObject(service, comp.Name+"-service-observer", runtime.KubeOptionObserve)
 }
 
 func getConnectionDetails(comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) error {

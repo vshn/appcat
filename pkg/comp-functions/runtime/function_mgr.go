@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -446,7 +447,7 @@ func ComposedOptionProtects(resName string) ComposedResourceOption {
 // adds it to the desired composed resources. It takes options to manipulate the resulting kubec object before applying.
 func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName string, opts ...KubeObjectOption) error {
 
-	kobj, err := s.putIntoObject(false, obj, objectName, objectName)
+	kobj, err := s.putIntoObject(obj, objectName, objectName)
 	if err != nil {
 		return err
 	}
@@ -463,7 +464,7 @@ func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName stri
 // This should be used if manipulating objects that are declared in the P+T composition.
 func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectName, resourceName string, opts ...KubeObjectOption) error {
 
-	kobj, err := s.putIntoObject(false, obj, objectName, resourceName)
+	kobj, err := s.putIntoObject(obj, objectName, resourceName)
 	if err != nil {
 		return err
 	}
@@ -473,6 +474,20 @@ func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectN
 	}
 
 	return s.SetDesiredComposedResourceWithName(kobj, resourceName)
+}
+
+// KubeOptionLabeler adds the given labels to the kube object.
+func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		current := obj.GetLabels()
+		if current == nil {
+			current = map[string]string{}
+		}
+		for val, key := range labels {
+			current[val] = key
+		}
+		obj.SetLabels(current)
+	}
 }
 
 // KubeOptionAddRefs adds the given references to the kube object.
@@ -535,20 +550,6 @@ func KubeOptionProtects(resName string) KubeObjectOption {
 	}
 }
 
-// KubeOptionLabeler adds the given labels to the kube object.
-func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
-	return func(obj *xkube.Object) {
-		current := obj.GetLabels()
-		if current == nil {
-			current = map[string]string{}
-		}
-		for val, key := range labels {
-			current[val] = key
-		}
-		obj.SetLabels(current)
-	}
-}
-
 func addProtectionAnnotation(resName, protectionType string, obj client.Object) {
 	annotations := obj.GetAnnotations()
 	if annotations == nil {
@@ -577,21 +578,15 @@ func removeDuplicate(strSlice []string) []string {
 	return list
 }
 
-// SetDesiredKubeObserveObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
-// adds it to the desired composed resources.
-func (s *ServiceRuntime) SetDesiredKubeObserveObject(obj client.Object, objectName string, refs ...xkube.Reference) error {
-
-	kobj, err := s.putIntoObject(true, obj, objectName, objectName, refs...)
-	if err != nil {
-		return err
-	}
-
-	return s.SetDesiredComposedResourceWithName(kobj, objectName)
+func (s *ServiceRuntime) AddLabels(obj client.Object, labels map[string]string) {
+	l := obj.GetLabels()
+	maps.Copy(l, labels)
+	obj.SetLabels(l)
 }
 
 // putIntoObject adds or updates the desired resource into its kube object
 // It will inject the same labels as any managed resource gets.
-func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon, resourceName string, refs ...xkube.Reference) (*xkube.Object, error) {
+func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string, refs ...xkube.Reference) (*xkube.Object, error) {
 
 	s.addOwnerReferenceAnnotation(o, false)
 
@@ -648,11 +643,6 @@ func (s *ServiceRuntime) putIntoObject(observeOnly bool, o client.Object, kon, r
 	// Only set the refs if they are actually set.
 	if len(refs) > 0 {
 		ko.Spec.References = refs
-	}
-
-	if observeOnly {
-		ko.Spec.ManagementPolicies = nil
-		ko.Spec.ManagementPolicies = append(ko.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
 	}
 
 	ko.Spec.ForProvider.Manifest = runtime.RawExtension{Object: o}

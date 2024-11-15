@@ -26,6 +26,12 @@ func EnsureObjectBucketLabels(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, 
 		return runtime.NewWarningResult("cannot get xobjectbucket")
 	}
 
+	labels := map[string]string{
+		"appcat.vshn.io/ignore-provider-config": "true",
+	}
+
+	svc.AddLabels(bucket, labels)
+
 	err = svc.SetDesiredComposedResourceWithName(bucket, "pg-bucket")
 	if err != nil {
 		return runtime.NewWarningResult("cannot add xobjectbucket to desired map")

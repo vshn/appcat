@@ -20,8 +20,9 @@ var _ webhook.CustomValidator = &XObjectbucketDeletionProtectionHandler{}
 
 // XObjectbucketDeletionProtectionHandler
 type XObjectbucketDeletionProtectionHandler struct {
-	client client.Client
-	log    logr.Logger
+	client             client.Client
+	controlPlaneClient client.Client
+	log                logr.Logger
 }
 
 // SetupXObjectbucketCDeletionProtectionHandlerWithManager registers the validation webhook with the manager.
@@ -68,7 +69,7 @@ func (p *XObjectbucketDeletionProtectionHandler) ValidateDelete(ctx context.Cont
 
 	l := p.log.WithValues("object", bucket.GetName(), "namespace", bucket.GetNamespace(), "GVK", bucket.GetObjectKind().GroupVersionKind().String())
 
-	compInfo, err := checkManagedObject(ctx, bucket, p.client, l)
+	compInfo, err := checkManagedObject(ctx, bucket, p.client, p.controlPlaneClient, l)
 	if err != nil {
 		return nil, err
 	}

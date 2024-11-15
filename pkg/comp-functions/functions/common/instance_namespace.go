@@ -89,8 +89,11 @@ func createNamespaceObserver(claimNs string, instance string, svc *runtime.Servi
 			Name: claimNs,
 		},
 	}
+	labels := map[string]string{
+		"appcat.vshn.io/ignore-provider-config": "true",
+	}
 
-	return svc.SetDesiredKubeObserveObject(ns, instance+claimNsObserverSuffix)
+	return svc.SetDesiredKubeObject(ns, instance+claimNsObserverSuffix, runtime.KubeOptionAddLabels(labels), runtime.KubeOptionObserve)
 }
 
 // Create the namespace for the service instance

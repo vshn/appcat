@@ -35,7 +35,7 @@ func ResizePVCs(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servic
 		return nil
 	}
 
-	release, err := getObservedOrDesiredRelease(ctx, svc)
+	release, err := getObservedOrDesiredRelease(svc)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get release: %w", err))
 	}
@@ -45,18 +45,18 @@ func ResizePVCs(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servic
 		return runtime.NewFatalResult(fmt.Errorf("cannot parse release values: %w", err))
 	}
 
-	err = addStsObserver(ctx, svc, comp)
+	err = addStsObserver(svc, comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot observe sts: %w", err))
 	}
 
-	patch, result := needReleasePatch(ctx, comp, values)
+	patch, result := needReleasePatch(comp, values)
 	if result != nil {
 		return result
 	}
 
 	if patch {
-		err = addDeletionJob(ctx, svc, comp)
+		err = addDeletionJob(svc, comp)
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("cannot create RBAC for the deletion job: %w", err))
 		}
@@ -105,7 +105,7 @@ func ResizePVCs(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servic
 	// The job hasn't been observed yet, so we need to keep it in desired, or we will have a recreate loop
 	// Also as long as it hasn't finished we need to make sure it exists.
 	if (!observedJob || deletionJob.Status.Succeeded < 1) || (sts.Status.ReadyReplicas == 0 && !stsUpdated) {
-		err := addDeletionJob(ctx, svc, comp)
+		err := addDeletionJob(svc, comp)
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("cannot create RBAC for the deletion job: %w", err))
 		}
@@ -114,7 +114,7 @@ func ResizePVCs(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servic
 	return nil
 }
 
-func needReleasePatch(ctx context.Context, comp *vshnv1.VSHNRedis, values map[string]interface{}) (bool, *xfnproto.Result) {
+func needReleasePatch(comp *vshnv1.VSHNRedis, values map[string]interface{}) (bool, *xfnproto.Result) {
 	releaseSizeValue, found, err := unstructured.NestedString(values, "master", "persistence", "size")
 	if !found {
 		return false, runtime.NewFatalResult(fmt.Errorf("disk size not found in release"))
@@ -146,7 +146,7 @@ func getSizeAsInt(size string) (int64, error) {
 	return finalSize, nil
 }
 
-func getObservedOrDesiredRelease(ctx context.Context, svc *runtime.ServiceRuntime) (*helmv1beta1.Release, error) {
+func getObservedOrDesiredRelease(svc *runtime.ServiceRuntime) (*helmv1beta1.Release, error) {
 	r := &helmv1beta1.Release{}
 	err := svc.GetObservedComposedResource(r, redisRelease)
 	if err != nil && err != runtime.ErrNotFound {
@@ -162,7 +162,7 @@ func getObservedOrDesiredRelease(ctx context.Context, svc *runtime.ServiceRuntim
 	return r, nil
 }
 
-func addDeletionJob(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
+func addDeletionJob(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
 	ns := svc.Config.Data["controlNamespace"]
 
 	job := &batchv1.Job{
@@ -215,7 +215,7 @@ func addDeletionJob(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshn
 	return svc.SetDesiredKubeObject(job, comp.Name+"-sts-deleter")
 }
 
-func addStsObserver(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
+func addStsObserver(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
 
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -224,5 +224,5 @@ func addStsObserver(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshn
 		},
 	}
 
-	return svc.SetDesiredKubeObserveObject(statefulset, comp.Name+"-sts-observer")
+	return svc.SetDesiredKubeObject(statefulset, comp.Name+"-sts-observer", runtime.KubeOptionObserve)
 }

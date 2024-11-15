@@ -14,12 +14,12 @@ import (
 
 // SetupReleaseDeletionProtectionHandlerWithManager registers the validation webhook with the manager.
 func SetupReleaseDeletionProtectionHandlerWithManager(mgr ctrl.Manager) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&helmv1beta1.Release{}).
 		WithValidator(&GenericDeletionProtectionHandler{
-			client: mgr.GetClient(),
-			log:    mgr.GetLogger().WithName("webhook").WithName("release"),
+			client:             mgr.GetClient(),
+			controlPlaneClient: mgr.GetClient(),
+			log:                mgr.GetLogger().WithName("webhook").WithName("release"),
 		}).
 		Complete()
 }

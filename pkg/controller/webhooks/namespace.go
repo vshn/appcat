@@ -9,12 +9,17 @@ import (
 
 // SetupNamespaceDeletionProtectionHandlerWithManager registers the validation webhook with the manager.
 func SetupNamespaceDeletionProtectionHandlerWithManager(mgr ctrl.Manager) error {
+	cpClient, err := getControlPlaneClient(mgr)
+	if err != nil {
+		return err
+	}
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&corev1.Namespace{}).
 		WithValidator(&GenericDeletionProtectionHandler{
-			client: mgr.GetClient(),
-			log:    mgr.GetLogger().WithName("webhook").WithName("namespace"),
+			client:             mgr.GetClient(),
+			controlPlaneClient: cpClient,
+			log:                mgr.GetLogger().WithName("webhook").WithName("namespace"),
 		}).
 		Complete()
 }

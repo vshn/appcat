@@ -15,24 +15,24 @@ import (
 
 // SetupObjectDeletionProtectionHandlerWithManager registers the validation webhook with the manager.
 func SetupObjectDeletionProtectionHandlerWithManager(mgr ctrl.Manager) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&xkubev1alpha2.Object{}).
 		WithValidator(&GenericDeletionProtectionHandler{
-			client: mgr.GetClient(),
-			log:    mgr.GetLogger().WithName("webhook").WithName("object"),
+			client:             mgr.GetClient(),
+			controlPlaneClient: mgr.GetClient(),
+			log:                mgr.GetLogger().WithName("webhook").WithName("object"),
 		}).
 		Complete()
 }
 
 // SetupObjectv1alpha1DeletionProtectionHandlerWithManager registers the validation webhook with the manager.
 func SetupObjectv1alpha1DeletionProtectionHandlerWithManager(mgr ctrl.Manager) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&xkubev1alpha1.Object{}).
 		WithValidator(&GenericDeletionProtectionHandler{
-			client: mgr.GetClient(),
-			log:    mgr.GetLogger().WithName("webhook").WithName("object"),
+			client:             mgr.GetClient(),
+			controlPlaneClient: mgr.GetClient(),
+			log:                mgr.GetLogger().WithName("webhook").WithName("object"),
 		}).
 		Complete()
 }

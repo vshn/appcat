@@ -86,7 +86,7 @@ func Test_checkManagedObject(t *testing.T) {
 		Build()
 
 	// Then expect parent
-	compInfo, err := checkManagedObject(context.TODO(), obj, c, logr.Discard())
+	compInfo, err := checkManagedObject(context.TODO(), obj, c, c, logr.Discard())
 	assert.NoError(t, err)
 	assert.Equal(t, compositeInfo{Exists: true, Name: "redis"}, compInfo)
 
@@ -96,7 +96,7 @@ func Test_checkManagedObject(t *testing.T) {
 	obj.SetLabels(labels)
 
 	// Then don't expect parent
-	compInfo, err = checkManagedObject(context.TODO(), obj, c, logr.Discard())
+	compInfo, err = checkManagedObject(context.TODO(), obj, c, c, logr.Discard())
 	assert.NoError(t, err)
 	assert.Equal(t, compositeInfo{Exists: false, Name: "redis"}, compInfo)
 
@@ -127,7 +127,7 @@ func Test_checkManagedObject(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Then expect parent
-	compInfo, err = checkUnmanagedObject(context.TODO(), pvc, c, logr.Discard())
+	compInfo, err = checkUnmanagedObject(context.TODO(), pvc, c, c, logr.Discard())
 	assert.NoError(t, err)
 	assert.Equal(t, compositeInfo{Exists: true, Name: "redis"}, compInfo)
 
@@ -137,7 +137,7 @@ func Test_checkManagedObject(t *testing.T) {
 	pvc.SetLabels(labels)
 
 	// Then expect no parent
-	compInfo, err = checkUnmanagedObject(context.TODO(), pvc, c, logr.Discard())
+	compInfo, err = checkUnmanagedObject(context.TODO(), pvc, c, c, logr.Discard())
 	assert.NoError(t, err)
 	assert.Equal(t, compositeInfo{Exists: false, Name: "redis"}, compInfo)
 

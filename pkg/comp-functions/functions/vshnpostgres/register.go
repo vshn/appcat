@@ -80,6 +80,10 @@ func init() {
 				Name:    "billing",
 				Execute: AddBilling,
 			},
+			{
+				Name:    "custom-exporter-configs",
+				Execute: PgExporterConfig,
+			},
 		},
 	})
 }

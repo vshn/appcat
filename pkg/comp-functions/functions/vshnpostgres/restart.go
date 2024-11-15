@@ -121,7 +121,7 @@ func scheduleRestart(ctx context.Context, svc *runtime.ServiceRuntime, compName 
 			RunAt: ptr.To(restartTime.Format(time.RFC3339)),
 		},
 	}
-	return svc.SetDesiredKubeObject(ops, fmt.Sprintf("%s-%s", compName, name))
+	return svc.SetDesiredKubeObject(ops, fmt.Sprintf("%s-%s", compName, name), runtime.KubeOptionAllowDeletion)
 }
 
 func keepRecentRestartOps(ctx context.Context, svc *runtime.ServiceRuntime, compName string, now func() time.Time) error {

@@ -16,7 +16,7 @@ func maxConnectionsAlert(service, namespace string) promv1.Rule {
 		},
 		Expr: intstr.IntOrString{
 			Type:   intstr.String,
-			StrVal: `sum(pg_stat_activity_count{exported_namespace="` + namespace + `"}) by (pod)\n  > 90/100 * sum(pg_settings_max_connections{exported_namespace="` + namespace + `"}) by (pod)`,
+			StrVal: `sum(pg_stat_activity_count{exported_namespace="` + namespace + `"}) by (pod) > 90/100 * sum(pg_settings_max_connections{exported_namespace="` + namespace + `"}) by (pod)`,
 		},
 		For: nonsla.TwoHourInterval,
 		Labels: map[string]string{

@@ -5576,11 +5576,19 @@ spec:
                     description: Service contains nextcloud DBaaS specific properties
                     properties:
                       collabora:
+                        description: Collabora contains settings to control the Collabora
+                          integration.
                         properties:
                           enabled:
                             default: false
+                            description: Enabled enables the Collabora integration.
+                              It will autoconfigure the Collabora server URL in Your
+                              Nextcloud instance.
                             type: boolean
                           fqdn:
+                            description: FQDN contains the FQDN of the Collabora server.
+                              This is used to configure the Collabora server URL in
+                              Your Nextcloud instance.
                             type: string
                         required:
                         - enabled
@@ -11529,6 +11537,11 @@ spec:
                             description: Service contains PostgreSQL DBaaS specific
                               properties
                             properties:
+                              DisablePgBouncer:
+                                default: false
+                                description: Disable connection pooling service PgBouncer.
+                                  All connections will go straight to PostgreSQL instance.
+                                type: boolean
                               access:
                                 description: Access defines additional users and databases
                                   for this instance.

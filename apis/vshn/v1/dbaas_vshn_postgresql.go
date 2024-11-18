@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -146,6 +147,10 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// PgBouncerSettings passes additional configuration to the pgBouncer instance.
 	PgBouncerSettings *sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni `json:"pgBouncerSettings,omitempty"`
+
+	// Disable connection pooling service PgBouncer. All connections will go straight to PostgreSQL instance.
+	// +kubebuilder:default=false
+	DisablePgBouncer bool `json:"DisablePgBouncer,omitempty"`
 
 	// +kubebuilder:default=true
 	// This is default option if neither repack or vacuum are selected

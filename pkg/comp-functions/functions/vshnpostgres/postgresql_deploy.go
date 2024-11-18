@@ -428,6 +428,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 				Scheduling: &sgv1.SGClusterSpecPodsScheduling{
 					NodeSelector: nodeSelector,
 				},
+				DisableConnectionPooling: ptr.To(false),
 			},
 			NonProductionOptions: &sgv1.SGClusterSpecNonProductionOptions{
 				EnableSetPatroniCpuRequests:    ptr.To(true),
@@ -437,6 +438,11 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			},
 		},
 	}
+
+	if !comp.Spec.Parameters.Service.DisablePgBouncer {
+		sgCluster.Spec.Pods.DisableConnectionPooling = ptr.To(true)
+	}
+
 	configureReplication(comp, sgCluster)
 
 	err = svc.SetDesiredKubeObjectWithName(sgCluster, comp.GetName()+"-cluster", "cluster", runtime.KubeOptionAddRefs(backupRef))

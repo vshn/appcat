@@ -44,6 +44,10 @@ type DeletionProtectionInfo interface {
 // Anything that either contains an owner reference to a composite or an owner annotation.
 func checkManagedObject(ctx context.Context, obj client.Object, c client.Client, cpClient client.Client, l logr.Logger) (compositeInfo, error) {
 
+	if cpClient == nil {
+		cpClient = c
+	}
+
 	ownerKind, ok := obj.GetLabels()[runtime.OwnerKindAnnotation]
 	if !ok || ownerKind == "" {
 		l.Info(runtime.OwnerKindAnnotation + " label not set, skipping evaluation")
@@ -115,6 +119,10 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 // Such objects would be: any helm generated object, pvcs for sts and any other 3rd party managed objects.
 func checkUnmanagedObject(ctx context.Context, obj client.Object, c client.Client, cpClient client.Client, l logr.Logger) (compositeInfo, error) {
 	namespace := &corev1.Namespace{}
+
+	if cpClient == nil {
+		cpClient = c
+	}
 
 	err := cpClient.Get(ctx, client.ObjectKey{Name: obj.GetNamespace()}, namespace)
 	if err != nil {

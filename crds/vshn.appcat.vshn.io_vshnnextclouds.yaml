@@ -9754,10 +9754,6 @@ spec:
                             service:
                               description: Service contains PostgreSQL DBaaS specific properties
                               properties:
-                                DisablePgBouncer:
-                                  default: false
-                                  description: Disable connection pooling service PgBouncer. All connections will go straight to PostgreSQL instance.
-                                  type: boolean
                                 access:
                                   description: Access defines additional users and databases for this instance.
                                   items:
@@ -9799,6 +9795,10 @@ spec:
                                       - user
                                     type: object
                                   type: array
+                                disablePgBouncer:
+                                  default: false
+                                  description: Disable connection pooling service PgBouncer. All connections will go straight to PostgreSQL instance.
+                                  type: boolean
                                 extensions:
                                   description: Extensions allow to enable/disable any of the supported
                                   items:

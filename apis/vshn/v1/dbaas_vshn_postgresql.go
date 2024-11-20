@@ -150,7 +150,7 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// Disable connection pooling service PgBouncer. All connections will go straight to PostgreSQL instance.
 	// +kubebuilder:default=false
-	DisablePgBouncer bool `json:"DisablePgBouncer,omitempty"`
+	DisablePgBouncer bool `json:"disablePgBouncer,omitempty"`
 
 	// +kubebuilder:default=true
 	// This is default option if neither repack or vacuum are selected

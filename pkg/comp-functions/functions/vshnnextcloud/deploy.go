@@ -256,10 +256,20 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	if len(comp.Spec.Parameters.Service.FQDN) == 0 {
+		return nil, fmt.Errorf("FQDN array is empty, but requires at least one entry: %w", errors.New("empty fqdn"))
+	}
+
+	trustedDomain := []string{
+		comp.GetName() + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
+	}
+	trustedDomain = append(trustedDomain, comp.Spec.Parameters.Service.FQDN...)
+
 	updatedNextcloudConfig := setBackgroundJobMaintenance(comp.Spec.Parameters.Maintenance.GetMaintenanceTimeOfDay(), nextcloudConfig)
 	values = map[string]any{
 		"nextcloud": map[string]any{
-			"host": comp.Spec.Parameters.Service.FQDN,
+			"host":           comp.Spec.Parameters.Service.FQDN[0],
+			"trustedDomains": trustedDomain,
 			"existingSecret": map[string]any{
 				"enabled":     true,
 				"secretName":  adminSecret,

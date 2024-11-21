@@ -3,6 +3,7 @@ package vshnnextcloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
@@ -22,8 +23,8 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
-	if comp.Spec.Parameters.Service.FQDN == "" {
-		return nil
+	if len(comp.Spec.Parameters.Service.FQDN) == 0 {
+		return runtime.NewFatalResult(fmt.Errorf("FQDN array is empty, but requires at least one entry, %w", errors.New("empty fqdn")))
 	}
 
 	values, err := common.GetDesiredReleaseValues(svc, comp.GetName()+"-release")
@@ -64,9 +65,7 @@ func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud,
 		"path":        comp.Spec.Parameters.Service.RelativePath,
 		"tls": []map[string]any{
 			{
-				"hosts": []string{
-					fqdn,
-				},
+				"hosts":      fqdn,
 				"secretName": "nextcloud-ingress-cert",
 			},
 		},

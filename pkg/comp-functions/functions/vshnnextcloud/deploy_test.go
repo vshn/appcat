@@ -4,6 +4,8 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -33,6 +35,15 @@ func Test_addNextcloud(t *testing.T) {
 	assert.Equal(t, true, extDb["enabled"])
 	intDb := values["internalDatabase"].(map[string]any)
 	assert.Equal(t, false, intDb["enabled"])
+
+}
+
+func Test_addNextcloud_no_fqdn(t *testing.T) {
+	svc, _ := getNextcloudComp(t, "vshnnextcloud/01_no_fqdn.yaml")
+
+	ctx := context.TODO()
+
+	assert.Equal(t, DeployNextcloud(ctx, &vshnv1.VSHNNextcloud{}, svc), runtime.NewWarningResult(fmt.Sprintf("cannot create release: FQDN array is empty, but requires at least one entry: %s", errors.New("empty fqdn"))))
 
 }
 

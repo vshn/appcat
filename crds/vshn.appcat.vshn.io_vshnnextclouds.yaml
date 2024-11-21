@@ -4866,10 +4866,13 @@ spec:
                           type: object
                         fqdn:
                           description: |-
-                            FQDN contains the FQDN which will be used for the ingress.
+                            FQDN contains the FQDNs which will be used for the ingress.
                             If it's not set, no ingress will be deployed.
                             This also enables strict hostname checking for this FQDN.
-                          type: string
+                          items:
+                            type: string
+                          minItems: 1
+                          type: array
                         postgreSQLParameters:
                           description: |-
                             PostgreSQLParameters can be used to set any supported setting in the

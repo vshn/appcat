@@ -14,12 +14,18 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
+// ServiceAddOns describes an addOn for a services with necessary data for billing
+type ServiceAddOns struct {
+	Name      string
+	Instances int
+}
+
 var rawExpr = "vector({{.}})"
 
 // CreateBillingRecord creates a new prometheus rule per each instance namespace
 // The rule is skipped for any secondary service such as postgresql instance for nextcloud
 // The skipping is based on whether label appuio.io/billing-name is set or not on instance namespace
-func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter) *xfnproto.Result {
+func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, addOns ...ServiceAddOns) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Enabling billing for service", "service", comp.GetName())
 
@@ -55,20 +61,34 @@ func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp 
 		log.Info("secondary service, skipping billing", "service", comp.GetName())
 		return runtime.NewNormalResult(fmt.Sprintf("billing disabled for instance %s", comp.GetName()))
 	}
+	rg := v1.RuleGroup{
+		Name: "appcat-metering-rules",
+		Rules: []v1.Rule{
+			{
+				Record: "appcat:metering",
+				Expr:   intstr.FromString(expr),
+				Labels: getLabels(svc, comp, org, ""),
+			},
+		},
+	}
+
+	for _, addOn := range addOns {
+		log.Info("Adding billing addOn for service", "service", comp.GetName(), "addOn", addOn.Name)
+		exprAddOn, err := getExprFromTemplate(addOn.Instances)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot add addOn %s billing to service %s", addOn.Name, comp.GetName()))
+		}
+		rg.Rules = append(rg.Rules, v1.Rule{
+			Record: "appcat:metering",
+			Expr:   intstr.FromString(exprAddOn),
+			Labels: getLabels(svc, comp, org, addOn.Name),
+		})
+	}
 
 	p := &v1.PrometheusRule{
 		Spec: v1.PrometheusRuleSpec{
 			Groups: []v1.RuleGroup{
-				{
-					Name: "appcat-metering-rules",
-					Rules: []v1.Rule{
-						{
-							Record: "appcat:metering",
-							Expr:   intstr.FromString(expr),
-							Labels: getLabels(org, comp, svc),
-						},
-					},
-				},
+				rg,
 			},
 		},
 	}
@@ -86,12 +106,12 @@ func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp 
 	return runtime.NewNormalResult(fmt.Sprintf("billing enabled for instance %s", comp.GetName()))
 }
 
-func getLabels(org string, comp InfoGetter, svc *runtime.ServiceRuntime) map[string]string {
+func getLabels(svc *runtime.ServiceRuntime, comp InfoGetter, org, addOnName string) map[string]string {
 	labels := map[string]string{
 		"label_appcat_vshn_io_claim_name":      comp.GetClaimName(),
 		"label_appcat_vshn_io_claim_namespace": comp.GetClaimNamespace(),
 		"label_appcat_vshn_io_sla":             comp.GetSLA(),
-		"label_appuio_io_billing_name":         comp.GetBillingName(),
+		"label_appuio_io_billing_name":         getFinalBillingName(comp.GetBillingName(), addOnName),
 		"label_appuio_io_organization":         org,
 	}
 
@@ -101,6 +121,13 @@ func getLabels(org string, comp InfoGetter, svc *runtime.ServiceRuntime) map[str
 		labels["sales_order"] = so
 	}
 	return labels
+}
+
+func getFinalBillingName(billingName, addOn string) string {
+	if addOn == "" {
+		return billingName
+	}
+	return fmt.Sprintf("%s-%s", billingName, addOn)
 }
 
 func getExprFromTemplate(i int) (string, error) {

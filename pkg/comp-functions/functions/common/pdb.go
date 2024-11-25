@@ -46,7 +46,7 @@ func AddPDBSettings[T client.Object](ctx context.Context, obj T, svc *runtime.Se
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(x, comp.GetName()+"-pdb")
+	err = svc.SetDesiredKubeObject(x, comp.GetName()+"-pdb", runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("could not set desired kube compect: %w", err))
 	}

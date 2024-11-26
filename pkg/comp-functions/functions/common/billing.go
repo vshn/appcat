@@ -5,12 +5,13 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"text/template"
+
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-	"text/template"
 )
 
 var rawExpr = "vector({{.}})"
@@ -21,6 +22,11 @@ var rawExpr = "vector({{.}})"
 func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Enabling billing for service", "service", comp.GetName())
+
+	if comp.GetClaimNamespace() == svc.Config.Data["ignoreNamespaceForBilling"] {
+		log.Info("Test instance, skipping billing")
+		return nil
+	}
 
 	expr, err := getExprFromTemplate(comp.GetInstances())
 	if err != nil {

@@ -32,23 +32,23 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 		WithObjects(claimNS).
 		Build()
 
-	handler := NextcloudWebhookHandler{
+	handler := KeycloakWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
 			client:    fclient,
 			log:       logr.Discard(),
 			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			obj:       &vshnv1.VSHNKeycloak{},
+			name:      "keycloak",
 		},
 	}
 
-	redisOrig := &vshnv1.VSHNNextcloud{
+	keycloakOrig := &vshnv1.VSHNKeycloak{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myinstance",
 			Namespace: "claimns",
 		},
-		Spec: vshnv1.VSHNNextcloudSpec{
-			Parameters: vshnv1.VSHNNextcloudParameters{
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
 				Size: vshnv1.VSHNSizeSpec{
 					Requests: vshnv1.VSHNDBaaSSizeRequestsSpec{
 						CPU: "500m",
@@ -59,71 +59,71 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	}
 
 	// When within quota
-	_, err := handler.ValidateCreate(ctx, redisOrig)
+	_, err := handler.ValidateCreate(ctx, keycloakOrig)
 
 	//Then no err
 	assert.NoError(t, err)
 
 	// When quota breached
 	// CPU Requests
-	nextcloudInvalid := redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.Requests.CPU = "5000m"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid := keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.Requests.CPU = "5000m"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// CPU Limit
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.CPU = "5000m"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.CPU = "5000m"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// Memory Limit
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.Memory = "25Gi"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.Memory = "25Gi"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// Memory Requests
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.Requests.Memory = "25Gi"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.Requests.Memory = "25Gi"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// Disk
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.Disk = "25Ti"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.Disk = "25Ti"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	//When invalid size
 	// CPU Requests
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.Requests.CPU = "foo"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.Requests.CPU = "foo"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// CPU Limit
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.CPU = "foo"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.CPU = "foo"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// Memory Limit
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.Memory = "foo"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.Memory = "foo"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// Memory Requests
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.Requests.Memory = "foo"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.Requests.Memory = "foo"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// Disk
-	nextcloudInvalid = redisOrig.DeepCopy()
-	nextcloudInvalid.Spec.Parameters.Size.Disk = "foo"
-	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Size.Disk = "foo"
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 }
@@ -146,23 +146,23 @@ func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 		WithObjects(claimNS).
 		Build()
 
-	handler := NextcloudWebhookHandler{
+	handler := KeycloakWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
 			client:    fclient,
 			log:       logr.Discard(),
 			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			obj:       &vshnv1.VSHNKeycloak{},
+			name:      "keycloak",
 		},
 	}
 
-	nextcloudOrig := &vshnv1.VSHNNextcloud{
+	keycloakOrig := &vshnv1.VSHNKeycloak{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myinstance",
 			Namespace: "claimns",
 		},
-		Spec: vshnv1.VSHNNextcloudSpec{
-			Parameters: vshnv1.VSHNNextcloudParameters{
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
 				Security: vshnv1.Security{
 					DeletionProtection: true,
 				},
@@ -171,16 +171,16 @@ func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 	}
 
 	// When within quota
-	_, err := handler.ValidateDelete(ctx, nextcloudOrig)
+	_, err := handler.ValidateDelete(ctx, keycloakOrig)
 
 	//Then err
 	assert.Error(t, err)
 
 	//Instances
-	nextcloudDeletable := nextcloudOrig.DeepCopy()
-	nextcloudDeletable.Spec.Parameters.Security.DeletionProtection = false
+	keycloakDeletable := keycloakOrig.DeepCopy()
+	keycloakDeletable.Spec.Parameters.Security.DeletionProtection = false
 
-	_, err = handler.ValidateDelete(ctx, nextcloudDeletable)
+	_, err = handler.ValidateDelete(ctx, keycloakDeletable)
 
 	//Then no err
 	assert.NoError(t, err)

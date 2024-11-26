@@ -2,7 +2,6 @@ package webhooks
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	valid "github.com/asaskevich/govalidator"
@@ -60,17 +59,13 @@ func (n *NextcloudWebhookHandler) ValidateCreate(ctx context.Context, obj runtim
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
-	if len(nx.Spec.Parameters.Service.FQDN) == 0 {
-		return nil, fmt.Errorf("FQDN array is empty, but requires at least one entry: %w", errors.New("empty fqdn"))
-	}
-
 	if err := validateFQDNs(nx.Spec.Parameters.Service.FQDN); err != nil {
-		return nil, fmt.Errorf("FQDN is not a valid DNS name: %w", err)
+		return nil, err
 	}
 
 	if nx.Spec.Parameters.Service.Collabora.Enabled {
 		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
-			return nil, fmt.Errorf("FQDN is not a valid DNS name: %w", err)
+			return nil, err
 		}
 	}
 
@@ -88,17 +83,13 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
-	if len(nx.Spec.Parameters.Service.FQDN) == 0 {
-		return nil, fmt.Errorf("FQDN array is empty, but requires at least one entry: %w", errors.New("empty fqdn"))
-	}
-
 	if err := validateFQDNs(nx.Spec.Parameters.Service.FQDN); err != nil {
-		return nil, fmt.Errorf("FQDN is not a valid DNS name: %w", err)
+		return nil, err
 	}
 
 	if nx.Spec.Parameters.Service.Collabora.Enabled {
 		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
-			return nil, fmt.Errorf("FQDN is not a valid DNS name: %w", err)
+			return nil, err
 		}
 	}
 

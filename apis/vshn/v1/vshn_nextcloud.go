@@ -91,11 +91,12 @@ type VSHNNextcloudServiceSpec struct {
 	// Collabora contains settings to control the Collabora integration.
 	Collabora CollaboraSpec `json:"collabora,omitempty"`
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
 
-	// FQDN contains the FQDN which will be used for the ingress.
+	// FQDN contains the FQDNs array, which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.
 	// This also enables strict hostname checking for this FQDN.
-	FQDN string `json:"fqdn"`
+	FQDN []string `json:"fqdn"`
 
 	// RelativePath on which Nextcloud will listen.
 	// +kubebuilder:default="/"

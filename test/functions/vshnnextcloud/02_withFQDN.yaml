@@ -32,7 +32,8 @@ observed:
       spec:
         parameters:
           service:
-            fqdn: example.com
+            fqdn:
+              - example.com
   resources:
     mynextcloud-pg:
       connection_details:

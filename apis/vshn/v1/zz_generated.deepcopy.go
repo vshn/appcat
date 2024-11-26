@@ -900,6 +900,11 @@ func (in *VSHNNextcloudParameters) DeepCopy() *VSHNNextcloudParameters {
 func (in *VSHNNextcloudServiceSpec) DeepCopyInto(out *VSHNNextcloudServiceSpec) {
 	*out = *in
 	out.Collabora = in.Collabora
+	if in.FQDN != nil {
+		in, out := &in.FQDN, &out.FQDN
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.PostgreSQLParameters != nil {
 		in, out := &in.PostgreSQLParameters, &out.PostgreSQLParameters
 		*out = new(VSHNPostgreSQLParameters)

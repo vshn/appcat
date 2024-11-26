@@ -35,6 +35,8 @@ observed:
       spec:
         parameters:
           service:
+            fqdn:
+              - nextcloud.example.com
             useExternalPostgreSQL: false
             version: "29"
         claimRef:

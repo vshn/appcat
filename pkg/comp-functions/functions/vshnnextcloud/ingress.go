@@ -2,16 +2,16 @@ package vshnnextcloud
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
-	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"gopkg.in/yaml.v2"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	netv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 // AddIngress adds an inrgess to the Nextcloud instance.
@@ -22,69 +22,71 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
-	if comp.Spec.Parameters.Service.FQDN == "" {
-		return nil
+	if len(comp.Spec.Parameters.Service.FQDN) == 0 {
+		return runtime.NewFatalResult(fmt.Errorf("FQDN array is empty, but requires at least one entry, %w", errors.New("empty fqdn")))
 	}
 
-	values, err := common.GetDesiredReleaseValues(svc, comp.GetName()+"-release")
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get desired release values: %s", err))
-	}
-
-	svc.Log.Info("Enable ingress for release")
-	enableIngresValues(svc, comp, values)
-
-	release := &xhelmv1.Release{}
-	err = svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get desired release: %s", err))
-	}
-
-	vb, err := json.Marshal(values)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot marhal values: %s", err))
-	}
-
-	release.Spec.ForProvider.Values.Raw = vb
-
-	err = svc.SetDesiredComposedResourceWithName(release, comp.GetName()+"-release")
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot set desired release: %s", err))
-	}
-
-	return nil
-}
-
-func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, values map[string]any) {
-	fqdn := comp.Spec.Parameters.Service.FQDN
-
-	values["ingress"] = map[string]any{
-		"enabled":     true,
-		"servicePort": "http",
-		"path":        comp.Spec.Parameters.Service.RelativePath,
-		"tls": []map[string]any{
-			{
-				"hosts": []string{
-					fqdn,
-				},
-				"secretName": "nextcloud-ingress-cert",
-			},
-		},
-	}
-
+	annotations := map[string]string{}
 	if svc.Config.Data["ingress_annotations"] != "" {
-		annotations := map[string]any{}
-
 		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), annotations)
 		if err != nil {
 			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
 			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
 		}
-
-		err = unstructured.SetNestedMap(values, annotations, "ingress", "annotations")
-		if err != nil {
-			svc.Log.Error(err, "cannot set ingress annotations")
-			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set ingress annotations: %s", err)))
-		}
 	}
+
+	ingress := &netv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        comp.GetName(),
+			Namespace:   comp.GetInstanceNamespace(),
+			Annotations: annotations,
+		},
+		Spec: netv1.IngressSpec{
+			Rules: createIngressRule(comp),
+			TLS: []netv1.IngressTLS{
+				{
+					Hosts:      comp.Spec.Parameters.Service.FQDN,
+					SecretName: "nextcloud-ingress-cert",
+				},
+			},
+		},
+	}
+
+	err = svc.SetDesiredKubeObject(ingress, comp.GetName()+"-ingress")
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot set create ingress: %s", err))
+	}
+
+	return nil
+}
+
+func createIngressRule(comp *vshnv1.VSHNNextcloud) []netv1.IngressRule {
+
+	ingressRules := []netv1.IngressRule{}
+
+	for _, fqdn := range comp.Spec.Parameters.Service.FQDN {
+		rule := netv1.IngressRule{
+			Host: fqdn,
+			IngressRuleValue: netv1.IngressRuleValue{
+				HTTP: &netv1.HTTPIngressRuleValue{
+					Paths: []netv1.HTTPIngressPath{
+						{
+							Path:     "/",
+							PathType: ptr.To(netv1.PathType("Prefix")),
+							Backend: netv1.IngressBackend{
+								Service: &netv1.IngressServiceBackend{
+									Name: comp.GetName(),
+									Port: netv1.ServiceBackendPort{
+										Number: 8080,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		ingressRules = append(ingressRules, rule)
+	}
+	return ingressRules
 }

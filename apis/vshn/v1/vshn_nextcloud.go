@@ -93,7 +93,7 @@ type VSHNNextcloudServiceSpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
 
-	// FQDN contains the FQDNs which will be used for the ingress.
+	// FQDN contains the FQDNs array, which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.
 	// This also enables strict hostname checking for this FQDN.
 	FQDN []string `json:"fqdn"`

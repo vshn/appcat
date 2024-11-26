@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	valid "github.com/asaskevich/govalidator"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -260,6 +261,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, fmt.Errorf("FQDN array is empty, but requires at least one entry: %w", errors.New("empty fqdn"))
 	}
 
+	if err := validateFQDNs(comp.Spec.Parameters.Service.FQDN); err != nil {
+		return nil, fmt.Errorf("FQDN is not a valid DNS name: %w", err)
+	}
+
 	trustedDomain := []string{
 		comp.GetName() + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
 	}
@@ -437,4 +442,13 @@ func setBackgroundJobMaintenance(t vshnv1.TimeOfDay, nextcloudConfig string) str
 	// and no later than 1 hour and 39 min after the regular Maintenance
 	backgroundJobHour := t.GetTime().Add(40 * time.Minute).Add(time.Hour).Hour()
 	return strings.Replace(nextcloudConfig, "%maintenance_value%", strconv.Itoa(backgroundJobHour), 1)
+}
+
+func validateFQDNs(fqdns []string) error {
+	for _, fqdn := range fqdns {
+		if !valid.IsDNSName(fqdn) {
+			return fmt.Errorf("FQDN %s is not a valid DNS name", fqdn)
+		}
+	}
+	return nil
 }

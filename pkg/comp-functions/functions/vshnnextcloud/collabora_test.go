@@ -56,11 +56,4 @@ func Test_addCollabora(t *testing.T) {
 	res = DeployCollabora(ctx, comp, svc)
 
 	assert.True(t, res.Severity == v1beta1.Severity_SEVERITY_NORMAL && res.Message == "Collabora not enabled")
-
-	comp.Spec.Parameters.Service.Collabora.Enabled = true
-	comp.Spec.Parameters.Service.Collabora.FQDN = ""
-	res = DeployCollabora(ctx, comp, svc)
-
-	assert.True(t, res.Severity == v1beta1.Severity_SEVERITY_WARNING && res.Message == "Collabora FQDN is not a valid DNS name: "+comp.Spec.Parameters.Service.Collabora.FQDN)
-
 }

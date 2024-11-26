@@ -32,7 +32,7 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 		WithObjects(claimNS).
 		Build()
 
-	handler := TestWebhookHandler{
+	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
 			client:    fclient,
 			log:       logr.Discard(),
@@ -146,7 +146,7 @@ func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 		WithObjects(claimNS).
 		Build()
 
-	handler := TestWebhookHandler{
+	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
 			client:    fclient,
 			log:       logr.Discard(),

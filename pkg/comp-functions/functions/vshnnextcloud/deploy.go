@@ -257,14 +257,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
-	if len(comp.Spec.Parameters.Service.FQDN) == 0 {
-		return nil, fmt.Errorf("FQDN array is empty, but requires at least one entry: %w", errors.New("empty fqdn"))
-	}
-
-	if err := validateFQDNs(comp.Spec.Parameters.Service.FQDN); err != nil {
-		return nil, fmt.Errorf("FQDN is not a valid DNS name: %w", err)
-	}
-
 	trustedDomain := []string{
 		comp.GetName() + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
 	}

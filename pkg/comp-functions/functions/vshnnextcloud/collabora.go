@@ -10,7 +10,6 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	valid "github.com/asaskevich/govalidator"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certmgrv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
@@ -51,10 +50,6 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 
 	if !comp.Spec.Parameters.Service.Collabora.Enabled {
 		return runtime.NewNormalResult("Collabora not enabled")
-	}
-
-	if !valid.IsDNSName(comp.Spec.Parameters.Service.Collabora.FQDN) {
-		return runtime.NewWarningResult("Collabora FQDN is not a valid DNS name: " + comp.Spec.Parameters.Service.Collabora.FQDN)
 	}
 
 	rules := []rbacv1.PolicyRule{

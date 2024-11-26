@@ -5078,6 +5078,14 @@ spec:
                             - besteffort
                             - guaranteed
                           type: string
+                        tls:
+                          description: TLS settings for the instance.
+                          properties:
+                            enabled:
+                              default: true
+                              description: Enabled specifies if the instance should use TLS for the instance.
+                              type: boolean
+                          type: object
                         vacuumEnabled:
                           default: false
                           type: boolean

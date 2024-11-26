@@ -153,9 +153,11 @@ type VSHNPostgreSQLServiceSpec struct {
 	DisablePgBouncer bool `json:"disablePgBouncer,omitempty"`
 
 	// +kubebuilder:default=true
-	// This is default option if neither repack or vacuum are selected
+	// RepackEnabled defines if `pg_repack` should be performed during the maintenance. Defaults to true.
 	RepackEnabled bool `json:"repackEnabled,omitempty"`
+
 	// +kubebuilder:default=false
+	// VacuumEnabled defines if `VACUUM` should be performed during the maintenace. Defaults to false.
 	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
 
 	// Access defines additional users and databases for this instance.

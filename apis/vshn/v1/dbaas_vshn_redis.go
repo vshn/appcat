@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -164,6 +165,10 @@ type XVSHNRedis struct {
 
 	Spec   XVSHNRedisSpec   `json:"spec"`
 	Status XVSHNRedisStatus `json:"status,omitempty"`
+}
+
+func (v *XVSHNRedis) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-redis-%s", v.GetName())
 }
 
 // XVSHNRedisSpec defines the desired state of a VSHNRedis.

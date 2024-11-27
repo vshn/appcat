@@ -35,6 +35,7 @@ type VSHNRedisReconciler struct {
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
 	RedisDialer        func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error)
+	ScClient           client.Client
 }
 
 type probeManager interface {
@@ -54,7 +55,7 @@ func (r *VSHNRedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	l.Info("Reconciling VSHNRedis")
 	inst := &vshnv1.XVSHNRedis{}
 
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnRedisServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getRedisProber)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnRedisServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getRedisProber, r.ScClient)
 
 	return reconciler.Reconcile(ctx)
 

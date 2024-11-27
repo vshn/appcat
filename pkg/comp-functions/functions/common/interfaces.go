@@ -28,10 +28,15 @@ type InfoGetter interface {
 // InstanceNamespaceInfo provides all the necessary information to create
 // an instance namespace.
 type InstanceNamespaceInfo interface {
+	InstanceNamespaceGetter
 	GetName() string
 	GetClaimNamespace() string
-	GetInstanceNamespace() string
 	GetLabels() map[string]string
+}
+
+// InstanceNamespaceGetter returns the instance namespace of the given object
+type InstanceNamespaceGetter interface {
+	GetInstanceNamespace() string
 }
 
 // Composite can get and set the relevant information on a given composite.

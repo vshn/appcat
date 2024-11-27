@@ -34,6 +34,7 @@ type VSHNMinioReconciler struct {
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
 	MinioDialer        func(service, name, namespace, organization, sla, endpointURL string, ha bool, opts minio.Options) (*probes.VSHNMinio, error)
+	ScClient           client.Client
 }
 
 type probeManager interface {
@@ -54,7 +55,7 @@ func (r *VSHNMinioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	inst := &vshnv1.XVSHNMinio{}
 
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnMinioServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getMinioProber)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnMinioServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getMinioProber, r.ScClient)
 
 	return reconciler.Reconcile(ctx)
 

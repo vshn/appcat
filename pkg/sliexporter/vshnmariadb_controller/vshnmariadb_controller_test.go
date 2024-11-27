@@ -52,10 +52,10 @@ func getFakeKey(pi probes.ProbeInfo) key {
 }
 
 func TestVSHNMariaDB_Reconcile(t *testing.T) {
-	mariadb := newTestVSHNMariaDB("bar", "foo", "cred")
+	mariadb, ns := newTestVSHNMariaDB("bar", "foo", "cred")
 
 	r, manager, client := setupVSHNMariaDBTest(t,
-		mariadb,
+		mariadb, ns,
 		newTestVSHNMariaDBCred("bar", "cred"))
 
 	req := ctrl.Request{
@@ -94,13 +94,14 @@ func setupVSHNMariaDBTest(t *testing.T, objs ...client.Object) (VSHNMariaDBRecon
 		Scheme:             scheme,
 		StartupGracePeriod: 5 * time.Minute,
 		ProbeManager:       manager,
+		ScClient:           client,
 	}
 
 	return r, manager, client
 }
 
-func newTestVSHNMariaDB(namespace, name, cred string) *vshnv1.XVSHNMariaDB {
-	return &vshnv1.XVSHNMariaDB{
+func newTestVSHNMariaDB(namespace, name, cred string) (*vshnv1.XVSHNMariaDB, *corev1.Namespace) {
+	claim := &vshnv1.XVSHNMariaDB{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
@@ -115,6 +116,14 @@ func newTestVSHNMariaDB(namespace, name, cred string) *vshnv1.XVSHNMariaDB {
 			},
 		},
 	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: claim.GetInstanceNamespace(),
+		},
+	}
+
+	return claim, ns
 }
 
 func newTestVSHNMariaDBCred(namespace, name string) *corev1.Secret {

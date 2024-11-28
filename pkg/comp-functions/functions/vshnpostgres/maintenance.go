@@ -14,6 +14,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
@@ -129,6 +130,11 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		},
 	}...)
 
+	err = setPsqlMinorVersion(svc, cluster)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot set the minor version for the PostgreSQL instance: %w", err).Error())
+	}
+
 	backups := *cluster.Spec.Configurations.Backups
 	backups[0].CronSchedule = ptr.To(comp.GetBackupSchedule())
 	cluster.Spec.Configurations.Backups = &backups
@@ -177,4 +183,22 @@ func createMaintenanceSecret(instanceNamespace, sgNamespace, resourceName string
 			ref,
 		},
 	}
+}
+
+func setPsqlMinorVersion(svc *runtime.ServiceRuntime, desiredCluster *stackgresv1.SGCluster) error {
+	observedCluster := &stackgresv1.SGCluster{}
+	err := svc.GetObservedKubeObject(observedCluster, "cluster")
+	if errors.IsNotFound(err) {
+		// Cluster doesn't exist yet. So let's ignore it here
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("cannot get observed cluster object: %w", err)
+	}
+
+	pgVersion := observedCluster.Spec.Postgres.Version
+
+	desiredCluster.Spec.Postgres.Version = pgVersion
+
+	return nil
 }

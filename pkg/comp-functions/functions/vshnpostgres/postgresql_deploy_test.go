@@ -59,7 +59,6 @@ func TestPostgreSqlDeploy(t *testing.T) {
 	assert.Equal(t, comp.GetName(), cluster.Name)
 	assert.Equal(t, comp.GetInstanceNamespace(), cluster.Namespace)
 	assert.Equal(t, comp.Spec.Parameters.Instances, cluster.Spec.Instances)
-	assert.Equal(t, comp.Spec.Parameters.Service.MajorVersion, cluster.Spec.Postgres.Version)
 	assert.Nil(t, cluster.Spec.InitialData.Restore)
 	assert.Equal(t, comp.GetName(), *cluster.Spec.SgInstanceProfile)
 	assert.Equal(t, comp.GetName(), *cluster.Spec.Configurations.SgPostgresConfig)

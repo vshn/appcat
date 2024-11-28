@@ -282,7 +282,7 @@ observed:
                     privateKeySecretKeySelector:
                       key: tls.key
                       name: tls-certificate
-                  version: "15"
+                  version: "15.1"
                 sgInstanceProfile: psql-gc9x4
           managementPolicy: Default
           providerConfigRef:

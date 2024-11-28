@@ -406,17 +406,6 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			InitialData: initialData,
 			Postgres: sgv1.SGClusterSpecPostgres{
 				Version: comp.Spec.Parameters.Service.MajorVersion,
-				Ssl: &sgv1.SGClusterSpecPostgresSsl{
-					Enabled: ptr.To(true),
-					CertificateSecretKeySelector: &sgv1.SGClusterSpecPostgresSslCertificateSecretKeySelector{
-						Name: certificateSecretName,
-						Key:  "tls.crt",
-					},
-					PrivateKeySecretKeySelector: &sgv1.SGClusterSpecPostgresSslPrivateKeySecretKeySelector{
-						Name: certificateSecretName,
-						Key:  "tls.key",
-					},
-				},
 			},
 			Pods: sgv1.SGClusterSpecPods{
 				PersistentVolume: sgv1.SGClusterSpecPodsPersistentVolume{
@@ -442,6 +431,23 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 	if !comp.Spec.Parameters.Service.DisablePgBouncer {
 		sgCluster.Spec.Pods.DisableConnectionPooling = ptr.To(true)
 	}
+
+	TLSSettings := &sgv1.SGClusterSpecPostgresSsl{
+		Enabled: &comp.Spec.Parameters.Service.TLS.Enabled,
+	}
+
+	if comp.Spec.Parameters.Service.TLS.Enabled {
+		TLSSettings.CertificateSecretKeySelector = &sgv1.SGClusterSpecPostgresSslCertificateSecretKeySelector{
+			Name: certificateSecretName,
+			Key:  "tls.crt",
+		}
+		TLSSettings.PrivateKeySecretKeySelector = &sgv1.SGClusterSpecPostgresSslPrivateKeySecretKeySelector{
+			Name: certificateSecretName,
+			Key:  "tls.key",
+		}
+	}
+
+	sgCluster.Spec.Postgres.Ssl = TLSSettings
 
 	configureReplication(comp, sgCluster)
 

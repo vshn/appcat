@@ -91,7 +91,7 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 			Client:             mgr.GetClient(),
 			Scheme:             mgr.GetScheme(),
 			ProbeManager:       &probeManager,
-			StartupGracePeriod: 15 * time.Minute,
+			StartupGracePeriod: 15 * time.Second,
 			PostgreDialer:      probes.NewPostgreSQL,
 		}).SetupWithManager(mgr); err != nil {
 			log.Error(err, "unable to create controller", "controller", "VSHNPostgreSQL")

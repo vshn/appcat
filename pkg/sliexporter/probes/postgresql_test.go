@@ -2,10 +2,17 @@ package probes
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,4 +95,73 @@ func TestPostgreSQL_Fail(t *testing.T) {
 		assert.Equal(t, pi.Namespace, "bar")
 		assert.NoError(t, p.Close())
 	})
+}
+
+func TestPGWithCA(t *testing.T) {
+	t.Parallel()
+	// Generate a private key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		fmt.Println("Failed to generate private key:", err)
+		t.FailNow()
+		return
+	}
+
+	// Create a template for the certificate
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		DNSNames:     []string{"localhost"},
+		Subject: pkix.Name{
+			Organization: []string{"Example Corp"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(365 * 24 * time.Hour), // Valid for one year
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+
+	// Create the certificate
+	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		fmt.Println("Failed to create certificate:", err)
+		t.FailNow()
+		return
+	}
+
+	pembytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
+
+	op := PGWithCA(pembytes, true)
+
+	conf, err := pgxpool.ParseConfig("postgresql://foo:bar@localhost:5432/buzz?sslmode=disable")
+	require.NoError(t, err)
+
+	err = op(conf)
+	assert.NoError(t, err)
+	assert.NotNil(t, conf.ConnConfig.TLSConfig)
+	assert.NotNil(t, conf.ConnConfig.TLSConfig.RootCAs)
+}
+
+func TestPGWithCA_DisabledTLS(t *testing.T) {
+	t.Parallel()
+	op := PGWithCA(nil, false)
+
+	conf, err := pgxpool.ParseConfig("postgresql://foo:bar@localhost:5432/buzz?sslmode=disable")
+	require.NoError(t, err)
+
+	err = op(conf)
+	assert.NoError(t, err)
+	assert.Nil(t, conf.ConnConfig.TLSConfig)
+}
+
+func TestPGWithCA_InvalidCA(t *testing.T) {
+	t.Parallel()
+	op := PGWithCA(nil, true)
+
+	conf, err := pgxpool.ParseConfig("postgresql://foo:bar@localhost:5432/buzz?sslmode=disable")
+	require.NoError(t, err)
+
+	err = op(conf)
+	assert.Error(t, err)
+	assert.Equal(t, "got nil CA", err.Error())
 }

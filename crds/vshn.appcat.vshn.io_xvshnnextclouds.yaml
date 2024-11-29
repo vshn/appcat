@@ -11665,8 +11665,9 @@ spec:
                                 properties:
                                   enabled:
                                     default: true
-                                    description: Enabled specifies if the instance
-                                      should use TLS for the instance.
+                                    description: |-
+                                      Enabled specifies if the instance should use TLS for the instance.
+                                      This change takes effect immediately and does not require a restart of the database.
                                     type: boolean
                                 type: object
                               vacuumEnabled:

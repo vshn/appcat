@@ -232,6 +232,7 @@ type VSHNPostgreSQLEncryption struct {
 // VSHNPostgreSQLTLS contains TLS specific parameters
 type VSHNPostgreSQLTLS struct {
 	// Enabled specifies if the instance should use TLS for the instance.
+	// This change takes effect immediately and does not require a restart of the database.
 	// +kubebuilder:default=true
 	Enabled bool `json:"enabled,omitempty"`
 }

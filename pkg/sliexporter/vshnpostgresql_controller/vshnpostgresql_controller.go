@@ -114,19 +114,27 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, obj slirec
 		ha = false
 	}
 
+	sslmode := "verify-ca"
+	if !inst.Spec.Parameters.Service.TLS.Enabled {
+		sslmode = "disable"
+	}
+
 	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.GetName(), inst.GetLabels()[slireconciler.ClaimNamespaceLabel],
 		fmt.Sprintf(
-			"postgresql://%s:%s@%s:%s/%s?sslmode=verify-ca",
+			"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
 			credSecret.Data["POSTGRESQL_USER"],
 			credSecret.Data["POSTGRESQL_PASSWORD"],
 			credSecret.Data["POSTGRESQL_HOST"],
 			credSecret.Data["POSTGRESQL_PORT"],
 			credSecret.Data["POSTGRESQL_DB"],
+			sslmode,
 		), org, string(sla), ha,
-		probes.PGWithCA(credSecret.Data["ca.crt"]))
+		probes.PGWithCA(credSecret.Data["ca.crt"], inst.Spec.Parameters.Service.TLS.Enabled),
+	)
 	if err != nil {
 		return nil, err
 	}
+
 	return probe, nil
 }
 

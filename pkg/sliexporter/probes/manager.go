@@ -158,7 +158,7 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 		"maintenance":  strconv.FormatBool(m.maintenanceStatus.IsMaintenanceRunning()),
 	})
 	if err != nil {
-		l.Error(err, "failed to instanciate prmetheus histogram")
+		l.Error(err, "failed to instanciate prometheus histogram")
 		return
 	}
 

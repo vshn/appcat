@@ -21,6 +21,7 @@ type PostgreSQL struct {
 	Namespace     string
 	Organization  string
 	HighAvailable bool
+	TLSEnabled    bool
 	ServiceLevel  string
 }
 
@@ -97,7 +98,13 @@ func NewFailingPostgreSQL(service, name, namespace string) (*PostgreSQL, error) 
 }
 
 // PGWithCA adds the provided CA to the rootCAs of the pgxpool.
-func PGWithCA(ca []byte) func(*pgxpool.Config) error {
+func PGWithCA(ca []byte, tlsEnabled bool) func(*pgxpool.Config) error {
+	if !tlsEnabled {
+		return func(conf *pgxpool.Config) error {
+			return nil
+		}
+	}
+
 	return func(conf *pgxpool.Config) error {
 		if conf.ConnConfig.TLSConfig == nil {
 			conf.ConnConfig.TLSConfig = &tls.Config{
@@ -116,6 +123,7 @@ func PGWithCA(ca []byte) func(*pgxpool.Config) error {
 		if !conf.ConnConfig.TLSConfig.RootCAs.AppendCertsFromPEM(ca) {
 			return errors.New("cannot append root CA certificates")
 		}
+
 		return nil
 	}
 }

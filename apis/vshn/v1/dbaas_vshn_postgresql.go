@@ -160,6 +160,9 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// Access defines additional users and databases for this instance.
 	Access []VSHNAccess `json:"access,omitempty"`
+
+	// TLS settings for the instance.
+	TLS VSHNPostgreSQLTLS `json:"tls,omitempty"`
 }
 
 // VSHNDBaaSPostgresExtension contains the name of a single extension.
@@ -223,6 +226,14 @@ func (v *VSHNPostgreSQL) GetVSHNMonitoring() VSHNMonitoring {
 type VSHNPostgreSQLEncryption struct {
 
 	// Enabled specifies if the instance should use encrypted storage for the instance.
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+// VSHNPostgreSQLTLS contains TLS specific parameters
+type VSHNPostgreSQLTLS struct {
+	// Enabled specifies if the instance should use TLS for the instance.
+	// This change takes effect immediately and does not require a restart of the database.
+	// +kubebuilder:default=true
 	Enabled bool `json:"enabled,omitempty"`
 }
 

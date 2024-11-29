@@ -5093,7 +5093,8 @@ spec:
                           type: boolean
                       type: object
                       default: {}
-                      tls: {}
+                      tls:
+                        default: {}
                     size:
                       description: Size contains settings to control the sizing of a service.
                       properties:

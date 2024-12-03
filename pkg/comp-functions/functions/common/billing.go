@@ -1,12 +1,9 @@
 package common
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"fmt"
-	"text/template"
-
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -14,12 +11,16 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
-var rawExpr = "vector({{.}})"
+// ServiceAddOns describes an addOn for a services with necessary data for billing
+type ServiceAddOns struct {
+	Name      string
+	Instances int
+}
 
 // CreateBillingRecord creates a new prometheus rule per each instance namespace
 // The rule is skipped for any secondary service such as postgresql instance for nextcloud
 // The skipping is based on whether label appuio.io/billing-name is set or not on instance namespace
-func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter) *xfnproto.Result {
+func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, addOns ...ServiceAddOns) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Enabling billing for service", "service", comp.GetName())
 
@@ -28,10 +29,7 @@ func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp 
 		return nil
 	}
 
-	expr, err := getExprFromTemplate(comp.GetInstances())
-	if err != nil {
-		runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
-	}
+	expr := getVectorExpression(comp.GetInstances())
 
 	org, err := getOrg(comp.GetName(), svc)
 	if err != nil {
@@ -55,20 +53,31 @@ func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp 
 		log.Info("secondary service, skipping billing", "service", comp.GetName())
 		return runtime.NewNormalResult(fmt.Sprintf("billing disabled for instance %s", comp.GetName()))
 	}
+	rg := v1.RuleGroup{
+		Name: "appcat-metering-rules",
+		Rules: []v1.Rule{
+			{
+				Record: "appcat:metering",
+				Expr:   intstr.FromString(expr),
+				Labels: getLabels(svc, comp, org, ""),
+			},
+		},
+	}
+
+	for _, addOn := range addOns {
+		log.Info("Adding billing addOn for service", "service", comp.GetName(), "addOn", addOn.Name)
+		exprAddOn := getVectorExpression(addOn.Instances)
+		rg.Rules = append(rg.Rules, v1.Rule{
+			Record: "appcat:metering",
+			Expr:   intstr.FromString(exprAddOn),
+			Labels: getLabels(svc, comp, org, addOn.Name),
+		})
+	}
 
 	p := &v1.PrometheusRule{
 		Spec: v1.PrometheusRuleSpec{
 			Groups: []v1.RuleGroup{
-				{
-					Name: "appcat-metering-rules",
-					Rules: []v1.Rule{
-						{
-							Record: "appcat:metering",
-							Expr:   intstr.FromString(expr),
-							Labels: getLabels(org, comp, svc),
-						},
-					},
-				},
+				rg,
 			},
 		},
 	}
@@ -86,12 +95,16 @@ func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp 
 	return runtime.NewNormalResult(fmt.Sprintf("billing enabled for instance %s", comp.GetName()))
 }
 
-func getLabels(org string, comp InfoGetter, svc *runtime.ServiceRuntime) map[string]string {
+func getLabels(svc *runtime.ServiceRuntime, comp InfoGetter, org, addOnName string) map[string]string {
+	b, err := getBillingNameWithAddOn(comp.GetBillingName(), addOnName)
+	if err != nil {
+		panic(fmt.Errorf("set billing name for service %s: %v", comp.GetServiceName(), err))
+	}
 	labels := map[string]string{
 		"label_appcat_vshn_io_claim_name":      comp.GetClaimName(),
 		"label_appcat_vshn_io_claim_namespace": comp.GetClaimNamespace(),
 		"label_appcat_vshn_io_sla":             comp.GetSLA(),
-		"label_appuio_io_billing_name":         comp.GetBillingName(),
+		"label_appuio_io_billing_name":         b,
 		"label_appuio_io_organization":         org,
 	}
 
@@ -103,17 +116,16 @@ func getLabels(org string, comp InfoGetter, svc *runtime.ServiceRuntime) map[str
 	return labels
 }
 
-func getExprFromTemplate(i int) (string, error) {
-	var buf bytes.Buffer
-	tmpl, err := template.New("billing").Parse(rawExpr)
-	if err != nil {
-		return "", err
+func getBillingNameWithAddOn(billingName, addOn string) (string, error) {
+	if billingName == "" {
+		return "", fmt.Errorf("billing name is empty")
 	}
-
-	err = tmpl.Execute(&buf, i)
-	if err != nil {
-		return "", err
+	if addOn == "" {
+		return billingName, nil
 	}
+	return fmt.Sprintf("%s-%s", billingName, addOn), nil
+}
 
-	return buf.String(), err
+func getVectorExpression(i int) string {
+	return fmt.Sprintf("vector(%d)", i)
 }

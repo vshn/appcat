@@ -179,6 +179,7 @@ func (v *VSHNNextcloud) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
+// CollaboraSpec defines the desired state of a Collabora instance.
 type CollaboraSpec struct {
 	// Enabled enables the Collabora integration. It will autoconfigure the Collabora server URL in Your Nextcloud instance.
 	//+kubebuilder:default=false

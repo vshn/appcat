@@ -317,7 +317,6 @@ func (v *VSHNKeycloak) GetAllowedNamespaces() []string {
 
 func (v *VSHNKeycloak) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
-
 }
 
 func (v *VSHNKeycloak) GetSize() VSHNSizeSpec {
@@ -326,7 +325,6 @@ func (v *VSHNKeycloak) GetSize() VSHNSizeSpec {
 
 func (v *VSHNKeycloak) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
-
 }
 
 func (v *VSHNKeycloak) GetInstances() int {

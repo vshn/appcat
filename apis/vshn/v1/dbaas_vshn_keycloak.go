@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +14,8 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.properties.service.properties.tls.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
@@ -314,6 +317,7 @@ func (v *VSHNKeycloak) GetAllowedNamespaces() []string {
 
 func (v *VSHNKeycloak) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
+
 }
 
 func (v *VSHNKeycloak) GetSize() VSHNSizeSpec {
@@ -322,6 +326,7 @@ func (v *VSHNKeycloak) GetSize() VSHNSizeSpec {
 
 func (v *VSHNKeycloak) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
+
 }
 
 func (v *VSHNKeycloak) GetInstances() int {

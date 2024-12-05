@@ -63,8 +63,8 @@ func (n *NextcloudWebhookHandler) ValidateCreate(ctx context.Context, obj runtim
 		return nil, err
 	}
 
-	if nx.Spec.Parameters.Service.Collabora.Enabled {
-		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
+	if nx.Spec.Parameters.AddOns.Office.Enabled {
+		if err := validateFQDNs([]string{nx.Spec.Parameters.AddOns.Office.FQDN}); err != nil {
 			return nil, err
 		}
 	}
@@ -87,8 +87,8 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 		return nil, err
 	}
 
-	if nx.Spec.Parameters.Service.Collabora.Enabled {
-		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
+	if nx.Spec.Parameters.AddOns.Office.Enabled {
+		if err := validateFQDNs([]string{nx.Spec.Parameters.AddOns.Office.FQDN}); err != nil {
 			return nil, err
 		}
 	}

@@ -317,3 +317,7 @@ func (v *VSHNRedis) GetBillingName() string {
 func (v *VSHNRedis) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
 }
+
+func (v *VSHNRedis) GetEnabledAddOns() []AddOn {
+	return []AddOn{}
+}

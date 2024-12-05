@@ -9898,10 +9898,12 @@ spec:
                                         This change takes effect immediately and does not require a restart of the database.
                                       type: boolean
                                   type: object
+                                  default: {}
                                 vacuumEnabled:
                                   default: false
                                   type: boolean
                               type: object
+                              default: {}
                             size:
                               description: Size contains settings to control the sizing of a service.
                               properties:

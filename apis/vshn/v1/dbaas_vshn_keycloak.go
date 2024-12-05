@@ -356,3 +356,7 @@ func (v *VSHNKeycloak) GetBillingName() string {
 func (v *VSHNKeycloak) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
 }
+
+func (v *VSHNKeycloak) GetEnabledAddOns() []AddOn {
+	return []AddOn{}
+}

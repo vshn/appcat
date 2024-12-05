@@ -48,7 +48,7 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult("Cannot GetObservedComposite: " + err.Error())
 	}
 
-	if !comp.Spec.Parameters.Service.Collabora.Enabled {
+	if !comp.Spec.Parameters.AddOns.Office.Enabled {
 		return runtime.NewNormalResult("Collabora not enabled")
 	}
 
@@ -344,7 +344,7 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 		Spec: networkingv1.IngressSpec{
 			Rules: []networkingv1.IngressRule{
 				{
-					Host: comp.Spec.Parameters.Service.Collabora.FQDN,
+					Host: comp.Spec.Parameters.AddOns.Office.FQDN,
 					IngressRuleValue: networkingv1.IngressRuleValue{
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
@@ -367,7 +367,7 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 			},
 			TLS: []networkingv1.IngressTLS{
 				{
-					Hosts:      []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+					Hosts:      []string{comp.Spec.Parameters.AddOns.Office.FQDN},
 					SecretName: comp.GetName() + "-collabora-code-ingress-tls",
 				},
 			},
@@ -401,7 +401,7 @@ func createCertificate(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) 
 		},
 		Spec: cmv1.CertificateSpec{
 			SecretName: comp.GetName() + "-collabora-code-tls",
-			DNSNames:   []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+			DNSNames:   []string{comp.Spec.Parameters.AddOns.Office.FQDN},
 			IssuerRef: certmgrv1.ObjectReference{
 				Name: comp.GetName() + "-collabora-code-issuer",
 			},
@@ -540,7 +540,7 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 							Command: []string{
 								"bash",
 								"-cefx",
-								fmt.Sprintf("oc exec -i deployments/%s -- /install-collabora.sh \"%s\" \"%s\" \"%s\"", comp.GetWorkloadName(), svc.Config.Data["isOpenshift"], comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
+								fmt.Sprintf("oc exec -i deployments/%s -- /install-collabora.sh \"%s\" \"%s\" \"%s\"", comp.GetWorkloadName(), svc.Config.Data["isOpenshift"], comp.GetName(), comp.Spec.Parameters.AddOns.Office.FQDN),
 							},
 						},
 					},

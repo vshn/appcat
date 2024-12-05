@@ -11,16 +11,10 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
-// ServiceAddOns describes an addOn for a services with necessary data for billing
-type ServiceAddOns struct {
-	Name      string
-	Instances int
-}
-
 // CreateBillingRecord creates a new prometheus rule per each instance namespace
 // The rule is skipped for any secondary service such as postgresql instance for nextcloud
 // The skipping is based on whether label appuio.io/billing-name is set or not on instance namespace
-func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, addOns ...ServiceAddOns) *xfnproto.Result {
+func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Enabling billing for service", "service", comp.GetName())
 
@@ -64,13 +58,13 @@ func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp 
 		},
 	}
 
-	for _, addOn := range addOns {
-		log.Info("Adding billing addOn for service", "service", comp.GetName(), "addOn", addOn.Name)
-		exprAddOn := getVectorExpression(addOn.Instances)
+	for _, addOn := range comp.GetEnabledAddOns() {
+		log.Info("Adding billing addOn for service", "service", comp.GetName(), "addOn", addOn.GetName())
+		exprAddOn := getVectorExpression(addOn.GetInstances())
 		rg.Rules = append(rg.Rules, v1.Rule{
 			Record: "appcat:metering",
 			Expr:   intstr.FromString(exprAddOn),
-			Labels: getLabels(svc, comp, org, addOn.Name),
+			Labels: getLabels(svc, comp, org, addOn.GetName()),
 		})
 	}
 

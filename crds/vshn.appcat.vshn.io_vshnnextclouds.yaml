@@ -42,6 +42,26 @@ spec:
                 parameters:
                   description: Parameters are the configurable fields of a VSHNNextcloud.
                   properties:
+                    addOns:
+                      description: |-
+                        VSHNNextcloudAddOns are additional components, modules, or extensions that enhances the functionality of VSHN Nextcloud.
+                        Add-ons are designed to provide optional features or capabilities that are not part of the main product but
+                        can be installed as needed. Usually add-on are billed separately.
+                      properties:
+                        office:
+                          description: Office contains settings to control the Collabora integration.
+                          properties:
+                            enabled:
+                              default: false
+                              description: Enabled enables the Collabora integration. It will autoconfigure the Collabora server URL in Your Nextcloud instance.
+                              type: boolean
+                            fqdn:
+                              description: FQDN contains the FQDN of the Collabora server. This is used to configure the Collabora server URL in Your Nextcloud instance.
+                              type: string
+                          required:
+                            - enabled
+                          type: object
+                      type: object
                     backup:
                       description: Backup contains settings to control how the instance should get backed up.
                       properties:
@@ -4851,19 +4871,6 @@ spec:
                     service:
                       description: Service contains nextcloud DBaaS specific properties
                       properties:
-                        collabora:
-                          description: Collabora contains settings to control the Collabora integration.
-                          properties:
-                            enabled:
-                              default: false
-                              description: Enabled enables the Collabora integration. It will autoconfigure the Collabora server URL in Your Nextcloud instance.
-                              type: boolean
-                            fqdn:
-                              description: FQDN contains the FQDN of the Collabora server. This is used to configure the Collabora server URL in Your Nextcloud instance.
-                              type: string
-                          required:
-                            - enabled
-                          type: object
                         fqdn:
                           description: |-
                             FQDN contains the FQDNs array, which will be used for the ingress.

@@ -104,6 +104,7 @@ func getLabels(svc *runtime.ServiceRuntime, comp InfoGetter, org, addOnName stri
 		"label_appcat_vshn_io_claim_name":      comp.GetClaimName(),
 		"label_appcat_vshn_io_claim_namespace": comp.GetClaimNamespace(),
 		"label_appcat_vshn_io_sla":             comp.GetSLA(),
+		"label_appcat_vshn_io_addon_name":      addOnName,
 		"label_appuio_io_billing_name":         b,
 		"label_appuio_io_organization":         org,
 	}

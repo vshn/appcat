@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -128,6 +129,10 @@ type XVSHNMinio struct {
 
 	Spec   XVSHNMinioSpec   `json:"spec"`
 	Status XVSHNMinioStatus `json:"status,omitempty"`
+}
+
+func (v *XVSHNMinio) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-minio-%s", v.GetName())
 }
 
 // XVSHNMinioSpec defines the desired state of a VSHNMinio.

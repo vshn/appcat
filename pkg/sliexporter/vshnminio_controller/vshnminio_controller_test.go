@@ -55,13 +55,13 @@ func getFakeKey(pi probes.ProbeInfo) key {
 }
 
 func TestReconciler(t *testing.T) {
-	minio := giveMeMinio(bucketName, namespace)
+	minio, ns := giveMeMinio(bucketName, namespace)
 
 	ct := metav1.Now().Add(-20 * time.Minute)
 	minio.CreationTimestamp = metav1.Time{Time: ct}
 
 	r, manager, client := setupVSHNMinioTest(t,
-		minio,
+		minio, ns,
 		newTestVSHNMinioCred(bucketName, namespace),
 	)
 
@@ -90,10 +90,10 @@ func TestReconciler(t *testing.T) {
 }
 
 func TestVSHNMinio_Startup_NoCreds_Dont_Probe(t *testing.T) {
-	minio := giveMeMinio(bucketName, namespace)
+	minio, ns := giveMeMinio(bucketName, namespace)
 
 	r, manager, _ := setupVSHNMinioTest(t,
-		minio,
+		minio, ns,
 	)
 
 	req := ctrl.Request{
@@ -117,10 +117,10 @@ func TestVSHNMinio_Startup_NoCreds_Dont_Probe(t *testing.T) {
 }
 
 func TestVSHNMinio_NoRef_Dont_Probe(t *testing.T) {
-	db := giveMeMinio("bar", "foo")
+	db, ns := giveMeMinio("bar", "foo")
 	db.Spec.WriteConnectionSecretToReference.Name = ""
 	r, manager, _ := setupVSHNMinioTest(t,
-		db,
+		db, ns,
 	)
 
 	req := ctrl.Request{
@@ -140,8 +140,8 @@ func TestVSHNMinio_NoRef_Dont_Probe(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
-func giveMeMinio(bucketName string, namespace string) *vshnv1.XVSHNMinio {
-	return &vshnv1.XVSHNMinio{
+func giveMeMinio(bucketName string, namespace string) (*vshnv1.XVSHNMinio, *corev1.Namespace) {
+	claim := &vshnv1.XVSHNMinio{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "XVSHNMinio",
 			APIVersion: "vshn.appcat.vshn.io/v1",
@@ -163,6 +163,14 @@ func giveMeMinio(bucketName string, namespace string) *vshnv1.XVSHNMinio {
 			},
 		},
 	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: claim.GetInstanceNamespace(),
+		},
+	}
+
+	return claim, ns
 }
 
 func setupVSHNMinioTest(t *testing.T, objs ...client.Object) (VSHNMinioReconciler, *fakeProbeManager, client.Client) {
@@ -181,6 +189,7 @@ func setupVSHNMinioTest(t *testing.T, objs ...client.Object) (VSHNMinioReconcile
 		ProbeManager:       manager,
 		StartupGracePeriod: 5 * time.Minute,
 		MinioDialer:        fakeMinioDialer,
+		ScClient:           client,
 	}
 
 	return r, manager, client

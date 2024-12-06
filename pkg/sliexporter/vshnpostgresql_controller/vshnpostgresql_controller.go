@@ -50,6 +50,7 @@ type VSHNPostgreSQLReconciler struct {
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
 	PostgreDialer      func(service, name, namespace, dsn, organization, serviceLevel string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
+	ScClient           client.Client
 }
 
 type probeManager interface {
@@ -71,7 +72,7 @@ func (r *VSHNPostgreSQLReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	inst := &vshnv1.XVSHNPostgreSQL{}
 
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnpostgresqlsServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.fetchProberFor)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnpostgresqlsServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.fetchProberFor, r.ScClient)
 
 	return reconciler.Reconcile(ctx)
 }

@@ -6,8 +6,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/discovery"
-	"sigs.k8s.io/apiserver-runtime/pkg/util/loopback"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -90,22 +88,4 @@ func GetBackupColumnDefinition() []metav1.TableColumnDefinition {
 		{Name: "Status", Type: "string", Description: "The state of this backup"},
 		{Name: "Age", Type: "date", Description: desc["creationTimestamp"]},
 	}
-}
-
-func IsTypeAvailable(gv string, kind string) bool {
-	d, err := discovery.NewDiscoveryClientForConfig(loopback.GetLoopbackMasterClientConfig())
-	if err != nil {
-		return false
-	}
-	resources, err := d.ServerResourcesForGroupVersion(gv)
-	if err != nil {
-		return false
-	}
-
-	for _, res := range resources.APIResources {
-		if res.Kind == kind {
-			return true
-		}
-	}
-	return false
 }

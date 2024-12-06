@@ -37,6 +37,7 @@ type VSHNMariaDBReconciler struct {
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
 	MariaDBDialer      func(service, name, namespace, dsn, organization, serviceLevel, caCRT string, ha, TLSEnabled bool) (*probes.MariaDB, error)
+	ScClient           client.Client
 }
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnmariadbs,verbs=get;list;watch
@@ -54,7 +55,7 @@ func (r *VSHNMariaDBReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	inst := &vshnv1.XVSHNMariaDB{}
 
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnMariadbServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.fetchProberFor)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnMariadbServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.fetchProberFor, r.ScClient)
 
 	return reconciler.Reconcile(ctx)
 }

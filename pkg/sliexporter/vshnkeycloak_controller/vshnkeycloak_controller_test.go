@@ -50,10 +50,10 @@ func getFakeKey(pi probes.ProbeInfo) key {
 }
 
 func TestVSHNKeycloakReconciler_Reconcile(t *testing.T) {
-	keycloak := newTestVSHNKeycloak("bar", "foo", "cred")
+	keycloak, ns := newTestVSHNKeycloak("bar", "foo", "cred")
 
 	r, manager, client := setupVSHNKeycloakTest(t,
-		keycloak,
+		keycloak, ns,
 		newTestVSHNKeycloakCred("bar", "cred"))
 
 	req := ctrl.Request{
@@ -92,13 +92,14 @@ func setupVSHNKeycloakTest(t *testing.T, objs ...client.Object) (VSHNKeycloakRec
 		Scheme:             scheme,
 		StartupGracePeriod: 5 * time.Minute,
 		ProbeManager:       manager,
+		ScClient:           client,
 	}
 
 	return r, manager, client
 }
 
-func newTestVSHNKeycloak(namespace, name, cred string) *vshnv1.XVSHNKeycloak {
-	return &vshnv1.XVSHNKeycloak{
+func newTestVSHNKeycloak(namespace, name, cred string) (*vshnv1.XVSHNKeycloak, *corev1.Namespace) {
+	claim := &vshnv1.XVSHNKeycloak{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
@@ -113,6 +114,14 @@ func newTestVSHNKeycloak(namespace, name, cred string) *vshnv1.XVSHNKeycloak {
 			},
 		},
 	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: claim.GetInstanceNamespace(),
+		},
+	}
+
+	return claim, ns
 }
 
 func newTestVSHNKeycloakCred(namespace, name string) *corev1.Secret {

@@ -171,6 +171,10 @@ type XVSHNMariaDB struct {
 	Status XVSHNMariaDBStatus `json:"status,omitempty"`
 }
 
+func (v *XVSHNMariaDB) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-mariadb-%s", v.GetName())
+}
+
 // XVSHNMariaDBSpec defines the desired state of a VSHNMariaDB.
 type XVSHNMariaDBSpec struct {
 	// Parameters are the configurable fields of a VSHNMariaDB.

@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,11 +35,14 @@ type Reconciler struct {
 	startupGracePeriod time.Duration
 	fetchProberFor     func(context.Context, Service) (probes.Prober, error)
 	client             client.Client
+	scClient           client.Client
 }
 
 // New returns a new Reconciler
 func New(inst Service, l logr.Logger, pm ProbeManager, serviceKey string, nn types.NamespacedName,
-	client client.Client, startupGracePeriod time.Duration, fetchProberFor func(context.Context, Service) (probes.Prober, error)) *Reconciler {
+	client client.Client, startupGracePeriod time.Duration,
+	fetchProberFor func(context.Context, Service) (probes.Prober, error),
+	scClient client.Client) *Reconciler {
 	return &Reconciler{
 		inst:               inst,
 		l:                  l,
@@ -46,6 +52,7 @@ func New(inst Service, l logr.Logger, pm ProbeManager, serviceKey string, nn typ
 		client:             client,
 		startupGracePeriod: startupGracePeriod,
 		fetchProberFor:     fetchProberFor,
+		scClient:           scClient,
 	}
 }
 
@@ -84,6 +91,15 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return res, nil
 	}
 
+	namespaceExists, err := r.namespaceExists(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !namespaceExists {
+		return ctrl.Result{}, nil
+	}
+
 	probe, err := r.fetchProberFor(ctx, r.inst)
 	// By using the composite the credential secret is available instantly, but initially empty.
 	if err != nil && (apierrors.IsNotFound(err) || err == errNotReady) {
@@ -104,4 +120,26 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	r.l.Info("Starting Probe")
 	r.pm.StartProbe(probe)
 	return res, nil
+}
+
+// namespaceExists detects wether or not the namespace exists in the service
+// cluster. If it doesn't exist then we skip the reconcilation for this instance.
+func (r Reconciler) namespaceExists(ctx context.Context) (bool, error) {
+	comp, ok := r.inst.(common.InstanceNamespaceGetter)
+	if !ok {
+		return false, fmt.Errorf("resource does not implement common.InstanceNamespaceGetter")
+	}
+
+	ns := &corev1.Namespace{}
+
+	err := r.scClient.Get(ctx, types.NamespacedName{Name: comp.GetInstanceNamespace()}, ns)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			r.l.Info("instance doesn't have a instance namespace on this cluster, skipping")
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }

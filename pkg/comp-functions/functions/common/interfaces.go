@@ -23,6 +23,7 @@ type InfoGetter interface {
 	GetClaimName() string
 	GetSLA() string
 	GetBillingName() string
+	GetEnabledAddOns() []vshnv1.AddOn
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create

@@ -3,8 +3,8 @@ package postgres
 import (
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/pkg/apiserver/noop"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -29,7 +29,7 @@ func New() restbuilder.ResourceHandlerProvider {
 
 		noopImplementation := noop.New(s, &appcatv1.VSHNPostgresBackup{}, &appcatv1.VSHNPostgresBackupList{})
 
-		if !apiserver.IsTypeAvailable(vshnv1.GroupVersion.String(), "VSHNPostgreSQL") {
+		if !utils.IsKindAvailable(vshnv1.GroupVersion, "VSHNPostgreSQL", loopback.GetLoopbackMasterClientConfig()) {
 			return noopImplementation, nil
 		}
 

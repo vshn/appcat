@@ -32,6 +32,7 @@ type VSHNKeycloakReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
+	ScClient           client.Client
 }
 
 type probeManager interface {
@@ -52,7 +53,7 @@ func (r *VSHNKeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	inst := &vshnv1.XVSHNKeycloak{}
 
-	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnKeycloakServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getKeycloakProber)
+	reconciler := slireconciler.New(inst, l, r.ProbeManager, vshnKeycloakServiceKey, req.NamespacedName, r.Client, r.StartupGracePeriod, r.getKeycloakProber, r.ScClient)
 
 	return reconciler.Reconcile(ctx)
 

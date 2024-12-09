@@ -153,9 +153,9 @@ nrfsBwoJpAcOmKDb/zOwtqOiSeZ4ef4DULUpz61vNmKch4N2fDDdcjuHCXo0tA==
 `)
 
 func TestVSHNRedis_StartStop(t *testing.T) {
-	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
-	r, manager, client := setupVSHNRedisTest(t,
-		ns, db, claim,
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
+	r, manager, client := setupVSHNRedisTest(t, claim,
+		ns, db, instns,
 		newTestVSHNRedisCred("bar", "creds"),
 	)
 
@@ -182,10 +182,10 @@ func TestVSHNRedis_StartStop(t *testing.T) {
 }
 
 func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
-	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.SetFinalizers([]string{"foobar.vshn.io"})
-	r, manager, client := setupVSHNRedisTest(t,
-		ns, db, claim,
+	r, manager, client := setupVSHNRedisTest(t, claim,
+		ns, db, instns,
 		newTestVSHNRedisCred("bar", "creds"),
 	)
 
@@ -211,15 +211,15 @@ func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
 }
 
 func TestVSHNRedis_Multi(t *testing.T) {
-	nsBar, dbBar, claimBar := newTestVSHNRedis("bar", "foo", "creds", true)
-	nsBarer, dbBarer, claimBarer := newTestVSHNRedis("barer", "fooer", "credentials", true)
-	nsBuzz, dbBuzz, claimBuzz := newTestVSHNRedis("buzz", "fooz", "creds", true)
-	r, manager, c := setupVSHNRedisTest(t,
-		nsBar, dbBar, claimBar,
+	nsBar, dbBar, claimBar, instnsBar := newTestVSHNRedis("bar", "foo", "creds", true)
+	nsBarer, dbBarer, claimBarer, instnsBarer := newTestVSHNRedis("barer", "fooer", "credentials", true)
+	nsBuzz, dbBuzz, claimBuzz, instnsBuzz := newTestVSHNRedis("buzz", "fooz", "creds", true)
+	r, manager, c := setupVSHNRedisTest(t, claimBar,
+		nsBar, dbBar, instnsBar,
 		newTestVSHNRedisCred("bar", "creds"),
-		nsBarer, dbBarer, claimBarer,
+		nsBarer, dbBarer, claimBarer, instnsBarer,
 		newTestVSHNRedisCred("barer", "credentials"),
-		nsBuzz, dbBuzz, claimBuzz,
+		nsBuzz, dbBuzz, claimBuzz, instnsBuzz,
 		newTestVSHNRedisCred("buzz", "creds"),
 	)
 
@@ -260,10 +260,10 @@ func TestVSHNRedis_Multi(t *testing.T) {
 }
 
 func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
-	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.SetCreationTimestamp(metav1.Now())
-	r, manager, _ := setupVSHNRedisTest(t,
-		ns, db, claim,
+	r, manager, _ := setupVSHNRedisTest(t, claim,
+		ns, db, instns,
 	)
 	pi := probes.ProbeInfo{
 		Service:   "VSHNRedis",
@@ -279,10 +279,10 @@ func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
 }
 
 func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
-	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.Spec.WriteConnectionSecretToReference.Name = ""
 	r, manager, _ := setupVSHNRedisTest(t,
-		ns, db, claim,
+		ns, db, claim, instns,
 	)
 	pi := probes.ProbeInfo{
 		Service:   "VSHNRedis",
@@ -296,10 +296,10 @@ func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
 }
 
 func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
-	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.SetCreationTimestamp(metav1.Time{Time: time.Now().Add(-1 * time.Hour)})
-	r, manager, _ := setupVSHNRedisTest(t,
-		ns, db, claim,
+	r, manager, _ := setupVSHNRedisTest(t, claim,
+		ns, db, instns,
 	)
 	pi := probes.ProbeInfo{
 		Service:   "VSHNRedis",
@@ -315,7 +315,7 @@ func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
 }
 
 func TestVSHNRedis_PassCerdentials(t *testing.T) {
-	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
 	cred := newTestVSHNRedisCred("bar", "creds")
 	cred.Data = map[string][]byte{
 		"REDIS_USER":     []byte("userfoo"),
@@ -327,8 +327,8 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		"tls.key":        tls_key,
 		"tls.crt":        tls_crt,
 	}
-	r, manager, client := setupVSHNRedisTest(t,
-		ns, db, claim,
+	r, manager, client := setupVSHNRedisTest(t, claim,
+		ns, db, instns,
 		cred,
 	)
 	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
@@ -376,7 +376,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 }
 
 func TestVSHNRedis_Tls(t *testing.T) {
-	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", true)
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
 	cred := newTestVSHNRedisCred("bar", "creds")
 	cred.Data = map[string][]byte{
 		"REDIS_USER":     []byte("userfoo"),
@@ -388,8 +388,8 @@ func TestVSHNRedis_Tls(t *testing.T) {
 		"tls.key":        tls_key,
 		"tls.crt":        tls_crt,
 	}
-	r, manager, client := setupVSHNRedisTest(t,
-		ns, db, claim,
+	r, manager, client := setupVSHNRedisTest(t, claim,
+		ns, db, instns,
 		cred,
 	)
 	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
@@ -434,7 +434,7 @@ func TestVSHNRedis_Tls(t *testing.T) {
 }
 
 func TestVSHNRedis_NoTls(t *testing.T) {
-	ns, db, claim := newTestVSHNRedis("bar", "foo", "creds", false)
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", false)
 	cred := newTestVSHNRedisCred("bar", "creds")
 	cred.Data = map[string][]byte{
 		"REDIS_USER":     []byte("userfoo"),
@@ -446,8 +446,8 @@ func TestVSHNRedis_NoTls(t *testing.T) {
 		"tls.key":        tls_key,
 		"tls.crt":        tls_crt,
 	}
-	r, manager, client := setupVSHNRedisTest(t,
-		ns, db, claim,
+	r, manager, client := setupVSHNRedisTest(t, claim,
+		ns, db, instns,
 		cred,
 	)
 	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
@@ -536,12 +536,13 @@ func setupVSHNRedisTest(t *testing.T, objs ...client.Object) (VSHNRedisReconcile
 		ProbeManager:       manager,
 		StartupGracePeriod: 5 * time.Minute,
 		RedisDialer:        fakeRedisDialer,
+		ScClient:           client,
 	}
 
 	return r, manager, client
 }
 
-func newTestVSHNRedis(namespace, name, cred string, tlsEnabled bool) (*corev1.Namespace, *vshnv1.XVSHNRedis, *vshnv1.VSHNRedis) {
+func newTestVSHNRedis(namespace, name, cred string, tlsEnabled bool) (*corev1.Namespace, *vshnv1.XVSHNRedis, *vshnv1.VSHNRedis, *corev1.Namespace) {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
@@ -590,7 +591,14 @@ func newTestVSHNRedis(namespace, name, cred string, tlsEnabled bool) (*corev1.Na
 			},
 		},
 	}
-	return ns, db, claim
+
+	instns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: claim.GetInstanceNamespace(),
+		},
+	}
+
+	return ns, db, claim, instns
 }
 func newTestVSHNRedisCred(namespace, name string) *corev1.Secret {
 	return &corev1.Secret{

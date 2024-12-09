@@ -10,7 +10,10 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 //+kubebuilder:rbac:groups=managedupgrade.appuio.io,resources=upgradejobs,verbs=get;list;watch
@@ -90,8 +93,19 @@ func (r *MaintenanceReconciler) jobState(job managedupgradev1beta1.UpgradeJob) s
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *MaintenanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *MaintenanceReconciler) SetupWithManager(mgr ctrl.Manager, serviceCluster *cluster.Cluster) error {
+	sc := *serviceCluster
+
+	// For external reconcile triggers we can't register a kind via `For()`
+	// instead we have to name the reconciler something
+	// usually the name is the lowercase of the kind
+	// so that's what I've used here.
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&managedupgradev1beta1.UpgradeJob{}).
+		Named("upgradejob").
+		// This is the magic sauce, it makes the reconciler reconcile on events happening on the serviceCluster
+		WatchesRawSource(source.Kind(
+			sc.GetCache(),
+			&managedupgradev1beta1.UpgradeJob{},
+			&handler.TypedEnqueueRequestForObject[*managedupgradev1beta1.UpgradeJob]{})).
 		Complete(r)
 }

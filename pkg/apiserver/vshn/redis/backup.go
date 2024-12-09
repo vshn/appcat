@@ -4,9 +4,9 @@ import (
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/pkg/apiserver/noop"
 	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/k8up"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
@@ -37,7 +37,7 @@ func New() restbuilder.ResourceHandlerProvider {
 
 		noopImplementation := noop.New(s, &appcatv1.VSHNRedisBackup{}, &appcatv1.VSHNRedisBackupList{})
 
-		if !apiserver.IsTypeAvailable(vshnv1.GroupVersion.String(), "XVSHNRedis") {
+		if !utils.IsKindAvailable(vshnv1.GroupVersion, "XVSHNRedis", loopback.GetLoopbackMasterClientConfig()) {
 			return noopImplementation, nil
 		}
 

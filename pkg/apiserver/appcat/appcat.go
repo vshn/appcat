@@ -3,8 +3,8 @@ package appcat
 import (
 	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
-	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/pkg/apiserver/noop"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -37,7 +37,7 @@ func New() restbuilder.ResourceHandlerProvider {
 
 		noopImplementation := noop.New(s, &appcatv1.AppCat{}, &appcatv1.AppCatList{})
 
-		if !apiserver.IsTypeAvailable(crossplane.SchemeGroupVersion.String(), "Composition") {
+		if !utils.IsKindAvailable(crossplane.SchemeGroupVersion, "Composition", loopback.GetLoopbackMasterClientConfig()) {
 			return noopImplementation, nil
 		}
 

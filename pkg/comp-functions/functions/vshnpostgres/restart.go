@@ -155,7 +155,7 @@ func keepRecentRestartOps(ctx context.Context, svc *runtime.ServiceRuntime, comp
 			continue
 		}
 
-		err = svc.SetDesiredKubeObject(&op, r.Resource.GetName())
+		err = svc.SetDesiredKubeObject(&op, r.Resource.GetName(), runtime.KubeOptionAllowDeletion)
 		if err != nil {
 			return err
 		}

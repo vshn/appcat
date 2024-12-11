@@ -417,7 +417,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 				Scheduling: &sgv1.SGClusterSpecPodsScheduling{
 					NodeSelector: nodeSelector,
 				},
-				DisableConnectionPooling: ptr.To(false),
+				DisableConnectionPooling: ptr.To(comp.Spec.Parameters.Service.DisablePgBouncer),
 			},
 			NonProductionOptions: &sgv1.SGClusterSpecNonProductionOptions{
 				EnableSetPatroniCpuRequests:    ptr.To(true),
@@ -426,10 +426,6 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 				EnableSetClusterMemoryRequests: ptr.To(true),
 			},
 		},
-	}
-
-	if !comp.Spec.Parameters.Service.DisablePgBouncer {
-		sgCluster.Spec.Pods.DisableConnectionPooling = ptr.To(true)
 	}
 
 	TLSSettings := &sgv1.SGClusterSpecPostgresSsl{

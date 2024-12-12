@@ -121,7 +121,7 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 				"appuio.io/no-rbac-creation":      "true",
 				"appuio.io/billing-name":          billingName,
 				"appuio.io/organization":          org,
-				"openshift.io/cluster-monitoring": "true",
+				"openshift.io/cluster-monitoring": "false",
 			},
 		},
 	}

@@ -540,7 +540,7 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 							Command: []string{
 								"bash",
 								"-cefx",
-								fmt.Sprintf("oc exec -i deployments/%s -- /install-collabora.sh \"%s\" \"%s\" \"%s\"", comp.GetName(), svc.Config.Data["isOpenshift"], comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
+								fmt.Sprintf("oc exec -i deployments/%s -- /install-collabora.sh \"%s\" \"%s\" \"%s\"", comp.GetName()+"-nextcloud", svc.Config.Data["isOpenshift"], comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
 							},
 						},
 					},

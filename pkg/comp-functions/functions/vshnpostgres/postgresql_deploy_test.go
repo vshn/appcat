@@ -66,6 +66,7 @@ func TestPostgreSqlDeploy(t *testing.T) {
 	assert.Equal(t, "sgbackup-"+comp.GetName(), backups[0].SgObjectStorage)
 	assert.Equal(t, comp.Spec.Parameters.Backup.Schedule, *(backups[0].CronSchedule))
 	assert.Equal(t, comp.Spec.Parameters.Backup.Retention, *(backups[0].Retention))
+	assert.Equal(t, comp.Spec.Parameters.Service.DisablePgBouncer, *cluster.Spec.Pods.DisableConnectionPooling)
 
 	sgInstanceProfile := &sgv1.SGInstanceProfile{}
 	assert.NoError(t, svc.GetDesiredKubeObject(sgInstanceProfile, "profile"))

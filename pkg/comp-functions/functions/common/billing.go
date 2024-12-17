@@ -4,9 +4,11 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
@@ -75,6 +77,13 @@ func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp 
 	}
 
 	p := &v1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				// This label is required, the ensure that the rule is added to Prometheus and
+				// not the Thanos Rules in the Openshift User Workload Monitoring
+				"openshift.io/prometheus-rule-evaluation-scope": "leaf-prometheus",
+			},
+		},
 		Spec: v1.PrometheusRuleSpec{
 			Groups: []v1.RuleGroup{
 				rg,

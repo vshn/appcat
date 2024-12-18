@@ -274,3 +274,7 @@ func (v *VSHNMinio) GetBillingName() string {
 func (v *VSHNMinio) GetSLA() string {
 	return string(BestEffort)
 }
+
+func (v *VSHNMinio) GetEnabledAddOns() []AddOn {
+	return []AddOn{}
+}

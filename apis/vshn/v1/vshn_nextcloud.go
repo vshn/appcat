@@ -79,6 +79,11 @@ type VSHNNextcloudParameters struct {
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
 
+	// VSHNNextcloudAddOns are additional components, modules, or extensions that enhances the functionality of VSHN Nextcloud.
+	// Add-ons are designed to provide optional features or capabilities that are not part of the main product but
+	// can be installed as needed. Usually add-on are billed separately.
+	AddOns VSHNNextcloudAddOns `json:"addOns,omitempty"`
+
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=3
@@ -90,8 +95,6 @@ type VSHNNextcloudParameters struct {
 
 // VSHNNextcloudServiceSpec contains nextcloud DBaaS specific properties
 type VSHNNextcloudServiceSpec struct {
-	// Collabora contains settings to control the Collabora integration.
-	Collabora CollaboraSpec `json:"collabora,omitempty"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
 
@@ -152,6 +155,22 @@ type VSHNNextcloudSizeSpec struct {
 	Plan string `json:"plan,omitempty"`
 }
 
+// VSHNNextcloudAddOns are additional components, modules, or extensions that enhances the functionality of VSHN Services.
+// Add-ons are designed to provide optional features or capabilities that are not part of the main product but
+// can be installed as needed. Usually add-on are billed separately.
+type VSHNNextcloudAddOns struct {
+	// Office contains settings to control the Collabora integration.
+	Office OfficeSpec `json:"office,omitempty"`
+}
+
+func (o OfficeSpec) GetName() string {
+	return "office"
+}
+
+func (o OfficeSpec) GetInstances() int {
+	return 1
+}
+
 // VSHNNextcloudStatus reflects the observed state of a VSHNNextcloud.
 type VSHNNextcloudStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
@@ -181,8 +200,8 @@ func (v *VSHNNextcloud) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
-// CollaboraSpec defines the desired state of a Collabora instance.
-type CollaboraSpec struct {
+// OfficeSpec defines the desired state of a Collabora instance.
+type OfficeSpec struct {
 	// Enabled enables the Collabora integration. It will autoconfigure the Collabora server URL in Your Nextcloud instance.
 	//+kubebuilder:default=false
 	Enabled bool `json:"enabled"`
@@ -341,4 +360,11 @@ func (v *VSHNNextcloud) GetBillingName() string {
 
 func (v *VSHNNextcloud) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
+}
+
+func (v *VSHNNextcloud) GetEnabledAddOns() []AddOn {
+	if v.Spec.Parameters.AddOns.Office.Enabled {
+		return []AddOn{v.Spec.Parameters.AddOns.Office}
+	}
+	return []AddOn{}
 }

@@ -310,3 +310,7 @@ func (v *VSHNMariaDB) GetBillingName() string {
 func (v *VSHNMariaDB) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
 }
+
+func (v *VSHNMariaDB) GetEnabledAddOns() []AddOn {
+	return []AddOn{}
+}

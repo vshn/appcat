@@ -543,6 +543,12 @@ func createPodMonitor(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) 
 	if err != nil {
 		return fmt.Errorf("cannot unmarshall keepMetrics: %w", err)
 	}
+	/*
+	   - action: replace
+	         sourceLabels: [cluster_name]
+	         targetLabel: stackgres_cluster_name
+
+	*/
 
 	podMonitor := &promv1.PodMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -560,6 +566,13 @@ func createPodMonitor(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) 
 								"__name__",
 							},
 							Regex: "(" + strings.Join(keepMetrics[:], "|") + ")",
+						},
+						{
+							Action: "replace",
+							SourceLabels: []promv1.LabelName{
+								"cluster_name",
+							},
+							TargetLabel: "stackgres_cluster_name",
 						},
 					},
 				},

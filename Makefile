@@ -225,3 +225,13 @@ render-diff: ## Render diff between the cluster in KUBECONF and the local branch
 	# this will speed up the compare in CI/CD environments.
 	if ! docker pull $(IMG); then $(MAKE) docker-build-branchtag; fi
 	hack/diff/compare.sh $(DEBUG)
+
+.PHONY: setup-kindev
+
+setup-kindev: ## Setup kindev in the .kind folder, will always create a new instance
+	rm -rf .kind && \
+	git clone --depth=1 https://github.com/vshn/kindev .kind && \
+	cd .kind && \
+	rm -rf .git && \
+	make clean && \
+	make vshnall

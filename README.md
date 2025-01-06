@@ -44,6 +44,49 @@ Documentation: https://vshn.github.io/appcat
 └── tools.go
 ```
 
+## Getting started with devcontainers
+
+This project contains a `.devcontainer` folder, which enables devcontainer support in vscode and other IDEs.
+Make sure you've installed the dev containers extension for vscode.
+
+Then open the command palette and do `Dev Containers: Reopen in container`.
+The first time doing this will take quite some as it builds the whole container.
+After building the container it will spin up kindev, which will also take some time.
+
+Once it's finished there should be a ready to go dev environment to use.
+
+The container will contain:
+* go
+* helm
+* kubectl
+* yq
+* kubecolor
+
+Additionally, it will install some useful extensions for vscode to make development easier.
+
+Kindev will be installed in the `.kind` folder.
+Vscode handles all port-forwarding automagically, so kindev and all endpoints will be available all the same from the host.
+Simply point `KUBECONFIG` to `.kind/.kind/kind-config` and use `kubectl` as usual.
+
+### Devcontainer customizations
+
+It's possible to customize the devcontainer.
+By setting `"terminal.integrated.defaultProfile.linux": "zsh"` in the vscode config, it's possible to switch the default shell to zsh.
+
+It's also possible to provide your own dotfiles. They will be installed after the kindev setup has finished.
+For that, simply write a small script that contains all your desired configurations and put it in a publicly available repository.
+Here's an example repo: https://github.com/lugoues/vscode-dev-containers-dotfiles
+
+After that set this configuration in vscode:
+```
+{
+  "dotfiles.repository": "your-github-id/your-dotfiles-repo",
+  "dotfiles.targetPath": "~/dotfiles",
+  "dotfiles.installCommand": "install.sh"
+}
+```
+
+
 ## Generate Kubernetes code, XRDs with Go / KubeBuilder
 
 In `/apis` there is code in Go to generate the XRDs (composites) as this is in OpenAPI.

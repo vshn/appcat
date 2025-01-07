@@ -223,7 +223,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		extraInitContainers = []map[string]any{
 			{
 				"name":  "dbchecker",
-				"image": "docker.io/busybox",
+				"image": svc.Config.Data["busybox_image"],
 				"command": []string{
 					"sh",
 					"-c",

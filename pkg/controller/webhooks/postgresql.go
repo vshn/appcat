@@ -101,15 +101,14 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 		}
 
 		// Validate major upgrades
-		allErrs = append(allErrs, validateMajorVersionUpgrade(newPg, oldPg))
+		if err := validateMajorVersionUpgrade(newPg, oldPg); err != nil {
+			allErrs = append(allErrs, err)
+		}
 	}
 
 	// Validate Vacuum and Repack settings
 	if err := validateVacuumRepack(newPg.Spec.Parameters.Service.VacuumEnabled, newPg.Spec.Parameters.Service.RepackEnabled); err != nil {
-		allErrs = append(allErrs, field.Forbidden(
-			field.NewPath("spec.parameters.service"),
-			fmt.Sprintf("pg.Spec.Parameters.Service.VacuumEnabled and pg.Spec.Parameters.Service.RepackEnabled settings can't be both disabled: %s", err.Error()),
-		))
+		allErrs = append(allErrs, err)
 	}
 
 	// Validate quotas if enabled
@@ -244,9 +243,12 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(pg *vshnv1.VSHNPo
 	return allErrs
 }
 
-func validateVacuumRepack(vacuum, repack bool) error {
+func validateVacuumRepack(vacuum, repack bool) *field.Error {
 	if !vacuum && !repack {
-		return fmt.Errorf("repack cannot be enabled without vacuum")
+		return field.Forbidden(
+			field.NewPath("spec.parameters.service"),
+			"pg.Spec.Parameters.Service.VacuumEnabled and pg.Spec.Parameters.Service.RepackEnabled settings can't be both disabled",
+		)
 	}
 	return nil
 }

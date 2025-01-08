@@ -536,7 +536,7 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 					Containers: []corev1.Container{
 						{
 							Name:  comp.GetName() + "-install-collabora",
-							Image: "quay.io/appuio/oc:v4.13",
+							Image: svc.Config.Data["oc_image"],
 							Command: []string{
 								"bash",
 								"-cefx",

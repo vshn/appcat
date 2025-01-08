@@ -19,6 +19,8 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+const stackgresCredObserver = "stackgres-creds-observer"
+
 var (
 	maintSecretName = "maintenancesecret"
 	service         = "postgresql"
@@ -214,7 +216,7 @@ func addStackgresCredentialsObserver(svc *runtime.ServiceRuntime, comp *vshnv1.V
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(stackgresCredentials, comp.GetName()+"-stackgres-creds-observer", runtime.KubeOptionObserve)
+	err := svc.SetDesiredKubeObject(stackgresCredentials, fmt.Sprintf("%s-%s", comp.GetName(), stackgresCredObserver), runtime.KubeOptionObserve)
 	if err != nil {
 		return fmt.Errorf("cannot deploy stackgres credentials observer: %w", err)
 	}

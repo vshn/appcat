@@ -38,6 +38,10 @@ func transformRestart(ctx context.Context, svc *runtime.ServiceRuntime, now func
 		return nil
 	}
 
+	if isMajorUpgradeRunning(comp) {
+		return nil
+	}
+
 	restartTime, err := getPendingRestart(ctx, svc)
 	if err != nil {
 		return runtime.NewWarningResult(err.Error())
@@ -53,6 +57,10 @@ func transformRestart(ctx context.Context, svc *runtime.ServiceRuntime, now func
 	}
 
 	return nil
+}
+
+func isMajorUpgradeRunning(comp *vshnv1.VSHNPostgreSQL) bool {
+	return comp.Spec.Parameters.Service.MajorVersion != comp.Status.CurrentVersion
 }
 
 func getPendingRestart(ctx context.Context, svc *runtime.ServiceRuntime) (time.Time, error) {

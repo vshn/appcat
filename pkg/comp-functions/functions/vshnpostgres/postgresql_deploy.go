@@ -51,6 +51,11 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
+	l.Info("Set major version in status")
+	err = setMajorVersionStatus(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
+	}
 
 	l.Info("Create tls certificate")
 	err = createCerts(comp, svc)
@@ -88,6 +93,16 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Errorf("cannot create copyJob object: %w", err).Error())
 		}
+	}
+	return nil
+}
+
+// setMajorVersionStatus sets version in status only when it is provisioned
+// The subsequent update of this field is to happen in the MajorUpgrade comp-func
+func setMajorVersionStatus(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	if comp.Status.CurrentVersion == "" {
+		comp.Status.CurrentVersion = comp.Spec.Parameters.Service.MajorVersion
+		return svc.SetDesiredCompositeStatus(comp)
 	}
 	return nil
 }
@@ -224,6 +239,7 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 		"setupArbitraryUser":         "setup-arbitrary-user",
 		"clusterReconciliationCycle": "cluster-reconciliation-cycle",
 		"setDbopsRunning":            "dbops.set-dbops-running",
+		"setMajorVersionUpgrade":     "major-version-upgrade",
 	}
 
 	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
@@ -324,24 +340,45 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 		}
 	}
 
-	sgPostgresConfig := &sgv1.SGPostgresConfig{
+	pgConfigName, pgKubeName := getCurrentSettings(comp, svc, comp.Status.CurrentVersion, comp.Status.PreviousVersion)
+
+	currentVersionConfig := sgv1.SGPostgresConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName(),
+			Name:      pgConfigName,
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Spec: sgv1.SGPostgresConfigSpec{
-			PostgresVersion: comp.Spec.Parameters.Service.MajorVersion,
+			PostgresVersion: comp.Status.CurrentVersion,
 			PostgresqlConf:  pgConf,
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(sgPostgresConfig, comp.GetName()+"-"+configResourceName)
+	err := svc.SetDesiredKubeObject(&currentVersionConfig, pgKubeName, runtime.KubeOptionAllowDeletion)
 	if err != nil {
-		err = fmt.Errorf("cannot create sgInstanceProfile: %w", err)
-		return err
+		return fmt.Errorf("cannot create current version postgres config: %w", err)
 	}
 
 	return nil
+}
+
+// getCurrentSettings returns the kube object name pgKubeName and wrapped resource name pgConfigName
+// This function ensures compatibility with older Postgres instances where SGPGSettings resources name was missing the major version
+// If such resource exists (ex:. pg-instance-cntqx) then it will be kept with this naming until a new major version upgrade is issued
+// New postgres instances have the format:
+// Kube name - pg-instance-pg-conf-14
+// Resource name - pg-instance-postgres-config-14
+func getCurrentSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, currentV, previousV string) (string, string) {
+	pgConfigName := fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), currentV)
+	pgKubeName := fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, currentV)
+
+	existingProfile := &sgv1.SGPostgresConfig{}
+	_ = svc.GetObservedKubeObject(existingProfile, fmt.Sprintf("%s-%s", comp.GetName(), configResourceName))
+
+	if existingProfile.Name != "" && previousV == "" {
+		pgKubeName = fmt.Sprintf("%s-%s", comp.GetName(), configResourceName)
+		pgConfigName = existingProfile.Name
+	}
+	return pgConfigName, pgKubeName
 }
 
 func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
@@ -366,6 +403,8 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		return fmt.Errorf("cannot fetch nodeSelector from the composition config: %w", err)
 	}
 
+	pgConfigName, _ := getCurrentSettings(comp, svc, comp.Status.CurrentVersion, comp.Status.PreviousVersion)
+
 	initialData := &sgv1.SGClusterSpecInitialData{}
 	backupRef := xkubev1.Reference{}
 	if comp.Spec.Parameters.Restore != nil && comp.Spec.Parameters.Restore.BackupName != "" {
@@ -388,7 +427,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			Instances:         comp.Spec.Parameters.Instances,
 			SgInstanceProfile: ptr.To(comp.GetName()),
 			Configurations: &sgv1.SGClusterSpecConfigurations{
-				SgPostgresConfig: ptr.To(comp.GetName()),
+				SgPostgresConfig: ptr.To(pgConfigName),
 				Backups: &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
 					{
 						SgObjectStorage: "sgbackup-" + comp.GetName(),
@@ -398,7 +437,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			},
 			InitialData: initialData,
 			Postgres: sgv1.SGClusterSpecPostgres{
-				Version: comp.Spec.Parameters.Service.MajorVersion,
+				Version: comp.Status.CurrentVersion,
 			},
 			Pods: sgv1.SGClusterSpecPods{
 				PersistentVolume: sgv1.SGClusterSpecPodsPersistentVolume{
@@ -444,7 +483,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 	// are referenced in the kube object. This will lead to the object getting stuck indefinitely.
 	err = svc.SetDesiredKubeObjectWithName(sgCluster, comp.GetName()+"-cluster", "cluster", runtime.KubeOptionAddRefs(backupRef), runtime.KubeOptionProtects(namespaceResName))
 	if err != nil {
-		err = fmt.Errorf("cannot create sgInstanceProfile: %w", err)
+		err = fmt.Errorf("cannot create sgCluster: %w", err)
 		return err
 	}
 

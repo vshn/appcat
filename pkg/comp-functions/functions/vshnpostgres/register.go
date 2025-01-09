@@ -84,6 +84,10 @@ func init() {
 				Name:    "custom-exporter-configs",
 				Execute: PgExporterConfig,
 			},
+			{
+				Name:    "major-version-upgrade",
+				Execute: MajorVersionUpgrade,
+			},
 		},
 	})
 }

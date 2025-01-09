@@ -90,20 +90,8 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newObj, oldObj runtime.Object, isCreate bool) (admission.Warnings, error) {
 	allErrs := field.ErrorList{}
 	newPg, ok := newObj.(*vshnv1.VSHNPostgreSQL)
-	oldPg, ok := oldObj.(*vshnv1.VSHNPostgreSQL)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
-	}
-
-	if !isCreate {
-		if newPg.DeletionTimestamp != nil {
-			return nil, nil
-		}
-
-		// Validate major upgrades
-		if err := validateMajorVersionUpgrade(newPg, oldPg); err != nil {
-			allErrs = append(allErrs, err)
-		}
 	}
 
 	// Validate Vacuum and Repack settings
@@ -130,6 +118,21 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 
 	// Validate PostgreSQL configuration
 	allErrs = append(allErrs, validatePgConf(newPg)...)
+
+	if !isCreate {
+		oldPg, ok := oldObj.(*vshnv1.VSHNPostgreSQL)
+		if !ok {
+			return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
+		}
+		if newPg.DeletionTimestamp != nil {
+			return nil, nil
+		}
+
+		// Validate major upgrades
+		if err := validateMajorVersionUpgrade(newPg, oldPg); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
 
 	if len(allErrs) > 0 {
 		return nil, apierrors.NewInvalid(pgGK, newPg.GetName(), allErrs)
@@ -282,13 +285,18 @@ func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSH
 			fmt.Sprintf("invalid major version: %s", err.Error()),
 		)
 	}
-	oldVersion, err := strconv.Atoi(oldPg.Spec.Parameters.Service.MajorVersion)
-	if err != nil {
-		return field.Invalid(
-			field.NewPath("spec.parameters.service.majorVersion"),
-			oldPg.Spec.Parameters.Service.MajorVersion,
-			fmt.Sprintf("invalid major version: %s", err.Error()),
-		)
+	var oldVersion int
+	if oldPg.Status.MajorVersion == "" {
+		oldVersion = newVersion
+	} else {
+		oldVersion, err = strconv.Atoi(oldPg.Status.MajorVersion)
+		if err != nil {
+			return field.Invalid(
+				field.NewPath("status.majorVersion"),
+				oldPg.Status.MajorVersion,
+				fmt.Sprintf("invalid major version: %s", err.Error()),
+			)
+		}
 	}
 
 	// Check if the upgrade is allowed

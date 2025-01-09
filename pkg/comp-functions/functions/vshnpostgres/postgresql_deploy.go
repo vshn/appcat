@@ -50,6 +50,11 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
+	l.Info("Set major version in status")
+	err = setMajorVersionStatus(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
+	}
 
 	l.Info("Create tls certificate")
 	err = createCerts(comp, svc)
@@ -89,6 +94,11 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 		}
 	}
 	return nil
+}
+
+func setMajorVersionStatus(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	comp.Status.MajorVersion = comp.Spec.Parameters.Service.MajorVersion
+	return svc.SetDesiredCompositeStatus(comp)
 }
 
 func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {

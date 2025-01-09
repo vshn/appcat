@@ -5359,6 +5359,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                majorVersion:
+                  description: MajorVersion contains the current version of PostgreSQL.
+                  type: string
                 namespaceConditions:
                   items:
                     properties:

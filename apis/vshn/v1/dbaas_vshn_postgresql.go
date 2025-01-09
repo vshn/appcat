@@ -242,6 +242,10 @@ type VSHNPostgreSQLTLS struct {
 type VSHNPostgreSQLStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
+
+	// MajorVersion contains the current version of PostgreSQL.
+	MajorVersion string `json:"majorVersion,omitempty"`
+
 	// PostgreSQLConditions contains the status conditions of the backing object.
 	PostgreSQLConditions         []Condition `json:"postgresqlConditions,omitempty"`
 	NamespaceConditions          []Condition `json:"namespaceConditions,omitempty"`

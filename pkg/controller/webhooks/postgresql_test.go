@@ -301,8 +301,12 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 				Instances: 1,
 				Service: vshnv1.VSHNPostgreSQLServiceSpec{
 					RepackEnabled: true,
+					MajorVersion:  "15",
 				},
 			},
+		},
+		Status: vshnv1.VSHNPostgreSQLStatus{
+			MajorVersion: "15",
 		},
 	}
 
@@ -511,6 +515,9 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 						},
 					},
 				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					MajorVersion: "15",
+				},
 			},
 			old: &vshnv1.VSHNPostgreSQL{
 				Spec: vshnv1.VSHNPostgreSQLSpec{
@@ -519,6 +526,9 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 							MajorVersion: "15",
 						},
 					},
+				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					MajorVersion: "15",
 				},
 			},
 			expectErr: nil,
@@ -533,6 +543,9 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 						},
 					},
 				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					MajorVersion: "15",
+				},
 			},
 			old: &vshnv1.VSHNPostgreSQL{
 				Spec: vshnv1.VSHNPostgreSQLSpec{
@@ -541,6 +554,9 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 							MajorVersion: "15",
 						},
 					},
+				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					MajorVersion: "15",
 				},
 			},
 			expectErr: nil,
@@ -555,6 +571,9 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 						},
 					},
 				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					MajorVersion: "15",
+				},
 			},
 			old: &vshnv1.VSHNPostgreSQL{
 				Spec: vshnv1.VSHNPostgreSQLSpec{
@@ -563,6 +582,9 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 							MajorVersion: "15",
 						},
 					},
+				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					MajorVersion: "15",
 				},
 			},
 			expectErr: field.Forbidden(
@@ -580,6 +602,9 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 						},
 					},
 				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					MajorVersion: "15",
+				},
 			},
 			old: &vshnv1.VSHNPostgreSQL{
 				Spec: vshnv1.VSHNPostgreSQLSpec{
@@ -588,6 +613,9 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 							MajorVersion: "15",
 						},
 					},
+				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					MajorVersion: "15",
 				},
 			},
 			expectErr: field.Forbidden(

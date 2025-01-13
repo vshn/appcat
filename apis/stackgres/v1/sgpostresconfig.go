@@ -22,7 +22,7 @@ type SGPostgresConfig struct {
 
 // +kubebuilder:object:root=true
 
-type SGPostgesConfigList struct {
+type SGPostgresConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 

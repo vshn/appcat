@@ -17,7 +17,7 @@ type SGInstanceProfile struct {
 
 // +kubebuilder:object:root=true
 
-type SGPInstanceProfileList struct {
+type SGInstanceProfileList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 

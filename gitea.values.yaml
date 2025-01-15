@@ -1,0 +1,18 @@
+gitea:
+  config:
+    APP_NAME: Yolo Forgejo
+    database:
+      DB_TYPE: sqlite3
+      SCHEMA: public
+  readinessProbe:
+    enabled: false
+  startupProbe:
+    enabled: false
+postgresql:
+  enabled: false
+postgresql-ha:
+  enabled: false
+redis:
+  enabled: false
+redis-cluster:
+  enabled: false

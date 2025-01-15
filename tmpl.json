@@ -1,0 +1,14 @@
+{
+  "_comment": "This is an example of a template file for the VSHN Forgejo service, it's the bare minimum we need to satisfy our interfaces of comp",
+  "name": "VSHNForgejo",
+  "differntplural": "forgejos",
+  "backup": true,
+  "restore": false,
+  "maintenance": true,
+  "tls": false,
+  "security": true,
+  "monitoring": true,
+  "ha": true,
+  "settingsKey": "forgejosettings",
+  "workloadName": "forgejodeployment"
+}

@@ -10,12 +10,14 @@ import (
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/miniobucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spksmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spksredis"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnforgejo"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnkeycloak"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnminio"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnnextcloud"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnredis"
+
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 )

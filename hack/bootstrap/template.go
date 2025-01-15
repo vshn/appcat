@@ -14,20 +14,25 @@ import (
 )
 
 type Service struct {
-	Name             string `json:"name"`
-	NamePluralLower  string
-	NameShort        string
-	NameShortCapital string
-	Security         bool   `json:"security"`
-	Backup           bool   `json:"backup"`
-	Restore          bool   `json:"restore"`
-	Maintenance      bool   `json:"maintenance"`
-	Tls              bool   `json:"tls"`
-	SettingsKey      string `json:"settingsKey"`
+	Name            string `json:"name"`
+	NamePluralLower string
+	NameShort       string
+	Security        bool   `json:"security"`
+	Backup          bool   `json:"backup"`
+	Restore         bool   `json:"restore"`
+	Maintenance     bool   `json:"maintenance"`
+	Tls             bool   `json:"tls"`
+	SettingsKey     string `json:"settingsKey"`
+	Monitoring      bool   `json:"monitoring"`
+	HA              bool   `json:"ha"`
+	WorkloadName    string `json:"workloadName"`
 }
 
 //go:embed template/api.txt
 var apiGoTemplate embed.FS
+
+//go:embed template/webhook.txt
+var webhookGoTemplate embed.FS
 
 // This tool will generate the API definition for a new AppCat service.
 // It expects a json file as an argument that contains all the necessary
@@ -52,6 +57,8 @@ func main() {
 
 	if renderer.Name[len(renderer.Name)-1:] == "s" {
 		renderer.NamePluralLower = strings.ToLower(renderer.Name)
+	} else if renderer.Name[len(renderer.Name)-4:] == "gejo" {
+		renderer.NamePluralLower = strings.ToLower(renderer.Name) + "es"
 	} else {
 		renderer.NamePluralLower = strings.ToLower(renderer.Name) + "s"
 	}
@@ -60,6 +67,7 @@ func main() {
 
 	funcMap := template.FuncMap{
 		"CamelCase": strcase.ToCamel,
+		"ToLower":   strings.ToLower,
 	}
 	t, err := template.New("api.txt").Funcs(funcMap).ParseFS(apiGoTemplate, "template/api.txt")
 
@@ -80,14 +88,16 @@ func main() {
 		fmt.Println(fmt.Errorf("cannot write file '%s': %v", apiFile, err))
 	}
 
-	t, err = template.New("webhook.txt").Funcs(funcMap).ParseFS(apiGoTemplate, "template/webhook.txt")
+	t, err = template.New("template/webhook.txt").Funcs(funcMap).ParseFS(webhookGoTemplate, "template/webhook.txt")
 
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot parse webhook go template: %v", err))
 	}
 	buf = new(bytes.Buffer)
 
-	err = t.ExecuteTemplate(buf, "webhook.txt", renderer)
+	fmt.Println(renderer)
+
+	err = t.ExecuteTemplate(buf, "template/webhook.txt", renderer)
 
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot render webhook go template: %v", err))

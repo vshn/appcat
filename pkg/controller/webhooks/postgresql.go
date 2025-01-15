@@ -129,8 +129,8 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 		}
 
 		// Validate major upgrades
-		if err := validateMajorVersionUpgrade(newPg, oldPg); err != nil {
-			allErrs = append(allErrs, err)
+		if errList := validateMajorVersionUpgrade(newPg, oldPg); errList != nil {
+			allErrs = append(allErrs, errList...)
 		}
 	}
 
@@ -276,14 +276,15 @@ func validatePgConf(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
 	return allErrs
 }
 
-func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSHNPostgreSQL) *field.Error {
+func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSHNPostgreSQL) (errList field.ErrorList) {
+
 	newVersion, err := strconv.Atoi(newPg.Spec.Parameters.Service.MajorVersion)
 	if err != nil {
-		return field.Invalid(
+		errList = append(errList, field.Invalid(
 			field.NewPath("spec.parameters.service.majorVersion"),
 			newPg.Spec.Parameters.Service.MajorVersion,
 			fmt.Sprintf("invalid major version: %s", err.Error()),
-		)
+		))
 	}
 	var oldVersion int
 	if oldPg.Status.MajorVersion == "" {
@@ -291,22 +292,30 @@ func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSH
 	} else {
 		oldVersion, err = strconv.Atoi(oldPg.Status.MajorVersion)
 		if err != nil {
-			return field.Invalid(
+			errList = append(errList, field.Invalid(
 				field.NewPath("status.majorVersion"),
 				oldPg.Status.MajorVersion,
 				fmt.Sprintf("invalid major version: %s", err.Error()),
-			)
+			))
 		}
 	}
 
 	// Check if the upgrade is allowed
 	if newVersion != oldVersion {
 		if oldVersion != newVersion-1 {
-			return field.Forbidden(
+			errList = append(errList, field.Forbidden(
 				field.NewPath("spec.parameters.service.majorVersion"),
 				"only one major version upgrade at a time is allowed",
-			)
+			))
+		}
+		for _, e := range oldPg.Spec.Parameters.Service.Extensions {
+			if e.Name == "timescaledb" || e.Name == "postgis" {
+				errList = append(errList, field.Forbidden(
+					field.NewPath("spec.parameters.service.majorVersion"),
+					"major upgrades are not supported for instances with timescaledb or postgis extensions",
+				))
+			}
 		}
 	}
-	return nil
+	return errList
 }

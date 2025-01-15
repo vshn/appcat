@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
 	"net/http"
 	"time"
 
@@ -10,8 +11,8 @@ import (
 	"github.com/spf13/viper"
 	"github.com/thediveo/enumflag/v2"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/auth"
 	"github.com/vshn/appcat/v4/pkg/maintenance"
-	"github.com/vshn/appcat/v4/pkg/maintenance/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -86,11 +87,24 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		if sgNamespace == "" {
 			return fmt.Errorf("missing environment variable: %s", "SG_NAMESPACE")
 		}
+		apiPassword := viper.GetString("API_PASSWORD")
+		if apiPassword == "" {
+			return fmt.Errorf("missing environment variable: %s", "API_PASSWORD")
+		}
 
+		apiUserName := viper.GetString("API_USERNAME")
+		if apiUserName == "" {
+			return fmt.Errorf("missing environment variable: %s", "API_USERNAME")
+		}
+
+		sClient, err := stackgres.New(apiUserName, apiPassword, sgNamespace)
+		if err != nil {
+			return err
+		}
 		m = &maintenance.PostgreSQL{
-			Client:       kubeClient,
-			SgURL:        "https://stackgres-restapi." + sgNamespace + ".svc",
-			MaintTimeout: time.Hour,
+			Client:          kubeClient,
+			StackgresClient: sClient,
+			MaintTimeout:    time.Hour,
 		}
 	case redis:
 		m = maintenance.NewRedis(kubeClient, getHTTPClient())

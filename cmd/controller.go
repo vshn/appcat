@@ -149,6 +149,11 @@ func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool,
 		if err != nil {
 			return err
 		}
+
+		err = webhooks.SetupForgejoWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
 	}
 
 	if withProviderWebhooks {

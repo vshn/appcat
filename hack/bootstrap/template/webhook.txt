@@ -17,18 +17,18 @@ var (
 	{{.NameShort}}GR = schema.GroupResource{Group: {{.NameShort}}GK.Group, Resource: "vshn{{.NameShort}}"}
 )
 
-var _ webhook.CustomValidator = &{{.NameShortCapital}}WebhookHandler{}
+var _ webhook.CustomValidator = &{{.NameShort}}WebhookHandler{}
 
-type {{.NameShortCapital}}WebhookHandler struct {
+type {{.NameShort}}WebhookHandler struct {
 	DefaultWebhookHandler
 }
 
-// Setup{{.NameShortCapital}}WebhookHandlerWithManager registers the validation webhook with the manager.
-func Setup{{.NameShortCapital}}WebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
+// Setup{{.NameShort}}WebhookHandlerWithManager registers the validation webhook with the manager.
+func Setup{{.NameShort}}WebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&vshnv1.{{.Name}}{}).
-		WithValidator(&{{.NameShortCapital}}WebhookHandler{
+		WithValidator(&{{.NameShort}}WebhookHandler{
 			DefaultWebhookHandler: *New(
 				mgr.GetClient(),
 				mgr.GetLogger().WithName("webhook").WithName("{{.NameShort}}"),

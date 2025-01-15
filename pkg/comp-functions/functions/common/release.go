@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
@@ -106,6 +107,10 @@ func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGette
 			},
 			ConnectionDetails: cd,
 		},
+	}
+
+	if strings.HasPrefix(svc.Config.Data["chartRepository"], "oci://") {
+		release.Spec.ForProvider.Chart.URL = fmt.Sprintf("%s:%s", svc.Config.Data["chartRepository"], svc.Config.Data["chartVersion"])
 	}
 
 	return release, nil

@@ -51,5 +51,10 @@ func init() {
 		&XVSHNNextcloudList{},
 		&VSHNNextcloud{},
 		&VSHNNextcloudList{},
+
+		&XVSHNForgejo{},
+		&XVSHNForgejoList{},
+		&VSHNForgejo{},
+		&VSHNForgejoList{},
 	)
 }

@@ -1,5 +1,5 @@
 {
-  "name": "KubeBuilder Example",
+  "name": "AppCat Devcontainer",
   "build": {
     "dockerfile": "./Dockerfile"
   },

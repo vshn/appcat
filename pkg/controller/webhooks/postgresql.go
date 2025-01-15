@@ -312,7 +312,7 @@ func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(pg *vshnv1.VSHNPo
 // validate vacuum and repack settings
 func validateVacuumRepack(vacuum, repack bool) error {
 	if !vacuum && !repack {
-		return fmt.Errorf("repack cannot be enabled without vacuum")
+		return fmt.Errorf("can't disable vacuum and repack at the same time")
 	}
 	return nil
 }

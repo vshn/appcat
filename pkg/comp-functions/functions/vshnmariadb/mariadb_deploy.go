@@ -226,6 +226,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
+	if svc.Config.Data["imageRegistry"] != "" {
+		values["image"] = map[string]interface{}{
+			"registry": svc.Config.Data["imageRegistry"],
+		}
+	}
+
 	return values, nil
 }
 

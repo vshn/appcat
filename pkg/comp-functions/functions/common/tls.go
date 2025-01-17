@@ -171,7 +171,7 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(serverCert, serviceName+"-server-cert", runtime.KubeOptionAddConnectionDetails(ns, cd...))
+	err = svc.SetDesiredKubeObject(serverCert, serviceName+"-server-cert", runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...))
 	if err != nil {
 		err = fmt.Errorf("cannot create serverCert object: %w", err)
 		return serverCertsSecret, err

@@ -376,14 +376,6 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 				},
 			},
 		}
-		backupRef = xkubev1.Reference{
-			DependsOn: &xkubev1.DependsOn{
-				APIVersion: "stackgres.io/v1",
-				Kind:       "SGBackup",
-				Name:       comp.Spec.Parameters.Restore.BackupName,
-				Namespace:  comp.GetInstanceNamespace(),
-			},
-		}
 	}
 
 	sgCluster := &sgv1.SGCluster{
@@ -474,7 +466,7 @@ func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Name:      "pgbucket-" + comp.GetName(),
-					Namespace: comp.GetInstanceNamespace(),
+					Namespace: svc.GetCrossplaneNamespace(),
 				},
 			},
 		},
@@ -485,6 +477,11 @@ func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime
 		err = fmt.Errorf("cannot create xObjectBucket: %w", err)
 		return err
 	}
+
+	// err = svc.DeployConnectionDetailsToInstanceNS(xObjectBucket.GetWriteConnectionSecretToReference().Name, comp.GetInstanceNamespace(), comp.GetName(), "pg-bucket")
+	// if err != nil {
+	// 	return fmt.Errorf("cannot deploy connection details to instanceNamespace: %w", err)
+	// }
 
 	return nil
 }

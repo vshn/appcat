@@ -6,6 +6,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
@@ -72,8 +73,8 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 				},
 				PasswordSecretRef: &xpv1.SecretKeySelector{
 					SecretReference: xpv1.SecretReference{
-						Name:      secretName,
-						Namespace: comp.GetInstanceNamespace(),
+						Name:      secretName + "-cd",
+						Namespace: svc.GetCrossplaneNamespace(),
 					},
 					Key: "userpass",
 				},
@@ -86,7 +87,29 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 		},
 	}
 
-	err = svc.SetDesiredComposedResource(role, runtime.ComposedOptionProtects(comp.GetName()+"-provider-conf-credentials"), runtime.ComposedOptionProtects(secretName))
+	// we need to get the secret object to mark it as deletable
+	obj := &xkube.Object{}
+	err = svc.GetDesiredComposedResourceByName(obj, secretName)
+	if err != nil {
+		svc.Log.Error(err, "cannot get user password secret")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot get user password secret: %s", err)))
+	}
+
+	if obj.Labels == nil {
+		obj.Labels = map[string]string{}
+	}
+
+	obj.Labels[runtime.WebhookAllowDeletionLabel] = "true"
+
+	err = svc.SetDesiredComposedResource(obj)
+	if err != nil {
+		svc.Log.Error(err, "cannot set allow deletion label on user password secret")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set allow deletion label on user password secret: %s", err)))
+	}
+
+	err = svc.SetDesiredComposedResource(role,
+		runtime.ComposedOptionProtects(comp.GetName()+"-provider-conf-credentials"),
+		runtime.ComposedOptionProtects(secretName))
 	if err != nil {
 		svc.Log.Error(err, "cannot apply user")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply user: %s", err)))
@@ -131,7 +154,9 @@ func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, sec
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(userpassSecret, fmt.Sprintf("%s-user-%s", comp.GetName(), username))
+	err = svc.SetDesiredKubeObject(userpassSecret, fmt.Sprintf("%s-user-%s", comp.GetName(), username),
+		runtime.KubeOptionAllowDeletion,
+		runtime.KubeOptionDeployOnControlPlane)
 	if err != nil {
 		svc.Log.Error(err, "cannot get userpassword from secret")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot get userpassword from secret: %s", err)))
@@ -141,15 +166,20 @@ func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, sec
 func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime, tlsEnabled bool) {
 	cd := svc.GetConnectionDetails()
 
+	endpoint := cd["POSTGRESQL_HOST"]
+	if _, exists := cd["LOADBALANCER_IP"]; exists {
+		endpoint = cd["LOADBALANCER_IP"]
+	}
+
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "provider-conf-credentials",
-			Namespace: comp.GetInstanceNamespace(),
+			Name:      comp.GetName() + "-provider-conf-credentials",
+			Namespace: svc.GetCrossplaneNamespace(),
 		},
 		Data: map[string][]byte{
 			"username": cd["POSTGRESQL_USER"],
 			"password": cd["POSTGRESQL_PASSWORD"],
-			"endpoint": cd["POSTGRESQL_HOST"],
+			"endpoint": endpoint,
 			"port":     cd["POSTGRESQL_PORT"],
 		},
 	}
@@ -157,7 +187,9 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime, tlsEn
 	err := svc.SetDesiredKubeObject(secret, comp.GetName()+"-provider-conf-credentials",
 		runtime.KubeOptionProtects("namespace-conditions"),
 		runtime.KubeOptionProtects("cluster"),
-		runtime.KubeOptionProtects(comp.GetName()+"-netpol"))
+		runtime.KubeOptionProtects(comp.GetName()+"-netpol"),
+		runtime.KubeOptionDeployOnControlPlane,
+		runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set credential secret for provider-sql: %s", err)))
 		svc.Log.Error(err, "cannot set credential secret for provider-sql")
@@ -170,6 +202,9 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime, tlsEn
 	config := &pgv1alpha1.ProviderConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName(),
+			Labels: map[string]string{
+				runtime.WebhookAllowDeletionLabel: "true",
+			},
 		},
 		Spec: pgv1alpha1.ProviderConfigSpec{
 			// Porvider-SQL doesn't support passing certificates to the config
@@ -178,14 +213,16 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime, tlsEn
 			Credentials: pgv1alpha1.ProviderCredentials{
 				Source: "PostgreSQLConnectionSecret",
 				ConnectionSecretRef: &xpv1.SecretReference{
-					Name:      "provider-conf-credentials",
-					Namespace: comp.GetInstanceNamespace(),
+					Name:      comp.GetName() + "-provider-conf-credentials",
+					Namespace: svc.GetCrossplaneNamespace(),
 				},
 			},
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(config, comp.GetName()+"-providerconfig")
+	err = svc.SetDesiredKubeObject(config, comp.GetName()+"-providerconfig",
+		runtime.KubeOptionDeployOnControlPlane,
+		runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply the provider config for provider sql: %s", err)))
 		svc.Log.Error(err, "cannot apply the provider config for provider sql")

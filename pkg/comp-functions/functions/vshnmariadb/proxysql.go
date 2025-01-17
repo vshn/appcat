@@ -12,7 +12,6 @@ import (
 	_ "embed"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
-	"github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	appsv1 "k8s.io/api/apps/v1"
@@ -67,7 +66,7 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 
 	// ProxySQL expects the certificates to have specific names...
 	svc.Log.Info("Copying certificate secret")
-	err = copyCertificateSecret(comp, svc, "tls-server-certificate", disableProtection)
+	err = copyCertificateSecret(comp, svc, disableProtection)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot rename secret fields: %s", err))
 	}
@@ -377,8 +376,18 @@ func createProxySQLStatefulset(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRun
 	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-proxysql-sts", opts...)
 }
 
-func copyCertificateSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, certSecretName string, disableProtection bool) error {
+func copyCertificateSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, disableProtection bool) error {
 	if !comp.Spec.Parameters.TLS.TLSEnabled {
+		return nil
+	}
+
+	certs, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-server-cert")
+	if err != nil {
+		return fmt.Errorf("cannot get certs for proxysql: %w", err)
+	}
+
+	// Secret not yet ready
+	if _, exists := certs["ca.crt"]; !exists {
 		return nil
 	}
 
@@ -387,50 +396,14 @@ func copyCertificateSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime
 			Name:      "proxysql-certs",
 			Namespace: comp.GetInstanceNamespace(),
 		},
-	}
-
-	refs := []v1alpha2.Reference{
-		{
-			PatchesFrom: &v1alpha2.PatchesFrom{
-				DependsOn: v1alpha2.DependsOn{
-					APIVersion: "v1",
-					Kind:       "Secret",
-					Name:       certSecretName,
-					Namespace:  comp.GetInstanceNamespace(),
-				},
-				FieldPath: ptr.To("data[ca.crt]"),
-			},
-			ToFieldPath: ptr.To("data[proxysql-ca.pem]"),
-		},
-		{
-			PatchesFrom: &v1alpha2.PatchesFrom{
-				DependsOn: v1alpha2.DependsOn{
-					APIVersion: "v1",
-					Kind:       "Secret",
-					Name:       certSecretName,
-					Namespace:  comp.GetInstanceNamespace(),
-				},
-				FieldPath: ptr.To("data[tls.crt]"),
-			},
-			ToFieldPath: ptr.To("data[proxysql-cert.pem]"),
-		},
-		{
-			PatchesFrom: &v1alpha2.PatchesFrom{
-				DependsOn: v1alpha2.DependsOn{
-					APIVersion: "v1",
-					Kind:       "Secret",
-					Name:       certSecretName,
-					Namespace:  comp.GetInstanceNamespace(),
-				},
-				FieldPath: ptr.To("data[tls.key]"),
-			},
-			ToFieldPath: ptr.To("data[proxysql-key.pem]"),
+		Data: map[string][]byte{
+			"proxysql-ca.pem":   certs["ca.crt"],
+			"proxysql-cert.pem": certs["tls.crt"],
+			"proxysql-key.pem":  certs["tls.key"],
 		},
 	}
 
-	opts := []runtime.KubeObjectOption{
-		runtime.KubeOptionAddRefs(refs...),
-	}
+	opts := []runtime.KubeObjectOption{}
 
 	if disableProtection {
 		opts = append(opts, runtime.KubeOptionAllowDeletion)

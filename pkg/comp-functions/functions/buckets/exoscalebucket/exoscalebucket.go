@@ -80,9 +80,12 @@ func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 }
 
 func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config string) error {
-
 	user := &exoscalev1.IAMKey{
-		ObjectMeta: metav1.ObjectMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				runtime.IgnoreConnectionDetailsAnnotation: "true",
+			},
+		},
 		Spec: exoscalev1.IAMKeySpec{
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{

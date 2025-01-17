@@ -40,10 +40,7 @@ func PgExporterConfig(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	}
 	xRef := xkube.Reference{
 		DependsOn: &xkube.DependsOn{
-			APIVersion: "stackgres.io/v1",
-			Kind:       "SGCluster",
-			Name:       comp.GetName(),
-			Namespace:  comp.GetInstanceNamespace(),
+			Name: comp.GetName() + "-cluster",
 		},
 	}
 	// add crossplane object containing ConfigMap

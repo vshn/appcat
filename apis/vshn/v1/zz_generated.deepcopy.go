@@ -533,6 +533,7 @@ func (in *VSHNMariaDBParameters) DeepCopyInto(out *VSHNMariaDBParameters) {
 	out.Restore = in.Restore
 	out.Maintenance = in.Maintenance
 	in.Monitoring.DeepCopyInto(&out.Monitoring)
+	in.Network.DeepCopyInto(&out.Network)
 	in.Security.DeepCopyInto(&out.Security)
 }
 

@@ -35,7 +35,7 @@ func Test_copyCertificateSecret(t *testing.T) {
 	comp := getComp()
 
 	// When applied
-	assert.NoError(t, copyCertificateSecret(comp, svc, "test", false))
+	assert.NoError(t, copyCertificateSecret(comp, svc, false))
 	obj := &xkubev1.Object{}
 	//Then expect secret
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(obj, comp.GetName()+"-proxysql-specific-certs"))
@@ -44,7 +44,7 @@ func Test_copyCertificateSecret(t *testing.T) {
 	// Given no TLS
 	comp.Spec.Parameters.TLS.TLSEnabled = false
 	// When applied
-	assert.NoError(t, copyCertificateSecret(comp, svc, "test", false))
+	assert.NoError(t, copyCertificateSecret(comp, svc, false))
 	//Then expect no secret
 	assert.Error(t, svc.GetDesiredComposedResourceByName(obj, comp.GetName()+"-proxysql-specific-certs"))
 }

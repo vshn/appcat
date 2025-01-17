@@ -58,7 +58,7 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 		"ignore_startup_parameters": "extra_float_digits, search_path",
 	}
 
-	err = common.NewPostgreSQLDependencyBuilder(svc, comp).
+	pgSecret, err := common.NewPostgreSQLDependencyBuilder(svc, comp).
 		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
 		AddPGBouncerConfig(pgBuncerConfig).
 		SetCustomMaintenanceSchedule(comp.Spec.Parameters.Maintenance.TimeOfDay.AddTime(20 * time.Minute)).
@@ -115,7 +115,7 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 	svc.SetConnectionDetail(adminConnectionDetailsField, []byte("admin"))
 	svc.SetConnectionDetail(hostConnectionDetailsField, []byte(fmt.Sprintf("%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())))
 
-	err = addRelease(ctx, svc, comp, adminSecret)
+	err = addRelease(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create release: %s", err))
 	}
@@ -138,8 +138,8 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 	return nil
 }
 
-func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret string) error {
-	release, err := newRelease(ctx, svc, comp, adminSecret)
+func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) error {
+	release, err := newRelease(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 	return res, nil
 }
 
-func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, hashedCustomConfig string) (map[string]any, error) {
+func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, hashedCustomConfig, pgSecret string) (map[string]any, error) {
 	values := map[string]any{}
 
 	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + common.PgInstanceNameSuffix)
@@ -250,7 +250,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		{
 			"name": "postgresql-certs",
 			"secret": map[string]any{
-				"secretName":  common.PgSecretName,
+				"secretName":  pgSecret,
 				"defaultMode": 420,
 			},
 		},
@@ -407,7 +407,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	return values, nil
 }
 
-func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret string) (*xhelmv1.Release, error) {
+func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
 	var hashedCustomConfig string
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
 		customCM, err := copyConfigMap(comp, svc)
@@ -423,7 +423,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	values, err := newValues(ctx, svc, comp, adminSecret, hashedCustomConfig)
+	values, err := newValues(ctx, svc, comp, adminSecret, hashedCustomConfig, pgSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +448,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, err
 	}
 
-	release, err := common.NewRelease(ctx, svc, comp, values)
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")
 
 	release.Spec.ForProvider.Chart.Name = "keycloakx"
 
@@ -473,7 +473,7 @@ func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRu
 			DependsOn: xkubev1.DependsOn{
 				APIVersion: "v1",
 				Kind:       "Secret",
-				Namespace:  comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.DeepCopy().Namespace,
+				Namespace:  comp.GetClaimNamespace(),
 				Name:       comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.Name,
 			},
 			FieldPath: ptr.To("data"),

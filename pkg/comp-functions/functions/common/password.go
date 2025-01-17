@@ -55,6 +55,8 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 	for _, field := range fieldList {
 		cd = append(cd, xkube.ConnectionDetail{
 			ObjectReference: corev1.ObjectReference{
+				// APIVersion: xkube.ObjectKindAPIVersion,
+				// Kind:       xkube.ObjectKind,
 				APIVersion: "v1",
 				Kind:       "Secret",
 				Namespace:  comp.GetInstanceNamespace(),
@@ -69,7 +71,7 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 		cd = o(secret, cd)
 	}
 
-	return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(comp.GetInstanceNamespace(), cd...))
+	return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...))
 }
 
 func genPassword() (string, error) {

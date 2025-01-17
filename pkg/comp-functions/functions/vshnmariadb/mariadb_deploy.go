@@ -19,6 +19,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -260,7 +261,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 			SkipPartOfReleaseCheck: true,
 		},
 	}
-	rel, err := common.NewRelease(ctx, svc, comp, values, cd...)
+	rel, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release", cd...)
 	rel.Spec.ForProvider.Chart.Name = comp.GetServiceName() + "-galera"
 
 	return rel, err
@@ -433,6 +434,11 @@ func createMainService(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, se
 		targetPort = 6033
 	}
 
+	serviceType := corev1.ServiceTypeClusterIP
+	if comp.Spec.Parameters.Network.ServiceType == "LoadBalancer" {
+		serviceType = corev1.ServiceTypeLoadBalancer
+	}
+
 	service := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceName,
@@ -440,7 +446,7 @@ func createMainService(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, se
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: target,
-			Type:     corev1.ServiceTypeClusterIP,
+			Type:     serviceType,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       serviceName,
@@ -463,6 +469,24 @@ func createMainService(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, se
 	svc.SetConnectionDetail("MARIADB_HOST", []byte(mariadbHost))
 	svc.SetConnectionDetail("MARIADB_URL", []byte(mariadbURL))
 
+	if serviceType == corev1.ServiceTypeLoadBalancer {
+		service := &corev1.Service{}
+		err := svc.GetObservedKubeObject(service, comp.GetName()+"-main-service")
+		if err != nil {
+			if err != runtime.ErrNotFound {
+				return err
+			}
+		} else {
+			if len(service.Status.LoadBalancer.Ingress) != 0 {
+				svc.SetConnectionDetail("LOADBALANCER_IP", []byte(service.Status.LoadBalancer.Ingress[0].IP))
+			}
+			err := addLoadbalancerNetpolicy(svc, comp)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return svc.SetDesiredKubeObject(&service, comp.GetName()+"-main-service")
 }
 
@@ -478,4 +502,28 @@ func getMariaDBRootPassword(secretName string, svc *runtime.ServiceRuntime) ([]b
 		return nil, err
 	}
 	return secret.Data["mariadb-root-password"], nil
+}
+
+// we effectively have to allow all traffic that the service can be
+// accessed via the loadbalancer.
+func addLoadbalancerNetpolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) error {
+	np := &netv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "allow-all",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: netv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			Ingress: []netv1.NetworkPolicyIngressRule{
+				{},
+			},
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(np, comp.GetName()+"-allow-all")
+	if err != nil {
+		return fmt.Errorf("cannot deploy allow all network policy: %w", err)
+	}
+
+	return nil
 }

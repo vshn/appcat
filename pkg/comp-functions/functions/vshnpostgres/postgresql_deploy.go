@@ -96,9 +96,14 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	return nil
 }
 
+// setMajorVersionStatus sets version in status only when it is provisioned
+// The subsequent update of this field is to happen in the MajorUpgrade comp-func
 func setMajorVersionStatus(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
-	comp.Status.MajorVersion = comp.Spec.Parameters.Service.MajorVersion
-	return svc.SetDesiredCompositeStatus(comp)
+	if comp.Status.CurrentVersion == "" {
+		comp.Status.CurrentVersion = comp.Spec.Parameters.Service.MajorVersion
+		return svc.SetDesiredCompositeStatus(comp)
+	}
+	return nil
 }
 
 func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
@@ -333,21 +338,48 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 		}
 	}
 
-	sgPostgresConfig := &sgv1.SGPostgresConfig{
+	sgPostgresConfig := sgv1.SGPostgresConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName(),
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Spec: sgv1.SGPostgresConfigSpec{
-			PostgresVersion: comp.Spec.Parameters.Service.MajorVersion,
-			PostgresqlConf:  pgConf,
+			PostgresqlConf: pgConf,
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(sgPostgresConfig, comp.GetName()+"-"+configResourceName)
-	if err != nil {
-		err = fmt.Errorf("cannot create sgInstanceProfile: %w", err)
-		return err
+	if comp.Status.PreviousVersion != "" {
+		v := comp.Status.PreviousVersion
+		previousVersionConfig := sgPostgresConfig
+		previousVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
+		previousVersionConfig.Spec.PostgresVersion = v
+		err := svc.SetDesiredKubeObject(&previousVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v))
+		if err != nil {
+			err = fmt.Errorf("cannot create previous version postgres config: %w", err)
+			return err
+		}
+	}
+	if comp.Status.CurrentVersion != "" {
+		v := comp.Status.CurrentVersion
+		currentVersionConfig := sgPostgresConfig
+		currentVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
+		currentVersionConfig.Spec.PostgresVersion = v
+		err := svc.SetDesiredKubeObject(&currentVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v))
+		if err != nil {
+			err = fmt.Errorf("cannot create current version postgres config: %w", err)
+			return err
+		}
+	}
+
+	if comp.Status.CurrentVersion != comp.Spec.Parameters.Service.MajorVersion {
+		v := comp.Spec.Parameters.Service.MajorVersion
+		upgradeVersionConfig := sgPostgresConfig
+		upgradeVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
+		upgradeVersionConfig.Spec.PostgresVersion = v
+		err := svc.SetDesiredKubeObject(&upgradeVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v))
+		if err != nil {
+			err = fmt.Errorf("cannot create current version postgres config: %w", err)
+			return err
+		}
 	}
 
 	return nil
@@ -405,7 +437,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			Instances:         comp.Spec.Parameters.Instances,
 			SgInstanceProfile: ptr.To(comp.GetName()),
 			Configurations: &sgv1.SGClusterSpecConfigurations{
-				SgPostgresConfig: ptr.To(comp.GetName()),
+				SgPostgresConfig: ptr.To(fmt.Sprintf("%s-postgres-%s", comp.GetName(), comp.Status.CurrentVersion)),
 				Backups: &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
 					{
 						SgObjectStorage: "sgbackup-" + comp.GetName(),
@@ -415,7 +447,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			},
 			InitialData: initialData,
 			Postgres: sgv1.SGClusterSpecPostgres{
-				Version: comp.Spec.Parameters.Service.MajorVersion,
+				Version: comp.Status.CurrentVersion,
 			},
 			Pods: sgv1.SGClusterSpecPods{
 				PersistentVolume: sgv1.SGClusterSpecPodsPersistentVolume{

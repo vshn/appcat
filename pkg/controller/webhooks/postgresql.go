@@ -287,14 +287,14 @@ func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSH
 		))
 	}
 	var oldVersion int
-	if oldPg.Status.MajorVersion == "" {
+	if oldPg.Status.CurrentVersion == "" {
 		oldVersion = newVersion
 	} else {
-		oldVersion, err = strconv.Atoi(oldPg.Status.MajorVersion)
+		oldVersion, err = strconv.Atoi(oldPg.Status.CurrentVersion)
 		if err != nil {
 			errList = append(errList, field.Invalid(
-				field.NewPath("status.majorVersion"),
-				oldPg.Status.MajorVersion,
+				field.NewPath("status.currentVersion"),
+				oldPg.Status.CurrentVersion,
 				fmt.Sprintf("invalid major version: %s", err.Error()),
 			))
 		}

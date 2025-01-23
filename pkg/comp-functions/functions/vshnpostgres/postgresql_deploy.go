@@ -346,40 +346,32 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 			PostgresqlConf: pgConf,
 		},
 	}
-
-	if comp.Status.PreviousVersion != "" {
-		v := comp.Status.PreviousVersion
-		previousVersionConfig := sgPostgresConfig
-		previousVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
-		previousVersionConfig.Spec.PostgresVersion = v
-		err := svc.SetDesiredKubeObject(&previousVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v))
-		if err != nil {
-			err = fmt.Errorf("cannot create previous version postgres config: %w", err)
-			return err
+	/*
+		if comp.Status.PreviousVersion != "" {
+			v := comp.Status.PreviousVersion
+			previousVersionConfig := sgPostgresConfig
+			previousVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
+			previousVersionConfig.Spec.PostgresVersion = v
+			err := svc.SetDesiredKubeObject(&previousVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v))
+			if err != nil {
+				err = fmt.Errorf("cannot create previous version postgres config: %w", err)
+				return err
+			}
 		}
-	}
-	if comp.Status.CurrentVersion != "" {
-		v := comp.Status.CurrentVersion
-		currentVersionConfig := sgPostgresConfig
-		currentVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
-		currentVersionConfig.Spec.PostgresVersion = v
-		err := svc.SetDesiredKubeObject(&currentVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v))
-		if err != nil {
-			err = fmt.Errorf("cannot create current version postgres config: %w", err)
-			return err
-		}
+	*/
+	v := comp.Status.CurrentVersion
+	if v == "" {
+		v = comp.Spec.Parameters.Service.MajorVersion
 	}
 
-	if comp.Status.CurrentVersion != comp.Spec.Parameters.Service.MajorVersion {
-		v := comp.Spec.Parameters.Service.MajorVersion
-		upgradeVersionConfig := sgPostgresConfig
-		upgradeVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
-		upgradeVersionConfig.Spec.PostgresVersion = v
-		err := svc.SetDesiredKubeObject(&upgradeVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v))
-		if err != nil {
-			err = fmt.Errorf("cannot create current version postgres config: %w", err)
-			return err
-		}
+	currentVersionConfig := sgPostgresConfig
+	currentVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
+	currentVersionConfig.Spec.PostgresVersion = v
+	pgKubeName := fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v)
+	err := svc.SetDesiredKubeObject(&currentVersionConfig, pgKubeName, runtime.KubeOptionAllowDeletion)
+	if err != nil {
+		err = fmt.Errorf("cannot create current version postgres config: %w", err)
+		return err
 	}
 
 	return nil
@@ -491,7 +483,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 
 	err = svc.SetDesiredKubeObjectWithName(sgCluster, comp.GetName()+"-cluster", "cluster", runtime.KubeOptionAddRefs(backupRef))
 	if err != nil {
-		err = fmt.Errorf("cannot create sgInstanceProfile: %w", err)
+		err = fmt.Errorf("cannot create sgCluster: %w", err)
 		return err
 	}
 

@@ -22,17 +22,6 @@ const (
 	majorUpgradeSuffix = "major-upgrade-dbops"
 )
 
-type ExtensionResponse struct {
-	Extensions []Extension `json:"extensions"`
-}
-
-type Extension struct {
-	Name       string   `json:"name"`
-	Publisher  string   `json:"publisher"`
-	Repository string   `json:"repository"`
-	Versions   []string `json:"versions"`
-}
-
 func MajorVersionUpgrade(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	comp, err := getVSHNPostgreSQL(ctx, svc)
 
@@ -49,24 +38,42 @@ func MajorVersionUpgrade(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Sprintf("cannot upgrade PG settings: %w", err))
 		}
-		majorUpgradeDbOps := &stackgresv1.SGDbOps{}
-		err = svc.GetObservedKubeObject(majorUpgradeDbOps, fmt.Sprintf("%s-%s", comp.GetName(), majorUpgradeSuffix))
-		if err != nil && !errors.Is(err, runtime.ErrNotFound) {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot get observed kube object major upgrade sgdbops: %w", err))
+		majorUpgradeDbOps, err := getSgDbOpsIfExists(err, svc, comp)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot get major upgrade SgDbOps resource: %w", err))
 		}
-		// If SGDBOps resource does not exist create it otherwise cleanup if successful or keep the resource on fail
-		if errors.Is(err, runtime.ErrNotFound) {
+
+		// If SGDBOps resource does not exist create it and keep during upgrade otherwise cleanup if successful
+		if majorUpgradeDbOps == nil {
 			return createMajorUpgradeSgDbOps(ctx, svc, comp, expectedV)
 		} else if isSuccessful(majorUpgradeDbOps.Status.Conditions) {
-			comp.Status.PreviousVersion = comp.Status.CurrentVersion
-			setStatusVersion(svc, comp, expectedV)
+			updateStatusVersion(svc, comp, expectedV)
 		}
 		return keepSgDbOpsResource(svc, comp, majorUpgradeDbOps)
 	}
-	svc.DeleteDesiredCompososedResource(fmt.Sprintf("%s-postgres-%s", comp.GetName(), comp.Status.PreviousVersion))
-	return setStatusVersion(svc, comp, currentV)
+	removePreviousVersionConfig(svc, comp)
+	return nil
 }
 
+// getSgDbOpsIfExists returns a major upgrade SgDbOps resource if upgrade is in process
+func getSgDbOpsIfExists(err error, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (*stackgresv1.SGDbOps, error) {
+	majorUpgradeDbOps := &stackgresv1.SGDbOps{}
+	err = svc.GetObservedKubeObject(majorUpgradeDbOps, fmt.Sprintf("%s-%s", comp.GetName(), majorUpgradeSuffix))
+	if err != nil && !errors.Is(err, runtime.ErrNotFound) {
+		return nil, fmt.Errorf("cannot get observed kube object major upgrade sgdbops: %w", err)
+	}
+	if errors.Is(err, runtime.ErrNotFound) {
+		return nil, nil
+	}
+	return majorUpgradeDbOps, nil
+}
+
+// removePreviousVersionConfig removes previous version pg settings resource.
+func removePreviousVersionConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) {
+	svc.DeleteDesiredCompososedResource(fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), comp.Status.PreviousVersion))
+}
+
+// upgradePGSettings creates a new SGPostgresConfig resource with the new expected major
 func upgradePGSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 	conf := &stackgresv1.SGPostgresConfig{}
 	err := svc.GetObservedKubeObject(conf, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, comp.Status.CurrentVersion))
@@ -77,7 +84,7 @@ func upgradePGSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 	expectedV := comp.Spec.Parameters.Service.MajorVersion
 	upgradeVersionConfig := &stackgresv1.SGPostgresConfig{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-postgres-%s", comp.GetName(), expectedV),
+			Name:      fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), expectedV),
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Spec: stackgresv1.SGPostgresConfigSpec{
@@ -89,23 +96,10 @@ func upgradePGSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 	if err != nil {
 		return fmt.Errorf("cannot create current version postgres config:  %w", err)
 	}
-	/*
-		c := &stackgresv1.SGCluster{}
-		err = svc.GetDesiredKubeObject(c, "cluster")
-		if err != nil {
-			return fmt.Errorf("cannot get observed kube object cluster: %w", err)
-		}
-		config := fmt.Sprintf("%s-postgres-%s", comp.GetName(), expectedV)
-		c.Spec.Configurations.SgPostgresConfig = &config
-		err = svc.SetDesiredKubeObjectWithName(c, comp.GetName()+"-cluster", "cluster")
-		if err != nil {
-			return fmt.Errorf("cannot update observed kube object cluster: %w", err)
-		}
-	*/
-
 	return nil
 }
 
+// keepSgDbOpsResource saves the major upgrade SgDbOps for the duration of the major upgrade
 func keepSgDbOpsResource(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, majorUpgradeDbOps *stackgresv1.SGDbOps) *xfnproto.Result {
 	err := svc.SetDesiredKubeObject(majorUpgradeDbOps, fmt.Sprintf("%s-%s", comp.GetName(), majorUpgradeSuffix), runtime.KubeOptionAllowDeletion)
 	if err != nil {
@@ -114,7 +108,9 @@ func keepSgDbOpsResource(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQ
 	return runtime.NewWarningResult("Major upgrade is not completed or it failed")
 }
 
-func setStatusVersion(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, v string) *xfnproto.Result {
+// updateStatusVersion rotates the status versions in the composite
+func updateStatusVersion(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, v string) *xfnproto.Result {
+	comp.Status.PreviousVersion = comp.Status.CurrentVersion
 	comp.Status.CurrentVersion = v
 	err := svc.SetDesiredCompositeStatus(comp)
 	if err != nil {
@@ -138,6 +134,7 @@ func isSuccessful(conditions *[]stackgresv1.SGDbOpsStatusConditionsItem) bool {
 	return successful && completed
 }
 
+// createMajorUpgradeSgDbOps create a major upgrade SgDbOps resource to start the upgrade process
 func createMajorUpgradeSgDbOps(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, expectedV string) *xfnproto.Result {
 	cluster := &stackgresv1.SGCluster{}
 	err := svc.GetObservedKubeObject(cluster, "cluster")
@@ -174,7 +171,7 @@ func createMajorUpgradeSgDbOps(ctx context.Context, svc *runtime.ServiceRuntime,
 			MajorVersionUpgrade: &stackgresv1.SGDbOpsSpecMajorVersionUpgrade{
 				Link:             pointer.To(true),
 				PostgresVersion:  &majorMinorVersion,
-				SgPostgresConfig: pointer.To(fmt.Sprintf("%s-postgres-%s", comp.GetName(), expectedV)),
+				SgPostgresConfig: pointer.To(fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), expectedV)),
 			},
 			Op:        "majorVersionUpgrade",
 			SgCluster: cluster.GetName(),

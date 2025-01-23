@@ -338,35 +338,21 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 		}
 	}
 
-	sgPostgresConfig := sgv1.SGPostgresConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: comp.GetInstanceNamespace(),
-		},
-		Spec: sgv1.SGPostgresConfigSpec{
-			PostgresqlConf: pgConf,
-		},
-	}
-	/*
-		if comp.Status.PreviousVersion != "" {
-			v := comp.Status.PreviousVersion
-			previousVersionConfig := sgPostgresConfig
-			previousVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
-			previousVersionConfig.Spec.PostgresVersion = v
-			err := svc.SetDesiredKubeObject(&previousVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v))
-			if err != nil {
-				err = fmt.Errorf("cannot create previous version postgres config: %w", err)
-				return err
-			}
-		}
-	*/
 	v := comp.Status.CurrentVersion
 	if v == "" {
 		v = comp.Spec.Parameters.Service.MajorVersion
 	}
+	currentVersionConfig := sgv1.SGPostgresConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), v),
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: sgv1.SGPostgresConfigSpec{
+			PostgresVersion: v,
+			PostgresqlConf:  pgConf,
+		},
+	}
 
-	currentVersionConfig := sgPostgresConfig
-	currentVersionConfig.SetName(fmt.Sprintf("%s-postgres-%s", comp.GetName(), v))
-	currentVersionConfig.Spec.PostgresVersion = v
 	pgKubeName := fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v)
 	err := svc.SetDesiredKubeObject(&currentVersionConfig, pgKubeName, runtime.KubeOptionAllowDeletion)
 	if err != nil {
@@ -429,7 +415,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			Instances:         comp.Spec.Parameters.Instances,
 			SgInstanceProfile: ptr.To(comp.GetName()),
 			Configurations: &sgv1.SGClusterSpecConfigurations{
-				SgPostgresConfig: ptr.To(fmt.Sprintf("%s-postgres-%s", comp.GetName(), comp.Status.CurrentVersion)),
+				SgPostgresConfig: ptr.To(fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), comp.Status.CurrentVersion)),
 				Backups: &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
 					{
 						SgObjectStorage: "sgbackup-" + comp.GetName(),

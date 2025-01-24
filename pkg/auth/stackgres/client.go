@@ -41,8 +41,7 @@ func New(username, password, sgNamespace string) (*StackgresClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot marshal login json: %w", err)
 	}
-	//prefixUrl := "https://stackgres-restapi." + sgNamespace + ".svc"
-	prefixUrl := "https://localhost:8081"
+	prefixUrl := "https://stackgres-restapi." + sgNamespace + ".svc.cluster.local"
 	resp, err := httpClient.Post(prefixUrl+"/stackgres/auth/login", "application/json", bytes.NewBuffer(byteAuth))
 	if err != nil {
 		return nil, fmt.Errorf("cannot login: %w", err)

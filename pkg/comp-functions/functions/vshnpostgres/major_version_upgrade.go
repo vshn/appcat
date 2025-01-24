@@ -23,10 +23,12 @@ const (
 )
 
 func MajorVersionUpgrade(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	log := ctrl.LoggerFrom(ctx)
+	log.Info("Starting major-version-upgrade function")
 	comp, err := getVSHNPostgreSQL(ctx, svc)
 
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get composite from function io: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot get composite from function io: %v", err))
 	}
 
 	expectedV := comp.Spec.Parameters.Service.MajorVersion
@@ -34,23 +36,27 @@ func MajorVersionUpgrade(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *
 
 	// If current and expected versions do not match then issue a major version upgrade via SGDBOps resource
 	if currentV != "" && currentV != expectedV {
+		log.Info("Detected major version upgrade")
 		err = upgradePGSettings(comp, svc)
 		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot upgrade PG settings: %w", err))
+			return runtime.NewWarningResult(fmt.Sprintf("cannot upgrade PG settings: %v", err))
 		}
 		majorUpgradeDbOps, err := getSgDbOpsIfExists(err, svc, comp)
 		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot get major upgrade SgDbOps resource: %w", err))
+			return runtime.NewWarningResult(fmt.Sprintf("cannot get major upgrade SgDbOps resource: %v", err))
 		}
 
 		// If SGDBOps resource does not exist create it and keep during upgrade otherwise cleanup if successful
 		if majorUpgradeDbOps == nil {
+			log.Info("Creating SgDbOps major version upgrade resource")
 			return createMajorUpgradeSgDbOps(ctx, svc, comp, expectedV)
 		} else if isSuccessful(majorUpgradeDbOps.Status.Conditions) {
+			log.Info("Major version upgrade successfully completed")
 			updateStatusVersion(svc, comp, expectedV)
 		}
 		return keepSgDbOpsResource(svc, comp, majorUpgradeDbOps)
 	}
+	log.Info("No major version upgrade detected")
 	removePreviousVersionConfig(svc, comp)
 	return nil
 }
@@ -60,7 +66,7 @@ func getSgDbOpsIfExists(err error, svc *runtime.ServiceRuntime, comp *vshnv1.VSH
 	majorUpgradeDbOps := &stackgresv1.SGDbOps{}
 	err = svc.GetObservedKubeObject(majorUpgradeDbOps, fmt.Sprintf("%s-%s", comp.GetName(), majorUpgradeSuffix))
 	if err != nil && !errors.Is(err, runtime.ErrNotFound) {
-		return nil, fmt.Errorf("cannot get observed kube object major upgrade sgdbops: %w", err)
+		return nil, fmt.Errorf("cannot get observed kube object major upgrade sgdbops: %v", err)
 	}
 	if errors.Is(err, runtime.ErrNotFound) {
 		return nil, nil
@@ -78,7 +84,7 @@ func upgradePGSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 	conf := &stackgresv1.SGPostgresConfig{}
 	err := svc.GetObservedKubeObject(conf, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, comp.Status.CurrentVersion))
 	if err != nil {
-		return fmt.Errorf("cannot get observed kube object postgres config: %w", err)
+		return fmt.Errorf("cannot get observed kube object postgres config: %v", err)
 	}
 
 	expectedV := comp.Spec.Parameters.Service.MajorVersion
@@ -94,7 +100,7 @@ func upgradePGSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 	}
 	err = svc.SetDesiredKubeObject(upgradeVersionConfig, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, expectedV))
 	if err != nil {
-		return fmt.Errorf("cannot create current version postgres config:  %w", err)
+		return fmt.Errorf("cannot create current version postgres config:  %v", err)
 	}
 	return nil
 }
@@ -114,7 +120,7 @@ func updateStatusVersion(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQ
 	comp.Status.CurrentVersion = v
 	err := svc.SetDesiredCompositeStatus(comp)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot update status field with the newest major postgres version: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot update status field with the newest major postgres version: %v", err))
 	}
 	return runtime.NewNormalResult("Major upgrade successfully finished, SGDBOps cleaned up")
 }
@@ -139,27 +145,27 @@ func createMajorUpgradeSgDbOps(ctx context.Context, svc *runtime.ServiceRuntime,
 	cluster := &stackgresv1.SGCluster{}
 	err := svc.GetObservedKubeObject(cluster, "cluster")
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed kube object cluster: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed kube object cluster: %v", err))
 	}
 
 	sgNamespace := svc.Config.Data["sgNamespace"]
 	username, password, err := getCredentials(ctx, sgNamespace)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get stackgres rest api credentials: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot get stackgres rest api credentials: %v", err))
 	}
 	stackgresClient, err := stackgres.New(username, password, sgNamespace)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot initialize stackgres client: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot initialize stackgres client: %v", err))
 	}
 
 	vList, err := stackgresClient.GetAvailableVersions()
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get postgres version list: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot get postgres version list: %v", err))
 	}
 
 	majorMinorVersion, err := stackgres.GetLatestMinorVersion(expectedV, vList)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get latest minor version: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot get latest minor version: %v", err))
 	}
 
 	sgdbops := &stackgresv1.SGDbOps{

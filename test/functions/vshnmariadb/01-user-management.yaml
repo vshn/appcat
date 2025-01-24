@@ -1,0 +1,10 @@
+desired: {}
+input: {}
+observed:
+  resources:
+    myinstance-server-cert:
+      resource: {}
+      connection_details:
+        ca.crt: test
+        tls.crt: test
+        tls.key: test

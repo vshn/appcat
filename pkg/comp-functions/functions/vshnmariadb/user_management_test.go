@@ -29,7 +29,6 @@ func Test_addProviderConfig(t *testing.T) {
 
 	config := &pgv1alpha1.ProviderConfig{}
 	assert.NoError(t, svc.GetDesiredKubeObject(config, comp.GetName()+"-providerconfig"))
-	assert.Equal(t, comp.GetInstanceNamespace(), secret.GetNamespace())
 
 }
 

@@ -86,6 +86,12 @@ type ServiceRuntime struct {
 	desiredComposite  *composite.Unstructured
 	observedComposite *composite.Unstructured
 	gvk               schema.GroupVersionKind
+	// kubeOptionTracker will keep track of all kubeOptions that get applied
+	// to the same kube object over each single function call.
+	// This ensures that we never drop a previously applied kubeOption again
+	// if we read the nested manifest from the kubeObject and re-apply it to the
+	// desired manifest.
+	kubeOptionTracker map[string][]KubeObjectOption
 }
 
 // Service contains all steps necessary to provide the service (except the legacy P+T portion).
@@ -348,6 +354,7 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 		desiredComposite:  desiredComposite.Resource,
 		observedComposite: observedComposite.Resource,
 		gvk:               comp.Resource.GetObjectKind().GroupVersionKind(),
+		kubeOptionTracker: map[string][]KubeObjectOption{},
 	}, nil
 }
 
@@ -457,7 +464,9 @@ func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName stri
 		return err
 	}
 
-	for _, o := range opts {
+	s.kubeOptionTracker[objectName] = append(s.kubeOptionTracker[objectName], opts...)
+
+	for _, o := range s.kubeOptionTracker[objectName] {
 		o(kobj)
 	}
 
@@ -474,7 +483,9 @@ func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectN
 		return err
 	}
 
-	for _, o := range opts {
+	s.kubeOptionTracker[resourceName] = append(s.kubeOptionTracker[resourceName], opts...)
+
+	for _, o := range s.kubeOptionTracker[resourceName] {
 		o(kobj)
 	}
 
@@ -856,7 +867,7 @@ func (s *ServiceRuntime) GetObservedKubeObject(obj client.Object, name string) e
 	return json.Unmarshal(kube.Status.AtProvider.Manifest.Raw, obj)
 }
 
-// GetDesiredKubeObject returns the object as is on the cluster.
+// GetDesiredKubeObject returns the object as is in the desired state.
 func (s *ServiceRuntime) GetDesiredKubeObject(obj client.Object, name string) error {
 	name = EscapeDNS1123(name, false)
 	res, ok := s.desiredResources[resource.Name(name)]

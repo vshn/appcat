@@ -238,6 +238,7 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 		"setupArbitraryUser":         "setup-arbitrary-user",
 		"clusterReconciliationCycle": "cluster-reconciliation-cycle",
 		"setDbopsRunning":            "dbops.set-dbops-running",
+		"setMajorVersionUpgrade":     "major-version-upgrade",
 	}
 
 	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)

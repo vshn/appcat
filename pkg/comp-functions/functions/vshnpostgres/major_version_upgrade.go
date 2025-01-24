@@ -126,45 +126,58 @@ func updateStatusVersion(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQ
 }
 
 func isSuccessful(conditions *[]stackgresv1.SGDbOpsStatusConditionsItem) bool {
-	var successful, completed bool
-	if conditions != nil {
-		for _, c := range *conditions {
-			if !(*c.Reason == "OperationFailed" && *c.Status == "True") {
-				successful = true
-			}
-			if *c.Reason == "OperationCompleted" && *c.Status == "True" {
-				completed = true
-			}
+	if conditions == nil {
+		return false
+	}
+
+	var hasCompleted, hasFailed bool
+	for _, c := range *conditions {
+		switch {
+		case *c.Reason == "OperationFailed" && *c.Status == "True":
+			hasFailed = true
+		case *c.Reason == "OperationCompleted" && *c.Status == "True":
+			hasCompleted = true
+		}
+		if hasFailed {
+			return false
 		}
 	}
-	return successful && completed
+
+	return hasCompleted
 }
 
 // createMajorUpgradeSgDbOps create a major upgrade SgDbOps resource to start the upgrade process
 func createMajorUpgradeSgDbOps(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, expectedV string) *xfnproto.Result {
+	log := ctrl.LoggerFrom(ctx)
+
 	cluster := &stackgresv1.SGCluster{}
 	err := svc.GetObservedKubeObject(cluster, "cluster")
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed kube object cluster: %v", err))
 	}
-
+	log.Info("TEST", "sgNamespace", svc.Config.Data["sgNamespace"])
 	sgNamespace := svc.Config.Data["sgNamespace"]
 	username, password, err := getCredentials(ctx, sgNamespace)
+	log.Info("TEST", "password", password)
 	if err != nil {
+		log.Info("ERROR", "err", err)
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get stackgres rest api credentials: %v", err))
 	}
 	stackgresClient, err := stackgres.New(username, password, sgNamespace)
 	if err != nil {
+		log.Info("ERROR", "err", err)
 		return runtime.NewWarningResult(fmt.Sprintf("cannot initialize stackgres client: %v", err))
 	}
 
 	vList, err := stackgresClient.GetAvailableVersions()
 	if err != nil {
+		log.Info("ERROR", "err", err)
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get postgres version list: %v", err))
 	}
 
 	majorMinorVersion, err := stackgres.GetLatestMinorVersion(expectedV, vList)
 	if err != nil {
+		log.Info("ERROR", "err", err)
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get latest minor version: %v", err))
 	}
 
@@ -186,28 +199,32 @@ func createMajorUpgradeSgDbOps(ctx context.Context, svc *runtime.ServiceRuntime,
 
 	err = svc.SetDesiredKubeObject(sgdbops, fmt.Sprintf("%s-%s", comp.GetName(), majorUpgradeSuffix), runtime.KubeOptionAllowDeletion)
 	if err != nil {
+		log.Info("ERROR", "err", err)
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create major upgrade kube object %s", comp.GetName()))
 	}
 
 	return runtime.NewNormalResult("SGDBOps for major upgrade created")
 }
 
-func getCredentials(ctx context.Context, sgNamespace string) (username, password string, err error) {
+func getCredentials(ctx context.Context, sgNamespace string) (string, string, error) {
+	log := ctrl.LoggerFrom(ctx)
 	kubeClient, err := client.New(ctrl.GetConfigOrDie(), client.Options{
 		Scheme: pkg.SetupScheme(),
 	})
 	if err != nil {
 		return "", "", err
 	}
-
+	log.Info("TEST DATA", "error", err)
 	c := &v2.Secret{}
 	err = kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: sgNamespace,
 		Name:      "stackgres-restapi-admin",
 	}, c)
+	log.Info("TEST DATA", "error", err)
 	if err != nil {
 		return "", "", err
 	}
+	log.Info("TEST DATA", "data", c.Data)
 
 	return string(c.Data["k8sUsername"]), string(c.Data["clearPassword"]), nil
 }

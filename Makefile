@@ -73,7 +73,6 @@ generate:  get-crds generate-stackgres-crds protobuf-gen ## Generate code with c
 	go version
 	rm -rf apis/generated
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="{./apis/v1/..., ./apis/vshn/..., ./apis/exoscale/..., ./apis/apiserver/..., ./apis/syntools/...}" object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
-		# Because controller-gen creates the files with the plural `forgejoes` but angryjet expects `forgejos`
 	go generate ./...
 	# Because yaml is such a fun and easy specification, we need to hack some things here.
 	# Depending on the yaml parser implementation the equal sign (=) has special meaning, or not...

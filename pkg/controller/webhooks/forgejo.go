@@ -12,10 +12,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnforgejo,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnforgejos,versions=v1,name=vshnforgejo.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnforgejo,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnforgejoes,versions=v1,name=vshnforgejo.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnforgejos,verbs=get;list;watch;patch;update
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnforgejos/status,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnforgejoes,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnforgejoes/status,verbs=get;list;watch;patch;update
 
 var (
 	forgejoGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNForgejo"}

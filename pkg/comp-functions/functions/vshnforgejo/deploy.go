@@ -3,6 +3,7 @@ package vshnforgejo
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -38,6 +39,9 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 
 	svc.SetConnectionDetail("FORGEJO_USERNAME", connDetails["username"])
 	svc.SetConnectionDetail("FORGEJO_PASSWORD", connDetails["password"])
+	// "," as separator for multiple FQDNs, it's better than anything else as highlighting with mouse in terminal works well
+	// result is fqdn[0],fqdn[1],fqdn[2]
+	svc.SetConnectionDetail("FORGEJO_URL", []byte(strings.Join(comp.Spec.Parameters.Service.FQDN, ",")))
 
 	svc.Log.Info("Adding forgejo release")
 	err = addForgejo(ctx, svc, comp, secretName)

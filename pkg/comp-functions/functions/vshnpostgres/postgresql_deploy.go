@@ -481,11 +481,6 @@ func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime
 		return err
 	}
 
-	// err = svc.DeployConnectionDetailsToInstanceNS(xObjectBucket.GetWriteConnectionSecretToReference().Name, comp.GetInstanceNamespace(), comp.GetName(), "pg-bucket")
-	// if err != nil {
-	// 	return fmt.Errorf("cannot deploy connection details to instanceNamespace: %w", err)
-	// }
-
 	return nil
 }
 

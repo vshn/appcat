@@ -108,10 +108,5 @@ func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGette
 		},
 	}
 
-	// err = svc.DeployConnectionDetailsToInstanceNS(comp.GetName()+"-connection", comp.GetInstanceNamespace(), comp.GetName(), resName)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	return release, nil
 }

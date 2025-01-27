@@ -55,8 +55,6 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 	for _, field := range fieldList {
 		cd = append(cd, xkube.ConnectionDetail{
 			ObjectReference: corev1.ObjectReference{
-				// APIVersion: xkube.ObjectKindAPIVersion,
-				// Kind:       xkube.ObjectKind,
 				APIVersion: "v1",
 				Kind:       "Secret",
 				Namespace:  comp.GetInstanceNamespace(),

@@ -152,10 +152,5 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 		return fmt.Errorf("cannot deploy postgresql connection details: %w", err)
 	}
 
-	// err = svc.DeployConnectionDetailsToInstanceNS(obj.GetWriteConnectionSecretToReference().Name, comp.GetInstanceNamespace(), comp.GetName(), "cluster")
-	// if err != nil {
-	// 	return fmt.Errorf("cannot deploy postgresql connection details to instanceNamespace: %w", err)
-	// }
-
 	return nil
 }

@@ -57,7 +57,7 @@ func MajorVersionUpgrade(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *
 		return keepSgDbOpsResource(svc, comp, majorUpgradeDbOps)
 	}
 	log.Info("No major version upgrade detected")
-	removePreviousVersionConfig(svc, comp)
+	//removePreviousVersionConfig(svc, comp)
 	return nil
 }
 
@@ -77,6 +77,9 @@ func getSgDbOpsIfExists(err error, svc *runtime.ServiceRuntime, comp *vshnv1.VSH
 // removePreviousVersionConfig removes previous version pg settings resource.
 func removePreviousVersionConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) {
 	svc.DeleteDesiredCompososedResource(fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), comp.Status.PreviousVersion))
+	if comp.Status.PreviousVersion != "" {
+		svc.DeleteDesiredCompososedResource(fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), comp.Status.PreviousVersion))
+	}
 }
 
 // upgradePGSettings creates a new SGPostgresConfig resource with the new expected major
@@ -84,7 +87,11 @@ func upgradePGSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 	conf := &stackgresv1.SGPostgresConfig{}
 	err := svc.GetObservedKubeObject(conf, fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, comp.Status.CurrentVersion))
 	if err != nil {
-		return fmt.Errorf("cannot get observed kube object postgres config: %v", err)
+		// For compatibility purposes the old PG settings has to be considered
+		err = svc.GetObservedKubeObject(conf, fmt.Sprintf("%s-%s", comp.GetName(), configResourceName))
+		if err != nil {
+			return fmt.Errorf("cannot get observed kube object postgres config: %v", err)
+		}
 	}
 
 	expectedV := comp.Spec.Parameters.Service.MajorVersion
@@ -155,10 +162,10 @@ func createMajorUpgradeSgDbOps(ctx context.Context, svc *runtime.ServiceRuntime,
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed kube object cluster: %v", err))
 	}
-	log.Info("TEST", "sgNamespace", svc.Config.Data["sgNamespace"])
+
 	sgNamespace := svc.Config.Data["sgNamespace"]
 	username, password, err := getCredentials(ctx, sgNamespace)
-	log.Info("TEST", "password", password)
+
 	if err != nil {
 		log.Info("ERROR", "err", err)
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get stackgres rest api credentials: %v", err))

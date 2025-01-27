@@ -339,29 +339,37 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 		}
 	}
 
-	v := comp.Status.CurrentVersion
-	if v == "" {
-		v = comp.Spec.Parameters.Service.MajorVersion
-	}
+	pgConfigName, pgKubeName := getCurrentSettings(comp, svc, comp.Status.CurrentVersion, comp.Status.PreviousVersion)
+
 	currentVersionConfig := sgv1.SGPostgresConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), v),
+			Name:      pgConfigName,
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Spec: sgv1.SGPostgresConfigSpec{
-			PostgresVersion: v,
+			PostgresVersion: comp.Status.CurrentVersion,
 			PostgresqlConf:  pgConf,
 		},
 	}
 
-	pgKubeName := fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, v)
 	err := svc.SetDesiredKubeObject(&currentVersionConfig, pgKubeName, runtime.KubeOptionAllowDeletion)
 	if err != nil {
-		err = fmt.Errorf("cannot create current version postgres config: %w", err)
-		return err
+		return fmt.Errorf("cannot create current version postgres config: %w", err)
 	}
 
 	return nil
+}
+
+func getCurrentSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, currentV, previousV string) (string, string) {
+	pgConfigName := fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), currentV)
+	pgKubeName := fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, currentV)
+	existingProfile := &sgv1.SGPostgresConfig{}
+	_ = svc.GetObservedKubeObject(existingProfile, fmt.Sprintf("%s-%s", comp.GetName(), configResourceName))
+	if existingProfile.Name != "" && previousV == "" {
+		pgKubeName = fmt.Sprintf("%s-%s", comp.GetName(), configResourceName)
+		pgConfigName = existingProfile.Name
+	}
+	return pgConfigName, pgKubeName
 }
 
 func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
@@ -385,6 +393,8 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 	if err != nil {
 		return fmt.Errorf("cannot fetch nodeSelector from the composition config: %w", err)
 	}
+
+	pgConfigName, _ := getCurrentSettings(comp, svc, comp.Status.CurrentVersion, comp.Status.PreviousVersion)
 
 	initialData := &sgv1.SGClusterSpecInitialData{}
 	backupRef := xkubev1.Reference{}
@@ -416,7 +426,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			Instances:         comp.Spec.Parameters.Instances,
 			SgInstanceProfile: ptr.To(comp.GetName()),
 			Configurations: &sgv1.SGClusterSpecConfigurations{
-				SgPostgresConfig: ptr.To(fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), comp.Status.CurrentVersion)),
+				SgPostgresConfig: ptr.To(pgConfigName),
 				Backups: &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
 					{
 						SgObjectStorage: "sgbackup-" + comp.GetName(),

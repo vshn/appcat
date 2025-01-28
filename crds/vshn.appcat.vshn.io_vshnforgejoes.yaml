@@ -4846,6 +4846,7 @@ spec:
                             This also enables strict hostname checking for this FQDN.
                           items:
                             type: string
+                          minItems: 1
                           type: array
                         serviceLevel:
                           default: besteffort
@@ -4860,8 +4861,9 @@ spec:
                             Version contains supported version of Forgejo.
                             Multiple versions are supported. Defaults to 10.0.0 if not set.
                           type: string
+                      required:
+                        - fqdn
                       type: object
-                      default: {}
                     size:
                       description: Size contains settings to control the sizing of a service.
                       properties:

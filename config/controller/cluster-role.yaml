@@ -109,26 +109,6 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
-  - xvshnforgejoes
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - xvshnforgejoes/status
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - xvshnkeycloaks
   verbs:
   - get

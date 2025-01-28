@@ -332,9 +332,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"--spi-events-listener-jboss-logging-success-level=info",
 			"--spi-events-listener-jboss-logging-error-level=warn",
 		},
-		"image": map[string]any{
-			"repository": "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed",
-		},
 		"database": map[string]any{
 			"hostname": string(cd[vshnpostgres.PostgresqlHost]),
 			"port":     string(cd[vshnpostgres.PostgresqlPort]),
@@ -396,6 +393,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"podSecurityContext": nil,
 		"podAnnotations":     podAnnotations,
+	}
+
+	if svc.Config.Data["imageRegistry"] != "" {
+		values["image"] = map[string]interface{}{
+			"repository": svc.Config.Data["imageRegistry"],
+		}
 	}
 
 	jsonned, _ := json.Marshal(values)

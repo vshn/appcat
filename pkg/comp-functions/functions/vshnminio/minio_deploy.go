@@ -139,6 +139,12 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, svc *r
 		},
 	}
 
+	if svc.Config.Data["imageRegistry"] != "" {
+		values["image"] = map[string]interface{}{
+			"registry": svc.Config.Data["imageRegistry"],
+		}
+	}
+
 	vb, err := json.Marshal(values)
 	if err != nil {
 		err = fmt.Errorf("cannot marshal helm values: %w", err)

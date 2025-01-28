@@ -3,6 +3,7 @@ package vshnpostgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -61,7 +62,7 @@ func TestPostgreSqlDeploy(t *testing.T) {
 	assert.Equal(t, comp.Spec.Parameters.Instances, cluster.Spec.Instances)
 	assert.Nil(t, cluster.Spec.InitialData.Restore)
 	assert.Equal(t, comp.GetName(), *cluster.Spec.SgInstanceProfile)
-	assert.Equal(t, comp.GetName(), *cluster.Spec.Configurations.SgPostgresConfig)
+	assert.Equal(t, fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), comp.Spec.Parameters.Service.MajorVersion), *cluster.Spec.Configurations.SgPostgresConfig)
 	backups := *cluster.Spec.Configurations.Backups
 	assert.Equal(t, "sgbackup-"+comp.GetName(), backups[0].SgObjectStorage)
 	assert.Equal(t, comp.Spec.Parameters.Backup.Schedule, *(backups[0].CronSchedule))
@@ -82,7 +83,7 @@ func TestPostgreSqlDeploy(t *testing.T) {
 	assert.Nil(t, sgInstanceProfile.Spec.HugePages)
 
 	sgPostgresConfig := &sgv1.SGPostgresConfig{}
-	assert.NoError(t, svc.GetDesiredKubeObject(sgPostgresConfig, comp.GetName()+"-"+configResourceName))
+	assert.NoError(t, svc.GetDesiredKubeObject(sgPostgresConfig, comp.GetName()+"-"+configResourceName+"-15"))
 	assert.Equal(t, comp.Spec.Parameters.Service.MajorVersion, sgPostgresConfig.Spec.PostgresVersion)
 	assert.Equal(t, map[string]string{}, sgPostgresConfig.Spec.PostgresqlConf)
 
@@ -113,7 +114,7 @@ func TestPostgreSqlDeployWithPgConfig(t *testing.T) {
 	assert.NoError(t, svc.GetDesiredKubeObject(cluster, "cluster"))
 
 	sgPostgresConfig := &sgv1.SGPostgresConfig{}
-	assert.NoError(t, svc.GetDesiredKubeObject(sgPostgresConfig, "pgsql-gc9x4-"+configResourceName))
+	assert.NoError(t, svc.GetDesiredKubeObject(sgPostgresConfig, "pgsql-gc9x4-"+configResourceName+"-15"))
 	assert.Contains(t, sgPostgresConfig.Spec.PostgresqlConf, "timezone")
 	assert.Equal(t, "Europe/Zurich", sgPostgresConfig.Spec.PostgresqlConf["timezone"])
 }

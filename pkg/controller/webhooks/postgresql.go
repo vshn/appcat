@@ -316,6 +316,12 @@ func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSH
 				))
 			}
 		}
+		if newPg.Spec.Parameters.Instances != 0 {
+			errList = append(errList, field.Forbidden(
+				field.NewPath("spec.parameters.instances"),
+				"major upgrades are not supported for HA instances",
+			))
+		}
 	}
 	return errList
 }

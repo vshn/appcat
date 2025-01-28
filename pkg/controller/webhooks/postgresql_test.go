@@ -1,5 +1,3 @@
-//go:build ignore
-
 package webhooks
 
 import (
@@ -308,7 +306,7 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 			},
 		},
 		Status: vshnv1.VSHNPostgreSQLStatus{
-			MajorVersion: "15",
+			CurrentVersion: "15",
 		},
 	}
 
@@ -502,10 +500,10 @@ func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {
 
 func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 	tests := []struct {
-		name      string
-		new       *vshnv1.VSHNPostgreSQL
-		old       *vshnv1.VSHNPostgreSQL
-		expectErr *field.Error
+		name          string
+		new           *vshnv1.VSHNPostgreSQL
+		old           *vshnv1.VSHNPostgreSQL
+		expectErrList field.ErrorList
 	}{
 		{
 			name: "GivenSameMajorVersion_ThenNoError",
@@ -518,7 +516,7 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
-					MajorVersion: "15",
+					CurrentVersion: "15",
 				},
 			},
 			old: &vshnv1.VSHNPostgreSQL{
@@ -530,10 +528,10 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
-					MajorVersion: "15",
+					CurrentVersion: "15",
 				},
 			},
-			expectErr: nil,
+			expectErrList: nil,
 		},
 		{
 			name: "GivenOneMajorVersionUpdate_ThenNoError",
@@ -546,7 +544,7 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
-					MajorVersion: "15",
+					CurrentVersion: "15",
 				},
 			},
 			old: &vshnv1.VSHNPostgreSQL{
@@ -558,10 +556,10 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
-					MajorVersion: "15",
+					CurrentVersion: "15",
 				},
 			},
-			expectErr: nil,
+			expectErrList: nil,
 		},
 		{
 			name: "GivenTwoMajorVersionsUpdate_ThenError",
@@ -574,7 +572,7 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
-					MajorVersion: "15",
+					CurrentVersion: "15",
 				},
 			},
 			old: &vshnv1.VSHNPostgreSQL{
@@ -586,13 +584,15 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
-					MajorVersion: "15",
+					CurrentVersion: "15",
 				},
 			},
-			expectErr: field.Forbidden(
-				field.NewPath("spec.parameters.service.majorVersion"),
-				"only one major version upgrade at a time is allowed",
-			),
+			expectErrList: field.ErrorList{
+				field.Forbidden(
+					field.NewPath("spec.parameters.service.majorVersion"),
+					"only one major version upgrade at a time is allowed",
+				),
+			},
 		},
 		{
 			name: "GivenOneMajorVersionsBehind_ThenError",
@@ -605,7 +605,7 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
-					MajorVersion: "15",
+					CurrentVersion: "15",
 				},
 			},
 			old: &vshnv1.VSHNPostgreSQL{
@@ -617,19 +617,21 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 					},
 				},
 				Status: vshnv1.VSHNPostgreSQLStatus{
-					MajorVersion: "15",
+					CurrentVersion: "15",
 				},
 			},
-			expectErr: field.Forbidden(
-				field.NewPath("spec.parameters.service.majorVersion"),
-				"only one major version upgrade at a time is allowed",
-			),
+			expectErrList: field.ErrorList{
+				field.Forbidden(
+					field.NewPath("spec.parameters.service.majorVersion"),
+					"only one major version upgrade at a time is allowed",
+				),
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateMajorVersionUpgrade(tt.new, tt.old)
-			assert.Equal(t, tt.expectErr, err)
+			assert.Equal(t, tt.expectErrList, err)
 		})
 	}
 }

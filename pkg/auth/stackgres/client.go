@@ -20,16 +20,20 @@ type authToken struct {
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int    `json:"expires_in"`
 }
+
+// PgVersions contains available postgres versions
 type PgVersions struct {
 	Postgresql []string `json:"postgresql"`
 }
 
+// StackgresClient creates a client to connect to Stackgres Operator
 type StackgresClient struct {
 	username, password, sgNamespace, prefixUrl string
 	httpClient                                 *http.Client
 	token                                      authToken
 }
 
+// New creates a Stackgres client from username, password and namespace where Stackgres is running
 func New(username, password, sgNamespace string) (*StackgresClient, error) {
 	t := http.DefaultTransport.(*http.Transport).Clone()
 	t.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -84,13 +88,13 @@ func (c StackgresClient) GetAvailableVersions() (*PgVersions, error) {
 	return versionList, nil
 }
 
+// GetLatestMinorVersion searching most current minor version
 func GetLatestMinorVersion(vers string, versionList *PgVersions) (string, error) {
 
 	if versionList == nil {
 		return vers, nil
 	}
 
-	//p.log.Info("Searching most current minor version")
 	current, err := version.NewVersion(vers)
 	if err != nil {
 		return "", err

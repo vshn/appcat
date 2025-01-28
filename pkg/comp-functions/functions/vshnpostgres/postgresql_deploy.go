@@ -360,11 +360,19 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 	return nil
 }
 
+// getCurrentSettings returns the kube object name pgKubeName and wrapped resource name pgConfigName
+// This function ensures compatibility with older Postgres instances where SGPGSettings resources name was missing the major version
+// If such resource exists (ex:. pg-instance-cntqx) then it will be kept with this naming until a new major version upgrade is issued
+// New postgres instances have the format:
+// Kube name - pg-instance-pg-conf-14
+// Resource name - pg-instance-postgres-config-14
 func getCurrentSettings(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, currentV, previousV string) (string, string) {
 	pgConfigName := fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), currentV)
 	pgKubeName := fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, currentV)
+
 	existingProfile := &sgv1.SGPostgresConfig{}
 	_ = svc.GetObservedKubeObject(existingProfile, fmt.Sprintf("%s-%s", comp.GetName(), configResourceName))
+
 	if existingProfile.Name != "" && previousV == "" {
 		pgKubeName = fmt.Sprintf("%s-%s", comp.GetName(), configResourceName)
 		pgConfigName = existingProfile.Name

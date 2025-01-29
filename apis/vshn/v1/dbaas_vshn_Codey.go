@@ -63,6 +63,13 @@ type VSHNCodeyServiceSpec struct {
 
 	// VSHNCodeysettings contains additional VSHNCodey settings.
 	AdminEmail string `json:"adminEmail,omitempty"`
+
+	// FQDN contains the FQDNs array, which will be used for the ingress.
+	// If it's not set, no ingress will be deployed.
+	// This also enables strict hostname checking for this FQDN.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
+	FQDN []string `json:"fqdn"`
 }
 
 // VSHNCodeySizeSpec contains settings to control the sizing of a service.

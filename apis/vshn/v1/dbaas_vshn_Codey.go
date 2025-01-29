@@ -50,7 +50,9 @@ type VSHNCodeyParameters struct {
 	Service VSHNCodeyServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
-	Size VSHNSizeSpec `json:"size,omitempty"`
+	// +kubebuilder:validation:Enum=mini;small
+	// +kubebuilder:default=mini
+	Size string `json:"size,omitempty"`
 }
 
 // VSHNCodeyServiceSpec contains VSHNCodey DBaaS specific properties
@@ -72,36 +74,8 @@ type VSHNCodeyServiceSpec struct {
 	FQDN []string `json:"fqdn"`
 }
 
-// VSHNCodeySizeSpec contains settings to control the sizing of a service.
-type VSHNCodeySizeSpec struct {
-
-	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
-	CPURequests string `json:"cpuRequests,omitempty"`
-
-	// CPULimits defines the limits amount of Kubernetes CPUs for an instance.
-	CPULimits string `json:"cpuLimits,omitempty"`
-
-	// MemoryRequests defines the requests amount of memory in units of bytes for an instance.
-	MemoryRequests string `json:"memoryRequests,omitempty"`
-
-	// MemoryLimits defines the limits amount of memory in units of bytes for an instance.
-	MemoryLimits string `json:"memoryLimits,omitempty"`
-
-	// Disk defines the amount of disk space for an instance.
-	Disk string `json:"disk,omitempty"`
-
-	// Plan is the name of the resource plan that defines the compute resources.
-	Plan string `json:"plan,omitempty"`
-}
-
 // VSHNCodeyStatus reflects the observed state of a VSHNCodey.
 type VSHNCodeyStatus struct {
-	NamespaceConditions         []Condition `json:"namespaceConditions,omitempty"`
-	SelfSignedIssuerConditions  []Condition `json:"selfSignedIssuerConditions,omitempty"`
-	LocalCAConditions           []Condition `json:"localCAConditions,omitempty"`
-	CaCertificateConditions     []Condition `json:"caCertificateConditions,omitempty"`
-	ServerCertificateConditions []Condition `json:"serverCertificateConditions,omitempty"`
-	ClientCertificateConditions []Condition `json:"clientCertificateConditions,omitempty"`
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by
@@ -155,34 +129,4 @@ type XCodeyList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []XCodey `json:"items"`
-} // GetServiceName returns the name of this service
-func (v *VSHNCodey) GetServiceName() string {
-	return "codey"
-}
-
-// GetPDBLabels returns the labels to be used for the PodDisruptionBudget
-// it should match one unique label od pod running in instanceNamespace
-// without this, the PDB will match all pods
-func (v *VSHNCodey) GetPDBLabels() map[string]string {
-	return map[string]string{}
-}
-
-func (v *VSHNCodey) GetSize() VSHNSizeSpec {
-	return v.Spec.Parameters.Size
-}
-
-func (v *VSHNCodey) GetBillingName() string {
-	return "appcat-" + v.GetServiceName()
-}
-
-func (v *VSHNCodey) GetClaimName() string {
-	return v.GetLabels()["crossplane.io/claim-name"]
-}
-
-func (v *VSHNCodey) GetWorkloadName() string {
-	return v.GetName() + "-codeydeployment"
-}
-
-func (v *VSHNCodey) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
-	return &StatefulSetManager{}
 }

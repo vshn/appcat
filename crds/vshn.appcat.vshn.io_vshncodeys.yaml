@@ -67,7 +67,7 @@ spec:
                         - fqdn
                       type: object
                     size:
-                      default: {}
+                      default: mini
                       description: Size contains settings to control the sizing of a service.
                       enum:
                         - mini

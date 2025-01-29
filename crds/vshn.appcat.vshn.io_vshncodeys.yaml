@@ -46,7 +46,7 @@ spec:
                       description: Service contains VSHNCodey DBaaS specific properties
                       properties:
                         adminEmail:
-                          description: VSHNCodeysettings contains additional VSHNCodey settings.
+                          description: AdminEmail for email notifications.
                           type: string
                         fqdn:
                           description: |-
@@ -63,9 +63,9 @@ spec:
                             Multiple versions are supported.
                           type: string
                       required:
+                        - adminEmail
                         - fqdn
                       type: object
-                      default: {}
                     size:
                       description: Size contains settings to control the sizing of a service.
                       properties:

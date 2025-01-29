@@ -11,7 +11,6 @@ import (
 // kubebuilder is unable to set a {} default
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshncodeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshncodeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshncodeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
 
 // +kubebuilder:object:root=true
 
@@ -61,8 +60,9 @@ type VSHNCodeyServiceSpec struct {
 	// Multiple versions are supported.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
-	// VSHNCodeysettings contains additional VSHNCodey settings.
-	AdminEmail string `json:"adminEmail,omitempty"`
+	// AdminEmail for email notifications.
+	// +kubebuilder:validation:Required
+	AdminEmail string `json:"adminEmail"`
 
 	// FQDN contains the FQDNs array, which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.

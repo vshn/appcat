@@ -9,44 +9,44 @@ import (
 
 // Workaround to make nested defaulting work.
 // kubebuilder is unable to set a {} default
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshncodeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_codeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
 
 // +kubebuilder:object:root=true
 
-// VSHNCodey is the API for creating VSHNCodey instances.
-type VSHNCodey struct {
+// Codey is the API for creating Codey instances.
+type Codey struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec defines the desired state of a VSHNCodey.
-	Spec VSHNCodeySpec `json:"spec"`
+	// Spec defines the desired state of a Codey.
+	Spec CodeySpec `json:"spec"`
 
-	// Status reflects the observed state of a VSHNCodey.
-	Status VSHNCodeyStatus `json:"status,omitempty"`
+	// Status reflects the observed state of a Codey.
+	Status CodeyStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
-type VSHNCodeyList struct {
+type CodeyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []VSHNCodey `json:"items,omitempty"`
+	Items []Codey `json:"items,omitempty"`
 }
 
-// VSHNCodeySpec defines the desired state of a VSHNCodey.
-type VSHNCodeySpec struct {
-	// Parameters are the configurable fields of a VSHNCodey.
-	Parameters VSHNCodeyParameters `json:"parameters,omitempty"`
+// CodeySpec defines the desired state of a Codey.
+type CodeySpec struct {
+	// Parameters are the configurable fields of a Codey.
+	Parameters CodeyParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
 	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
-// VSHNCodeyParameters are the configurable fields of a VSHNCodey.
-type VSHNCodeyParameters struct {
-	// Service contains VSHNCodey DBaaS specific properties
-	Service VSHNCodeyServiceSpec `json:"service,omitempty"`
+// CodeyParameters are the configurable fields of a Codey.
+type CodeyParameters struct {
+	// Service contains Codey DBaaS specific properties
+	Service CodeyServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
 	// +kubebuilder:validation:Enum=mini;small
@@ -54,10 +54,10 @@ type VSHNCodeyParameters struct {
 	Size string `json:"size,omitempty"`
 }
 
-// VSHNCodeyServiceSpec contains VSHNCodey DBaaS specific properties
-type VSHNCodeyServiceSpec struct {
+// CodeyServiceSpec contains Codey DBaaS specific properties
+type CodeyServiceSpec struct {
 
-	// Version contains supported version of VSHNCodey.
+	// Version contains supported version of Codey.
 	// Multiple versions are supported.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
@@ -73,8 +73,8 @@ type VSHNCodeyServiceSpec struct {
 	FQDN []string `json:"fqdn"`
 }
 
-// VSHNCodeyStatus reflects the observed state of a VSHNCodey.
-type VSHNCodeyStatus struct {
+// CodeyStatus reflects the observed state of a Codey.
+type CodeyStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by
@@ -82,15 +82,15 @@ type VSHNCodeyStatus struct {
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 }
 
-func (v *VSHNCodey) GetClaimNamespace() string {
+func (v *Codey) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
-func (v *VSHNCodey) GetInstanceNamespace() string {
+func (v *Codey) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-codey-%s", v.GetName())
 }
 
-func (v *VSHNCodey) SetInstanceNamespaceStatus() {
+func (v *Codey) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
@@ -106,16 +106,16 @@ type XCodey struct {
 	Status XCodeyStatus `json:"status,omitempty"`
 }
 
-// XCodeySpec defines the desired state of a VSHNCodey.
+// XCodeySpec defines the desired state of a Codey.
 type XCodeySpec struct {
-	// Parameters are the configurable fields of a VSHNCodey.
-	Parameters VSHNCodeyParameters `json:"parameters,omitempty"`
+	// Parameters are the configurable fields of a Codey.
+	Parameters CodeyParameters `json:"parameters,omitempty"`
 
 	xpv1.ResourceSpec `json:",inline"`
 }
 
 type XCodeyStatus struct {
-	VSHNCodeyStatus     `json:",inline"`
+	CodeyStatus         `json:",inline"`
 	xpv1.ResourceStatus `json:",inline"`
 }
 

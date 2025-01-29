@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.15.0
-  name: vshncodeys.vshn.appcat.vshn.io
+  name: codeys.vshn.appcat.vshn.io
 spec:
   group: vshn.appcat.vshn.io
   names:
-    kind: VSHNCodey
-    listKind: VSHNCodeyList
-    plural: vshncodeys
-    singular: vshncodey
+    kind: Codey
+    listKind: CodeyList
+    plural: codeys
+    singular: codey
   scope: Namespaced
   versions:
     - name: v1
       schema:
         openAPIV3Schema:
-          description: VSHNCodey is the API for creating VSHNCodey instances.
+          description: Codey is the API for creating Codey instances.
           properties:
             apiVersion:
               description: |-
@@ -37,13 +37,13 @@ spec:
             metadata:
               type: object
             spec:
-              description: Spec defines the desired state of a VSHNCodey.
+              description: Spec defines the desired state of a Codey.
               properties:
                 parameters:
-                  description: Parameters are the configurable fields of a VSHNCodey.
+                  description: Parameters are the configurable fields of a Codey.
                   properties:
                     service:
-                      description: Service contains VSHNCodey DBaaS specific properties
+                      description: Service contains Codey DBaaS specific properties
                       properties:
                         adminEmail:
                           description: AdminEmail for email notifications.
@@ -59,7 +59,7 @@ spec:
                           type: array
                         majorVersion:
                           description: |-
-                            Version contains supported version of VSHNCodey.
+                            Version contains supported version of Codey.
                             Multiple versions are supported.
                           type: string
                       required:
@@ -89,7 +89,7 @@ spec:
                   x-kubernetes-map-type: atomic
               type: object
             status:
-              description: Status reflects the observed state of a VSHNCodey.
+              description: Status reflects the observed state of a Codey.
               properties:
                 instanceNamespace:
                   description: InstanceNamespace contains the name of the namespace where the instance resides

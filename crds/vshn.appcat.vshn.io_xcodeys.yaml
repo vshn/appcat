@@ -37,7 +37,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: XCodeySpec defines the desired state of a VSHNCodey.
+            description: XCodeySpec defines the desired state of a Codey.
             properties:
               deletionPolicy:
                 default: Delete
@@ -81,10 +81,10 @@ spec:
                   type: string
                 type: array
               parameters:
-                description: Parameters are the configurable fields of a VSHNCodey.
+                description: Parameters are the configurable fields of a Codey.
                 properties:
                   service:
-                    description: Service contains VSHNCodey DBaaS specific properties
+                    description: Service contains Codey DBaaS specific properties
                     properties:
                       adminEmail:
                         description: AdminEmail for email notifications.
@@ -100,7 +100,7 @@ spec:
                         type: array
                       majorVersion:
                         description: |-
-                          Version contains supported version of VSHNCodey.
+                          Version contains supported version of Codey.
                           Multiple versions are supported.
                         type: string
                     required:

@@ -9,64 +9,64 @@ import (
 
 // Workaround to make nested defaulting work.
 // kubebuilder is unable to set a {} default
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_codeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_codeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_codeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshncodeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshncodeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshncodeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
 
 // +kubebuilder:object:root=true
 
-// Codey is the API for creating Codey instances.
-type Codey struct {
+// VSHNCodey is the API for creating VSHNCodey instances.
+type VSHNCodey struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec defines the desired state of a Codey.
-	Spec CodeySpec `json:"spec"`
+	// Spec defines the desired state of a VSHNCodey.
+	Spec VSHNCodeySpec `json:"spec"`
 
-	// Status reflects the observed state of a Codey.
-	Status CodeyStatus `json:"status,omitempty"`
+	// Status reflects the observed state of a VSHNCodey.
+	Status VSHNCodeyStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
-type CodeyList struct {
+type VSHNCodeyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Codey `json:"items,omitempty"`
+	Items []VSHNCodey `json:"items,omitempty"`
 }
 
-// CodeySpec defines the desired state of a Codey.
-type CodeySpec struct {
-	// Parameters are the configurable fields of a Codey.
-	Parameters CodeyParameters `json:"parameters,omitempty"`
+// VSHNCodeySpec defines the desired state of a VSHNCodey.
+type VSHNCodeySpec struct {
+	// Parameters are the configurable fields of a VSHNCodey.
+	Parameters VSHNCodeyParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
 	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
-// CodeyParameters are the configurable fields of a Codey.
-type CodeyParameters struct {
-	// Service contains Codey DBaaS specific properties
-	Service CodeyServiceSpec `json:"service,omitempty"`
+// VSHNCodeyParameters are the configurable fields of a VSHNCodey.
+type VSHNCodeyParameters struct {
+	// Service contains VSHNCodey DBaaS specific properties
+	Service VSHNCodeyServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
 	Size VSHNSizeSpec `json:"size,omitempty"`
 }
 
-// CodeyServiceSpec contains Codey DBaaS specific properties
-type CodeyServiceSpec struct {
+// VSHNCodeyServiceSpec contains VSHNCodey DBaaS specific properties
+type VSHNCodeyServiceSpec struct {
 
-	// Version contains supported version of Codey.
+	// Version contains supported version of VSHNCodey.
 	// Multiple versions are supported.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
-	// Codeysettings contains additional Codey settings.
+	// VSHNCodeysettings contains additional VSHNCodey settings.
 	AdminEmail string `json:"adminEmail,omitempty"`
 }
 
-// CodeySizeSpec contains settings to control the sizing of a service.
-type CodeySizeSpec struct {
+// VSHNCodeySizeSpec contains settings to control the sizing of a service.
+type VSHNCodeySizeSpec struct {
 
 	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
 	CPURequests string `json:"cpuRequests,omitempty"`
@@ -87,8 +87,8 @@ type CodeySizeSpec struct {
 	Plan string `json:"plan,omitempty"`
 }
 
-// CodeyStatus reflects the observed state of a Codey.
-type CodeyStatus struct {
+// VSHNCodeyStatus reflects the observed state of a VSHNCodey.
+type VSHNCodeyStatus struct {
 	NamespaceConditions         []Condition `json:"namespaceConditions,omitempty"`
 	SelfSignedIssuerConditions  []Condition `json:"selfSignedIssuerConditions,omitempty"`
 	LocalCAConditions           []Condition `json:"localCAConditions,omitempty"`
@@ -102,15 +102,15 @@ type CodeyStatus struct {
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 }
 
-func (v *Codey) GetClaimNamespace() string {
+func (v *VSHNCodey) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
-func (v *Codey) GetInstanceNamespace() string {
+func (v *VSHNCodey) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-codey-%s", v.GetName())
 }
 
-func (v *Codey) SetInstanceNamespaceStatus() {
+func (v *VSHNCodey) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
@@ -126,16 +126,16 @@ type XCodey struct {
 	Status XCodeyStatus `json:"status,omitempty"`
 }
 
-// XCodeySpec defines the desired state of a Codey.
+// XCodeySpec defines the desired state of a VSHNCodey.
 type XCodeySpec struct {
-	// Parameters are the configurable fields of a Codey.
-	Parameters CodeyParameters `json:"parameters,omitempty"`
+	// Parameters are the configurable fields of a VSHNCodey.
+	Parameters VSHNCodeyParameters `json:"parameters,omitempty"`
 
 	xpv1.ResourceSpec `json:",inline"`
 }
 
 type XCodeyStatus struct {
-	CodeyStatus         `json:",inline"`
+	VSHNCodeyStatus     `json:",inline"`
 	xpv1.ResourceStatus `json:",inline"`
 }
 
@@ -149,33 +149,33 @@ type XCodeyList struct {
 
 	Items []XCodey `json:"items"`
 } // GetServiceName returns the name of this service
-func (v *Codey) GetServiceName() string {
+func (v *VSHNCodey) GetServiceName() string {
 	return "codey"
 }
 
 // GetPDBLabels returns the labels to be used for the PodDisruptionBudget
 // it should match one unique label od pod running in instanceNamespace
 // without this, the PDB will match all pods
-func (v *Codey) GetPDBLabels() map[string]string {
+func (v *VSHNCodey) GetPDBLabels() map[string]string {
 	return map[string]string{}
 }
 
-func (v *Codey) GetSize() VSHNSizeSpec {
+func (v *VSHNCodey) GetSize() VSHNSizeSpec {
 	return v.Spec.Parameters.Size
 }
 
-func (v *Codey) GetBillingName() string {
+func (v *VSHNCodey) GetBillingName() string {
 	return "appcat-" + v.GetServiceName()
 }
 
-func (v *Codey) GetClaimName() string {
+func (v *VSHNCodey) GetClaimName() string {
 	return v.GetLabels()["crossplane.io/claim-name"]
 }
 
-func (v *Codey) GetWorkloadName() string {
+func (v *VSHNCodey) GetWorkloadName() string {
 	return v.GetName() + "-codeydeployment"
 }
 
-func (v *Codey) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+func (v *VSHNCodey) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
 	return &StatefulSetManager{}
 }

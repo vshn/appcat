@@ -1,16 +1,12 @@
-package v1
+package codey
 
 import (
-	"fmt"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Workaround to make nested defaulting work.
-// kubebuilder is unable to set a {} default
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_codeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
-
+// +groupName=codey.io
+// +versionName=v1
 // +kubebuilder:object:root=true
 
 // Codey is the API for creating Codey instances.
@@ -37,10 +33,11 @@ type CodeyList struct {
 // CodeySpec defines the desired state of a Codey.
 type CodeySpec struct {
 	// Parameters are the configurable fields of a Codey.
+	// +kubebuilder:default={}
 	Parameters CodeyParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef xpv1.LocalSecretReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
 // CodeyParameters are the configurable fields of a Codey.
@@ -77,21 +74,6 @@ type CodeyServiceSpec struct {
 type CodeyStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
-	// Schedules keeps track of random generated schedules, is overwriten by
-	// schedules set in the service's spec.
-	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
-}
-
-func (v *Codey) GetClaimNamespace() string {
-	return v.GetLabels()["crossplane.io/claim-namespace"]
-}
-
-func (v *Codey) GetInstanceNamespace() string {
-	return fmt.Sprintf("vshn-codey-%s", v.GetName())
-}
-
-func (v *Codey) SetInstanceNamespaceStatus() {
-	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
 // +kubebuilder:object:generate=true

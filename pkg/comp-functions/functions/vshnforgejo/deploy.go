@@ -27,7 +27,7 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 	}
 
 	secretName, err := common.AddCredentialsSecret(comp, svc, []string{"password"}, common.AddStaticFieldToSecret(map[string]string{
-		"username": "gitea_admin",
+		"username": "forgejo_admin",
 	}))
 	if err != nil {
 		return runtime.NewWarningResult("cannot add credentials secret")

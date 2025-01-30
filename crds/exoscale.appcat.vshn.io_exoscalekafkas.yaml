@@ -102,12 +102,12 @@ spec:
                           type: object
                           x-kubernetes-preserve-unknown-fields: true
                         version:
-                          default: "3.4"
+                          default: "3.8"
                           description: |-
                             Version contains the minor version for Kafka.
-                            Currently only "3.4" is supported. Leave it empty to always get the latest supported version.
+                            Currently only "3.8" is supported. Leave it empty to always get the latest supported version.
                           enum:
-                            - "3.4"
+                            - "3.8"
                           type: string
                         zone:
                           default: ch-gva-2

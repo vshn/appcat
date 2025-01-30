@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	"github.com/ghodss/yaml"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -95,7 +96,8 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					},
 				},
 				"database": map[string]any{
-					"DB_TYPE": "sqlite3",
+					"DB_TYPE":             "sqlite3",
+					"SQLITE_JOURNAL_MODE": "WAL",
 				},
 				"image": map[string]any{
 					"tag": comp.Spec.Parameters.Service.Version,
@@ -189,6 +191,18 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	if svc.Config.Data["isOpenshift"] == "true" {
 		values["containerSecurityContext"] = securityContext["containerSecurityContext"]
 		values["podSecurityContext"] = securityContext["podSecurityContext"]
+	}
+
+	if svc.Config.Data["ingress_annotations"] != "" {
+		annotations := map[string]string{}
+
+		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), &annotations)
+		if err != nil {
+			// do nothing and use default annotation which sets issuer to staging
+			svc.Log.Error(fmt.Errorf("cannot unmarshal ingress annotations"), "error", err)
+		}
+
+		values["ingress"].(map[string]any)["annotations"] = annotations
 	}
 
 	if comp.Spec.Parameters.Service.AdminEmail != "" {

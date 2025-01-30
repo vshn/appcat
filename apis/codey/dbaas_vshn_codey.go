@@ -5,6 +5,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+//go:generate yq -i e ../generated/codey.io_codeys.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+
 // +groupName=codey.io
 // +versionName=v1
 // +kubebuilder:object:root=true
@@ -46,9 +48,7 @@ type CodeyParameters struct {
 	Service CodeyServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
-	// +kubebuilder:validation:Enum=mini;small
-	// +kubebuilder:default=mini
-	Size string `json:"size,omitempty"`
+	Size VSHNCodeySizeSpec `json:"size,omitempty"`
 }
 
 // CodeyServiceSpec contains Codey DBaaS specific properties
@@ -110,4 +110,13 @@ type XCodeyList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []XCodey `json:"items"`
+}
+
+// VSHNCodeySizeSpec contains settings to control the sizing of a service.
+type VSHNCodeySizeSpec struct {
+	// Size contains settings to control the sizing of a service.
+	// +kubebuilder:validation:Enum=mini;small
+	// +kubebuilder:default=mini
+	// Plan is the name of the resource plan that defines the compute resources.
+	Plan string `json:"plan,omitempty"`
 }

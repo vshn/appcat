@@ -108,13 +108,19 @@ spec:
                     - fqdn
                     type: object
                   size:
-                    default: mini
                     description: Size contains settings to control the sizing of a
                       service.
-                    enum:
-                    - mini
-                    - small
-                    type: string
+                    properties:
+                      plan:
+                        default: mini
+                        description: |-
+                          Size contains settings to control the sizing of a service.
+                          Plan is the name of the resource plan that defines the compute resources.
+                        enum:
+                        - mini
+                        - small
+                        type: string
+                    type: object
                 type: object
               providerConfigRef:
                 default:

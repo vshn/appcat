@@ -96,7 +96,7 @@ type VSHNForgejoServiceSpec struct {
 	// Version contains supported version of Forgejo.
 	// Multiple versions are supported. Defaults to 10.0.0 if not set.
 	// +kubebuilder:default="10.0.0"
-	Version string `json:"version,omitempty"`
+	MajorVersion string `json:"majorVersion,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

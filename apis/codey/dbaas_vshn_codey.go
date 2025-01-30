@@ -61,13 +61,6 @@ type InstanceServiceSpec struct {
 	// AdminEmail for email notifications.
 	// +kubebuilder:validation:Required
 	AdminEmail string `json:"adminEmail"`
-
-	// FQDN contains the FQDNs array, which will be used for the ingress.
-	// If it's not set, no ingress will be deployed.
-	// This also enables strict hostname checking for this FQDN.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinItems=1
-	FQDN []string `json:"fqdn"`
 }
 
 // InstanceStatus reflects the observed state of a Instance.

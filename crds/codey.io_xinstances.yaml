@@ -89,15 +89,6 @@ spec:
                       adminEmail:
                         description: AdminEmail for email notifications.
                         type: string
-                      fqdn:
-                        description: |-
-                          FQDN contains the FQDNs array, which will be used for the ingress.
-                          If it's not set, no ingress will be deployed.
-                          This also enables strict hostname checking for this FQDN.
-                        items:
-                          type: string
-                        minItems: 1
-                        type: array
                       majorVersion:
                         description: |-
                           Version contains supported version of Instance.
@@ -105,7 +96,6 @@ spec:
                         type: string
                     required:
                     - adminEmail
-                    - fqdn
                     type: object
                   size:
                     description: Size contains settings to control the sizing of a

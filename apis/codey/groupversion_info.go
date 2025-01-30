@@ -19,5 +19,5 @@ var (
 )
 
 func init() {
-	SchemeBuilder.Register(&Codey{}, &XCodey{})
+	SchemeBuilder.Register(&Instance{}, &XInstance{})
 }

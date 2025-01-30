@@ -4,62 +4,62 @@ package codey
 
 import xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 
-// GetCondition of this XCodey.
-func (mg *XCodey) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+// GetCondition of this XInstance.
+func (mg *XInstance) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
 	return mg.Status.GetCondition(ct)
 }
 
-// GetDeletionPolicy of this XCodey.
-func (mg *XCodey) GetDeletionPolicy() xpv1.DeletionPolicy {
+// GetDeletionPolicy of this XInstance.
+func (mg *XInstance) GetDeletionPolicy() xpv1.DeletionPolicy {
 	return mg.Spec.DeletionPolicy
 }
 
-// GetManagementPolicies of this XCodey.
-func (mg *XCodey) GetManagementPolicies() xpv1.ManagementPolicies {
+// GetManagementPolicies of this XInstance.
+func (mg *XInstance) GetManagementPolicies() xpv1.ManagementPolicies {
 	return mg.Spec.ManagementPolicies
 }
 
-// GetProviderConfigReference of this XCodey.
-func (mg *XCodey) GetProviderConfigReference() *xpv1.Reference {
+// GetProviderConfigReference of this XInstance.
+func (mg *XInstance) GetProviderConfigReference() *xpv1.Reference {
 	return mg.Spec.ProviderConfigReference
 }
 
-// GetPublishConnectionDetailsTo of this XCodey.
-func (mg *XCodey) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
+// GetPublishConnectionDetailsTo of this XInstance.
+func (mg *XInstance) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
 	return mg.Spec.PublishConnectionDetailsTo
 }
 
-// GetWriteConnectionSecretToReference of this XCodey.
-func (mg *XCodey) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+// GetWriteConnectionSecretToReference of this XInstance.
+func (mg *XInstance) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
 }
 
-// SetConditions of this XCodey.
-func (mg *XCodey) SetConditions(c ...xpv1.Condition) {
+// SetConditions of this XInstance.
+func (mg *XInstance) SetConditions(c ...xpv1.Condition) {
 	mg.Status.SetConditions(c...)
 }
 
-// SetDeletionPolicy of this XCodey.
-func (mg *XCodey) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+// SetDeletionPolicy of this XInstance.
+func (mg *XInstance) SetDeletionPolicy(r xpv1.DeletionPolicy) {
 	mg.Spec.DeletionPolicy = r
 }
 
-// SetManagementPolicies of this XCodey.
-func (mg *XCodey) SetManagementPolicies(r xpv1.ManagementPolicies) {
+// SetManagementPolicies of this XInstance.
+func (mg *XInstance) SetManagementPolicies(r xpv1.ManagementPolicies) {
 	mg.Spec.ManagementPolicies = r
 }
 
-// SetProviderConfigReference of this XCodey.
-func (mg *XCodey) SetProviderConfigReference(r *xpv1.Reference) {
+// SetProviderConfigReference of this XInstance.
+func (mg *XInstance) SetProviderConfigReference(r *xpv1.Reference) {
 	mg.Spec.ProviderConfigReference = r
 }
 
-// SetPublishConnectionDetailsTo of this XCodey.
-func (mg *XCodey) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
+// SetPublishConnectionDetailsTo of this XInstance.
+func (mg *XInstance) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
 	mg.Spec.PublishConnectionDetailsTo = r
 }
 
-// SetWriteConnectionSecretToReference of this XCodey.
-func (mg *XCodey) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+// SetWriteConnectionSecretToReference of this XInstance.
+func (mg *XInstance) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }

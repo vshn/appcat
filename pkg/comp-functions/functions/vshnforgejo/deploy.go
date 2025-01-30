@@ -100,7 +100,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					"SQLITE_JOURNAL_MODE": "WAL",
 				},
 				"image": map[string]any{
-					"tag": comp.Spec.Parameters.Service.Version,
+					"tag": comp.Spec.Parameters.Service.MajorVersion,
 				},
 				"indexer": map[string]any{
 					"ISSUE_INDEXER_TYPE":   "bleve",

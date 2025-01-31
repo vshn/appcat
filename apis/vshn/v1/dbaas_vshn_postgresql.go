@@ -434,3 +434,7 @@ func (v *VSHNPostgreSQL) GetBillingName() string {
 func (v *VSHNPostgreSQL) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
 }
+
+func (v *VSHNPostgreSQL) GetEnabledAddOns() []AddOn {
+	return []AddOn{}
+}

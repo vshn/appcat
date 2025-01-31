@@ -22,7 +22,6 @@ func TestBilling(t *testing.T) {
 		comp              *v1.VSHNNextcloud
 		svc               *runtime.ServiceRuntime
 		org               string
-		addOns            []ServiceAddOns
 		expectedRuleGroup v2.RuleGroup
 	}{
 		{
@@ -40,17 +39,17 @@ func TestBilling(t *testing.T) {
 					Parameters: v1.VSHNNextcloudParameters{
 						Instances: 1,
 						Service:   v1.VSHNNextcloudServiceSpec{ServiceLevel: v1.BestEffort},
+						AddOns: v1.VSHNNextcloudAddOns{
+							Office: v1.OfficeSpec{
+								Enabled: true,
+								FQDN:    "example.com",
+							},
+						},
 					},
 				},
 			},
 			svc: commontest.LoadRuntimeFromFile(t, "common/billing.yaml"),
 			org: "APPUiO",
-			addOns: []ServiceAddOns{
-				{
-					Name:      "office",
-					Instances: 1,
-				},
-			},
 			expectedRuleGroup: v2.RuleGroup{
 				Name: "appcat-metering-rules",
 				Rules: []v2.Rule{
@@ -105,9 +104,8 @@ func TestBilling(t *testing.T) {
 					},
 				},
 			},
-			svc:    commontest.LoadRuntimeFromFile(t, "common/billing.yaml"),
-			org:    "APPUiO",
-			addOns: []ServiceAddOns{},
+			svc: commontest.LoadRuntimeFromFile(t, "common/billing.yaml"),
+			org: "APPUiO",
 			expectedRuleGroup: v2.RuleGroup{
 				Name: "appcat-metering-rules",
 				Rules: []v2.Rule{
@@ -132,7 +130,7 @@ func TestBilling(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := CreateBillingRecord(context.Background(), tt.svc, tt.comp, tt.addOns...)
+			r := CreateBillingRecord(context.Background(), tt.svc, tt.comp)
 			assert.Equal(t, xfnproto.Severity_SEVERITY_NORMAL, r.Severity)
 			actual := &v2.PrometheusRule{}
 			err := tt.svc.GetDesiredKubeObject(actual, "nextcloud-gc9x4-billing")

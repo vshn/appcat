@@ -8,10 +8,10 @@ import (
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
-	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -85,7 +85,7 @@ func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *ru
 
 	updateConnectionSecretWithLoadBalancerIP(ctx, svc, k8sservice)
 
-	err = addLoadbalancerNetpolicy(svc, comp)
+	err = common.AddLoadbalancerNetpolicy(svc, comp)
 	if err != nil {
 		return runtime.NewWarningResult(err.Error())
 	}
@@ -109,28 +109,4 @@ func updateConnectionSecretWithLoadBalancerIP(ctx context.Context, svc *runtime.
 	ip := service.Status.LoadBalancer.Ingress[0].IP
 	svc.SetConnectionDetail("LOADBALANCER_IP", []byte(ip))
 
-}
-
-// we effectively have to allow all traffic that the service can be
-// accessed via the loadbalancer.
-func addLoadbalancerNetpolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) error {
-	np := &netv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "allow-all",
-			Namespace: comp.GetInstanceNamespace(),
-		},
-		Spec: netv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{},
-			Ingress: []netv1.NetworkPolicyIngressRule{
-				{},
-			},
-		},
-	}
-
-	err := svc.SetDesiredKubeObject(np, comp.GetName()+"-allow-all")
-	if err != nil {
-		return fmt.Errorf("cannot deploy allow all network policy: %w", err)
-	}
-
-	return nil
 }

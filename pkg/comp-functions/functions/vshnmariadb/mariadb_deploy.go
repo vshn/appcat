@@ -19,7 +19,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
-	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -480,7 +479,7 @@ func createMainService(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, se
 			if len(service.Status.LoadBalancer.Ingress) != 0 {
 				svc.SetConnectionDetail("LOADBALANCER_IP", []byte(service.Status.LoadBalancer.Ingress[0].IP))
 			}
-			err := addLoadbalancerNetpolicy(svc, comp)
+			err := common.AddLoadbalancerNetpolicy(svc, comp)
 			if err != nil {
 				return err
 			}
@@ -502,28 +501,4 @@ func getMariaDBRootPassword(secretName string, svc *runtime.ServiceRuntime) ([]b
 		return nil, err
 	}
 	return secret.Data["mariadb-root-password"], nil
-}
-
-// we effectively have to allow all traffic that the service can be
-// accessed via the loadbalancer.
-func addLoadbalancerNetpolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) error {
-	np := &netv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "allow-all",
-			Namespace: comp.GetInstanceNamespace(),
-		},
-		Spec: netv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{},
-			Ingress: []netv1.NetworkPolicyIngressRule{
-				{},
-			},
-		},
-	}
-
-	err := svc.SetDesiredKubeObject(np, comp.GetName()+"-allow-all")
-	if err != nil {
-		return fmt.Errorf("cannot deploy allow all network policy: %w", err)
-	}
-
-	return nil
 }

@@ -104,8 +104,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					"tag": comp.Spec.Parameters.Service.MajorVersion,
 				},
 				"indexer": map[string]any{
-					"ISSUE_INDEXER_TYPE":   "bleve",
-					"REPO_INDEXER_ENABLED": true,
+					"ISSUE_INDEXER_TYPE": "bleve",
 				},
 				"lfs": map[string]any{
 					"PATH": "/data/git/lfs",

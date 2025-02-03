@@ -1379,6 +1379,7 @@ func (s *ServiceRuntime) GetCrossplaneNamespace() string {
 
 // DeployConnectionDetailsToInstanceNS will override the namespace for the connection details to the
 // crossplane namespace and also deploy a copy of that to the instance namespace.
+// It will prefix the secret name with the composite name, to ensure that no secret names clash in the crossplane namespace.
 func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 
 	for i := range s.desiredResources {
@@ -1390,10 +1391,6 @@ func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 		if _, exists := s.desiredResources[i].Resource.GetAnnotations()[IgnoreConnectionDetailsAnnotation]; exists {
 			continue
 		}
-
-		cdRef.Namespace = s.GetCrossplaneNamespace()
-
-		s.desiredResources[i].Resource.SetWriteConnectionSecretToReference(cdRef)
 
 		cd, err := s.GetObservedComposedResourceConnectionDetails(string(i))
 		if err != nil {
@@ -1417,7 +1414,18 @@ func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 			Data: cd,
 		}
 
-		err = s.SetDesiredKubeObject(secret, s.desiredComposite.GetName()+"-cd")
+		compName := s.desiredResources[i].Resource.GetName()
+
+		// prefix the name in the connetiondetailsref
+		// and set to crossplane namespace
+		cdRef.Name = compName + "-" + cdRef.Name
+		cdRef.Namespace = s.GetCrossplaneNamespace()
+
+		s.desiredResources[i].Resource.SetWriteConnectionSecretToReference(cdRef)
+
+		// We need to concatenate the name of the resource with the name of its immediate parent composite to avoid clashes
+		// in the desired map
+		err = s.SetDesiredKubeObject(secret, compName+"-"+s.desiredComposite.GetName())
 		if err != nil {
 			return err
 		}

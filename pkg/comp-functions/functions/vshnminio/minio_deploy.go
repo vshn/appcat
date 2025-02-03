@@ -314,6 +314,9 @@ func createSliBucket(comp *vshnv1.VSHNMinio, xminioName string, svc *runtime.Ser
 		},
 	}
 
+	// Because `ObjectBucket` is a wrapped claim it's `WriteConnectionSecretToRef` is
+	// masked by the wrapping kube object, it won't work with the runtime's connectionSecret handling.
+	// So this is a hack to still deploy it to the right place.
 	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + resNameSuffix)
 	if err != nil {
 		if err != runtime.ErrNotFound {

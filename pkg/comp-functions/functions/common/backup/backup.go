@@ -68,7 +68,7 @@ func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtim
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Namespace: svc.GetCrossplaneNamespace(),
-					Name:      comp.GetName() + "-" + credentialSecretName,
+					Name:      credentialSecretName,
 				},
 			},
 		},
@@ -148,7 +148,7 @@ func createK8upSchedule(ctx context.Context, comp common.InfoGetter, svc *runtim
 					Bucket:   bucket,
 					AccessKeyIDSecretRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: comp.GetName() + "-" + credentialSecretName,
+							Name: credentialSecretName,
 						},
 						Key: "AWS_ACCESS_KEY_ID",
 					},

@@ -124,7 +124,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 			Parameters: *params,
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      a.comp.GetName() + "-" + PgSecretName,
+					Name:      PgSecretName,
 					Namespace: a.comp.GetInstanceNamespace(),
 				},
 			},
@@ -146,5 +146,5 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		return "", err
 	}
 
-	return a.comp.GetName() + "-" + PgSecretName, a.svc.SetDesiredComposedResource(pg)
+	return PgSecretName, a.svc.SetDesiredComposedResource(pg)
 }

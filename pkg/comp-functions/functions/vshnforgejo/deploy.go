@@ -175,9 +175,18 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 			"type": "Recreate",
 		},
 	}
+	/*
+			          hosts:
+		          		- host: forgejo213.apps.whatever.cloud
+		          		  paths:
+		          		  - path: /
+		          		    pathType: Prefix
+	*/
+	nonTLShosts := []map[string]any{}
 
 	for _, host := range comp.Spec.Parameters.Service.FQDN {
-		values["ingress"].(map[string]any)["hosts"] = append(values["ingress"].(map[string]any)["hosts"].([]map[string]any), map[string]any{
+		// building an array of maps with the host and the paths
+		nonTLShosts = append(nonTLShosts, map[string]any{
 			"host": host,
 			"paths": []map[string]any{
 				{
@@ -186,7 +195,20 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				},
 			},
 		})
-		values["ingress"].(map[string]any)["tls"].([]map[string]any)[0]["hosts"] = append(values["ingress"].(map[string]any)["tls"].([]map[string]any)[0]["hosts"].([]string), host)
+
+		err := common.SetNestedObjectValue(values, []string{"ingress", "tls"}, []map[string]any{
+			{
+				"hosts":      comp.Spec.Parameters.Service.FQDN,
+				"secretName": "forgejo-tls",
+			}})
+		if err != nil {
+			return err
+		}
+	}
+
+	err := common.SetNestedObjectValue(values, []string{"ingress", "hosts"}, nonTLShosts)
+	if err != nil {
+		return err
 	}
 
 	if svc.Config.Data["isOpenshift"] == "true" {
@@ -207,7 +229,10 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	if comp.Spec.Parameters.Service.AdminEmail != "" {
-		values["gitea"].(map[string]any)["config"].(map[string]any)["admin"].(map[string]any)["ADMIN_EMAIL"] = comp.Spec.Parameters.Service.AdminEmail
+		err = common.SetNestedObjectValue(values, []string{"gitea", "config", "admin", "ADMIN_EMAIL"}, comp.Spec.Parameters.Service.AdminEmail)
+		if err != nil {
+			return err
+		}
 	}
 
 	release, err := common.NewRelease(ctx, svc, comp, values)

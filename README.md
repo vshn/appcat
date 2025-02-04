@@ -72,7 +72,7 @@ Simply point `KUBECONFIG` to `.kind/.kind/kind-config` and use `kubectl` as usua
 > On linux, Podman and rootless Docker have been found to cause issues.  
 > Ensure that you are using **rootful Docker** to save yourself loads of trouble.  
 >
-> Additionally, on linux, you might encounter issues with `iptables`.  
+> Additionally, on Fedora, you might encounter issues with `iptables`.  
 > Execute the following on the host prior to building the devcontainer:
 > ```bash
 > sudo dnf install -y iptables-legacy
@@ -81,6 +81,7 @@ Simply point `KUBECONFIG` to `.kind/.kind/kind-config` and use `kubectl` as usua
 > ```
 >
 > *To further debug dind, consult `/tmp/dockerd.log` in the container.*
+> Please refer to official documentation under: https://docs.docker.com/engine/install/ 
 
 ### Devcontainer customizations
 

@@ -24,7 +24,7 @@ desired:
         parameters:
           service:
             tls:
-              enabled: true
+              enabled: false
         writeConnectionSecretToRef: {}
       status: {}
 observed:
@@ -53,6 +53,6 @@ observed:
         parameters:
           service:
             tls:
-              enabled: true
+              enabled: false
         writeConnectionSecretToRef: {}
       status: {}

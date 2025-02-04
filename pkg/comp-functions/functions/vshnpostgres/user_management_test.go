@@ -20,7 +20,7 @@ func Test_addProviderConfig(t *testing.T) {
 	// when
 	comp := &vshnv1.VSHNPostgreSQL{}
 	assert.NoError(t, svc.GetObservedComposite(comp))
-	addProviderConfig(comp, svc)
+	addProviderConfig(comp, svc, comp.Spec.Parameters.Service.TLS.Enabled)
 
 	// then
 	secret := &corev1.Secret{}
@@ -29,6 +29,27 @@ func Test_addProviderConfig(t *testing.T) {
 	config := &pgv1alpha1.ProviderConfig{}
 	assert.NoError(t, svc.GetDesiredKubeObject(config, comp.GetName()+"-providerconfig"))
 	assert.Equal(t, comp.GetInstanceNamespace(), secret.GetNamespace())
+	assert.Equal(t, *config.Spec.SSLMode, "required")
+
+}
+
+func Test_tlsDisabled(t *testing.T) {
+	// given
+	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/usermanagement/02-tls-disabled.yaml")
+
+	// when
+	comp := &vshnv1.VSHNPostgreSQL{}
+	assert.NoError(t, svc.GetObservedComposite(comp))
+	addProviderConfig(comp, svc, comp.Spec.Parameters.Service.TLS.Enabled)
+
+	// then
+	secret := &corev1.Secret{}
+	assert.NoError(t, svc.GetDesiredKubeObject(secret, comp.GetName()+"-provider-conf-credentials"))
+
+	config := &pgv1alpha1.ProviderConfig{}
+	assert.NoError(t, svc.GetDesiredKubeObject(config, comp.GetName()+"-providerconfig"))
+	assert.Equal(t, comp.GetInstanceNamespace(), secret.GetNamespace())
+	assert.Equal(t, *config.Spec.SSLMode, "disable")
 
 }
 

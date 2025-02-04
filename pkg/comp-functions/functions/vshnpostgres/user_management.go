@@ -26,7 +26,7 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 		return nil
 	}
 
-	addProviderConfig(comp, svc)
+	addProviderConfig(comp, svc, comp.Spec.Parameters.Service.TLS.Enabled)
 
 	for _, access := range comp.Spec.Parameters.Service.Access {
 
@@ -138,7 +138,7 @@ func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, sec
 	}
 }
 
-func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime) {
+func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime, tlsEnabled bool) {
 	cd := svc.GetConnectionDetails()
 
 	secret := &corev1.Secret{
@@ -163,6 +163,10 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime) {
 		svc.Log.Error(err, "cannot set credential secret for provider-sql")
 	}
 
+	sslMode := "disable"
+	if tlsEnabled {
+		sslMode = "required"
+	}
 	config := &pgv1alpha1.ProviderConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName(),
@@ -170,7 +174,7 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime) {
 		Spec: pgv1alpha1.ProviderConfigSpec{
 			// Porvider-SQL doesn't support passing certificates to the config
 			// se we're stuck with require, which doesn't actually verify the certs.
-			SSLMode: ptr.To("require"),
+			SSLMode: &sslMode,
 			Credentials: pgv1alpha1.ProviderCredentials{
 				Source: "PostgreSQLConnectionSecret",
 				ConnectionSecretRef: &xpv1.SecretReference{

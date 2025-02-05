@@ -225,7 +225,10 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 			svc.Log.Error(fmt.Errorf("cannot unmarshal ingress annotations"), "error", err)
 		}
 
-		values["ingress"].(map[string]any)["annotations"] = annotations
+		err = common.SetNestedObjectValue(values, []string{"ingress", "annotations"}, annotations)
+		if err != nil {
+			return err
+		}
 	}
 
 	if comp.Spec.Parameters.Service.AdminEmail != "" {

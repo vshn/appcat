@@ -68,6 +68,21 @@ Kindev will be installed in the `.kind` folder.
 Vscode handles all port-forwarding automagically, so kindev and all endpoints will be available all the same from the host.
 Simply point `KUBECONFIG` to `.kind/.kind/kind-config` and use `kubectl` as usual.
 
+> [!NOTE]
+> On linux, Podman and rootless Docker have been found to cause issues.  
+> Ensure that you are using **rootful Docker** to save yourself loads of trouble.  
+>
+> Additionally, on Fedora, you might encounter issues with `iptables`.  
+> Execute the following on the host prior to building the devcontainer:
+> ```bash
+> sudo dnf install -y iptables-legacy
+> sudo modprobe ip_tables
+> echo 'ip_tables' | sudo tee /etc/modules
+> ```
+>
+> *To further debug dind, consult `/tmp/dockerd.log` in the container.*
+> Please refer to official documentation under: https://docs.docker.com/engine/install/ 
+
 ### Devcontainer customizations
 
 It's possible to customize the devcontainer.

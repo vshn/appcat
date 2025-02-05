@@ -86,19 +86,19 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 			ObjectMeta: ingressBaseMeta,
 			Spec: netv1.IngressSpec{
 				Rules: createIngressRule(comp, fqdnsWildcard),
-				TLS:   []netv1.IngressTLS{},
+				TLS:   []netv1.IngressTLS{{}},
 			},
 		})
 	}
 
 	for _, ingress := range ingresses {
-		namePrefix := "-ingress-letsencrypt"
-		if len(ingress.Spec.TLS) == 0 {
-			namePrefix = "-ingress-wildcard"
+		nameSuffix := "letsencrypt"
+		if strings.HasSuffix(ingress.Name, "wildcard") {
+			nameSuffix = "wildcard"
 		}
-		err = svc.SetDesiredKubeObject(ingress, comp.GetName()+namePrefix)
+		err = svc.SetDesiredKubeObject(ingress, comp.GetName()+"-ingress-"+nameSuffix)
 		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot set create ingress (%s): %s", namePrefix, err))
+			return runtime.NewWarningResult(fmt.Sprintf("cannot set create ingress (%s): %s", nameSuffix, err))
 		}
 	}
 

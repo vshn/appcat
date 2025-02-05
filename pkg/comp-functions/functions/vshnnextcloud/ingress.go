@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -35,6 +36,35 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		}
 	}
 
+	var ocpDefaultAppsDomain string
+	if svc.Config.Data["ocpDefaultAppsDomain"] != "" {
+		err := yaml.Unmarshal([]byte(svc.Config.Data["ocpDefaultAppsDomain"]), ocpDefaultAppsDomain)
+		if err != nil {
+			svc.Log.Error(err, "cannot unmarshal ocpDefaultAppsDomain from input")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ocpDefaultAppsDomain from input: %s", err)))
+		}
+	}
+
+	usesDefaultAppsDomain := false
+	if ocpDefaultAppsDomain != "" {
+		for _, fqdn := range comp.Spec.Parameters.Service.FQDN {
+			usesDefaultAppsDomain = strings.Contains(fqdn, ocpDefaultAppsDomain)
+			if usesDefaultAppsDomain {
+				break
+			}
+		}
+	}
+
+	var ingressTls []netv1.IngressTLS
+	if usesDefaultAppsDomain {
+		ingressTls = append(ingressTls, netv1.IngressTLS{})
+	} else {
+		ingressTls = append(ingressTls, netv1.IngressTLS{
+			Hosts:      comp.Spec.Parameters.Service.FQDN,
+			SecretName: "nextcloud-ingress-cert",
+		})
+	}
+
 	ingress := &netv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        comp.GetName(),
@@ -43,12 +73,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		},
 		Spec: netv1.IngressSpec{
 			Rules: createIngressRule(comp),
-			TLS: []netv1.IngressTLS{
-				{
-					Hosts:      comp.Spec.Parameters.Service.FQDN,
-					SecretName: "nextcloud-ingress-cert",
-				},
-			},
+			TLS:   ingressTls,
 		},
 	}
 

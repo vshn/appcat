@@ -29,22 +29,22 @@ func getComp() *vshnv1.VSHNMariaDB {
 }
 
 func Test_copyCertificateSecret(t *testing.T) {
-	svc := commontest.LoadRuntimeFromFile(t, "empty.yaml")
+	svc := commontest.LoadRuntimeFromFile(t, "vshnmariadb/01-user-management.yaml")
 
 	// Given TLS
 	comp := getComp()
 
 	// When applied
-	assert.NoError(t, copyCertificateSecret(comp, svc, "test", false))
+	assert.NoError(t, copyCertificateSecret(comp, svc, false))
 	obj := &xkubev1.Object{}
 	//Then expect secret
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(obj, comp.GetName()+"-proxysql-specific-certs"))
 
-	svc = commontest.LoadRuntimeFromFile(t, "empty.yaml")
+	svc = commontest.LoadRuntimeFromFile(t, "vshnmariadb/01-user-management.yaml")
 	// Given no TLS
 	comp.Spec.Parameters.TLS.TLSEnabled = false
 	// When applied
-	assert.NoError(t, copyCertificateSecret(comp, svc, "test", false))
+	assert.NoError(t, copyCertificateSecret(comp, svc, false))
 	//Then expect no secret
 	assert.Error(t, svc.GetDesiredComposedResourceByName(obj, comp.GetName()+"-proxysql-specific-certs"))
 }

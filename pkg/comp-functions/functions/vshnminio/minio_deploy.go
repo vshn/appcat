@@ -292,10 +292,12 @@ func createServiceMonitor(comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) e
 }
 
 func createSliBucket(comp *vshnv1.VSHNMinio, xminioName string, svc *runtime.ServiceRuntime) error {
+	resNameSuffix := "-vshn-test-bucket-for-sli"
+
 	obj := &v1.ObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      SLIBucketName,
-			Namespace: comp.GetInstanceNamespace(),
+			Name:      comp.GetName() + "-" + SLIBucketName,
+			Namespace: svc.GetCrossplaneNamespace(),
 		},
 		Spec: v1.ObjectBucketSpec{
 			Parameters: v1.ObjectBucketParameters{
@@ -303,13 +305,37 @@ func createSliBucket(comp *vshnv1.VSHNMinio, xminioName string, svc *runtime.Ser
 				Region:     "us-east-1",
 			},
 			WriteConnectionSecretToRef: vshnv1.LocalObjectReference{
-				Name:      SLIBucketName,
-				Namespace: comp.GetInstanceNamespace(),
+				Name:      comp.GetName() + "-" + SLIBucketName,
+				Namespace: svc.GetCrossplaneNamespace(),
 			},
 			CompositionReference: crossplane.CompositionReference{
 				Name: fmt.Sprintf("%s.objectbuckets.appcat.vshn.io", xminioName),
 			},
 		},
 	}
-	return svc.SetDesiredKubeObject(obj, comp.Name+"-vshn-test-bucket-for-sli")
+
+	// Because `ObjectBucket` is a wrapped claim it's `WriteConnectionSecretToRef` is
+	// masked by the wrapping kube object, it won't work with the runtime's connectionSecret handling.
+	// So this is a hack to still deploy it to the right place.
+	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + resNameSuffix)
+	if err != nil {
+		if err != runtime.ErrNotFound {
+			return err
+		}
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SLIBucketName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Data: cd,
+	}
+
+	err = svc.SetDesiredKubeObject(secret, comp.GetName()+resNameSuffix+"-cd")
+	if err != nil {
+		return err
+	}
+
+	return svc.SetDesiredKubeObject(obj, comp.Name+resNameSuffix, runtime.KubeOptionDeployOnControlPlane)
 }

@@ -78,6 +78,9 @@ type VSHNMariaDBParameters struct {
 	// Monitoring contains settings to control monitoring.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
+	// Network contains any network related settings.
+	Network VSHNDBaaSNetworkSpec `json:"network,omitempty"`
+
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
 

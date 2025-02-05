@@ -70,7 +70,7 @@ func getDesiredRelease(svc *runtime.ServiceRuntime, releaseName string) (*xhelmv
 }
 
 // NewRelease returns a new release with some defaults set.
-func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, values map[string]any, cd ...xhelmv1.ConnectionDetail) (*xhelmv1.Release, error) {
+func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, values map[string]any, resName string, cd ...xhelmv1.ConnectionDetail) (*xhelmv1.Release, error) {
 
 	vb, err := json.Marshal(values)
 	if err != nil {
@@ -101,7 +101,7 @@ func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGette
 				},
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Name:      comp.GetName() + "-connection",
-					Namespace: comp.GetInstanceNamespace(),
+					Namespace: svc.GetCrossplaneNamespace(),
 				},
 			},
 			ConnectionDetails: cd,

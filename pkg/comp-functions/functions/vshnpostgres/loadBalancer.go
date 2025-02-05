@@ -8,6 +8,7 @@ import (
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -83,6 +84,11 @@ func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *ru
 	}
 
 	updateConnectionSecretWithLoadBalancerIP(ctx, svc, k8sservice)
+
+	err = common.AddLoadbalancerNetpolicy(svc, comp)
+	if err != nil {
+		return runtime.NewWarningResult(err.Error())
+	}
 
 	return nil
 }

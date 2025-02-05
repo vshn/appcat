@@ -79,6 +79,9 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 	user := &miniov1.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: bucket.Spec.Parameters.BucketName,
+			Annotations: map[string]string{
+				runtime.IgnoreConnectionDetailsAnnotation: "true",
+			},
 		},
 		Spec: miniov1.UserSpec{
 			ResourceSpec: xpv1.ResourceSpec{
@@ -87,7 +90,7 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 				},
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Name:      bucket.GetName(),
-					Namespace: "syn-crossplane",
+					Namespace: svc.GetCrossplaneNamespace(),
 				},
 			},
 			ForProvider: miniov1.UserParameters{

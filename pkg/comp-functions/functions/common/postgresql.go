@@ -48,7 +48,9 @@ func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(timeOfDayMain
 	return a
 }
 
-func (a *PostgreSQLDependencyBuilder) CreateDependency() error {
+// CreateDependency applies the postgresql instance to the desired state.
+// It returns the name of the secret that will contain the connection details.
+func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 	// Unfortunately k8up and stackgres backups don't match up very well...
 	// if no daily backup is set we just do the default.
 	retention := 6
@@ -62,7 +64,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() error {
 
 			pgBouncerConfigBytes, err := json.Marshal(a.pgBouncerConfig)
 			if err != nil {
-				return err
+				return "", err
 			}
 			pgBouncerRaw = k8sruntime.RawExtension{
 				Raw: pgBouncerConfigBytes,
@@ -90,7 +92,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() error {
 	if a.psqlParams != nil {
 		err := mergo.Merge(params, a.psqlParams, mergo.WithOverride)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		// Mergo doesn't override non-default values with default values. So
@@ -110,9 +112,13 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() error {
 	// and would therefore override any value we set before the merge.
 	params.Instances = a.comp.GetInstances()
 
+	// We have to ignore the provideconfig on the composite itself.
 	pg := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: a.comp.GetName() + PgInstanceNameSuffix,
+			Labels: map[string]string{
+				runtime.ProviderConfigIgnoreLabel: "true",
+			},
 		},
 		Spec: vshnv1.XVSHNPostgreSQLSpec{
 			Parameters: *params,
@@ -125,15 +131,20 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() error {
 		},
 	}
 
+	// But pass the parent's provider config properly to the instance.
+	if v, exists := a.comp.GetLabels()[runtime.ProviderConfigLabel]; exists {
+		pg.Labels[runtime.ProviderConfigLabel] = v
+	}
+
 	err := CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), false, a.svc)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = DisableBilling(pg.GetInstanceNamespace(), a.svc)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return a.svc.SetDesiredComposedResource(pg)
+	return PgSecretName, a.svc.SetDesiredComposedResource(pg)
 }

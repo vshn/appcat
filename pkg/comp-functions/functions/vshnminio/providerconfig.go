@@ -40,7 +40,7 @@ func DeployMinioProviderConfig(_ context.Context, comp *vshnv1.VSHNMinio, svc *r
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(config, comp.GetName()+"-providerconfig")
+	err = svc.SetDesiredKubeObject(config, comp.GetName()+"-providerconfig", runtime.KubeOptionDeployOnControlPlane)
 	if err != nil {
 		err = fmt.Errorf("cannot get providerconfig: %w", err)
 		return runtime.NewFatalResult(err)

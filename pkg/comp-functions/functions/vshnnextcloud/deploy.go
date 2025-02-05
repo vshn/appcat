@@ -25,7 +25,6 @@ import (
 
 const (
 	pgInstanceNameSuffix = "-pg"
-	pgSecretName         = "pg-creds"
 
 	adminUserSecretField          = "adminUser"
 	adminPWSecretField            = "adminPassword"
@@ -68,9 +67,10 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	var pgTime vshnv1.TimeOfDay
 	pgTime.SetTime(comp.GetMaintenanceTimeOfDay().GetTime().Add(20 * time.Minute))
 
+	pgSecret := ""
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
 		svc.Log.Info("Adding postgresql instance")
-		err = common.NewPostgreSQLDependencyBuilder(svc, comp).
+		pgSecret, err = common.NewPostgreSQLDependencyBuilder(svc, comp).
 			AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
 			SetCustomMaintenanceSchedule(pgTime).
 			CreateDependency()
@@ -135,7 +135,7 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult(fmt.Sprintf("Cannot add configmap for Collabora: %s", err))
 	}
 
-	err = addRelease(ctx, svc, comp, adminSecret)
+	err = addRelease(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create release: %s", err))
 	}
@@ -158,8 +158,8 @@ func createInstallCollaboraConfigMap(comp *vshnv1.VSHNNextcloud, svc *runtime.Se
 	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-collabora-install-script")
 }
 
-func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret string) error {
-	release, err := newRelease(ctx, svc, comp, adminSecret)
+func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret, pgSecret string) error {
+	release, err := newRelease(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 	return res, nil
 }
 
-func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret string) (map[string]any, error) {
+func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret, pgSecret string) (map[string]any, error) {
 	values := map[string]any{}
 
 	res, err := getResources(ctx, svc, comp)
@@ -211,7 +211,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"type":    "postgresql",
 			"existingSecret": map[string]any{
 				"enabled":     true,
-				"secretName":  pgSecretName,
+				"secretName":  pgSecret,
 				"usernameKey": "POSTGRESQL_USER",
 				"passwordKey": "POSTGRESQL_PASSWORD",
 				"hostKey":     "POSTGRESQL_HOST",
@@ -375,8 +375,8 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	return values, nil
 }
 
-func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret string) (*xhelmv1.Release, error) {
-	values, err := newValues(ctx, svc, comp, adminSecret)
+func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
+	values, err := newValues(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +396,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot set keycloak version for cron sidecar: %w", err)
 	}
 
-	release, err := common.NewRelease(ctx, svc, comp, values)
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")
 
 	release.Spec.ForProvider.Chart.Name = "nextcloud"
 

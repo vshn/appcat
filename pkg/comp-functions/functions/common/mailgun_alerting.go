@@ -109,31 +109,25 @@ func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespac
 
 	xRef := xkube.Reference{
 		DependsOn: &xkube.DependsOn{
-			APIVersion: "v1",
-			Kind:       "Secret",
-			Namespace:  instanceNamespace,
-			Name:       alertManagerConfigSecretName,
+			Name: alertManagerConfigSecretName,
 		},
 	}
 
 	patchSecretWithOtherSecret := xkube.Reference{
 		PatchesFrom: &xkube.PatchesFrom{
 			DependsOn: xkube.DependsOn{
-				APIVersion: "v1",
-				Kind:       "Secret",
-				Namespace:  svc.Config.Data["emailAlertingSecretNamespace"],
-				Name:       svc.Config.Data["emailAlertingSecretName"],
+				Name: alertManagerConfigSecretName,
 			},
-			FieldPath: ptr.To("data.password"),
+			FieldPath: ptr.To("status.atProvider.manifest.data.password"),
 		},
 		ToFieldPath: ptr.To("data.password"),
 	}
 
-	if err := svc.SetDesiredKubeObject(secret, alertManagerConfigSecretName, runtime.KubeOptionAddRefs(patchSecretWithOtherSecret)); err != nil {
+	if err := svc.SetDesiredKubeObject(secret, alertManagerConfigSecretName, runtime.KubeOptionAddRefs(patchSecretWithOtherSecret), runtime.KubeOptionAllowDeletion); err != nil {
 		return err
 	}
 
-	return svc.SetDesiredKubeObject(ac, alertManagerConfigName, runtime.KubeOptionAddRefs(xRef))
+	return svc.SetDesiredKubeObject(ac, alertManagerConfigName, runtime.KubeOptionAddRefs(xRef), runtime.KubeOptionAllowDeletion)
 }
 
 func mailAlertingEnabled(config *v1.ConfigMap) bool {

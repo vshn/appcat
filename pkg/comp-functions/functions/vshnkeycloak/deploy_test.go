@@ -20,9 +20,10 @@ func Test_addPostgreSQL(t *testing.T) {
 
 	comp := &vshnv1.VSHNKeycloak{}
 
-	assert.NoError(t, common.NewPostgreSQLDependencyBuilder(svc, comp).
+	_, err := common.NewPostgreSQLDependencyBuilder(svc, comp).
 		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
-		CreateDependency())
+		CreateDependency()
+	assert.NoError(t, err)
 
 	pg := &vshnv1.XVSHNPostgreSQL{}
 
@@ -40,7 +41,8 @@ func Test_addPostgreSQL(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, common.NewPostgreSQLDependencyBuilder(svc, comp).AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).CreateDependency())
+	_, err = common.NewPostgreSQLDependencyBuilder(svc, comp).AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).CreateDependency()
+	assert.NoError(t, err)
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.False(t, *pg.Spec.Parameters.Backup.DeletionProtection)
 	assert.Equal(t, 1, pg.Spec.Parameters.Backup.Retention)
@@ -63,7 +65,7 @@ func Test_addRelease(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret"))
+	assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret", "mysecret"))
 
 	release := &xhelmv1.Release{}
 
@@ -89,7 +91,7 @@ func Test_addHARelease(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret"))
+	assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret", "mysecret"))
 	release := &xhelmv1.Release{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release"))
 	values := map[string]any{}
@@ -98,7 +100,8 @@ func Test_addHARelease(t *testing.T) {
 
 	pg := &vshnv1.XVSHNPostgreSQL{}
 
-	assert.NoError(t, common.NewPostgreSQLDependencyBuilder(svc, comp).AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).CreateDependency())
+	_, err := common.NewPostgreSQLDependencyBuilder(svc, comp).AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).CreateDependency()
+	assert.NoError(t, err)
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
 

@@ -28,7 +28,6 @@ func Test_addProviderConfig(t *testing.T) {
 
 	config := &pgv1alpha1.ProviderConfig{}
 	assert.NoError(t, svc.GetDesiredKubeObject(config, comp.GetName()+"-providerconfig"))
-	assert.Equal(t, comp.GetInstanceNamespace(), secret.GetNamespace())
 	assert.Equal(t, *config.Spec.SSLMode, "required")
 
 }
@@ -48,7 +47,6 @@ func Test_tlsDisabled(t *testing.T) {
 
 	config := &pgv1alpha1.ProviderConfig{}
 	assert.NoError(t, svc.GetDesiredKubeObject(config, comp.GetName()+"-providerconfig"))
-	assert.Equal(t, comp.GetInstanceNamespace(), secret.GetNamespace())
 	assert.Equal(t, *config.Spec.SSLMode, "disable")
 
 }

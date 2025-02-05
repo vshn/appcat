@@ -144,15 +144,20 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		return runtime.NewFatalResult(fmt.Errorf("cannot set cluster object: %w", err))
 	}
 
+	err = addStackgresCredentialsObserver(svc, comp, sgNamespace)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot observe stackgres credentials: %s", err))
+	}
+
 	return maintenance.New(comp, svc, schedule, instanceNamespace, service).
 		WithRole(maintRolename).
 		WithPolicyRules(policyRules).
 		WithExtraEnvs(additionalVars...).
-		WithExtraResources(createMaintenanceSecret(instanceNamespace, sgNamespace, comp.GetName()+"-maintenance-secret")).
+		WithExtraResources(createMaintenanceSecret(instanceNamespace, sgNamespace, comp.GetName()+"-maintenance-secret", comp.GetName())).
 		Run(ctx)
 }
 
-func createMaintenanceSecret(instanceNamespace, sgNamespace, resourceName string) maintenance.ExtraResource {
+func createMaintenanceSecret(instanceNamespace, sgNamespace, resourceName, compName string) maintenance.ExtraResource {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      maintSecretName,
@@ -166,12 +171,9 @@ func createMaintenanceSecret(instanceNamespace, sgNamespace, resourceName string
 	ref := xkubev1.Reference{
 		PatchesFrom: &xkubev1.PatchesFrom{
 			DependsOn: xkubev1.DependsOn{
-				APIVersion: "v1",
-				Kind:       "Secret",
-				Name:       "stackgres-restapi-admin",
-				Namespace:  sgNamespace,
+				Name: compName + "-stackgres-creds-observer",
 			},
-			FieldPath: ptr.To("data"),
+			FieldPath: ptr.To("status.atProvider.manifest.data"),
 		},
 		ToFieldPath: ptr.To("data"),
 	}
@@ -199,6 +201,23 @@ func setPsqlMinorVersion(svc *runtime.ServiceRuntime, desiredCluster *stackgresv
 	pgVersion := observedCluster.Spec.Postgres.Version
 
 	desiredCluster.Spec.Postgres.Version = pgVersion
+
+	return nil
+}
+
+func addStackgresCredentialsObserver(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, sgNamespace string) error {
+
+	stackgresCredentials := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "stackgres-restapi-admin",
+			Namespace: sgNamespace,
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(stackgresCredentials, comp.GetName()+"-stackgres-creds-observer", runtime.KubeOptionObserve)
+	if err != nil {
+		return fmt.Errorf("cannot deploy stackgres credentials observer: %w", err)
+	}
 
 	return nil
 }

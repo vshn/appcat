@@ -260,7 +260,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 			SkipPartOfReleaseCheck: true,
 		},
 	}
-	rel, err := common.NewRelease(ctx, svc, comp, values, cd...)
+	rel, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release", cd...)
 	rel.Spec.ForProvider.Chart.Name = comp.GetServiceName() + "-galera"
 
 	return rel, err
@@ -433,6 +433,11 @@ func createMainService(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, se
 		targetPort = 6033
 	}
 
+	serviceType := corev1.ServiceTypeClusterIP
+	if comp.Spec.Parameters.Network.ServiceType == "LoadBalancer" {
+		serviceType = corev1.ServiceTypeLoadBalancer
+	}
+
 	service := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceName,
@@ -440,7 +445,7 @@ func createMainService(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, se
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: target,
-			Type:     corev1.ServiceTypeClusterIP,
+			Type:     serviceType,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       serviceName,
@@ -462,6 +467,24 @@ func createMainService(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, se
 
 	svc.SetConnectionDetail("MARIADB_HOST", []byte(mariadbHost))
 	svc.SetConnectionDetail("MARIADB_URL", []byte(mariadbURL))
+
+	if serviceType == corev1.ServiceTypeLoadBalancer {
+		service := &corev1.Service{}
+		err := svc.GetObservedKubeObject(service, comp.GetName()+"-main-service")
+		if err != nil {
+			if err != runtime.ErrNotFound {
+				return err
+			}
+		} else {
+			if len(service.Status.LoadBalancer.Ingress) != 0 {
+				svc.SetConnectionDetail("LOADBALANCER_IP", []byte(service.Status.LoadBalancer.Ingress[0].IP))
+			}
+			err := common.AddLoadbalancerNetpolicy(svc, comp)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	return svc.SetDesiredKubeObject(&service, comp.GetName()+"-main-service")
 }

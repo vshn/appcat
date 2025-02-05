@@ -47,15 +47,16 @@ var (
 )
 
 const (
-	OwnerKindAnnotation       = "appcat.vshn.io/ownerkind"
-	OwnerVersionAnnotation    = "appcat.vshn.io/ownerapiversion"
-	OwnerGroupAnnotation      = "appcat.vshn.io/ownergroup"
-	ProtectedByAnnotation     = "appcat.vshn.io/protectedby"
-	ProtectsAnnotation        = "appcat.vshn.io/protects"
-	EventForwardAnnotation    = "appcat.vshn.io/forward-events-to"
-	providerConfigLabel       = "appcat.vshn.io/provider-config"
-	ProviderConfigIgnoreLabel = "appcat.vshn.io/ignore-provider-config"
-	WebhookAllowDeletionLabel = "appcat.vshn.io/webhook-allowdeletion"
+	OwnerKindAnnotation               = "appcat.vshn.io/ownerkind"
+	OwnerVersionAnnotation            = "appcat.vshn.io/ownerapiversion"
+	OwnerGroupAnnotation              = "appcat.vshn.io/ownergroup"
+	ProtectedByAnnotation             = "appcat.vshn.io/protectedby"
+	ProtectsAnnotation                = "appcat.vshn.io/protects"
+	EventForwardAnnotation            = "appcat.vshn.io/forward-events-to"
+	ProviderConfigLabel               = "appcat.vshn.io/provider-config"
+	ProviderConfigIgnoreLabel         = "appcat.vshn.io/ignore-provider-config"
+	WebhookAllowDeletionLabel         = "appcat.vshn.io/webhook-allowdeletion"
+	IgnoreConnectionDetailsAnnotation = "appcat.vshn.io/ignore-connection-details"
 )
 
 // Step describes a single change within a service.
@@ -85,6 +86,12 @@ type ServiceRuntime struct {
 	desiredComposite  *composite.Unstructured
 	observedComposite *composite.Unstructured
 	gvk               schema.GroupVersionKind
+	// kubeOptionTracker will keep track of all kubeOptions that get applied
+	// to the same kube object over each single function call.
+	// This ensures that we never drop a previously applied kubeOption again
+	// if we read the nested manifest from the kubeObject and re-apply it to the
+	// desired manifest.
+	kubeOptionTracker map[string][]KubeObjectOption
 }
 
 // Service contains all steps necessary to provide the service (except the legacy P+T portion).
@@ -193,11 +200,15 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequ
 
 	err = sr.addUsages()
 	if err != nil {
-		return errResp, err
+		return errResp, fmt.Errorf("cannot add usages: %w", err)
 	}
 	err = sr.ForwardEvents()
 	if err != nil {
-		return errResp, err
+		return errResp, fmt.Errorf("cannot forward events: %w", err)
+	}
+	err = sr.deployConnectionDetailsToInstanceNS()
+	if err != nil {
+		return errResp, fmt.Errorf("cannot deploy connection details: %w", err)
 	}
 
 	return sr.GetResponse()
@@ -343,6 +354,7 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 		desiredComposite:  desiredComposite.Resource,
 		observedComposite: observedComposite.Resource,
 		gvk:               comp.Resource.GetObjectKind().GroupVersionKind(),
+		kubeOptionTracker: map[string][]KubeObjectOption{},
 	}, nil
 }
 
@@ -452,7 +464,9 @@ func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName stri
 		return err
 	}
 
-	for _, o := range opts {
+	s.kubeOptionTracker[objectName] = append(s.kubeOptionTracker[objectName], opts...)
+
+	for _, o := range s.kubeOptionTracker[objectName] {
 		o(kobj)
 	}
 
@@ -469,7 +483,9 @@ func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectN
 		return err
 	}
 
-	for _, o := range opts {
+	s.kubeOptionTracker[resourceName] = append(s.kubeOptionTracker[resourceName], opts...)
+
+	for _, o := range s.kubeOptionTracker[resourceName] {
 		o(kobj)
 	}
 
@@ -507,7 +523,6 @@ func KubeOptionAllowDeletion(obj *xkube.Object) {
 
 // KubeOptionAddConnectionDetails adds the given connection details to the kube object.
 // DestNamespace speficies the namespace where the associated secret should be saved.
-// The associated secret will have the UID of the parent object as the name.
 func KubeOptionAddConnectionDetails(destNamespace string, cd ...xkube.ConnectionDetail) KubeObjectOption {
 	return func(obj *xkube.Object) {
 		objName := EscapeDNS1123(obj.GetName()+"-cd", false)
@@ -548,6 +563,15 @@ func KubeOptionProtects(resName string) KubeObjectOption {
 	return func(obj *xkube.Object) {
 		addProtectionAnnotation(resName, ProtectsAnnotation, obj)
 	}
+}
+
+// KubeOptionDeployOnControlPlane will ensure that the provider-config for provider
+// kubernetes is not overwritten so that the object will be deployed to the control plane.
+func KubeOptionDeployOnControlPlane(obj *xkube.Object) {
+	if obj.Labels == nil {
+		obj.Labels = map[string]string{}
+	}
+	obj.Labels[ProviderConfigIgnoreLabel] = "true"
 }
 
 func addProtectionAnnotation(resName, protectionType string, obj client.Object) {
@@ -843,7 +867,7 @@ func (s *ServiceRuntime) GetObservedKubeObject(obj client.Object, name string) e
 	return json.Unmarshal(kube.Status.AtProvider.Manifest.Raw, obj)
 }
 
-// GetDesiredKubeObject returns the object as is on the cluster.
+// GetDesiredKubeObject returns the object as is in the desired state.
 func (s *ServiceRuntime) GetDesiredKubeObject(obj client.Object, name string) error {
 	name = EscapeDNS1123(name, false)
 	res, ok := s.desiredResources[resource.Name(name)]
@@ -1143,6 +1167,9 @@ func (s *ServiceRuntime) UsageOfBy(of, by string) error {
 	usage := &xpapi.Usage{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Labels: map[string]string{
+				ProviderConfigIgnoreLabel: "true",
+			},
 		},
 		Spec: xpapi.UsageSpec{
 			ReplayDeletion: ptr.To(true),
@@ -1315,11 +1342,11 @@ func (s *ServiceRuntime) getCleanGVK() schema.GroupVersionKind {
 // setProviderConfigs loops over all desired objects and adds the providerConfigs
 // according to the annotations on the claim/composite.
 func (s *ServiceRuntime) setProviderConfigs() error {
-	if val, exists := s.observedComposite.GetLabels()[providerConfigLabel]; !exists || val == "" || val == "local" {
+	if val, exists := s.observedComposite.GetLabels()[ProviderConfigLabel]; !exists || val == "" || val == "local" {
 		return nil
 	}
 
-	configName := s.observedComposite.GetLabels()[providerConfigLabel]
+	configName := s.observedComposite.GetLabels()[ProviderConfigLabel]
 
 	for i := range s.desiredResources {
 		if _, exists := s.desiredResources[i].Resource.GetLabels()[ProviderConfigIgnoreLabel]; exists {
@@ -1337,8 +1364,71 @@ func (s *ServiceRuntime) setProviderConfigs() error {
 		if labels == nil {
 			labels = map[string]string{}
 		}
-		labels[providerConfigLabel] = configName
+		labels[ProviderConfigLabel] = configName
 		s.desiredResources[i].Resource.SetLabels(labels)
+	}
+
+	return nil
+}
+
+// GetCrossplaneNamespace returns Crossplane's namespace.
+// This should mainly be used for `WriteConnectionSecretToRef` in managed resources.
+func (s *ServiceRuntime) GetCrossplaneNamespace() string {
+	return s.Config.Data["crossplaneNamespace"]
+}
+
+// DeployConnectionDetailsToInstanceNS will override the namespace for the connection details to the
+// crossplane namespace and also deploy a copy of that to the instance namespace.
+// It will prefix the secret name with the composite name, to ensure that no secret names clash in the crossplane namespace.
+func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
+
+	for i := range s.desiredResources {
+		cdRef := s.desiredResources[i].Resource.GetWriteConnectionSecretToReference()
+		if cdRef == nil {
+			continue
+		}
+
+		if _, exists := s.desiredResources[i].Resource.GetAnnotations()[IgnoreConnectionDetailsAnnotation]; exists {
+			continue
+		}
+
+		cd, err := s.GetObservedComposedResourceConnectionDetails(string(i))
+		if err != nil {
+			if err == ErrNotFound {
+				continue
+			}
+			return err
+		}
+
+		unstructComp := s.desiredComposite.Unstructured
+		instanceNamespace, _, err := unstructured.NestedString(unstructComp.UnstructuredContent(), "status", "instanceNamespace")
+		if err != nil {
+			return err
+		}
+
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      cdRef.Name,
+				Namespace: instanceNamespace,
+			},
+			Data: cd,
+		}
+
+		compName := s.desiredResources[i].Resource.GetName()
+
+		// prefix the name in the connetiondetailsref
+		// and set to crossplane namespace
+		cdRef.Name = compName + "-" + cdRef.Name
+		cdRef.Namespace = s.GetCrossplaneNamespace()
+
+		s.desiredResources[i].Resource.SetWriteConnectionSecretToReference(cdRef)
+
+		// We need to concatenate the name of the resource with the name of its immediate parent composite to avoid clashes
+		// in the desired map
+		err = s.SetDesiredKubeObject(secret, compName+"-"+s.desiredComposite.GetName())
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

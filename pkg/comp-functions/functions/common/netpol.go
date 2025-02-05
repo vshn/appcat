@@ -79,3 +79,27 @@ func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name string, allow
 
 	return nil
 }
+
+// AddLoadbalancerNetpolicy will allow all traffic to the namespace, so that the loabalancer
+// connection works as well.
+func AddLoadbalancerNetpolicy(svc *runtime.ServiceRuntime, comp InfoGetter) error {
+	np := &netv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "allow-all",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: netv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			Ingress: []netv1.NetworkPolicyIngressRule{
+				{},
+			},
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(np, comp.GetName()+"-allow-all")
+	if err != nil {
+		return fmt.Errorf("cannot deploy allow all network policy: %w", err)
+	}
+
+	return nil
+}

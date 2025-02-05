@@ -69,7 +69,7 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 		cd = o(secret, cd)
 	}
 
-	return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(comp.GetInstanceNamespace(), cd...))
+	return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...))
 }
 
 func genPassword() (string, error) {

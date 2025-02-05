@@ -32,6 +32,7 @@ import (
 
 const (
 	certificateSecretName = "tls-certificate"
+	namespaceResName      = "namespace-conditions"
 )
 
 //go:embed scripts/copy-pg-backup.sh
@@ -46,7 +47,7 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	}
 
 	l.Info("Bootstrapping instance namespace and rbac rules")
-	err = common.BootstrapInstanceNs(ctx, comp, "postgresql", "namespace-conditions", svc)
+	err = common.BootstrapInstanceNs(ctx, comp, "postgresql", namespaceResName, svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
@@ -376,14 +377,6 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 				},
 			},
 		}
-		backupRef = xkubev1.Reference{
-			DependsOn: &xkubev1.DependsOn{
-				APIVersion: "stackgres.io/v1",
-				Kind:       "SGBackup",
-				Name:       comp.Spec.Parameters.Restore.BackupName,
-				Namespace:  comp.GetInstanceNamespace(),
-			},
-		}
 	}
 
 	sgCluster := &sgv1.SGCluster{
@@ -447,7 +440,9 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 
 	configureReplication(comp, sgCluster)
 
-	err = svc.SetDesiredKubeObjectWithName(sgCluster, comp.GetName()+"-cluster", "cluster", runtime.KubeOptionAddRefs(backupRef))
+	// We need to protect the namespace, otherwise, if the namespace get deleted first during de-provisioning, it can delete objects that
+	// are referenced in the kube object. This will lead to the object getting stuck indefinitely.
+	err = svc.SetDesiredKubeObjectWithName(sgCluster, comp.GetName()+"-cluster", "cluster", runtime.KubeOptionAddRefs(backupRef), runtime.KubeOptionProtects(namespaceResName))
 	if err != nil {
 		err = fmt.Errorf("cannot create sgInstanceProfile: %w", err)
 		return err
@@ -474,7 +469,7 @@ func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Name:      "pgbucket-" + comp.GetName(),
-					Namespace: comp.GetInstanceNamespace(),
+					Namespace: svc.GetCrossplaneNamespace(),
 				},
 			},
 		},

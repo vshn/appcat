@@ -144,8 +144,13 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 
 	obj.Spec.WriteConnectionSecretToReference = &commonv1.SecretReference{
 		Name:      comp.GetName() + "-connection",
-		Namespace: comp.GetInstanceNamespace(),
+		Namespace: svc.GetCrossplaneNamespace(),
 	}
 
-	return svc.SetDesiredComposedResourceWithName(obj, "cluster")
+	err := svc.SetDesiredComposedResourceWithName(obj, "cluster")
+	if err != nil {
+		return fmt.Errorf("cannot deploy postgresql connection details: %w", err)
+	}
+
+	return nil
 }

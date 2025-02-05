@@ -150,7 +150,7 @@ test: ## Run tests
 .PHONY: kind-load-branch-tag
 kind-load-branch-tag: ## load docker image with current branch tag into kind
 	tag=$$(git rev-parse --abbrev-ref HEAD) && \
-	kind load docker-image --name kindev ghcr.io/vshn/appcat:"$${tag////_}"
+	kind load docker-image --name kindev ghcr.io/vshn/appcat:"$$(echo $$tag | sed 's#/#_#g')"
 
 # Generate webhook certificates.
 # This is only relevant when debugging.

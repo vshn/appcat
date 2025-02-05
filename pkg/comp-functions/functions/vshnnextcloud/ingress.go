@@ -36,15 +36,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		}
 	}
 
-	var ocpDefaultAppsDomain string
-	if svc.Config.Data["ocpDefaultAppsDomain"] != "" {
-		err := yaml.Unmarshal([]byte(svc.Config.Data["ocpDefaultAppsDomain"]), ocpDefaultAppsDomain)
-		if err != nil {
-			svc.Log.Error(err, "cannot unmarshal ocpDefaultAppsDomain from input")
-			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ocpDefaultAppsDomain from input: %s", err)))
-		}
-	}
-
+	ocpDefaultAppsDomain := svc.Config.Data["ocpDefaultAppsDomain"]
 	usesDefaultAppsDomain := false
 	if ocpDefaultAppsDomain != "" {
 		for _, fqdn := range comp.Spec.Parameters.Service.FQDN {

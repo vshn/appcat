@@ -6053,6 +6053,9 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              currentVersion:
+                description: CurrentVersion contains the current version of PostgreSQL.
+                type: string
               instanceNamespace:
                 description: InstanceNamespace contains the name of the namespace
                   where the instance resides
@@ -6383,6 +6386,9 @@ spec:
                       type: string
                   type: object
                 type: array
+              previousVersion:
+                description: PreviousVersion contains the previous version of PostgreSQL.
+                type: string
               profileConditions:
                 items:
                   properties:

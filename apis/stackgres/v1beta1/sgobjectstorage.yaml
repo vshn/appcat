@@ -51,7 +51,7 @@ components:
                 secretKeySelectors:
                   type: object
                   description: |
-                    Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#secretkeyselector-v1-core)(s) to reference the Secrets that contain the information about the `awsCredentials`. Note that you may use the same or different Secrets for the `accessKeyId` and the `secretAccessKey`. In the former case, the `keys` that identify each must be, obviously, different.
+                    Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core)(s) to reference the Secrets that contain the information about the `awsCredentials`. Note that you may use the same or different Secrets for the `accessKeyId` and the `secretAccessKey`. In the former case, the `keys` that identify each must be, obviously, different.
                   properties:
                     accessKeyId:
                       type: object
@@ -120,7 +120,7 @@ components:
                 secretKeySelectors:
                   type: object
                   description: |
-                    Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#secretkeyselector-v1-core)(s) to reference the Secret(s) that contain the information about the `awsCredentials`. Note that you may use the same or different Secrets for the `accessKeyId` and the `secretAccessKey`. In the former case, the `keys` that identify each must be, obviously, different.
+                    Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core)(s) to reference the Secret(s) that contain the information about the `awsCredentials`. Note that you may use the same or different Secrets for the `accessKeyId` and the `secretAccessKey`. In the former case, the `keys` that identify each must be, obviously, different.
                   properties:
                     accessKeyId:
                       type: object
@@ -140,6 +140,20 @@ components:
                       type: object
                       description: |
                         AWS [secret access key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys). For example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`.
+                      properties:
+                        key:
+                          type: string
+                          description: |
+                            The key of the secret to select from. Must be a valid secret key.
+                        name:
+                          type: string
+                          description: |
+                            Name of the referent. [More information](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+                      required: ["key", "name"]
+                    caCertificate:
+                      type: object
+                      description: |
+                        CA Certificate file to be used when connecting to the S3 Compatible Service.
                       properties:
                         key:
                           type: string
@@ -177,7 +191,7 @@ components:
                 secretKeySelectors:
                   type: object
                   description: |
-                    A Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#secretkeyselector-v1-core) to reference the Secrets that contain the information about the Service Account to access GCS.
+                    A Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core) to reference the Secrets that contain the information about the Service Account to access GCS.
                   properties:
                     serviceAccountJSON:
                       type: object
@@ -213,7 +227,7 @@ components:
                 secretKeySelectors:
                   type: object
                   description: |
-                    Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#secretkeyselector-v1-core)(s) to reference the Secret(s) that contain the information about the `azureCredentials`. . Note that you may use the same or different Secrets for the `storageAccount` and the `accessKey`. In the former case, the `keys` that identify each must be, obviously, different.
+                    Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core)(s) to reference the Secret(s) that contain the information about the `azureCredentials`. . Note that you may use the same or different Secrets for the `storageAccount` and the `accessKey`. In the former case, the `keys` that identify each must be, obviously, different.
                   properties:
                     storageAccount:
                       type: object

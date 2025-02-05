@@ -1,19 +1,14 @@
 package maintenance
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"sort"
+	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
 	"time"
 
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/go-logr/logr"
-	"github.com/hashicorp/go-version"
 	"github.com/spf13/viper"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -37,6 +32,7 @@ var (
 // PostgreSQL handles the maintenance of postgresql services
 type PostgreSQL struct {
 	Client            client.WithWatch
+	StackgresClient   *stackgres.StackgresClient
 	log               logr.Logger
 	MaintTimeout      time.Duration
 	instanceNamespace string
@@ -45,23 +41,7 @@ type PostgreSQL struct {
 	apiPassword       string
 	claimNamespace    string
 	claimName         string
-	SgURL             string
 	Repack, Vacuum    string
-}
-
-type loginRequest struct {
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-}
-
-type authToken struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
-}
-
-type pgVersions struct {
-	Postgresql []string `json:"postgresql"`
 }
 
 // DoMaintenance will run postgresql's maintenance script.
@@ -164,14 +144,14 @@ func (p *PostgreSQL) checkRequiredUpgrade(sgCluster stackgresv1.SGCluster) bool 
 }
 
 func (p *PostgreSQL) upgradeVersion(currentVersion string, sgClusterName string) (OpName, error) {
-	versionList, err := p.fetchVersionList(p.SgURL)
+	versionList, err := p.fetchVersionList()
 	if err != nil {
 		p.log.Error(err, "StackGres API error")
 		p.log.Info("Can't get latest minor version, proceeding with security maintenance")
 	}
 
 	// if there are any errors here, we fall back to a security upgrade
-	latestMinor, err := p.getLatestMinorversion(currentVersion, versionList)
+	latestMinor, err := stackgres.GetLatestMinorVersion(currentVersion, versionList)
 	if err != nil {
 		p.log.Error(err, "Could not get latest minor version from list, continuing with security upgrade")
 		currentVersion = latestMinor
@@ -184,7 +164,7 @@ func (p *PostgreSQL) upgradeVersion(currentVersion string, sgClusterName string)
 	}
 
 	p.log.Info("Checking for EOL")
-	if versionList != nil && p.isEOL(currentVersion, *versionList) {
+	if versionList != nil && p.isEOL(currentVersion, versionList) {
 		err = p.setEOLStatus()
 		if err != nil {
 			return "", fmt.Errorf("cannot set EOL status on claim: %w", err)
@@ -253,81 +233,8 @@ func (p *PostgreSQL) listClustersInNamespace() (*stackgresv1.SGClusterList, erro
 
 }
 
-func (p *PostgreSQL) getLatestMinorversion(vers string, versionList *pgVersions) (string, error) {
-
-	if versionList == nil {
-		return vers, nil
-	}
-
-	p.log.Info("Searching most current minor version")
-	current, err := version.NewVersion(vers)
-	if err != nil {
-		return "", err
-	}
-
-	validVersions := make([]*version.Version, 0)
-	for _, newVersion := range versionList.Postgresql {
-		tmpVersion, err := version.NewVersion(newVersion)
-		if err != nil {
-			return "", err
-		}
-		if tmpVersion.Segments()[0] == current.Segments()[0] {
-			validVersions = append(validVersions, tmpVersion)
-		}
-	}
-
-	sort.Sort(sort.Reverse(version.Collection(validVersions)))
-
-	if len(validVersions) != 0 && current.LessThan(validVersions[0]) {
-		return validVersions[0].Original(), nil
-	}
-
-	return current.Original(), nil
-}
-
-func (p *PostgreSQL) fetchVersionList(url string) (*pgVersions, error) {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	httpClient := &http.Client{Transport: transport}
-
-	auth := loginRequest{Username: p.apiUserName, Password: p.apiPassword}
-
-	p.log.V(1).Info("Building login json")
-	byteAuth, err := json.Marshal(auth)
-	if err != nil {
-		return nil, fmt.Errorf("cannot marshal login json: %w", err)
-	}
-
-	p.log.V(1).Info("Logging into stackgres")
-	resp, err := httpClient.Post(url+"/stackgres/auth/login", "application/json", bytes.NewBuffer(byteAuth))
-	if err != nil {
-		return nil, fmt.Errorf("cannot login: %w", err)
-	}
-
-	token := &authToken{}
-	err = json.NewDecoder(resp.Body).Decode(token)
-	if err != nil {
-		return nil, fmt.Errorf("cannot decode login token: %w", err)
-	}
-
-	p.log.V(1).Info("Getting list of versions")
-	req, err := http.NewRequest("GET", url+"/stackgres/version/postgresql", nil)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get list of versions: %w", err)
-	}
-	req.Header.Add("Authorization", "Bearer "+token.AccessToken)
-
-	resp, err = httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error during http request: %w", err)
-	}
-	versionList := &pgVersions{}
-
-	err = json.NewDecoder(resp.Body).Decode(versionList)
-	if err != nil {
-		return nil, fmt.Errorf("error during json decoding: %w", err)
-	}
-	return versionList, nil
+func (p *PostgreSQL) fetchVersionList() (*stackgres.PgVersions, error) {
+	return p.StackgresClient.GetAvailableVersions()
 }
 
 func (p *PostgreSQL) createRepack(clusterName string) error {
@@ -392,16 +299,6 @@ func (p *PostgreSQL) configure() error {
 		return fmt.Errorf(errString, "INSTANCE_NAMESPACE")
 	}
 
-	p.apiPassword = viper.GetString("API_PASSWORD")
-	if p.apiPassword == "" {
-		return fmt.Errorf(errString, "API_PASSWORD")
-	}
-
-	p.apiUserName = viper.GetString("API_USERNAME")
-	if p.apiUserName == "" {
-		return fmt.Errorf(errString, "API_USERNAME")
-	}
-
 	p.claimName = viper.GetString("CLAIM_NAME")
 	if p.claimName == "" {
 		return fmt.Errorf(errString, "CLAIM_NAME")
@@ -425,7 +322,7 @@ func (p *PostgreSQL) configure() error {
 	return nil
 }
 
-func (p *PostgreSQL) isEOL(currentVersion string, versionList pgVersions) bool {
+func (p *PostgreSQL) isEOL(currentVersion string, versionList *stackgres.PgVersions) bool {
 	return !slices.Contains(versionList.Postgresql, currentVersion)
 }
 

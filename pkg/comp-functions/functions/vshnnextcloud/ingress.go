@@ -58,20 +58,20 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 	// Create ingresses that bundle FQDNs depending on their certificate requirements (LE/Wildcard)
 	fqdnsLetsEncrypt, fqdnsWildcard := ingressMap[false], ingressMap[true]
 	ingressBaseMeta := metav1.ObjectMeta{
-		Name:        comp.GetName(),
 		Namespace:   comp.GetInstanceNamespace(),
 		Annotations: annotations,
 	}
 	var ingresses []*netv1.Ingress
 
 	if len(fqdnsLetsEncrypt) > 0 {
+		ingressBaseMeta.Name = comp.GetName() + "-letsencrypt"
 		ingresses = append(ingresses, &netv1.Ingress{
 			ObjectMeta: ingressBaseMeta,
 			Spec: netv1.IngressSpec{
 				Rules: createIngressRule(comp, fqdnsLetsEncrypt),
 				TLS: []netv1.IngressTLS{
 					{
-						Hosts:      fqdns,
+						Hosts:      fqdnsLetsEncrypt,
 						SecretName: "nextcloud-ingress-cert",
 					},
 				},
@@ -81,6 +81,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 
 	// Ingress using apps domain wildcard
 	if len(fqdnsWildcard) > 0 {
+		ingressBaseMeta.Name = comp.GetName() + "-wildcard"
 		ingresses = append(ingresses, &netv1.Ingress{
 			ObjectMeta: ingressBaseMeta,
 			Spec: netv1.IngressSpec{
@@ -91,7 +92,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 	}
 
 	for _, ingress := range ingresses {
-		namePrefix := "-ingress-le"
+		namePrefix := "-ingress-letsencrypt"
 		if len(ingress.Spec.TLS) == 0 {
 			namePrefix = "-ingress-wildcard"
 		}

@@ -5,56 +5,56 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//go:generate yq -i e ../generated/codey.io_instances.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+//go:generate yq -i e ../generated/codey.io_codeyinstances.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
 
 // +groupName=codey.io
 // +versionName=v1
 // +kubebuilder:object:root=true
 
-// Instance is the API for creating Instance instances.
-type Instance struct {
+// CodeyInstance is the API for creating CodeyInstance instances.
+type CodeyInstance struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec defines the desired state of a Instance.
-	Spec InstanceSpec `json:"spec"`
+	// Spec defines the desired state of a CodeyCodeyInstance.
+	Spec CodeyInstanceSpec `json:"spec"`
 
-	// Status reflects the observed state of a Instance.
-	Status InstanceStatus `json:"status,omitempty"`
+	// Status reflects the observed state of a CodeyInstance.
+	Status CodeyInstanceStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
-type InstanceList struct {
+type CodeyInstanceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Instance `json:"items,omitempty"`
+	Items []CodeyInstance `json:"items,omitempty"`
 }
 
-// InstanceSpec defines the desired state of a Instance.
-type InstanceSpec struct {
-	// Parameters are the configurable fields of a Instance.
+// CodeyInstanceSpec defines the desired state of a CodeyInstance.
+type CodeyInstanceSpec struct {
+	// Parameters are the configurable fields of a CodeyInstance.
 	// +kubebuilder:default={}
-	Parameters InstanceParameters `json:"parameters,omitempty"`
+	Parameters CodeyInstanceParameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
 	WriteConnectionSecretToRef xpv1.LocalSecretReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
-// InstanceParameters are the configurable fields of a Instance.
-type InstanceParameters struct {
-	// Service contains Instance DBaaS specific properties
-	Service InstanceServiceSpec `json:"service,omitempty"`
+// CodeyInstanceParameters are the configurable fields of a CodeyInstance.
+type CodeyInstanceParameters struct {
+	// Service contains CodeyInstance DBaaS specific properties
+	Service CodeyInstanceServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
-	Size VSHNInstanceSizeSpec `json:"size,omitempty"`
+	Size VSHNCodeyInstanceSizeSpec `json:"size,omitempty"`
 }
 
-// InstanceServiceSpec contains Instance DBaaS specific properties
-type InstanceServiceSpec struct {
+// CodeyInstanceServiceSpec contains CodeyInstance DBaaS specific properties
+type CodeyInstanceServiceSpec struct {
 
-	// Version contains supported version of Instance.
+	// Version contains supported version of CodeyInstance.
 	// Multiple versions are supported.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
@@ -63,50 +63,50 @@ type InstanceServiceSpec struct {
 	AdminEmail string `json:"adminEmail"`
 }
 
-// InstanceStatus reflects the observed state of a Instance.
-type InstanceStatus struct {
-	// InstanceNamespace contains the name of the namespace where the instance resides
-	InstanceNamespace string `json:"instanceNamespace,omitempty"`
+// CodeyInstanceStatus reflects the observed state of a CodeyInstance.
+type CodeyInstanceStatus struct {
+	// CodeyInstanceNamespace contains the name of the namespace where the instance resides
+	CodeyInstanceNamespace string `json:"instanceNamespace,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
-// XInstance represents the internal composite of this claim
-type XInstance struct {
+// XCodeyInstance represents the internal composite of this claim
+type XCodeyInstance struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   XInstanceSpec   `json:"spec"`
-	Status XInstanceStatus `json:"status,omitempty"`
+	Spec   XCodeyInstanceSpec   `json:"spec"`
+	Status XCodeyInstanceStatus `json:"status,omitempty"`
 }
 
-// XInstanceSpec defines the desired state of a Instance.
-type XInstanceSpec struct {
-	// Parameters are the configurable fields of a Instance.
-	Parameters InstanceParameters `json:"parameters,omitempty"`
+// XCodeyInstanceSpec defines the desired state of a CodeyInstance.
+type XCodeyInstanceSpec struct {
+	// Parameters are the configurable fields of a CodeyInstance.
+	Parameters CodeyInstanceParameters `json:"parameters,omitempty"`
 
 	xpv1.ResourceSpec `json:",inline"`
 }
 
-type XInstanceStatus struct {
-	InstanceStatus      `json:",inline"`
+type XCodeyInstanceStatus struct {
+	CodeyInstanceStatus `json:",inline"`
 	xpv1.ResourceStatus `json:",inline"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
-// XInstanceList represents a list of composites
-type XInstanceList struct {
+// XCodeyInstanceList represents a list of composites
+type XCodeyInstanceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []XInstance `json:"items"`
+	Items []XCodeyInstance `json:"items"`
 }
 
-// VSHNInstanceSizeSpec contains settings to control the sizing of a service.
-type VSHNInstanceSizeSpec struct {
+// VSHNCodeyInstanceSizeSpec contains settings to control the sizing of a service.
+type VSHNCodeyInstanceSizeSpec struct {
 	// Size contains settings to control the sizing of a service.
 	// +kubebuilder:validation:Enum=mini;small
 	// +kubebuilder:default=mini

@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.15.0
-  name: instances.codey.io
+  name: codeyinstances.codey.io
 spec:
   group: codey.io
   names:
-    kind: Instance
-    listKind: InstanceList
-    plural: instances
-    singular: instance
+    kind: CodeyInstance
+    listKind: CodeyInstanceList
+    plural: codeyinstances
+    singular: codeyinstance
   scope: Namespaced
   versions:
     - name: v1
       schema:
         openAPIV3Schema:
-          description: Instance is the API for creating Instance instances.
+          description: CodeyInstance is the API for creating CodeyInstance instances.
           properties:
             apiVersion:
               description: |-
@@ -37,21 +37,21 @@ spec:
             metadata:
               type: object
             spec:
-              description: Spec defines the desired state of a Instance.
+              description: Spec defines the desired state of a CodeyCodeyInstance.
               properties:
                 parameters:
                   default: {}
-                  description: Parameters are the configurable fields of a Instance.
+                  description: Parameters are the configurable fields of a CodeyInstance.
                   properties:
                     service:
-                      description: Service contains Instance DBaaS specific properties
+                      description: Service contains CodeyInstance DBaaS specific properties
                       properties:
                         adminEmail:
                           description: AdminEmail for email notifications.
                           type: string
                         majorVersion:
                           description: |-
-                            Version contains supported version of Instance.
+                            Version contains supported version of CodeyInstance.
                             Multiple versions are supported.
                           type: string
                       required:
@@ -83,10 +83,10 @@ spec:
                   type: object
               type: object
             status:
-              description: Status reflects the observed state of a Instance.
+              description: Status reflects the observed state of a CodeyInstance.
               properties:
                 instanceNamespace:
-                  description: InstanceNamespace contains the name of the namespace where the instance resides
+                  description: CodeyInstanceNamespace contains the name of the namespace where the instance resides
                   type: string
               type: object
           required:

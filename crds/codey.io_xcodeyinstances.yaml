@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.15.0
-  name: xinstances.codey.io
+  name: xcodeyinstances.codey.io
 spec:
   group: codey.io
   names:
-    kind: XInstance
-    listKind: XInstanceList
-    plural: xinstances
-    singular: xinstance
+    kind: XCodeyInstance
+    listKind: XCodeyInstanceList
+    plural: xcodeyinstances
+    singular: xcodeyinstance
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: XInstance represents the internal composite of this claim
+        description: XCodeyInstance represents the internal composite of this claim
         properties:
           apiVersion:
             description: |-
@@ -37,7 +37,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: XInstanceSpec defines the desired state of a Instance.
+            description: XCodeyInstanceSpec defines the desired state of a CodeyInstance.
             properties:
               deletionPolicy:
                 default: Delete
@@ -81,17 +81,17 @@ spec:
                   type: string
                 type: array
               parameters:
-                description: Parameters are the configurable fields of a Instance.
+                description: Parameters are the configurable fields of a CodeyInstance.
                 properties:
                   service:
-                    description: Service contains Instance DBaaS specific properties
+                    description: Service contains CodeyInstance DBaaS specific properties
                     properties:
                       adminEmail:
                         description: AdminEmail for email notifications.
                         type: string
                       majorVersion:
                         description: |-
-                          Version contains supported version of Instance.
+                          Version contains supported version of CodeyInstance.
                           Multiple versions are supported.
                         type: string
                     required:
@@ -292,7 +292,7 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               instanceNamespace:
-                description: InstanceNamespace contains the name of the namespace
+                description: CodeyInstanceNamespace contains the name of the namespace
                   where the instance resides
                 type: string
             type: object

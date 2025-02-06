@@ -8,6 +8,7 @@ import (
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"gopkg.in/yaml.v2"
 	netv1 "k8s.io/api/networking/v1"
@@ -43,12 +44,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 	ocpDefaultAppsDomain := svc.Config.Data["ocpDefaultAppsDomain"]
 	if ocpDefaultAppsDomain != "" {
 		for _, fqdn := range fqdns {
-			useWildcard := false
-			split := strings.Split(fqdn, ocpDefaultAppsDomain)
-			if len(split) >= 2 { // FQDN is part of ocpDefaultAppsDomain
-				useWildcard = strings.Count(split[0], ".") <= 1
-			}
-
+			useWildcard := common.IsSingleSubdomainOfRefDomain(fqdn, ocpDefaultAppsDomain)
 			ingressMap[useWildcard] = append(ingressMap[useWildcard], fqdn)
 		}
 	} else {
@@ -63,6 +59,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 	}
 	var ingresses []*netv1.Ingress
 
+	// Ingress using Let's Encrypt
 	if len(fqdnsLetsEncrypt) > 0 {
 		ingressBaseMeta.Name = comp.GetName() + "-letsencrypt"
 		ingresses = append(ingresses, &netv1.Ingress{

@@ -238,7 +238,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	release, err := common.NewRelease(ctx, svc, comp, values)
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")
 	if err != nil {
 		return err
 	}

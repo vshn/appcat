@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	v1 "github.com/vshn/appcat/v4/apis/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -13,10 +12,17 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+{{- if .Tls }}
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+{{- end -}}
 
+{{ if .Backup }}
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+{{ end -}}
+
+{{ if .Security }}
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_{{.NamePluralLower}}.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+{{ end }}
 
 // +kubebuilder:object:root=true
 
@@ -47,7 +53,7 @@ type {{.Name}}Spec struct {
 	Parameters {{.Name}}Parameters `json:"parameters,omitempty"`
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
-	WriteConnectionSecretToRef v1.LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
+	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
 // {{.Name}}Parameters are the configurable fields of a {{.Name}}.
@@ -80,6 +86,22 @@ type {{.Name}}Parameters struct {
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
 {{- end -}}
+
+{{- if .Security }}
+
+	// Security contains settings to control the security of a service.
+	Security Security `json:"security,omitempty"`
+{{- end }}
+
+{{ if .Monitoring }}
+	// Monitoring contains settings to control the monitoring of a service.
+	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
+{{ end }}
+
+{{- if .HA }}
+	// Instances defines the number of instances to run.
+	Instances int `json:"instances,omitempty"`
+{{- end }}
 }
 
 // {{.Name}}ServiceSpec contains {{.NameShort}} DBaaS specific properties
@@ -139,12 +161,12 @@ type {{.Name}}TLSSpec struct {
 
 // {{.Name}}Status reflects the observed state of a {{.Name}}.
 type {{.Name}}Status struct {
-	NamespaceConditions         []v1.Condition `json:"namespaceConditions,omitempty"`
-	SelfSignedIssuerConditions  []v1.Condition `json:"selfSignedIssuerConditions,omitempty"`
-	LocalCAConditions           []v1.Condition `json:"localCAConditions,omitempty"`
-	CaCertificateConditions     []v1.Condition `json:"caCertificateConditions,omitempty"`
-	ServerCertificateConditions []v1.Condition `json:"serverCertificateConditions,omitempty"`
-	ClientCertificateConditions []v1.Condition `json:"clientCertificateConditions,omitempty"`
+	NamespaceConditions         []Condition `json:"namespaceConditions,omitempty"`
+	SelfSignedIssuerConditions  []Condition `json:"selfSignedIssuerConditions,omitempty"`
+	LocalCAConditions           []Condition `json:"localCAConditions,omitempty"`
+	CaCertificateConditions     []Condition `json:"caCertificateConditions,omitempty"`
+	ServerCertificateConditions []Condition `json:"serverCertificateConditions,omitempty"`
+	ClientCertificateConditions []Condition `json:"clientCertificateConditions,omitempty"`
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by
@@ -157,7 +179,7 @@ func (v *{{.Name}}) GetClaimNamespace() string {
 }
 
 func (v *{{.Name}}) GetInstanceNamespace() string {
-	return fmt.Sprintf("vshn-{{.NameShort}}-%s", v.GetName())
+	return fmt.Sprintf("vshn-{{ ToLower .NameShort }}-%s", v.GetName())
 }
 
 func (v *{{.Name}}) SetInstanceNamespaceStatus() {
@@ -201,6 +223,7 @@ type X{{.Name}}List struct {
 	Items []X{{.Name}} `json:"items"`
 }
 
+{{- if .Maintenance}}
 // GetMaintenanceDayOfWeek returns the currently set day of week
 func (v *{{.Name}}) GetMaintenanceDayOfWeek() string {
 	if v.Spec.Parameters.Maintenance.DayOfWeek != "" {
@@ -210,7 +233,7 @@ func (v *{{.Name}}) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *{{.Name}}) GetMaintenanceTimeOfDay() string {
+func (v *{{.Name}}) GetMaintenanceTimeOfDay() TimeOfDay {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
 		return v.Spec.Parameters.Maintenance.TimeOfDay
 	}
@@ -223,8 +246,24 @@ func (v *{{.Name}}) SetMaintenanceDayOfWeek(dow string) {
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (v *{{.Name}}) SetMaintenanceTimeOfDay(tod string) {
+func (v *{{.Name}}) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	v.Status.Schedules.Maintenance.TimeOfDay = tod
+}
+
+// GetFullMaintenanceSchedule returns
+func (v *{{.Name}}) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
+	schedule := v.Spec.Parameters.Maintenance
+	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
+	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
+	return schedule
+}
+
+{{- end }}
+
+{{- if .Backup}}
+// GetBackupRetention returns the retention definition for this backup.
+func (v *{{.Name}}) GetBackupRetention() K8upRetentionPolicy {
+	return v.Spec.Parameters.Backup.Retention
 }
 
 // GetBackupSchedule returns the current backup schedule
@@ -240,22 +279,11 @@ func (v *{{.Name}}) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
 }
 
-// GetBackupRetention returns the retention definition for this backup.
-func (v *{{.Name}}) GetBackupRetention() K8upRetentionPolicy {
-	return v.Spec.Parameters.Backup.Retention
-}
+{{- end -}}
 
 // GetServiceName returns the name of this service
 func (v *{{.Name}}) GetServiceName() string {
-	return "{{.NameShort}}"
-}
-
-// GetFullMaintenanceSchedule returns
-func (v *{{.Name}}) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
-	schedule := v.Spec.Parameters.Maintenance
-	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
-	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
-	return schedule
+	return "{{ ToLower .NameShort }}"
 }
 
 // GetPDBLabels returns the labels to be used for the PodDisruptionBudget
@@ -266,6 +294,7 @@ func (v *{{.Name}}) GetPDBLabels() map[string]string {
 	}
 }
 
+{{- if .Security }}
 // GetAllowAllNamespaces returns the AllowAllNamespaces field of this service
 func (v *{{.Name}}) GetAllowAllNamespaces() bool {
 	return v.Spec.Parameters.Security.AllowAllNamespaces
@@ -279,22 +308,45 @@ func (v *{{.Name}}) GetAllowedNamespaces() []string {
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }
 
-func (v *{{.Name}}) GetVSHNMonitoring() VSHNMonitoring {
-	return v.Spec.Parameters.Monitoring
+
+func (v *{{.Name}}) GetSecurity() *Security {
+	return &v.Spec.Parameters.Security
 }
+
+{{- end }}
 
 func (v *{{.Name}}) GetSize() VSHNSizeSpec {
 	return v.Spec.Parameters.Size
 }
 
+{{ if .Monitoring }}
 func (v *{{.Name}}) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
+{{ end }}
 
+{{- if .HA }} 
 func (v *{{.Name}}) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }
+{{ end }}
 
-func (v *{{.Name}}) GetSecurity() *Security {
-	return &v.Spec.Parameters.Security
+func (v *{{ .Name }}) GetBillingName() string {
+	return "appcat-" + v.GetServiceName()
+}
+
+func (v *{{ .Name }}) GetClaimName() string {
+	return v.GetLabels()["crossplane.io/claim-name"]
+}
+
+func (v *{{ .Name }}) GetSLA() string {
+	return string(v.Spec.Parameters.Service.ServiceLevel)
+}
+
+func (v *{{ .Name }}) GetWorkloadName() string {
+	return v.GetName() + "-{{ .WorkloadName }}"
+}
+
+func (v *{{ .Name }}) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+	return &StatefulSetManager{}
 }

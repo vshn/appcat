@@ -95,7 +95,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	if c.enableWebhooks {
 
 		if !viper.IsSet("PLANS_NAMESPACE") && c.enableQuotas {
-			return fmt.Errorf("PLANS_NAMEPSACE env variable needs to be set for quota support")
+			return fmt.Errorf("PLANS_NAMESPACE env variable needs to be set for quota support")
 		}
 
 		err := setupWebhooks(mgr, c.enableQuotas, c.enableAppcatWebhooks, c.enableProviderWebhooks)

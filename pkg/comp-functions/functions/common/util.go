@@ -41,5 +41,5 @@ func IsSingleSubdomainOfRefDomain(fqdn string, reference string) bool {
 	}
 
 	noSuffix, _ := strings.CutSuffix(fqdn, reference)
-	return len(strings.Split(noSuffix, ".")) == 2 // Handles prefixed dot of reference domain<
+	return len(strings.Split(noSuffix, ".")) == 2 // Handles prefixed dot of reference domain
 }

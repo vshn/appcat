@@ -34,7 +34,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	}
 
 	svc.Log.Info("Enable ingress for release")
-	enableIngresValues(svc, comp, values)
+	enableIngressValues(svc, comp, values)
 
 	release := &xhelmv1.Release{}
 	err = svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
@@ -57,7 +57,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	return nil
 }
 
-func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, values map[string]any) {
+func enableIngressValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, values map[string]any) {
 	fqdn := comp.Spec.Parameters.Service.FQDN
 
 	relPath := `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`

@@ -28,7 +28,7 @@ func Test_addProviderConfig(t *testing.T) {
 
 	config := &pgv1alpha1.ProviderConfig{}
 	assert.NoError(t, svc.GetDesiredKubeObject(config, comp.GetName()+"-providerconfig"))
-	assert.Equal(t, *config.Spec.SSLMode, "required")
+	assert.Equal(t, *config.Spec.SSLMode, "require")
 
 }
 

@@ -65,6 +65,43 @@ func TestEnableIngresValues(t *testing.T) {
 			},
 		},
 		{
+			name: "GivenAppsFQDN_Then_ExpectIngressWithEmptyTLS",
+			args: struct {
+				comp   *vshnv1.VSHNKeycloak
+				values map[string]any
+			}{
+				comp: &vshnv1.VSHNKeycloak{
+					Spec: vshnv1.VSHNKeycloakSpec{
+						Parameters: vshnv1.VSHNKeycloakParameters{
+							Service: vshnv1.VSHNKeycloakServiceSpec{
+								FQDN:         "instance.apps.example.com",
+								RelativePath: "/path",
+							},
+						},
+					},
+				},
+				values: map[string]any{},
+			},
+			want: map[string]any{
+				"ingress": map[string]any{
+					"enabled":     true,
+					"servicePort": "https",
+					"rules": []map[string]any{
+						{
+							"host": "instance.apps.example.com",
+							"paths": []map[string]any{
+								{
+									"path":     `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`,
+									"pathType": "Prefix",
+								},
+							},
+						},
+					},
+					"tls": []map[string]any{{}},
+				},
+			},
+		},
+		{
 			name: "GivenNoFQDN_Then_ExpectNoIngress",
 			args: struct {
 				comp   *vshnv1.VSHNKeycloak

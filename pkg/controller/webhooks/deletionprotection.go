@@ -104,13 +104,7 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 		return compositeInfo{Exists: true, Name: ownerName}, fmt.Errorf("cannot get composite: %w", err)
 	}
 
-	// Check if the composite is already being deleted, then we disengage the
-	// protection.
-	if comp.GetDeletionTimestamp() != nil {
-		return compositeInfo{Exists: false, Name: ownerName}, nil
-	}
-
-	return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName}, nil
+	return compositeInfo{Exists: true, Name: ownerName}, nil
 }
 
 // checkUnmanagedObject tries to get the composite information about objects that are not directly managed by Crossplane.

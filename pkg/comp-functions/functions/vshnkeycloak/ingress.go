@@ -34,7 +34,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	}
 
 	svc.Log.Info("Enable ingress for release")
-	enableIngresValues(svc, comp, values)
+	enableIngressValues(svc, comp, values)
 
 	release := &xhelmv1.Release{}
 	err = svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
@@ -57,13 +57,20 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	return nil
 }
 
-func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, values map[string]any) {
+func enableIngressValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, values map[string]any) {
 	fqdn := comp.Spec.Parameters.Service.FQDN
 
 	relPath := `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`
 	if comp.Spec.Parameters.Service.RelativePath == "/" {
 		relPath = "/"
 	}
+
+	tls := map[string]any{}
+	if !common.IsSingleSubdomainOfRefDomain(fqdn, svc.Config.Data["ocpDefaultAppsDomain"]) {
+		tls["hosts"] = []string{fqdn}
+		tls["secretName"] = "keycloak-ingress-cert"
+	}
+	tlsConfig := []map[string]any{tls}
 
 	values["ingress"] = map[string]any{
 		"enabled":     true,
@@ -80,14 +87,7 @@ func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, 
 				},
 			},
 		},
-		"tls": []map[string]any{
-			{
-				"hosts": []string{
-					fqdn,
-				},
-				"secretName": "keycloak-ingress-cert",
-			},
-		},
+		"tls": tlsConfig,
 	}
 
 	if svc.Config.Data["ingress_annotations"] != "" {

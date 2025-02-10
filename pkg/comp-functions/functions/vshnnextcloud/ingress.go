@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"gopkg.in/yaml.v2"
 	netv1 "k8s.io/api/networking/v1"
@@ -35,36 +37,75 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		}
 	}
 
-	ingress := &netv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        comp.GetName(),
-			Namespace:   comp.GetInstanceNamespace(),
-			Annotations: annotations,
-		},
-		Spec: netv1.IngressSpec{
-			Rules: createIngressRule(comp),
-			TLS: []netv1.IngressTLS{
-				{
-					Hosts:      comp.Spec.Parameters.Service.FQDN,
-					SecretName: "nextcloud-ingress-cert",
-				},
-			},
-		},
+	fqdns := comp.Spec.Parameters.Service.FQDN
+
+	// bool: true > Use wildcard, false > Use LE, []string: List of FQDNs
+	ingressMap := map[bool][]string{}
+	ocpDefaultAppsDomain := svc.Config.Data["ocpDefaultAppsDomain"]
+	if ocpDefaultAppsDomain != "" {
+		for _, fqdn := range fqdns {
+			useWildcard := common.IsSingleSubdomainOfRefDomain(fqdn, ocpDefaultAppsDomain)
+			ingressMap[useWildcard] = append(ingressMap[useWildcard], fqdn)
+		}
+	} else {
+		ingressMap[false] = fqdns
 	}
 
-	err = svc.SetDesiredKubeObject(ingress, comp.GetName()+"-ingress")
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot set create ingress: %s", err))
+	// Create ingresses that bundle FQDNs depending on their certificate requirements (LE/Wildcard)
+	fqdnsLetsEncrypt, fqdnsWildcard := ingressMap[false], ingressMap[true]
+	ingressBaseMeta := metav1.ObjectMeta{
+		Namespace:   comp.GetInstanceNamespace(),
+		Annotations: annotations,
+	}
+	var ingresses []*netv1.Ingress
+
+	// Ingress using Let's Encrypt
+	if len(fqdnsLetsEncrypt) > 0 {
+		ingressBaseMeta.Name = comp.GetName() + "-letsencrypt"
+		ingresses = append(ingresses, &netv1.Ingress{
+			ObjectMeta: ingressBaseMeta,
+			Spec: netv1.IngressSpec{
+				Rules: createIngressRule(comp, fqdnsLetsEncrypt),
+				TLS: []netv1.IngressTLS{
+					{
+						Hosts:      fqdnsLetsEncrypt,
+						SecretName: "nextcloud-ingress-cert",
+					},
+				},
+			},
+		})
+	}
+
+	// Ingress using apps domain wildcard
+	if len(fqdnsWildcard) > 0 {
+		ingressBaseMeta.Name = comp.GetName() + "-wildcard"
+		ingresses = append(ingresses, &netv1.Ingress{
+			ObjectMeta: ingressBaseMeta,
+			Spec: netv1.IngressSpec{
+				Rules: createIngressRule(comp, fqdnsWildcard),
+				TLS:   []netv1.IngressTLS{{}},
+			},
+		})
+	}
+
+	for _, ingress := range ingresses {
+		nameSuffix := "letsencrypt"
+		if strings.HasSuffix(ingress.Name, "wildcard") {
+			nameSuffix = "wildcard"
+		}
+		err = svc.SetDesiredKubeObject(ingress, comp.GetName()+"-ingress-"+nameSuffix)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot set create ingress (%s): %s", nameSuffix, err))
+		}
 	}
 
 	return nil
 }
 
-func createIngressRule(comp *vshnv1.VSHNNextcloud) []netv1.IngressRule {
-
+func createIngressRule(comp *vshnv1.VSHNNextcloud, fqdns []string) []netv1.IngressRule {
 	ingressRules := []netv1.IngressRule{}
 
-	for _, fqdn := range comp.Spec.Parameters.Service.FQDN {
+	for _, fqdn := range fqdns {
 		rule := netv1.IngressRule{
 			Host: fqdn,
 			IngressRuleValue: netv1.IngressRuleValue{

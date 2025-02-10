@@ -332,6 +332,13 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 		annotations["haproxy.router.openshift.io/hsts_header"] = "max-age=31536000;preload"
 	}
 
+	fqdn := comp.Spec.Parameters.Service.Collabora.FQDN
+	tlsConfig := networkingv1.IngressTLS{}
+	if !common.IsSingleSubdomainOfRefDomain(fqdn, svc.Config.Data["ocpDefaultAppsDomain"]) {
+		tlsConfig.Hosts = []string{fqdn}
+		tlsConfig.SecretName = comp.GetName() + "-collabora-code-ingress-tls"
+	}
+
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
@@ -344,7 +351,7 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 		Spec: networkingv1.IngressSpec{
 			Rules: []networkingv1.IngressRule{
 				{
-					Host: comp.Spec.Parameters.Service.Collabora.FQDN,
+					Host: fqdn,
 					IngressRuleValue: networkingv1.IngressRuleValue{
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
@@ -365,12 +372,7 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 					},
 				},
 			},
-			TLS: []networkingv1.IngressTLS{
-				{
-					Hosts:      []string{comp.Spec.Parameters.Service.Collabora.FQDN},
-					SecretName: comp.GetName() + "-collabora-code-ingress-tls",
-				},
-			},
+			TLS: []networkingv1.IngressTLS{tlsConfig},
 		},
 	}
 

@@ -197,7 +197,7 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime, tlsEn
 
 	sslMode := "disable"
 	if tlsEnabled {
-		sslMode = "required"
+		sslMode = "require"
 	}
 	config := &pgv1alpha1.ProviderConfig{
 		ObjectMeta: metav1.ObjectMeta{

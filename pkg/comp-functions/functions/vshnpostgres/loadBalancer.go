@@ -44,7 +44,7 @@ func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *ru
 		},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{
-				"role": "master",
+				"role": "primary",
 			},
 			Ports: []v1.ServicePort{
 				{

@@ -204,11 +204,13 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 			},
 		})
 
-		err := common.SetNestedObjectValue(values, []string{"ingress", "tls"}, []map[string]any{
-			{
-				"hosts":      comp.Spec.Parameters.Service.FQDN,
-				"secretName": "forgejo-tls",
-			}})
+		tlsConfig := map[string]any{}
+		if !common.IsSingleSubdomainOfRefDomain(host, svc.Config.Data["ocpDefaultAppsDomain"]) {
+			tlsConfig["hosts"] = comp.Spec.Parameters.Service.FQDN
+			tlsConfig["secretName"] = "forgejo-tls"
+		}
+
+		err := common.SetNestedObjectValue(values, []string{"ingress", "tls"}, []map[string]any{tlsConfig})
 		if err != nil {
 			return err
 		}

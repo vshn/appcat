@@ -156,7 +156,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				},
 			},
 		},
-		"persistance": map[string]any{
+		"persistence": map[string]any{
 			"enabled": true,
 		},
 		"extraVolumes": []map[string]any{{

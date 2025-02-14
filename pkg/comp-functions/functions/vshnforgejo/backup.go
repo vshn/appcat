@@ -59,12 +59,12 @@ func updateRelease(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo) error 
 		return fmt.Errorf("cannot add pvc annotations to values: %w", err)
 	}
 
-	err = backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "podAnnotations")
+	err = backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "gitea", "podAnnotations")
 	if err != nil {
 		return fmt.Errorf("cannot add pod annotations to values: %w", err)
 	}
 
-	err = backup.AddBackupCMToValues(values, []string{"forgejo", "extraVolumes"}, []string{"forgejo", "extraVolumeMounts"})
+	err = backup.AddBackupCMToValues(values, []string{"extraVolumes"}, []string{"extraContainerVolumeMounts"})
 	if err != nil {
 		return fmt.Errorf("cannot add backup cm to values: %w", err)
 	}

@@ -27,6 +27,7 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.Servi
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot add k8s backup to the desired state: %w", err))
 	}
+	common.SetRandomSchedules(comp, comp)
 
 	err = backup.AddBackupScriptCM(svc, comp, forgejoBackupScript)
 	if err != nil {

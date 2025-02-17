@@ -187,11 +187,11 @@ func (v *VSHNForgejo) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *VSHNForgejo) GetMaintenanceTimeOfDay() TimeOfDay {
+func (v *VSHNForgejo) GetMaintenanceTimeOfDay() *TimeOfDay {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
-		return v.Spec.Parameters.Maintenance.TimeOfDay
+		return &v.Spec.Parameters.Maintenance.TimeOfDay
 	}
-	return v.Status.Schedules.Maintenance.TimeOfDay
+	return &v.Status.Schedules.Maintenance.TimeOfDay
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
@@ -208,7 +208,7 @@ func (v *VSHNForgejo) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 func (v *VSHNForgejo) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
-	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
+	schedule.TimeOfDay = *v.GetMaintenanceTimeOfDay()
 	return schedule
 }
 

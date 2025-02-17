@@ -18,12 +18,5 @@ func AddBilling(ctx context.Context, comp *v1.VSHNNextcloud, svc *runtime.Servic
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	if comp.Spec.Parameters.Service.Collabora.Enabled {
-		return common.CreateBillingRecord(ctx, svc, comp, common.ServiceAddOns{
-			Name:      "office",
-			Instances: 1,
-		})
-	}
-
 	return common.CreateBillingRecord(ctx, svc, comp)
 }

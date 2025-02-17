@@ -20,6 +20,15 @@ type PodTemplateLabelsManager interface {
 // +kubebuilder:skipclient
 // +kubebuilder:skipdeepcopy
 // +kubebuilder:object:generate=false
+type AddOn interface {
+	GetName() string
+	GetInstances() int
+}
+
+// +kubebuilder:skip
+// +kubebuilder:skipclient
+// +kubebuilder:skipdeepcopy
+// +kubebuilder:object:generate=false
 type DeploymentManager struct {
 	v1.Deployment
 }

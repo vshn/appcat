@@ -14,8 +14,8 @@ func Test_addCollabora(t *testing.T) {
 
 	ctx := context.TODO()
 
-	comp.Spec.Parameters.Service.Collabora.Enabled = true
-	comp.Spec.Parameters.Service.Collabora.FQDN = "collabora.example.com"
+	comp.Spec.Parameters.AddOns.Office.Enabled = true
+	comp.Spec.Parameters.AddOns.Office.FQDN = "collabora.example.com"
 
 	assert.Nil(t, DeployNextcloud(ctx, comp, svc))
 
@@ -52,7 +52,7 @@ func Test_addCollabora(t *testing.T) {
 		assert.Equal(t, "1", resources[val])
 	}
 
-	comp.Spec.Parameters.Service.Collabora.Enabled = false
+	comp.Spec.Parameters.AddOns.Office.Enabled = false
 	res = DeployCollabora(ctx, comp, svc)
 
 	assert.True(t, res.Severity == v1beta1.Severity_SEVERITY_NORMAL && res.Message == "Collabora not enabled")

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
-	"github.com/ghodss/yaml"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -49,6 +48,8 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add forgejo release: %s", err))
 	}
+
+	svc.Log.Info("Have added forgejo release!")
 
 	return nil
 }
@@ -143,19 +144,6 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				"enabled": true,
 			},
 		},
-		"ingress": map[string]any{
-			"annotations": map[string]string{
-				"cert-manager.io/cluster-issuer": "letsencrypt-staging",
-			},
-			"enabled": true,
-			"hosts":   []map[string]any{},
-			"tls": []map[string]any{
-				{
-					"hosts":      []string{},
-					"secretName": "forgejo-tls",
-				},
-			},
-		},
 		"persistence": map[string]any{
 			"enabled": true,
 		},
@@ -183,40 +171,22 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 			"type": "Recreate",
 		},
 	}
-	/*
-			          hosts:
-		          		- host: forgejo213.apps.whatever.cloud
-		          		  paths:
-		          		  - path: /
-		          		    pathType: Prefix
-	*/
-	nonTLShosts := []map[string]any{}
 
-	for _, host := range comp.Spec.Parameters.Service.FQDN {
-		// building an array of maps with the host and the paths
-		nonTLShosts = append(nonTLShosts, map[string]any{
-			"host": host,
-			"paths": []map[string]any{
-				{
-					"path":     "/",
-					"pathType": "Prefix",
-				},
-			},
-		})
-
-		tlsConfig := map[string]any{}
-		if !common.IsSingleSubdomainOfRefDomain(host, svc.Config.Data["ocpDefaultAppsDomain"]) {
-			tlsConfig["hosts"] = comp.Spec.Parameters.Service.FQDN
-			tlsConfig["secretName"] = "forgejo-tls"
-		}
-
-		err := common.SetNestedObjectValue(values, []string{"ingress", "tls"}, []map[string]any{tlsConfig})
-		if err != nil {
-			return err
-		}
+	svc.Log.Info("Adding ingress")
+	ingressConfig := common.IngressConfig{
+		FQDNs: comp.Spec.Parameters.Service.FQDN,
+		ServiceConfig: common.IngressRuleConfig{
+			ServiceNameSuffix: "http",
+			ServicePortNumber: 3000,
+		},
+		TlsCertBaseName: "forgejo",
+	}
+	ingresses, err := common.GenerateBundledIngresses(comp, svc, ingressConfig)
+	if err != nil {
+		return err
 	}
 
-	err := common.SetNestedObjectValue(values, []string{"ingress", "hosts"}, nonTLShosts)
+	err = common.CreateIngresses(comp, svc, ingresses)
 	if err != nil {
 		return err
 	}
@@ -226,23 +196,8 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		values["podSecurityContext"] = securityContext["podSecurityContext"]
 	}
 
-	if svc.Config.Data["ingress_annotations"] != "" {
-		annotations := map[string]string{}
-
-		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), &annotations)
-		if err != nil {
-			// do nothing and use default annotation which sets issuer to staging
-			svc.Log.Error(fmt.Errorf("cannot unmarshal ingress annotations"), "error", err)
-		}
-
-		err = common.SetNestedObjectValue(values, []string{"ingress", "annotations"}, annotations)
-		if err != nil {
-			return err
-		}
-	}
-
 	if comp.Spec.Parameters.Service.AdminEmail != "" {
-		err = common.SetNestedObjectValue(values, []string{"gitea", "config", "admin", "ADMIN_EMAIL"}, comp.Spec.Parameters.Service.AdminEmail)
+		err := common.SetNestedObjectValue(values, []string{"gitea", "config", "admin", "ADMIN_EMAIL"}, comp.Spec.Parameters.Service.AdminEmail)
 		if err != nil {
 			return err
 		}

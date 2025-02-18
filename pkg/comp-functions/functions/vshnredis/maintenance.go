@@ -21,7 +21,7 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	common.EnsureMaintenanceSchedule(comp)
 
 	instanceNamespace := getInstanceNamespace(comp)
 	schedule := comp.GetFullMaintenanceSchedule()

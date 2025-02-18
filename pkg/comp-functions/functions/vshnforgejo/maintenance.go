@@ -1,4 +1,4 @@
-package vshnmariadb
+package vshnforgejo
 
 import (
 	"context"
@@ -11,10 +11,8 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-var service = "mariadb"
-
 // AddMaintenanceJob will add a job to do the maintenance for the instance
-func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
@@ -26,7 +24,12 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runti
 	instanceNamespace := comp.GetInstanceNamespace()
 	schedule := comp.GetFullMaintenanceSchedule()
 
-	return maintenance.New(comp, svc, schedule, instanceNamespace, service).
+	err = svc.SetDesiredCompositeStatus(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot update composite status: %w", err))
+	}
+
+	return maintenance.New(comp, svc, schedule, instanceNamespace, comp.GetServiceName()).
 		WithHelmBasedService().
 		Run(ctx)
 }

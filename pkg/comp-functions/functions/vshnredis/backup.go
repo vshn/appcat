@@ -32,7 +32,10 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Service
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	err = common.EnsureBackupSchedule(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot ensure k8s backup schedule: %w", err))
+	}
 
 	err = svc.SetDesiredCompositeStatus(comp)
 	if err != nil {

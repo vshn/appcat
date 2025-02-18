@@ -1,11 +1,10 @@
-package vshnnextcloud
+package vshnforgejo
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
-
-	_ "embed"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
@@ -15,10 +14,10 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-//go:embed files/backup.sh
-var nextcloudBackupScript string
+//go:embed script/backup.sh
+var forgejoBackupScript string
 
-func AddBackup(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddBackup(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetDesiredComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
@@ -34,7 +33,7 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Ser
 		return runtime.NewFatalResult(fmt.Errorf("cannot add k8s backup to the desired state: %w", err))
 	}
 
-	err = backup.AddBackupScriptCM(svc, comp, nextcloudBackupScript)
+	err = backup.AddBackupScriptCM(svc, comp, forgejoBackupScript)
 	if err != nil {
 		return runtime.NewFatalResult(err)
 	}
@@ -47,7 +46,7 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Ser
 	return nil
 }
 
-func updateRelease(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
+func updateRelease(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo) error {
 	release := &xhelmv1.Release{}
 
 	err := svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
@@ -65,12 +64,12 @@ func updateRelease(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) erro
 		return fmt.Errorf("cannot add pvc annotations to values: %w", err)
 	}
 
-	err = backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "podAnnotations")
+	err = backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "gitea", "podAnnotations")
 	if err != nil {
 		return fmt.Errorf("cannot add pod annotations to values: %w", err)
 	}
 
-	err = backup.AddBackupCMToValues(values, []string{"nextcloud", "extraVolumes"}, []string{"nextcloud", "extraVolumeMounts"})
+	err = backup.AddBackupCMToValues(values, []string{"extraVolumes"}, []string{"extraContainerVolumeMounts"})
 	if err != nil {
 		return fmt.Errorf("cannot add backup cm to values: %w", err)
 	}

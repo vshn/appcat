@@ -19,16 +19,16 @@ func init() {
 				Execute: ManageRelease,
 			},
 			{
+				Name:    "maintenance",
+				Execute: AddMaintenanceJob,
+			},
+			{
 				Name:    "backup",
 				Execute: AddBackup,
 			},
 			{
 				Name:    "restore",
 				Execute: RestoreBackup,
-			},
-			{
-				Name:    "maintenance",
-				Execute: AddMaintenanceJob,
 			},
 			{
 				Name:    "resizePVC",

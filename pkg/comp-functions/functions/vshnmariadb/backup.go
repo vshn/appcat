@@ -27,11 +27,14 @@ func AddBackupMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtim
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
 
-	common.SetRandomSchedules(comp, comp)
-
 	err = svc.SetDesiredCompositeStatus(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("failed to set composite: %w", err))
+	}
+
+	err = common.EnsureBackupSchedule(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("error ensuring backup schedule: %w", err))
 	}
 
 	err = backup.AddK8upBackup(ctx, svc, comp)

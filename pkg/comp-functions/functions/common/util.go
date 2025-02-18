@@ -1,6 +1,8 @@
 package common
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // SetNestedObjectValue is necessary as unstructured can't handle anything except basic values and maps.
 // this is a recursive function, it will traverse the map until it reaches the last element of the path.

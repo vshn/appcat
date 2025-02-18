@@ -4,16 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	"gopkg.in/yaml.v2"
-	netv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 )
 
 // AddIngress adds an inrgess to the Nextcloud instance.
@@ -28,106 +23,20 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		return runtime.NewFatalResult(fmt.Errorf("FQDN array is empty, but requires at least one entry, %w", errors.New("empty fqdn")))
 	}
 
-	annotations := map[string]string{}
-	if svc.Config.Data["ingress_annotations"] != "" {
-		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), annotations)
-		if err != nil {
-			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
-			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
-		}
+	ingressConfig := common.IngressConfig{
+		FQDNs: comp.Spec.Parameters.Service.FQDN,
+		ServiceConfig: common.IngressRuleConfig{
+			ServicePortNumber: 8080,
+		},
+		TlsCertBaseName: "nextcloud",
 	}
 
-	fqdns := comp.Spec.Parameters.Service.FQDN
-
-	// bool: true > Use wildcard, false > Use LE, []string: List of FQDNs
-	ingressMap := map[bool][]string{}
-	ocpDefaultAppsDomain := svc.Config.Data["ocpDefaultAppsDomain"]
-	if ocpDefaultAppsDomain != "" {
-		for _, fqdn := range fqdns {
-			useWildcard := common.IsSingleSubdomainOfRefDomain(fqdn, ocpDefaultAppsDomain)
-			ingressMap[useWildcard] = append(ingressMap[useWildcard], fqdn)
-		}
-	} else {
-		ingressMap[false] = fqdns
+	ingresses, err := common.GenerateBundledIngresses(comp, svc, ingressConfig)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("Could not generate ingresses: %w", err))
 	}
 
-	// Create ingresses that bundle FQDNs depending on their certificate requirements (LE/Wildcard)
-	fqdnsLetsEncrypt, fqdnsWildcard := ingressMap[false], ingressMap[true]
-	ingressBaseMeta := metav1.ObjectMeta{
-		Namespace:   comp.GetInstanceNamespace(),
-		Annotations: annotations,
-	}
-	var ingresses []*netv1.Ingress
-
-	// Ingress using Let's Encrypt
-	if len(fqdnsLetsEncrypt) > 0 {
-		ingressBaseMeta.Name = comp.GetName() + "-letsencrypt"
-		ingresses = append(ingresses, &netv1.Ingress{
-			ObjectMeta: ingressBaseMeta,
-			Spec: netv1.IngressSpec{
-				Rules: createIngressRule(comp, fqdnsLetsEncrypt),
-				TLS: []netv1.IngressTLS{
-					{
-						Hosts:      fqdnsLetsEncrypt,
-						SecretName: "nextcloud-ingress-cert",
-					},
-				},
-			},
-		})
-	}
-
-	// Ingress using apps domain wildcard
-	if len(fqdnsWildcard) > 0 {
-		ingressBaseMeta.Name = comp.GetName() + "-wildcard"
-		ingresses = append(ingresses, &netv1.Ingress{
-			ObjectMeta: ingressBaseMeta,
-			Spec: netv1.IngressSpec{
-				Rules: createIngressRule(comp, fqdnsWildcard),
-				TLS:   []netv1.IngressTLS{{}},
-			},
-		})
-	}
-
-	for _, ingress := range ingresses {
-		nameSuffix := "letsencrypt"
-		if strings.HasSuffix(ingress.Name, "wildcard") {
-			nameSuffix = "wildcard"
-		}
-		err = svc.SetDesiredKubeObject(ingress, comp.GetName()+"-ingress-"+nameSuffix)
-		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot set create ingress (%s): %s", nameSuffix, err))
-		}
-	}
+	common.CreateIngresses(comp, svc, ingresses)
 
 	return nil
-}
-
-func createIngressRule(comp *vshnv1.VSHNNextcloud, fqdns []string) []netv1.IngressRule {
-	ingressRules := []netv1.IngressRule{}
-
-	for _, fqdn := range fqdns {
-		rule := netv1.IngressRule{
-			Host: fqdn,
-			IngressRuleValue: netv1.IngressRuleValue{
-				HTTP: &netv1.HTTPIngressRuleValue{
-					Paths: []netv1.HTTPIngressPath{
-						{
-							Path:     "/",
-							PathType: ptr.To(netv1.PathType("Prefix")),
-							Backend: netv1.IngressBackend{
-								Service: &netv1.IngressServiceBackend{
-									Name: comp.GetName(),
-									Port: netv1.ServiceBackendPort{
-										Number: 8080,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-		ingressRules = append(ingressRules, rule)
-	}
-	return ingressRules
 }

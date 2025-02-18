@@ -17,7 +17,6 @@ import (
 
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -315,15 +314,8 @@ func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 
 }
 func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-	annotations := map[string]string{}
-	if svc.Config.Data["ingress_annotations"] != "" {
 
-		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), annotations)
-		if err != nil {
-			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
-			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
-		}
-	}
+	annotations := map[string]string{}
 
 	if svc.Config.Data["isOpenshift"] == "true" {
 		annotations["route.openshift.io/termination"] = "reencrypt"
@@ -332,51 +324,21 @@ func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 		annotations["haproxy.router.openshift.io/hsts_header"] = "max-age=31536000;preload"
 	}
 
-	fqdn := comp.Spec.Parameters.Service.Collabora.FQDN
-	tlsConfig := networkingv1.IngressTLS{}
-	if !common.IsSingleSubdomainOfRefDomain(fqdn, svc.Config.Data["ocpDefaultAppsDomain"]) {
-		tlsConfig.Hosts = []string{fqdn}
-		tlsConfig.SecretName = comp.GetName() + "-collabora-code-ingress-tls"
+	ingress, err := common.GenerateIngress(comp, svc, common.IngressConfig{
+		AdditionalAnnotations:  annotations,
+		AdditionalIngressNames: []string{"collabora", "code"},
+		FQDNs:                  []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+		ServiceConfig: common.IngressRuleConfig{
+			ServiceNameSuffix: "collabora-code",
+			ServicePortNumber: 9980,
+		},
+		TlsCertBaseName: "nextcloud",
+	})
+	if err != nil {
+		return err
 	}
 
-	ingress := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + "-collabora-code",
-			Namespace: comp.GetInstanceNamespace(),
-			Labels: map[string]string{
-				"app": comp.GetName() + "-collabora-code",
-			},
-			Annotations: annotations,
-		},
-		Spec: networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{
-				{
-					Host: fqdn,
-					IngressRuleValue: networkingv1.IngressRuleValue{
-						HTTP: &networkingv1.HTTPIngressRuleValue{
-							Paths: []networkingv1.HTTPIngressPath{
-								{
-									Path:     "/",
-									PathType: ptr.To(networkingv1.PathTypePrefix),
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: comp.GetName() + "-collabora-code",
-											Port: networkingv1.ServiceBackendPort{
-												Number: 9980,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			TLS: []networkingv1.IngressTLS{tlsConfig},
-		},
-	}
-
-	return svc.SetDesiredKubeObject(ingress, comp.GetName()+"-collabora-code-ingress", runtime.KubeOptionAddLabels(labelMap))
+	return common.CreateIngresses(comp, svc, []*networkingv1.Ingress{ingress}, runtime.KubeOptionAddLabels(labelMap))
 }
 
 func createIssuer(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {

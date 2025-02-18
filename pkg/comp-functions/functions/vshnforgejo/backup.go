@@ -23,6 +23,11 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.Servi
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
+	err = common.EnsureBackupSchedule(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot ensure k8s backup schedule: %w", err))
+	}
+
 	err = backup.AddK8upBackup(ctx, svc, comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot add k8s backup to the desired state: %w", err))

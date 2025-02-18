@@ -22,7 +22,7 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime
 		return runtime.NewFatalResult(err)
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	common.EnsureMaintenanceSchedule(comp)
 
 	err = svc.SetDesiredCompositeStatus(comp)
 	if err != nil {

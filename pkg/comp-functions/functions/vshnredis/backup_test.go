@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,8 @@ func TestAddBackupObjectCreation(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.Nil(t, AddBackup(ctx, &vshnv1.VSHNRedis{}, svc))
+	common.EnsureMaintenanceSchedule(comp)
+	assert.Nil(t, AddBackup(ctx, comp, svc))
 
 	bucket := &appcatv1.XObjectBucket{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(bucket, comp.Name+"-backup"))

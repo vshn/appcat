@@ -2,7 +2,6 @@ package common
 
 import (
 	"fmt"
-	"strings"
 )
 
 // SetNestedObjectValue is necessary as unstructured can't handle anything except basic values and maps.
@@ -31,15 +30,4 @@ func SetNestedObjectValue(values map[string]interface{}, path []string, val inte
 	}
 
 	return SetNestedObjectValue(tmpVals, path[1:], val)
-}
-
-// Checks if an FQDN is part of a reference FQDN, e.g. an OpenShift Apps domain; "*nextcloud*.apps.cluster.com".
-// Returns true if yes and FQDN is not a 2nd level subdomain (i.e. *sub2.sub1*.apps.cluster.com)
-func IsSingleSubdomainOfRefDomain(fqdn string, reference string) bool {
-	if !strings.Contains(fqdn, reference) || reference == "" {
-		return false
-	}
-
-	noSuffix, _ := strings.CutSuffix(fqdn, reference)
-	return len(strings.Split(noSuffix, ".")) == 2 // Handles prefixed dot of reference domain
 }

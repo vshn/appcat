@@ -23,6 +23,7 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.Servi
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
+	common.SetRandomSchedules(comp, comp)
 	err = backup.AddK8upBackup(ctx, svc, comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot add k8s backup to the desired state: %w", err))
@@ -59,7 +60,7 @@ func updateRelease(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo) error 
 		return fmt.Errorf("cannot add pvc annotations to values: %w", err)
 	}
 
-	err = backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "gitea", "podAnnotations")
+	err = backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".zip", "gitea", "podAnnotations")
 	if err != nil {
 		return fmt.Errorf("cannot add pod annotations to values: %w", err)
 	}

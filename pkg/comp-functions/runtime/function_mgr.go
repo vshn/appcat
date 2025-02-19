@@ -456,7 +456,7 @@ func ComposedOptionProtects(resName string) ComposedResourceOption {
 }
 
 // SetDesiredKubeObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
-// adds it to the desired composed resources. It takes options to manipulate the resulting kubec object before applying.
+// adds it to the desired composed resources. It takes options to manipulate the resulting kube object before applying.
 func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName string, opts ...KubeObjectOption) error {
 
 	kobj, err := s.putIntoObject(obj, objectName, objectName)

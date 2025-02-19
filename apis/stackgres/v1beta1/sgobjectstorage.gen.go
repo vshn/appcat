@@ -37,7 +37,7 @@ type SGObjectStorageSpecAzureBlob struct {
 
 // SGObjectStorageSpecAzureBlobAzureCredentials defines model for SGObjectStorageSpecAzureBlobAzureCredentials.
 type SGObjectStorageSpecAzureBlobAzureCredentials struct {
-	// Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#secretkeyselector-v1-core)(s) to reference the Secret(s) that contain the information about the `azureCredentials`. . Note that you may use the same or different Secrets for the `storageAccount` and the `accessKey`. In the former case, the `keys` that identify each must be, obviously, different.
+	// Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core)(s) to reference the Secret(s) that contain the information about the `azureCredentials`. . Note that you may use the same or different Secrets for the `storageAccount` and the `accessKey`. In the former case, the `keys` that identify each must be, obviously, different.
 	SecretKeySelectors *SGObjectStorageSpecAzureBlobAzureCredentialsSecretKeySelectors `json:"secretKeySelectors,omitempty"`
 }
 
@@ -84,7 +84,7 @@ type SGObjectStorageSpecGcsGcpCredentials struct {
 	// This is useful when running StackGres inside a GKE cluster using [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity).
 	FetchCredentialsFromMetadataService *bool `json:"fetchCredentialsFromMetadataService,omitempty"`
 
-	// A Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#secretkeyselector-v1-core) to reference the Secrets that contain the information about the Service Account to access GCS.
+	// A Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core) to reference the Secrets that contain the information about the Service Account to access GCS.
 	SecretKeySelectors *SGObjectStorageSpecGcsGcpCredentialsSecretKeySelectors `json:"secretKeySelectors,omitempty"`
 }
 
@@ -120,7 +120,7 @@ type SGObjectStorageSpecS3 struct {
 
 // SGObjectStorageSpecS3AwsCredentials defines model for SGObjectStorageSpecS3AwsCredentials.
 type SGObjectStorageSpecS3AwsCredentials struct {
-	// Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#secretkeyselector-v1-core)(s) to reference the Secrets that contain the information about the `awsCredentials`. Note that you may use the same or different Secrets for the `accessKeyId` and the `secretAccessKey`. In the former case, the `keys` that identify each must be, obviously, different.
+	// Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core)(s) to reference the Secrets that contain the information about the `awsCredentials`. Note that you may use the same or different Secrets for the `accessKeyId` and the `secretAccessKey`. In the former case, the `keys` that identify each must be, obviously, different.
 	SecretKeySelectors SGObjectStorageSpecS3AwsCredentialsSecretKeySelectors `json:"secretKeySelectors"`
 }
 
@@ -177,7 +177,7 @@ type SGObjectStorageSpecS3Compatible struct {
 
 // SGObjectStorageSpecS3CompatibleAwsCredentials defines model for SGObjectStorageSpecS3CompatibleAwsCredentials.
 type SGObjectStorageSpecS3CompatibleAwsCredentials struct {
-	// Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#secretkeyselector-v1-core)(s) to reference the Secret(s) that contain the information about the `awsCredentials`. Note that you may use the same or different Secrets for the `accessKeyId` and the `secretAccessKey`. In the former case, the `keys` that identify each must be, obviously, different.
+	// Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core)(s) to reference the Secret(s) that contain the information about the `awsCredentials`. Note that you may use the same or different Secrets for the `accessKeyId` and the `secretAccessKey`. In the former case, the `keys` that identify each must be, obviously, different.
 	SecretKeySelectors SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectors `json:"secretKeySelectors"`
 }
 
@@ -186,12 +186,24 @@ type SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectors struct {
 	// AWS [access key ID](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys). For example, `AKIAIOSFODNN7EXAMPLE`.
 	AccessKeyId SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId `json:"accessKeyId"`
 
+	// CA Certificate file to be used when connecting to the S3 Compatible Service.
+	CaCertificate *SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsCaCertificate `json:"caCertificate,omitempty"`
+
 	// AWS [secret access key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys). For example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`.
 	SecretAccessKey SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsSecretAccessKey `json:"secretAccessKey"`
 }
 
 // SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId defines model for SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId.
 type SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId struct {
+	// The key of the secret to select from. Must be a valid secret key.
+	Key string `json:"key"`
+
+	// Name of the referent. [More information](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	Name string `json:"name"`
+}
+
+// SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsCaCertificate defines model for SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsCaCertificate.
+type SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsCaCertificate struct {
 	// The key of the secret to select from. Must be a valid secret key.
 	Key string `json:"key"`
 

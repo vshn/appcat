@@ -13,7 +13,7 @@ type SGDbOpsSpec struct {
 
 	// The maximum number of retries the operation is allowed to do after a failure.
 	//
-	// A value of `0` (zero) means no retries are made. Can not be greater than `10`. Defaults to: `0`.
+	// A value of `0` (zero) means no retries are made. Defaults to: `0`.
 	MaxRetries *int `json:"maxRetries,omitempty"`
 
 	// Configuration of minor version upgrade
@@ -28,7 +28,6 @@ type SGDbOpsSpec struct {
 	// * `restart`: perform a restart of the cluster.
 	// * `minorVersionUpgrade`: perform a minor version upgrade of PostgreSQL.
 	// * `securityUpgrade`: perform a security upgrade of the cluster.
-	// * `upgrade`: perform a operator API upgrade of the cluster
 	Op string `json:"op"`
 
 	// Configuration of [`pg_repack`](https://github.com/reorg/pg_repack) command
@@ -70,13 +69,56 @@ type SGDbOpsSpecBenchmark struct {
 	// * `replicas-service`: Connect to the replicas service
 	ConnectionType *string `json:"connectionType,omitempty"`
 
+	// The credentials of the user that will be used by the benchmark
+	Credentials *SGDbOpsSpecBenchmarkCredentials `json:"credentials,omitempty"`
+
+	// When specified will indicate the database where the benchmark will run upon.
+	//
+	// If not specified a target database with a random name will be created and removed after the benchmark completes.
+	Database *string `json:"database,omitempty"`
+
 	// Configuration of [pgbench](https://www.postgresql.org/docs/current/pgbench.html) benchmark
 	Pgbench *SGDbOpsSpecBenchmarkPgbench `json:"pgbench,omitempty"`
+
+	// Configuration of sampling benchmark.
+	Sampling *SGDbOpsSpecBenchmarkSampling `json:"sampling,omitempty"`
 
 	// The type of benchmark that will be performed on the SGCluster. Available benchmarks are:
 	//
 	// * `pgbench`: run [pgbench](https://www.postgresql.org/docs/current/pgbench.html) on the specified SGCluster and report the results in the status.
+	// * `sampling`: samples real queries and store them in the SGDbOps status in order to be used by a `pgbench` benchmark using `replay` mode.
 	Type string `json:"type"`
+}
+
+// SGDbOpsSpecBenchmarkCredentials defines model for SGDbOpsSpecBenchmarkCredentials.
+type SGDbOpsSpecBenchmarkCredentials struct {
+	// The password that will be used by the benchmark
+	//
+	// If not specified the default superuser password will be used.
+	Password SGDbOpsSpecBenchmarkCredentialsPassword `json:"password"`
+
+	// The username that will be used by the benchmark.
+	//
+	// If not specified the default superuser username (by default postgres) will be used.
+	Username SGDbOpsSpecBenchmarkCredentialsUsername `json:"username"`
+}
+
+// SGDbOpsSpecBenchmarkCredentialsPassword defines model for SGDbOpsSpecBenchmarkCredentialsPassword.
+type SGDbOpsSpecBenchmarkCredentialsPassword struct {
+	// The Secret key where the password is stored.
+	Key string `json:"key"`
+
+	// The Secret name where the password is stored.
+	Name string `json:"name"`
+}
+
+// SGDbOpsSpecBenchmarkCredentialsUsername defines model for SGDbOpsSpecBenchmarkCredentialsUsername.
+type SGDbOpsSpecBenchmarkCredentialsUsername struct {
+	// The Secret key where the username is stored.
+	Key string `json:"key"`
+
+	// The Secret name where the username is stored.
+	Name string `json:"name"`
 }
 
 // SGDbOpsSpecBenchmarkPgbench defines model for SGDbOpsSpecBenchmarkPgbench.
@@ -84,17 +126,232 @@ type SGDbOpsSpecBenchmarkPgbench struct {
 	// Number of clients simulated, that is, number of concurrent database sessions. Defaults to: `1`.
 	ConcurrentClients *int `json:"concurrentClients,omitempty"`
 
+	// This section allow to configure custom SQL for initialization and scripts used by pgbench.
+	Custom *SGDbOpsSpecBenchmarkPgbenchCustom `json:"custom,omitempty"`
+
 	// Size of the database to generate. This size is specified either in Mebibytes, Gibibytes or Tebibytes (multiples of 2^20, 2^30 or 2^40, respectively).
 	DatabaseSize string `json:"databaseSize"`
 
 	// An ISO 8601 duration in the format `PnDTnHnMn.nS`, that specifies how long the benchmark will run.
 	Duration string `json:"duration"`
 
+	// Create the pgbench_accounts, pgbench_tellers and pgbench_branches tables with the given fillfactor. Default is 100.
+	Fillfactor *int `json:"fillfactor,omitempty"`
+
+	// Create foreign key constraints between the standard tables. (This option only take effect if `custom.initiailization` is not specified).
+	ForeignKeys *bool `json:"foreignKeys,omitempty"`
+
+	// Perform just a selected set of the normal initialization steps. init_steps specifies the initialization steps to be performed, using one character per step. Each step is invoked in the specified order. The default is dtgvp. The available steps are:
+	//
+	// * `d` (Drop): Drop any existing pgbench tables.
+	// * `t` (create Tables): Create the tables used by the standard pgbench scenario, namely pgbench_accounts, pgbench_branches, pgbench_history, and pgbench_tellers.
+	// * `g` or `G` (Generate data, client-side or server-side): Generate data and load it into the standard tables, replacing any data already present.
+	//   With `g` (client-side data generation), data is generated in pgbench client and then sent to the server. This uses the client/server bandwidth extensively through a COPY. pgbench uses the FREEZE option with version 14 or later of PostgreSQL to speed up subsequent VACUUM, unless partitions are enabled. Using g causes logging to print one message every 100,000 rows while generating data for the pgbench_accounts table.
+	//   With `G` (server-side data generation), only small queries are sent from the pgbench client and then data is actually generated in the server. No significant bandwidth is required for this variant, but the server will do more work. Using G causes logging not to print any progress message while generating data.
+	//   The default initialization behavior uses client-side data generation (equivalent to g).
+	// * `v` (Vacuum): Invoke VACUUM on the standard tables.
+	// * `p` (create Primary keys): Create primary key indexes on the standard tables.
+	// * `f` (create Foreign keys): Create foreign key constraints between the standard tables. (Note that this step is not performed by default.)
+	InitSteps *string `json:"initSteps,omitempty"`
+
+	// The pgbench benchmark type:
+	//
+	// * `tpcb-like`: The benchmark is inspired by the [TPC-B benchmark](https://www.tpc.org/TPC_Documents_Latest_Versions/TPC-B_v2.0.0.pdf). It is the default mode when `connectionType` is set to `primary-service`.
+	// * `select-only`: The `tpcb-like` but only using SELECTs commands. It is the default mode when `connectionType` is set to `replicas-service`.
+	// * `custom`: will use the scripts in the `custom` section to initialize and and run commands for the benchmark.
+	// * `replay`: will replay the sampled queries of a sampling benchmark SGDbOps. If the `custom` section is specified it will be used instead. Queries can be referenced setting `custom.scripts.replay` to the index of the query in the sampling benchmark SGDbOps's status (index start from 0).
+	//
+	// See also https://www.postgresql.org/docs/current/pgbench.html#TRANSACTIONS-AND-SCRIPTS
+	Mode *string `json:"mode,omitempty"`
+
+	// Perform no vacuuming during initialization. (This option suppresses the `v` initialization step, even if it was specified in `initSteps`.)
+	NoVacuum *bool `json:"noVacuum,omitempty"`
+
+	// Create a partitioned pgbench_accounts table with the specified method. Expected values are `range` or `hash`. This option requires that partitions is set to non-zero. If unspecified, default is `range`. (This option only take effect if `custom.initiailization` is not specified).
+	PartitionMethod *string `json:"partitionMethod,omitempty"`
+
+	// Create a partitioned pgbench_accounts table with the specified number of partitions of nearly equal size for the scaled number of accounts. Default is 0, meaning no partitioning. (This option only take effect if `custom.initiailization` is not specified).
+	Partitions *int `json:"partitions,omitempty"`
+
+	// Protocol to use for submitting queries to the server:
+	//
+	// * `simple`: use simple query protocol.
+	// * `extended`: use extended query protocol.
+	// * `prepared`: use extended query protocol with prepared statements.
+	//
+	// In the prepared mode, pgbench reuses the parse analysis result starting from the second query iteration, so pgbench runs faster than in other modes.
+	//
+	// The default is `simple` query protocol. See also https://www.postgresql.org/docs/current/protocol.html
+	QueryMode *string `json:"queryMode,omitempty"`
+
+	// Sampling rate, used when collecting data, to reduce the amount of collected data. If this option is given, only the specified fraction of transactions are collected. 1.0 means all transactions will be logged, 0.05 means only 5% of the transactions will be logged.
+	SamplingRate *float32 `json:"samplingRate,omitempty"`
+
+	// benchmark SGDbOps of type sampling that will be used to replay sampled queries.
+	SamplingSGDbOps *string `json:"samplingSGDbOps,omitempty"`
+
 	// Number of worker threads within pgbench. Using more than one thread can be helpful on multi-CPU machines. Clients are distributed as evenly as possible among available threads. Default is `1`.
 	Threads *int `json:"threads,omitempty"`
 
+	// Create all tables as unlogged tables, rather than permanent tables. (This option only take effect if `custom.initiailization` is not specified).
+	UnloggedTables *bool `json:"unloggedTables,omitempty"`
+
+	// **Deprecated** this field is ignored, use `queryMode` instead.
+	//
 	// Use extended query protocol with prepared statements. Defaults to: `false`.
 	UsePreparedStatements *bool `json:"usePreparedStatements,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustom defines model for SGDbOpsSpecBenchmarkPgbenchCustom.
+type SGDbOpsSpecBenchmarkPgbenchCustom struct {
+	// The custom SQL for initialization that will be executed in place of pgbench default initialization.
+	//
+	// If not specified the default pgbench initialization will be performed instead.
+	Initialization *SGDbOpsSpecBenchmarkPgbenchCustomInitialization `json:"initialization,omitempty"`
+
+	// The custom SQL scripts that will be executed by pgbench during the benchmark instead of default pgbench scripts
+	Scripts *[]SGDbOpsSpecBenchmarkPgbenchCustomScriptsItem `json:"scripts,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustomInitialization defines model for SGDbOpsSpecBenchmarkPgbenchCustomInitialization.
+type SGDbOpsSpecBenchmarkPgbenchCustomInitialization struct {
+	// Raw SQL script to execute. This field is mutually exclusive with `scriptFrom` field.
+	Script *string `json:"script,omitempty"`
+
+	// Reference to either a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) or a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) that contains the SQL script to execute. This field is mutually exclusive with `script` field.
+	//
+	// Fields `secretKeyRef` and `configMapKeyRef` are mutually exclusive, and one of them is required.
+	ScriptFrom *SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFrom `json:"scriptFrom,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFrom defines model for SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFrom.
+type SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFrom struct {
+	// A [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) reference that contains the SQL script to execute. This field is mutually exclusive with `secretKeyRef` field.
+	ConfigMapKeyRef *SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFromConfigMapKeyRef `json:"configMapKeyRef,omitempty"`
+
+	// A Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core) that contains the SQL script to execute. This field is mutually exclusive with `configMapKeyRef` field.
+	SecretKeyRef *SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFromSecretKeyRef `json:"secretKeyRef,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFromConfigMapKeyRef defines model for SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFromConfigMapKeyRef.
+type SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFromConfigMapKeyRef struct {
+	// The key name within the ConfigMap that contains the SQL script to execute.
+	Key *string `json:"key,omitempty"`
+
+	// The name of the ConfigMap that contains the SQL script to execute.
+	Name *string `json:"name,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFromSecretKeyRef defines model for SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFromSecretKeyRef.
+type SGDbOpsSpecBenchmarkPgbenchCustomInitializationScriptFromSecretKeyRef struct {
+	// The key of the secret to select from. Must be a valid secret key.
+	Key *string `json:"key,omitempty"`
+
+	// Name of the referent. [More information](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	Name *string `json:"name,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustomScriptsItem defines model for SGDbOpsSpecBenchmarkPgbenchCustomScriptsItem.
+type SGDbOpsSpecBenchmarkPgbenchCustomScriptsItem struct {
+	// The name of the builtin script to use. See https://www.postgresql.org/docs/current/pgbench.html#PGBENCH-OPTION-BUILTIN
+	//
+	// When specified fields `replay`, `script` and `scriptFrom` must not be set.
+	Builtin *string `json:"builtin,omitempty"`
+
+	// The index of the query in the sampling benchmark SGDbOps's status (index start from 0).
+	//
+	// When specified fields `builtin`, `script` and `scriptFrom` must not be set.
+	Replay *int `json:"replay,omitempty"`
+
+	// Raw SQL script to execute. This field is mutually exclusive with `scriptFrom` field.
+	Script *string `json:"script,omitempty"`
+
+	// Reference to either a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) or a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) that contains the SQL script to execute. This field is mutually exclusive with `script` field.
+	//
+	// Fields `secretKeyRef` and `configMapKeyRef` are mutually exclusive, and one of them is required.
+	ScriptFrom *SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFrom `json:"scriptFrom,omitempty"`
+
+	// The weight of this custom SQL script.
+	Weight *int `json:"weight,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFrom defines model for SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFrom.
+type SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFrom struct {
+	// A [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) reference that contains the SQL script to execute. This field is mutually exclusive with `secretKeyRef` field.
+	ConfigMapKeyRef *SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFromConfigMapKeyRef `json:"configMapKeyRef,omitempty"`
+
+	// A Kubernetes [SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core) that contains the SQL script to execute. This field is mutually exclusive with `configMapKeyRef` field.
+	SecretKeyRef *SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFromSecretKeyRef `json:"secretKeyRef,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFromConfigMapKeyRef defines model for SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFromConfigMapKeyRef.
+type SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFromConfigMapKeyRef struct {
+	// The key name within the ConfigMap that contains the SQL script to execute.
+	Key *string `json:"key,omitempty"`
+
+	// The name of the ConfigMap that contains the SQL script to execute.
+	Name *string `json:"name,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFromSecretKeyRef defines model for SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFromSecretKeyRef.
+type SGDbOpsSpecBenchmarkPgbenchCustomScriptsItemScriptFromSecretKeyRef struct {
+	// The key of the secret to select from. Must be a valid secret key.
+	Key *string `json:"key,omitempty"`
+
+	// Name of the referent. [More information](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	Name *string `json:"name,omitempty"`
+}
+
+// SGDbOpsSpecBenchmarkSampling defines model for SGDbOpsSpecBenchmarkSampling.
+type SGDbOpsSpecBenchmarkSampling struct {
+	// The query used to select top queries. Will be ignored if `mode` is not set to `custom`.
+	//
+	// The query must return at most 2 columns:
+	//
+	// * First column returned by the query must be a column holding the query identifier, also available in pg_stat_activity (column `query_id`) and pg_stat_statements (column `queryid`).
+	// * Second column is optional and, if returned, must hold a json object containing only text keys and values stat will be used to generate the stats.
+	//
+	// See also:
+	//
+	// * https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ACTIVITY-VIEW
+	// * https://www.postgresql.org/docs/current/pgstatstatements.html#PGSTATSTATEMENTS-PG-STAT-STATEMENTS
+	CustomTopQueriesQuery *string `json:"customTopQueriesQuery,omitempty"`
+
+	// The mode used to select the top queries used for sampling:
+	//
+	// * `time`: The top queries will be selected among the most slow queries.
+	// * `calls`: The top queries will be selected among the most called queries.
+	// * `custom`: The `customTopQueriesQuery` will be used to select top queries.
+	Mode *string `json:"mode,omitempty"`
+
+	// When `true` omit to include the top queries stats in the SGDbOps status. By default `false`.
+	OmitTopQueriesInStatus *bool `json:"omitTopQueriesInStatus,omitempty"`
+
+	// Number of sampled queries to include in the result. By default `10`.
+	Queries *int `json:"queries,omitempty"`
+
+	// An ISO 8601 duration in the format `PnDTnHnMn.nS`, that specifies how long will last the sampling of real queries that will be replayed later.
+	SamplingDuration string `json:"samplingDuration"`
+
+	// Minimum number of microseconds the sampler will wait between each sample is taken. By default `10000` (10 milliseconds).
+	SamplingMinInterval *int `json:"samplingMinInterval,omitempty"`
+
+	// The target database to be sampled. By default `postgres`.
+	//
+	// The benchmark database will be used to store the sampled queries but user must specify a target database to be sampled in the `sampling` section.
+	TargetDatabase string `json:"targetDatabase"`
+
+	// An ISO 8601 duration in the format `PnDTnHnMn.nS`, that specifies how long the to wait before selecting top queries in order to collect enough stats.
+	TopQueriesCollectDuration string `json:"topQueriesCollectDuration"`
+
+	// Regular expression for filtering representative statements when selecting top queries. Will be ignored if `mode` is set to `custom`. By default is `^ *(with|select) `. See https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP
+	TopQueriesFilter *string `json:"topQueriesFilter,omitempty"`
+
+	// Minimum number of queries to consider as part of the top queries. By default `5`.
+	TopQueriesMin *int `json:"topQueriesMin,omitempty"`
+
+	// Percentile of queries to consider as part of the top queries. Will be ignored if `mode` is set to `custom`. By default `95`.
+	TopQueriesPercentile *int `json:"topQueriesPercentile,omitempty"`
 }
 
 // SGDbOpsSpecMajorVersionUpgrade defines model for SGDbOpsSpecMajorVersionUpgrade.
@@ -103,8 +360,8 @@ type SGDbOpsSpecMajorVersionUpgrade struct {
 	//
 	// When provided will indicate were the backups and WAL files will be stored.
 	//
-	// The path should be different from the current `.spec.configurations.backupPath` value for the target `SGCluster`
-	//  in order to avoid mixing WAL files of two distinct major versions of postgres.
+	// The path should be different from the current `.spec.configurations.backups[].path` value for the target `SGCluster`
+	//   in order to avoid mixing WAL files of two distinct major versions of postgres.
 	BackupPath *string `json:"backupPath,omitempty"`
 
 	// If true does some checks to see if the cluster can perform a major version upgrade without changing any data. Defaults to: `false`.
@@ -112,21 +369,74 @@ type SGDbOpsSpecMajorVersionUpgrade struct {
 
 	// If true use efficient file cloning (also known as "reflinks" on some systems) instead of copying files to the new cluster.
 	// This can result in near-instantaneous copying of the data files, giving the speed advantages of `link` while leaving the old
-	//  cluster untouched. This option is mutually exclusive with `link`. Defaults to: `false`.
+	//   cluster untouched. This option is mutually exclusive with `link`. Defaults to: `false`.
 	//
 	// File cloning is only supported on some operating systems and file systems. If it is selected but not supported, the pg_upgrade
-	//  run will error. At present, it is supported on Linux (kernel 4.5 or later) with Btrfs and XFS (on file systems created with
-	//  reflink support), and on macOS with APFS.
+	//   run will error. At present, it is supported on Linux (kernel 4.5 or later) with Btrfs and XFS (on file systems created with
+	//   reflink support), and on macOS with APFS.
 	Clone *bool `json:"clone,omitempty"`
 
 	// If true use hard links instead of copying files to the new cluster. This option is mutually exclusive with `clone`. Defaults to: `false`.
 	Link *bool `json:"link,omitempty"`
+
+	// A major version upgrade can not be performed if a required extension is not present for the target major version of the upgrade.
+	// In those cases you will have to provide the target extension version of the extension for the target major version of postgres.
+	// Beware that in some cases it is not possible to upgrade an extension alongside postgres. This is the case for PostGIS or timescaledb.
+	//  In such cases you will have to upgrade the extension before or after the major version upgrade. Please make sure you read the
+	//  documentation of each extension in order to understand if it is possible to upgrade it during a major version upgrade of postgres.
+	PostgresExtensions *[]SGDbOpsSpecMajorVersionUpgradePostgresExtensionsItem `json:"postgresExtensions,omitempty"`
 
 	// The target postgres version that must have the same major version of the target SGCluster.
 	PostgresVersion *string `json:"postgresVersion,omitempty"`
 
 	// The postgres config that must have the same major version of the target postgres version.
 	SgPostgresConfig *string `json:"sgPostgresConfig,omitempty"`
+
+	// The list of Postgres extensions to install.
+	//
+	// **This section is filled by the operator.**
+	ToInstallPostgresExtensions *[]SGDbOpsSpecMajorVersionUpgradeToInstallPostgresExtensionsItem `json:"toInstallPostgresExtensions,omitempty"`
+}
+
+// SGDbOpsSpecMajorVersionUpgradePostgresExtensionsItem defines model for SGDbOpsSpecMajorVersionUpgradePostgresExtensionsItem.
+type SGDbOpsSpecMajorVersionUpgradePostgresExtensionsItem struct {
+	// The name of the extension to deploy.
+	Name string `json:"name"`
+
+	// The id of the publisher of the extension to deploy. If not specified `com.ongres` will be used by default.
+	Publisher *string `json:"publisher,omitempty"`
+
+	// The repository base URL from where to obtain the extension to deploy.
+	//
+	// **This section is filled by the operator.**
+	Repository *string `json:"repository,omitempty"`
+
+	// The version of the extension to deploy. If not specified version of `stable` channel will be used by default and if only a version is available that one will be used.
+	Version *string `json:"version,omitempty"`
+}
+
+// SGDbOpsSpecMajorVersionUpgradeToInstallPostgresExtensionsItem defines model for SGDbOpsSpecMajorVersionUpgradeToInstallPostgresExtensionsItem.
+type SGDbOpsSpecMajorVersionUpgradeToInstallPostgresExtensionsItem struct {
+	// The build version of the extension to install.
+	Build *string `json:"build,omitempty"`
+
+	// The extra mounts of the extension to install.
+	ExtraMounts *[]string `json:"extraMounts,omitempty"`
+
+	// The name of the extension to install.
+	Name string `json:"name"`
+
+	// The postgres major version of the extension to install.
+	PostgresVersion string `json:"postgresVersion"`
+
+	// The id of the publisher of the extension to install.
+	Publisher string `json:"publisher"`
+
+	// The repository base URL from where the extension will be installed from.
+	Repository string `json:"repository"`
+
+	// The version of the extension to install.
+	Version string `json:"version"`
 }
 
 // SGDbOpsSpecMinorVersionUpgrade defines model for SGDbOpsSpecMinorVersionUpgrade.
@@ -198,7 +508,7 @@ type SGDbOpsSpecRestart struct {
 	Method *string `json:"method,omitempty"`
 
 	// By default all Pods are restarted. Setting this option to `true` allow to restart only those Pods which
-	//  are in pending restart state as detected by the operation. Defaults to: `false`.
+	//   are in pending restart state as detected by the operation. Defaults to: `false`.
 	OnlyPendingRestart *bool `json:"onlyPendingRestart,omitempty"`
 }
 
@@ -206,7 +516,7 @@ type SGDbOpsSpecRestart struct {
 type SGDbOpsSpecScheduling struct {
 	// Node affinity is a group of node affinity scheduling rules.
 	//
-	// See: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#nodeaffinity-v1-core
+	// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#nodeaffinity-v1-core
 	NodeAffinity *SGDbOpsSpecSchedulingNodeAffinity `json:"nodeAffinity,omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
@@ -214,17 +524,20 @@ type SGDbOpsSpecScheduling struct {
 
 	// Pod affinity is a group of inter pod affinity scheduling rules.
 	//
-	// See: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#podaffinity-v1-core
+	// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podaffinity-v1-core
 	PodAffinity *SGDbOpsSpecSchedulingPodAffinity `json:"podAffinity,omitempty"`
 
 	// Pod anti affinity is a group of inter pod anti affinity scheduling rules.
 	//
-	// See: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#podantiaffinity-v1-core
+	// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podantiaffinity-v1-core
 	PodAntiAffinity *SGDbOpsSpecSchedulingPodAntiAffinity `json:"podAntiAffinity,omitempty"`
+
+	// If specified, indicates the pod's priority. "system-node-critical" and "system-cluster-critical" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.
+	PriorityClassName *string `json:"priorityClassName,omitempty"`
 
 	// If specified, the pod's tolerations.
 	//
-	// See: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#toleration-v1-core
+	// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#toleration-v1-core
 	Tolerations *[]SGDbOpsSpecSchedulingTolerationsItem `json:"tolerations,omitempty"`
 }
 
@@ -261,7 +574,6 @@ type SGDbOpsSpecSchedulingNodeAffinityPreferredDuringSchedulingIgnoredDuringExec
 	Key string `json:"key"`
 
 	// Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
-	//
 	Operator string `json:"operator"`
 
 	// An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.
@@ -274,7 +586,6 @@ type SGDbOpsSpecSchedulingNodeAffinityPreferredDuringSchedulingIgnoredDuringExec
 	Key string `json:"key"`
 
 	// Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
-	//
 	Operator string `json:"operator"`
 
 	// An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.
@@ -302,7 +613,6 @@ type SGDbOpsSpecSchedulingNodeAffinityRequiredDuringSchedulingIgnoredDuringExecu
 	Key string `json:"key"`
 
 	// Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
-	//
 	Operator string `json:"operator"`
 
 	// An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.
@@ -315,7 +625,6 @@ type SGDbOpsSpecSchedulingNodeAffinityRequiredDuringSchedulingIgnoredDuringExecu
 	Key string `json:"key"`
 
 	// Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
-	//
 	Operator string `json:"operator"`
 
 	// An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.
@@ -344,6 +653,12 @@ type SGDbOpsSpecSchedulingPodAffinityPreferredDuringSchedulingIgnoredDuringExecu
 type SGDbOpsSpecSchedulingPodAffinityPreferredDuringSchedulingIgnoredDuringExecutionItemPodAffinityTerm struct {
 	// A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 	LabelSelector *SGDbOpsSpecSchedulingPodAffinityPreferredDuringSchedulingIgnoredDuringExecutionItemPodAffinityTermLabelSelector `json:"labelSelector,omitempty"`
+
+	// MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+	MatchLabelKeys *[]string `json:"matchLabelKeys,omitempty"`
+
+	// MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+	MismatchLabelKeys *[]string `json:"mismatchLabelKeys,omitempty"`
 
 	// A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 	NamespaceSelector *SGDbOpsSpecSchedulingPodAffinityPreferredDuringSchedulingIgnoredDuringExecutionItemPodAffinityTermNamespaceSelector `json:"namespaceSelector,omitempty"`
@@ -401,6 +716,12 @@ type SGDbOpsSpecSchedulingPodAffinityPreferredDuringSchedulingIgnoredDuringExecu
 type SGDbOpsSpecSchedulingPodAffinityRequiredDuringSchedulingIgnoredDuringExecutionItem struct {
 	// A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 	LabelSelector *SGDbOpsSpecSchedulingPodAffinityRequiredDuringSchedulingIgnoredDuringExecutionItemLabelSelector `json:"labelSelector,omitempty"`
+
+	// MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+	MatchLabelKeys *[]string `json:"matchLabelKeys,omitempty"`
+
+	// MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+	MismatchLabelKeys *[]string `json:"mismatchLabelKeys,omitempty"`
 
 	// A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 	NamespaceSelector *SGDbOpsSpecSchedulingPodAffinityRequiredDuringSchedulingIgnoredDuringExecutionItemNamespaceSelector `json:"namespaceSelector,omitempty"`
@@ -477,6 +798,12 @@ type SGDbOpsSpecSchedulingPodAntiAffinityPreferredDuringSchedulingIgnoredDuringE
 	// A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 	LabelSelector *SGDbOpsSpecSchedulingPodAntiAffinityPreferredDuringSchedulingIgnoredDuringExecutionItemPodAffinityTermLabelSelector `json:"labelSelector,omitempty"`
 
+	// MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+	MatchLabelKeys *[]string `json:"matchLabelKeys,omitempty"`
+
+	// MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+	MismatchLabelKeys *[]string `json:"mismatchLabelKeys,omitempty"`
+
 	// A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 	NamespaceSelector *SGDbOpsSpecSchedulingPodAntiAffinityPreferredDuringSchedulingIgnoredDuringExecutionItemPodAffinityTermNamespaceSelector `json:"namespaceSelector,omitempty"`
 
@@ -534,6 +861,12 @@ type SGDbOpsSpecSchedulingPodAntiAffinityRequiredDuringSchedulingIgnoredDuringEx
 	// A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 	LabelSelector *SGDbOpsSpecSchedulingPodAntiAffinityRequiredDuringSchedulingIgnoredDuringExecutionItemLabelSelector `json:"labelSelector,omitempty"`
 
+	// MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+	MatchLabelKeys *[]string `json:"matchLabelKeys,omitempty"`
+
+	// MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+	MismatchLabelKeys *[]string `json:"mismatchLabelKeys,omitempty"`
+
 	// A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 	NamespaceSelector *SGDbOpsSpecSchedulingPodAntiAffinityRequiredDuringSchedulingIgnoredDuringExecutionItemNamespaceSelector `json:"namespaceSelector,omitempty"`
 
@@ -589,14 +922,12 @@ type SGDbOpsSpecSchedulingPodAntiAffinityRequiredDuringSchedulingIgnoredDuringEx
 // SGDbOpsSpecSchedulingTolerationsItem defines model for SGDbOpsSpecSchedulingTolerationsItem.
 type SGDbOpsSpecSchedulingTolerationsItem struct {
 	// Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
-	//
 	Effect *string `json:"effect,omitempty"`
 
 	// Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
 	Key *string `json:"key,omitempty"`
 
 	// Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
-	//
 	Operator *string `json:"operator,omitempty"`
 
 	// TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
@@ -627,22 +958,22 @@ type SGDbOpsSpecVacuum struct {
 	Databases *[]SGDbOpsSpecVacuumDatabasesItem `json:"databases,omitempty"`
 
 	// Normally, VACUUM will skip pages based on the visibility map. Pages where all tuples are known to be frozen can always be
-	//  skipped, and those where all tuples are known to be visible to all transactions may be skipped except when performing an
-	//  aggressive vacuum. Furthermore, except when performing an aggressive vacuum, some pages may be skipped in order to avoid
-	//  waiting for other sessions to finish using them. This option disables all page-skipping behavior, and is intended to be
-	//  used only when the contents of the visibility map are suspect, which should happen only if there is a hardware or
-	//  software issue causing database corruption. Defaults to: `false`.
+	//   skipped, and those where all tuples are known to be visible to all transactions may be skipped except when performing an
+	//   aggressive vacuum. Furthermore, except when performing an aggressive vacuum, some pages may be skipped in order to avoid
+	//   waiting for other sessions to finish using them. This option disables all page-skipping behavior, and is intended to be
+	//   used only when the contents of the visibility map are suspect, which should happen only if there is a hardware or
+	//   software issue causing database corruption. Defaults to: `false`.
 	DisablePageSkipping *bool `json:"disablePageSkipping,omitempty"`
 
 	// If true selects aggressive "freezing" of tuples. Specifying FREEZE is equivalent to performing VACUUM with the
-	//  vacuum_freeze_min_age and vacuum_freeze_table_age parameters set to zero. Aggressive freezing is always performed
-	//  when the table is rewritten, so this option is redundant when FULL is specified. Defaults to: `false`.
+	//   vacuum_freeze_min_age and vacuum_freeze_table_age parameters set to zero. Aggressive freezing is always performed
+	//   when the table is rewritten, so this option is redundant when FULL is specified. Defaults to: `false`.
 	Freeze *bool `json:"freeze,omitempty"`
 
 	// If true selects "full" vacuum, which can reclaim more space, but takes much longer and exclusively locks the table.
 	// This method also requires extra disk space, since it writes a new copy of the table and doesn't release the old copy
-	//  until the operation is complete. Usually this should only be used when a significant amount of space needs to be
-	//  reclaimed from within the table. Defaults to: `false`.
+	//   until the operation is complete. Usually this should only be used when a significant amount of space needs to be
+	//   reclaimed from within the table. Defaults to: `false`.
 	Full *bool `json:"full,omitempty"`
 }
 
@@ -652,22 +983,22 @@ type SGDbOpsSpecVacuumDatabasesItem struct {
 	Analyze *bool `json:"analyze,omitempty"`
 
 	// Normally, VACUUM will skip pages based on the visibility map. Pages where all tuples are known to be frozen can always be
-	//  skipped, and those where all tuples are known to be visible to all transactions may be skipped except when performing an
-	//  aggressive vacuum. Furthermore, except when performing an aggressive vacuum, some pages may be skipped in order to avoid
-	//  waiting for other sessions to finish using them. This option disables all page-skipping behavior, and is intended to be
-	//  used only when the contents of the visibility map are suspect, which should happen only if there is a hardware or
-	//  software issue causing database corruption. Defaults to: `false`.
+	//   skipped, and those where all tuples are known to be visible to all transactions may be skipped except when performing an
+	//   aggressive vacuum. Furthermore, except when performing an aggressive vacuum, some pages may be skipped in order to avoid
+	//   waiting for other sessions to finish using them. This option disables all page-skipping behavior, and is intended to be
+	//   used only when the contents of the visibility map are suspect, which should happen only if there is a hardware or
+	//   software issue causing database corruption. Defaults to: `false`.
 	DisablePageSkipping *bool `json:"disablePageSkipping,omitempty"`
 
 	// If true selects aggressive "freezing" of tuples. Specifying FREEZE is equivalent to performing VACUUM with the
-	//  vacuum_freeze_min_age and vacuum_freeze_table_age parameters set to zero. Aggressive freezing is always performed
-	//  when the table is rewritten, so this option is redundant when FULL is specified. Defaults to: `false`.
+	//   vacuum_freeze_min_age and vacuum_freeze_table_age parameters set to zero. Aggressive freezing is always performed
+	//   when the table is rewritten, so this option is redundant when FULL is specified. Defaults to: `false`.
 	Freeze *bool `json:"freeze,omitempty"`
 
 	// If true selects "full" vacuum, which can reclaim more space, but takes much longer and exclusively locks the table.
 	// This method also requires extra disk space, since it writes a new copy of the table and doesn't release the old copy
-	//  until the operation is complete. Usually this should only be used when a significant amount of space needs to be
-	//  reclaimed from within the table. Defaults to: `false`.
+	//   until the operation is complete. Usually this should only be used when a significant amount of space needs to be
+	//   reclaimed from within the table. Defaults to: `false`.
 	Full *bool `json:"full,omitempty"`
 
 	// the name of the database
@@ -709,15 +1040,24 @@ type SGDbOpsStatus struct {
 type SGDbOpsStatusBenchmark struct {
 	// The results of the pgbench benchmark
 	Pgbench *SGDbOpsStatusBenchmarkPgbench `json:"pgbench,omitempty"`
+
+	// The results of the sampling benchmark
+	Sampling *SGDbOpsStatusBenchmarkSampling `json:"sampling,omitempty"`
 }
 
 // SGDbOpsStatusBenchmarkPgbench defines model for SGDbOpsStatusBenchmarkPgbench.
 type SGDbOpsStatusBenchmarkPgbench struct {
+	// Compressed and base 64 encoded HdrHistogram
+	HdrHistogram *string `json:"hdrHistogram,omitempty"`
+
 	// The latency results of the pgbench benchmark
 	Latency *SGDbOpsStatusBenchmarkPgbenchLatency `json:"latency,omitempty"`
 
 	// The scale factor used to run pgbench (`--scale`).
 	ScaleFactor *float32 `json:"scaleFactor"`
+
+	// Average per-statement latency (execution time from the perspective of the client) of each command after the benchmark finishes
+	Statements *[]SGDbOpsStatusBenchmarkPgbenchStatementsItem `json:"statements,omitempty"`
 
 	// All the transactions per second results of the pgbench benchmark
 	TransactionsPerSecond *SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecond `json:"transactionsPerSecond,omitempty"`
@@ -737,7 +1077,7 @@ type SGDbOpsStatusBenchmarkPgbenchLatency struct {
 
 // SGDbOpsStatusBenchmarkPgbenchLatencyAverage defines model for SGDbOpsStatusBenchmarkPgbenchLatencyAverage.
 type SGDbOpsStatusBenchmarkPgbenchLatencyAverage struct {
-	// The latency measure unit represented in milliseconds
+	// The latency measure unit
 	Unit *string `json:"unit,omitempty"`
 
 	// The latency average value
@@ -746,38 +1086,101 @@ type SGDbOpsStatusBenchmarkPgbenchLatencyAverage struct {
 
 // SGDbOpsStatusBenchmarkPgbenchLatencyStandardDeviation defines model for SGDbOpsStatusBenchmarkPgbenchLatencyStandardDeviation.
 type SGDbOpsStatusBenchmarkPgbenchLatencyStandardDeviation struct {
-	// The latency measure unit represented in milliseconds
+	// The latency measure unit
 	Unit *string `json:"unit,omitempty"`
 
 	// The latency standard deviation value
 	Value *float32 `json:"value"`
 }
 
+// SGDbOpsStatusBenchmarkPgbenchStatementsItem defines model for SGDbOpsStatusBenchmarkPgbenchStatementsItem.
+type SGDbOpsStatusBenchmarkPgbenchStatementsItem struct {
+	// The command
+	Command *string `json:"command,omitempty"`
+
+	// Average latency of the command
+	Latency *float32 `json:"latency,omitempty"`
+
+	// The script index (`0` if no custom scripts have been defined)
+	Script *int `json:"script,omitempty"`
+
+	// The average latency measure unit
+	Unit *string `json:"unit,omitempty"`
+}
+
 // SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecond defines model for SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecond.
 type SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecond struct {
-	// Number of Transaction Per Second (tps) excluding connection establishing.
+	// Number of Transactions Per Second (tps) excluding connection establishing.
 	ExcludingConnectionsEstablishing *SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondExcludingConnectionsEstablishing `json:"excludingConnectionsEstablishing,omitempty"`
 
-	// Number of Transaction Per Second (tps) including connection establishing.
+	// Number of Transactions Per Second (tps) including connection establishing.
 	IncludingConnectionsEstablishing *SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondIncludingConnectionsEstablishing `json:"includingConnectionsEstablishing,omitempty"`
+
+	// The Transactions Per Second (tps) values aggregated over unit of time
+	OverTime *SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondOverTime `json:"overTime,omitempty"`
 }
 
 // SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondExcludingConnectionsEstablishing defines model for SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondExcludingConnectionsEstablishing.
 type SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondExcludingConnectionsEstablishing struct {
-	// Transaction Per Second (tps) measure
+	// Transactions Per Second (tps) measure unit
 	Unit *string `json:"unit,omitempty"`
 
-	// The Transaction Per Second (tps) excluding connections establishing value
+	// The Transactions Per Second (tps) excluding connections establishing value
 	Value *float32 `json:"value"`
 }
 
 // SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondIncludingConnectionsEstablishing defines model for SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondIncludingConnectionsEstablishing.
 type SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondIncludingConnectionsEstablishing struct {
-	// Transaction Per Second (tps) measure
+	// Transactions Per Second (tps) measure unit
 	Unit *string `json:"unit,omitempty"`
 
-	// The Transaction Per Second (tps) including connections establishing value
-	Value *float32 `json:"value"`
+	// The Transactions Per Second (tps) including connections establishing value
+	Value *float32 `json:"value,omitempty"`
+}
+
+// SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondOverTime defines model for SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondOverTime.
+type SGDbOpsStatusBenchmarkPgbenchTransactionsPerSecondOverTime struct {
+	// The interval duration used to aggregate the transactions per second.
+	IntervalDuration *float32 `json:"intervalDuration,omitempty"`
+
+	// The interval duration measure unit
+	IntervalDurationUnit *string `json:"intervalDurationUnit,omitempty"`
+
+	// The Transactions Per Second (tps) values aggregated over unit of time
+	Values *[]float32 `json:"values,omitempty"`
+
+	// The Transactions Per Second (tps) measures unit
+	ValuesUnit *string `json:"valuesUnit,omitempty"`
+}
+
+// SGDbOpsStatusBenchmarkSampling defines model for SGDbOpsStatusBenchmarkSampling.
+type SGDbOpsStatusBenchmarkSampling struct {
+	// The queries sampled.
+	Queries *[]SGDbOpsStatusBenchmarkSamplingQueriesItem `json:"queries,omitempty"`
+
+	// The top queries sampled with the stats from pg_stat_statements. If is omitted if `omitTopQueriesInStatus` is set to `true`.
+	TopQueries *[]SGDbOpsStatusBenchmarkSamplingTopQueriesItem `json:"topQueries,omitempty"`
+}
+
+// SGDbOpsStatusBenchmarkSamplingQueriesItem defines model for SGDbOpsStatusBenchmarkSamplingQueriesItem.
+type SGDbOpsStatusBenchmarkSamplingQueriesItem struct {
+	// The query id of the representative statement calculated by Postgres
+	Id *string `json:"id,omitempty"`
+
+	// A sampled SQL query
+	Query *string `json:"query,omitempty"`
+
+	// The sampled query timestamp
+	Timestamp *string `json:"timestamp,omitempty"`
+}
+
+// SGDbOpsStatusBenchmarkSamplingTopQueriesItem defines model for SGDbOpsStatusBenchmarkSamplingTopQueriesItem.
+type SGDbOpsStatusBenchmarkSamplingTopQueriesItem struct {
+	// The query id of the representative statement calculated by Postgres
+	Id *string `json:"id,omitempty"`
+
+	// stats collected by the top queries query
+	Stats map[string]string `json:"stats,omitempty"`
 }
 
 // SGDbOpsStatusConditionsItem defines model for SGDbOpsStatusConditionsItem.
@@ -808,6 +1211,9 @@ type SGDbOpsStatusMajorVersionUpgrade struct {
 
 	// The instances that are pending to be restarted
 	PendingToRestartInstances *[]string `json:"pendingToRestartInstances,omitempty"`
+
+	// The phase the operation is or was executing)
+	Phase *string `json:"phase,omitempty"`
 
 	// The primary instance when the operation started
 	PrimaryInstance *string `json:"primaryInstance,omitempty"`

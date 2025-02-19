@@ -1,10 +1,9 @@
 package auth
 
 import (
+	"k8s.io/client-go/transport"
 	"net/http"
 	"time"
-
-	"k8s.io/client-go/transport"
 )
 
 // GetAuthHTTPClient returns a HTTP client which is authenticated. It can be used to query private images.

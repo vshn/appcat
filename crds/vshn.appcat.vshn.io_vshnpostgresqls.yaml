@@ -5316,6 +5316,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                currentVersion:
+                  description: CurrentVersion contains the current version of PostgreSQL.
+                  type: string
                 instanceNamespace:
                   description: InstanceNamespace contains the name of the namespace where the instance resides
                   type: string
@@ -5619,6 +5622,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                previousVersion:
+                  description: PreviousVersion contains the previous version of PostgreSQL.
+                  type: string
                 profileConditions:
                   items:
                     properties:

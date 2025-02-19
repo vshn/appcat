@@ -627,6 +627,36 @@ func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 				),
 			},
 		},
+		{
+			name: "GivenNonHA_ThenNoError",
+			new: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Instances: 1,
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "16",
+						},
+					},
+				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					CurrentVersion: "15",
+				},
+			},
+			old: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Instances: 1,
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "15",
+						},
+					},
+				},
+				Status: vshnv1.VSHNPostgreSQLStatus{
+					CurrentVersion: "15",
+				},
+			},
+			expectErrList: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

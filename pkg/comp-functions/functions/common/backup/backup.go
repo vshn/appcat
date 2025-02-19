@@ -52,6 +52,10 @@ func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common
 }
 
 func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
+	if comp.GetName() == "" {
+		return fmt.Errorf("could not get composition name")
+	}
+
 	ob := &appcatv1.XObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName() + "-backup",

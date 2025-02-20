@@ -1,3 +1,3 @@
 #!/bin/bash
 
-forgejo dump -t /tmp/backup -V -f -
+forgejo dump --type tar -t /tmp/backup -V -f -

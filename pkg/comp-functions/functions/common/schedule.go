@@ -2,9 +2,10 @@ package common
 
 import (
 	"fmt"
-	v1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"math/rand"
 	"time"
+
+	v1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
 var (

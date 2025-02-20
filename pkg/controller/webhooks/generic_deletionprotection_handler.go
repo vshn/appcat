@@ -51,7 +51,10 @@ func (p *GenericDeletionProtectionHandler) ValidateDelete(ctx context.Context, o
 		return nil, fmt.Errorf(protectedMessage, "release", compInfo.Name)
 	}
 
-	l.Info("Allowing deletion of resource "+resource.GetName(), "parent", compInfo.Name)
+	l.Info("Blocking deletion of resource "+resource.GetName(), "parent", compInfo.Name)
+	return nil, fmt.Errorf(protectedMessage, "release", compInfo.Name)
 
-	return nil, nil
+	// l.Info("Allowing deletion of resource "+resource.GetName(), "parent", compInfo.Name)
+
+	// return nil, nil
 }

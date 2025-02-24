@@ -45,7 +45,7 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.Servi
 func updateRelease(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo) error {
 	release := &xhelmv1.Release{}
 
-	err := svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
+	err := svc.GetDesiredComposedResourceByName(release, comp.GetName())
 	if err != nil {
 		return err
 	}
@@ -76,5 +76,5 @@ func updateRelease(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo) error 
 	}
 	release.Spec.ForProvider.Values.Raw = byteValues
 
-	return svc.SetDesiredComposedResourceWithName(release, comp.GetName()+"-release")
+	return svc.SetDesiredComposedResourceWithName(release, comp.GetName())
 }

@@ -80,7 +80,7 @@ func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGette
 
 	release := &xhelmv1.Release{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: resName,
+			Name: comp.GetName(),
 		},
 		Spec: xhelmv1.ReleaseSpec{
 			ForProvider: xhelmv1.ReleaseParameters{

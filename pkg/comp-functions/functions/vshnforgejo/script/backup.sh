@@ -1,3 +1,3 @@
-#!/bin/bash
+#!/bin/bash -xef
 
-forgejo dump --type tar -t /tmp/backup -V -f -
+/usr/local/bin/forgejo dump --type tar -t /tmp/backup -V -f -

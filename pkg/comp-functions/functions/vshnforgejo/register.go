@@ -13,6 +13,10 @@ func init() {
 				Name:    "deploy",
 				Execute: DeployForgejo,
 			},
+			{
+				Name:    "backup",
+				Execute: AddBackup,
+			},
 		},
 	})
 }

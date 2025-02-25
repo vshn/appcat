@@ -156,9 +156,17 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				},
 			},
 		},
-		"persistance": map[string]any{
+		"persistence": map[string]any{
 			"enabled": true,
 		},
+		"extraVolumes": []map[string]any{{
+			"name":     "backup-scratch",
+			"emptyDir": map[string]any{},
+		}},
+		"extraContainerVolumeMounts": []map[string]string{{
+			"name":      "backup-scratch",
+			"mountPath": "/tmp/backup",
+		}},
 		"postgresql": map[string]any{
 			"enabled": false,
 		},

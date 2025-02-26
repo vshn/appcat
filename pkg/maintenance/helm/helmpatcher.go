@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -132,7 +133,7 @@ func (h *ImagePatcher) DoMaintenance(ctx context.Context, tagURL string, tagPath
 	h.log.Info("Getting current versions")
 	results, err := h.getVersions(tagURL)
 	if err != nil {
-		return fmt.Errorf("cannot get versions from Docker Hub: %v", err)
+		return fmt.Errorf("cannot access '%s': %v", tagURL, err)
 	}
 
 	if len(results.GetVersions()) == 0 {
@@ -238,6 +239,11 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 	resp, err := h.httpClient.Get(imageURL)
 	if err != nil {
 		return nil, fmt.Errorf("cannot access registry: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(results)

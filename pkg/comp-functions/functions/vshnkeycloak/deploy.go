@@ -101,7 +101,7 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 
 	svc.Log.Info("Adding release")
 
-	adminSecret, err := common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField})
+	adminSecret, err := common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin secret: %s", err))
 	}

@@ -20,7 +20,7 @@ func TestAddCredentialsSecret(t *testing.T) {
 
 	svc := commontest.LoadRuntimeFromFile(t, "empty.yaml")
 
-	res, err := AddCredentialsSecret(comp, svc, []string{"mytest", "mypw"})
+	res, err := AddCredentialsSecret(comp, svc, []string{"mytest", "mypw"}, DisallowDeletion)
 	assert.NoError(t, err)
 	assert.Equal(t, "mytest-credentials-secret", res)
 

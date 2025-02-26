@@ -26,7 +26,7 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Sprintf("cannot bootstrap instance namespace: %s", err))
 	}
 
-	secretName, err := common.AddCredentialsSecret(comp, svc, []string{"password"}, common.AddStaticFieldToSecret(map[string]string{
+	secretName, err := common.AddCredentialsSecret(comp, svc, []string{"password"}, common.DisallowDeletion, common.AddStaticFieldToSecret(map[string]string{
 		"username": "forgejo_admin",
 	}))
 	if err != nil {

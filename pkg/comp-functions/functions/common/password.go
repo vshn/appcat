@@ -10,6 +10,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	AllowDeletion    bool = true
+	DisallowDeletion bool = false
+)
+
 type CredentialSecretOption func(obj *corev1.Secret, cd []xkube.ConnectionDetail) []xkube.ConnectionDetail
 
 // AddCredentialsSecret creates secrets and passwords for use with helm based services.
@@ -18,14 +23,14 @@ type CredentialSecretOption func(obj *corev1.Secret, cd []xkube.ConnectionDetail
 // It returns the name of the secret resource, so it can be referenced later. The name of the inner secret object is the
 // same as the resource name.
 // Additionally it exposes the generated passwords as connection details, for easier retrieval.
-func AddCredentialsSecret(comp InfoGetter, svc *runtime.ServiceRuntime, fieldList []string, opts ...CredentialSecretOption) (string, error) {
-	return AddGenericSecret(comp, svc, "credentials-secret", fieldList, opts...)
+func AddCredentialsSecret(comp InfoGetter, svc *runtime.ServiceRuntime, fieldList []string, allowDeletion bool, opts ...CredentialSecretOption) (string, error) {
+	return AddGenericSecret(comp, svc, "credentials-secret", fieldList, allowDeletion, opts...)
 }
 
 // AddGenericSecret generates passwords the same way AddCredentialsSecret does.
 // With the difference that the resource name can be chosen.
 // This is helpful if multiple different random generated passwords are necessary.
-func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix string, fieldList []string, opts ...CredentialSecretOption) (string, error) {
+func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix string, fieldList []string, allowDeletion bool, opts ...CredentialSecretOption) (string, error) {
 	secretObjectName := runtime.EscapeDNS1123(comp.GetName()+"-"+suffix, false)
 	secret := &corev1.Secret{}
 	cd := []xkube.ConnectionDetail{}
@@ -69,7 +74,11 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 		cd = o(secret, cd)
 	}
 
+	if allowDeletion {
+		return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...), runtime.KubeOptionAllowDeletion)
+	}
 	return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...))
+
 }
 
 func genPassword() (string, error) {

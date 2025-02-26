@@ -145,9 +145,12 @@ func GenerateBundledIngresses(comp InfoGetter, svc *runtime.ServiceRuntime, ingr
 	ingressMap := map[bool][]string{}
 
 	ocpDefaultAppsDomain := svc.Config.Data["ocpDefaultAppsDomain"]
+	svc.Log.Info(fmt.Sprintf("ocpAppsDomain is: '%s'", ocpDefaultAppsDomain))
+
 	if ocpDefaultAppsDomain != "" {
 		for _, fqdn := range ingressConfig.FQDNs {
 			useWildcard := IsSingleSubdomainOfRefDomain(fqdn, ocpDefaultAppsDomain)
+			svc.Log.Info(fmt.Sprintf("FQDN %s will use wildcard cert: %v", fqdn, useWildcard))
 			ingressMap[useWildcard] = append(ingressMap[useWildcard], fqdn)
 		}
 	} else {

@@ -3,9 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
 	"net/http"
 	"time"
+
+	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,6 +37,7 @@ const (
 	mariadb
 	keycloak
 	nextcloud
+	forgejo
 )
 
 var maintenanceServices = map[service][]string{
@@ -45,6 +47,7 @@ var maintenanceServices = map[service][]string{
 	mariadb:    {"mariadb"},
 	keycloak:   {"keycloak"},
 	nextcloud:  {"nextcloud"},
+	forgejo:    {"forgejo"},
 }
 
 var serviceName service
@@ -120,6 +123,9 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 
 	case nextcloud:
 		m = maintenance.NewNextcloud(kubeClient, getHTTPClient())
+
+	case forgejo:
+		m = maintenance.NewForgejo(kubeClient, getHTTPClient())
 	default:
 
 		panic("service name is mandatory")

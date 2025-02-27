@@ -11,7 +11,7 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-// IngressConfig contains general information for generating an Ingress obect
+// IngressConfig contains general information for generating an Ingress object
 type IngressConfig struct {
 	AdditionalAnnotations  map[string]string // Optional
 	AdditionalIngressNames []string          // Optional

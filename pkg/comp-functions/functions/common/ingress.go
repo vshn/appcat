@@ -59,9 +59,16 @@ func getIngressAnnotations(svc *runtime.ServiceRuntime, additionalAnnotations ma
 	return annotations
 }
 
-// Creates ingress rules based on a single service name and port. svcNameSuffix is optional and gets appended.
+// Creates ingress rules based on a single service name and port.
 // Will use svcPortName over svcPortNumber (if specified)
-func createIngressRule(comp InfoGetter, fqdns []string, ruleConfig IngressRuleConfig) []netv1.IngressRule {
+func createIngressRule(comp InfoGetter, fqdns []string, ruleConfig IngressRuleConfig) ([]netv1.IngressRule, error) {
+	if ruleConfig.ServicePortName == "" && ruleConfig.ServicePortNumber == 0 {
+		return nil, fmt.Errorf("no service port name or number has been defined")
+	}
+	if len(fqdns) == 0 {
+		return nil, fmt.Errorf("no FQDNs have been defined")
+	}
+
 	svcNameSuffix := ruleConfig.ServiceNameSuffix
 	if !strings.HasPrefix(svcNameSuffix, "-") && len(svcNameSuffix) > 0 {
 		svcNameSuffix = "-" + svcNameSuffix
@@ -105,7 +112,7 @@ func createIngressRule(comp InfoGetter, fqdns []string, ruleConfig IngressRuleCo
 		ingressRules = append(ingressRules, rule)
 	}
 
-	return ingressRules
+	return ingressRules, nil
 }
 
 // Generate an ingress TLS secret name as "<baseName>-ingress-cert"
@@ -174,10 +181,15 @@ func GenerateBundledIngresses(comp InfoGetter, svc *runtime.ServiceRuntime, ingr
 	// Ingress using Let's Encrypt
 	if len(fqdnsLetsEncrypt) > 0 {
 		ingressMetadata.Name = generateIngressName(comp, "letsencrypt")
+		rules, err := createIngressRule(comp, fqdnsLetsEncrypt, ingressConfig.ServiceConfig)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create ingress rules for '%s': %w", ingressMetadata.Name, err)
+		}
+
 		ingresses = append(ingresses, &netv1.Ingress{
 			ObjectMeta: ingressMetadata,
 			Spec: netv1.IngressSpec{
-				Rules: createIngressRule(comp, fqdnsLetsEncrypt, ingressConfig.ServiceConfig),
+				Rules: rules,
 				TLS: []netv1.IngressTLS{
 					{
 						Hosts:      fqdnsLetsEncrypt,
@@ -191,10 +203,15 @@ func GenerateBundledIngresses(comp InfoGetter, svc *runtime.ServiceRuntime, ingr
 	// Ingress using apps domain wildcard
 	if len(fqdnsWildcard) > 0 {
 		ingressMetadata.Name = generateIngressName(comp, "wildcard")
+		rules, err := createIngressRule(comp, fqdnsWildcard, ingressConfig.ServiceConfig)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create ingress rules for '%s': %w", ingressMetadata.Name, err)
+		}
+
 		ingresses = append(ingresses, &netv1.Ingress{
 			ObjectMeta: ingressMetadata,
 			Spec: netv1.IngressSpec{
-				Rules: createIngressRule(comp, fqdnsWildcard, ingressConfig.ServiceConfig),
+				Rules: rules,
 				TLS:   []netv1.IngressTLS{{}},
 			},
 		})
@@ -203,7 +220,7 @@ func GenerateBundledIngresses(comp InfoGetter, svc *runtime.ServiceRuntime, ingr
 	return ingresses, nil
 }
 
-// Generate an Ingress containing a single FQDN using a TLS config as such:
+// Generate an ingress containing a single FQDN using a TLS config as such:
 // FQDN is one subdomain ON defaultAppsDomain (e.g. sub1.apps.cluster.com) -> Empty TLS config (uses wildcard cert on OCP).
 // FQDN does not statisfy the former -> TLS config using a Let's Encrypt certificate.
 func GenerateIngress(comp InfoGetter, svc *runtime.ServiceRuntime, ingressConfig IngressConfig) (*netv1.Ingress, error) {
@@ -236,6 +253,11 @@ func GenerateIngress(comp InfoGetter, svc *runtime.ServiceRuntime, ingressConfig
 		tlsConfig.SecretName = generateTlsSecretName(tlsName)
 	}
 
+	rules, err := createIngressRule(comp, []string{fqdn}, ingressConfig.ServiceConfig)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create ingress rules for '%s': %w", fqdn, err)
+	}
+
 	ingress := &netv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        generateIngressName(comp, ingressConfig.AdditionalIngressNames...),
@@ -243,7 +265,7 @@ func GenerateIngress(comp InfoGetter, svc *runtime.ServiceRuntime, ingressConfig
 			Annotations: annotations,
 		},
 		Spec: netv1.IngressSpec{
-			Rules: createIngressRule(comp, []string{fqdn}, ingressConfig.ServiceConfig),
+			Rules: rules,
 			TLS:   []netv1.IngressTLS{tlsConfig},
 		},
 	}

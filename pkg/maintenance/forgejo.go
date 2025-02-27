@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	forgeoURL = "https://codeberg.org/v2/forgejo/forgejo/tags/?page_size=100"
+	forgejoURL = "https://codeberg.org/v2/forgejo/forgejo/tags/list"
 )
 
 // Forgejo contains all necessary dependencies to successfully run a Forgejo maintenance
@@ -35,5 +35,5 @@ func (m *Forgejo) DoMaintenance(ctx context.Context) error {
 
 	valuesPath := helm.NewValuePath("image", "tag")
 
-	return patcher.DoMaintenance(ctx, forgeoURL, valuesPath, helm.SemVerPatchesOnly(true))
+	return patcher.DoMaintenance(ctx, forgejoURL, valuesPath, helm.SemVerPatchesOnly(true))
 }

@@ -11,6 +11,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
@@ -63,6 +64,11 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		return runtime.NewWarningResult("no connection details yet on cluster")
 	}
 
+	rootPw, err := getPGRootPassword(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult("cannot observe root password: " + err.Error())
+	}
+
 	host := fmt.Sprintf("%s.vshn-postgresql-%s.svc.cluster.local", comp.GetName(), comp.GetName())
 
 	url := getPostgresURL(cd, host)
@@ -70,7 +76,7 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 	svc.SetConnectionDetail(PostgresqlURL, []byte(url))
 	svc.SetConnectionDetail(PostgresqlDb, []byte(defaultDB))
 	svc.SetConnectionDetail(PostgresqlPort, []byte(defaultPort))
-	svc.SetConnectionDetail(PostgresqlPassword, cd[PostgresqlPassword])
+	svc.SetConnectionDetail(PostgresqlPassword, []byte(rootPw))
 	svc.SetConnectionDetail(PostgresqlUser, []byte(defaultUser))
 	svc.SetConnectionDetail(PostgresqlHost, []byte(host))
 	err = svc.AddObservedConnectionDetails("cluster")
@@ -100,16 +106,6 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 	certSecretName := "tls-certificate"
 
 	obj.Spec.ConnectionDetails = []xkubev1.ConnectionDetail{
-		{
-			ToConnectionSecretKey: PostgresqlPassword,
-			ObjectReference: corev1.ObjectReference{
-				APIVersion: "v1",
-				Kind:       "Secret",
-				Namespace:  comp.GetInstanceNamespace(),
-				Name:       comp.GetName(),
-				FieldPath:  "data.superuser-password",
-			},
-		},
 		{
 			ToConnectionSecretKey: "ca.crt",
 			ObjectReference: corev1.ObjectReference{
@@ -153,4 +149,37 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 	}
 
 	return nil
+}
+
+// getPGRootPassword will deploy an observer for stackgres' generated secret and return the password for the root user.
+// This is necessary, because provider-kubernetes can hang during de-provisioning, if the secret is used as a connectiondetails
+// reference. During deletion, if the secret gets removed before the kube-object gets removed, the kube-object will get stuck
+// with observation errors, as it can't resolve the connectiondetails anymore. This is a bug in provider-kubernetes itself.
+// To avoid this, we deploy a separate observer for that secret and get the value directly that way.
+func getPGRootPassword(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) (string, error) {
+	resNameSuffix := "-root-pw-observer"
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName(),
+			Namespace: comp.GetInstanceNamespace(),
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(secret, comp.GetName()+resNameSuffix, runtime.KubeOptionObserve)
+	if err != nil {
+		return "", err
+	}
+
+	err = svc.GetObservedKubeObject(secret, comp.GetName()+resNameSuffix)
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			return "", nil
+		}
+		return "", err
+	}
+
+	pw := secret.Data["superuser-password"]
+
+	return string(pw), nil
 }

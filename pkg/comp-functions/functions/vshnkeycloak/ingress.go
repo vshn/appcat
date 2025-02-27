@@ -45,11 +45,11 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	})
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate ingress: %s", err))
-	} else {
-		err = common.CreateIngresses(comp, svc, []*netv1.Ingress{ingress})
-		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot create ingress: %s", err))
-		}
+	}
+
+	err = common.CreateIngresses(comp, svc, []*netv1.Ingress{ingress})
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create ingress: %s", err))
 	}
 
 	if svc.GetBoolFromCompositionConfig("isOpenshift") {

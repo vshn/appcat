@@ -54,6 +54,7 @@ func TestTransform(t *testing.T) {
 func TestGetPostgresURL(t *testing.T) {
 	tests := map[string]struct {
 		secret    map[string][]byte
+		password  string
 		expectURL string
 	}{
 		"WhenMissingPasswordThenReturnNoUrlInSecret": {
@@ -63,12 +64,14 @@ func TestGetPostgresURL(t *testing.T) {
 				PostgresqlUser: []byte("user"),
 				PostgresqlPort: []byte("5432"),
 			},
+			password:  "",
 			expectURL: "",
 		},
 		"WhenDataThenReturnSecretWithUrl": {
 			secret: map[string][]byte{
 				PostgresqlPassword: []byte("test"),
 			},
+			password:  "test",
 			expectURL: "postgres://postgres:test@localhost:5432/postgres",
 		},
 	}
@@ -76,7 +79,7 @@ func TestGetPostgresURL(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 
 			// When
-			url := getPostgresURL(tc.secret, "localhost")
+			url := getPostgresURL(tc.secret, "localhost", tc.password)
 
 			// Then
 			assert.Equal(t, tc.expectURL, url)

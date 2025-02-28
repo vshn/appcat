@@ -43,7 +43,7 @@ func ManageRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 	releaseName := desiredRelease.Name
 
 	l.Info("Creating password secret")
-	passwordSecret, err := common.AddCredentialsSecret(comp, svc, []string{"root-password"})
+	passwordSecret, err := common.AddCredentialsSecret(comp, svc, []string{"root-password"}, common.DisallowDeletion)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create credential secret: %s", err))
 	}

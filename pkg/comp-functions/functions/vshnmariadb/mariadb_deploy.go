@@ -43,7 +43,7 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 
 	l.Info("Create credentials secret")
 	fieldList := []string{"mariadb-galera-mariabackup-password", "mariadb-password", "mariadb-root-password"}
-	passwordSecret, err := common.AddCredentialsSecret(comp, svc, fieldList)
+	passwordSecret, err := common.AddCredentialsSecret(comp, svc, fieldList, common.DisallowDeletion)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create credentials secret; %w", err).Error())
 	}

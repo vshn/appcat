@@ -101,7 +101,7 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 
 	svc.Log.Info("Adding release")
 
-	adminSecret, err := common.AddCredentialsSecret(comp, svc, []string{adminPWSecretField}, common.AddStaticFieldToSecret(map[string]string{adminUserSecretField: "admin"}))
+	adminSecret, err := common.AddCredentialsSecret(comp, svc, []string{adminPWSecretField}, common.DisallowDeletion, common.AddStaticFieldToSecret(map[string]string{adminUserSecretField: "admin"}))
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin secret: %s", err))
 	}

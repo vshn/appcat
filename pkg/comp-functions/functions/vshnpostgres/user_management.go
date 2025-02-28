@@ -52,7 +52,7 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 }
 
 func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string) string {
-	secretName, err := common.AddGenericSecret(comp, svc, "userpass-"+username, []string{"userpass"})
+	secretName, err := common.AddGenericSecret(comp, svc, "userpass-"+username, []string{"userpass"}, common.AllowDeletion)
 	if err != nil {
 		svc.Log.Error(err, "cannot deploy user password secret")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot deploy user password secret: %s", err)))

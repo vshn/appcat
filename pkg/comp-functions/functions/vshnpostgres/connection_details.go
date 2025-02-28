@@ -71,7 +71,7 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 
 	host := fmt.Sprintf("%s.vshn-postgresql-%s.svc.cluster.local", comp.GetName(), comp.GetName())
 
-	url := getPostgresURL(cd, host)
+	url := getPostgresURL(cd, host, rootPw)
 
 	svc.SetConnectionDetail(PostgresqlURL, []byte(url))
 	svc.SetConnectionDetail(PostgresqlDb, []byte(defaultDB))
@@ -87,19 +87,17 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 	return nil
 }
 
-func getPostgresURL(s map[string][]byte, host string) string {
-	return getPostgresURLCustomUser(s, host, defaultUser)
+func getPostgresURL(s map[string][]byte, host, pw string) string {
+	return getPostgresURLCustomUser(s, host, defaultUser, pw)
 }
 
-func getPostgresURLCustomUser(s map[string][]byte, host, userName string) string {
-	pwd := string(s[PostgresqlPassword])
-
+func getPostgresURLCustomUser(s map[string][]byte, host, userName, pw string) string {
 	// The values are still missing, wait for the next reconciliation
-	if pwd == "" {
+	if pw == "" {
 		return ""
 	}
 
-	return "postgres://" + userName + ":" + pwd + "@" + host + ":" + defaultPort + "/" + defaultDB
+	return "postgres://" + userName + ":" + pw + "@" + host + ":" + defaultPort + "/" + defaultDB
 }
 
 func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {

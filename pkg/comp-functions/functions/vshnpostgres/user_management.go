@@ -42,7 +42,10 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 
 		addGrants(comp, svc, *access.User, dbname, access.Privileges)
 
-		addConnectionDetail(comp, svc, userPasswordRef, *access.User, dbname, access.WriteConnectionSecretToReference)
+		err := addConnectionDetail(comp, svc, userPasswordRef, *access.User, dbname, access.WriteConnectionSecretToReference)
+		if err != nil {
+			return runtime.NewWarningResult("cannot add connection details: " + err.Error())
+		}
 	}
 
 	return nil
@@ -118,7 +121,7 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 	return secretName
 }
 
-func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, secretName, username, dbname string, connectionDetailRef *xpv1.SecretReference) {
+func addConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, secretName, username, dbname string, connectionDetailRef *xpv1.SecretReference) error {
 	userpassCD, err := svc.GetObservedComposedResourceConnectionDetails(secretName)
 	if err != nil {
 		svc.Log.Error(err, "cannot get userpassword from secret")
@@ -127,7 +130,7 @@ func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, sec
 
 	compositeCD := svc.GetConnectionDetails()
 
-	url := getPostgresURLCustomUser(compositeCD, string(compositeCD["POSTGRESQL_HOST"]), username)
+	url := getPostgresURLCustomUser(compositeCD, string(compositeCD["POSTGRESQL_HOST"]), username, string(userpassCD["userpass"]))
 
 	om := metav1.ObjectMeta{
 		Name:      comp.GetLabels()["crossplane.io/claim-name"] + "-" + username,
@@ -161,6 +164,8 @@ func addConnectionDetail(comp common.Composite, svc *runtime.ServiceRuntime, sec
 		svc.Log.Error(err, "cannot get userpassword from secret")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot get userpassword from secret: %s", err)))
 	}
+
+	return nil
 }
 
 func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime, tlsEnabled bool) {

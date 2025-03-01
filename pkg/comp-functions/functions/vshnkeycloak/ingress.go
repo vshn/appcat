@@ -10,10 +10,9 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
@@ -24,7 +23,8 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
-	if comp.Spec.Parameters.Service.FQDN == "" {
+	fqdn := comp.Spec.Parameters.Service.FQDN
+	if fqdn == "" {
 		return nil
 	}
 
@@ -33,8 +33,32 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get desired release values: %s", err))
 	}
 
-	svc.Log.Info("Enable ingress for release")
-	enableIngresValues(svc, comp, values)
+	svc.Log.Info("Adding ingress")
+	ingress, err := common.GenerateIngress(comp, svc, common.IngressConfig{
+		FQDNs: []string{fqdn},
+		ServiceConfig: common.IngressRuleConfig{
+			RelPath:           comp.Spec.Parameters.Service.RelativePath,
+			ServiceNameSuffix: "keycloakx-http",
+			ServicePortName:   "https",
+		},
+		TlsCertBaseName: "keycloak",
+	})
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot generate ingress: %s", err))
+	}
+
+	err = common.CreateIngresses(comp, svc, []*netv1.Ingress{ingress})
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create ingress: %s", err))
+	}
+
+	if svc.GetBoolFromCompositionConfig("isOpenshift") {
+		err := addOpenShiftCa(svc, comp)
+		if err != nil {
+			svc.Log.Error(err, "cannot add openshift ca secret")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot add openshift ca secret: %s", err)))
+		}
+	}
 
 	release := &xhelmv1.Release{}
 	err = svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release")
@@ -55,61 +79,6 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	}
 
 	return nil
-}
-
-func enableIngresValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, values map[string]any) {
-	fqdn := comp.Spec.Parameters.Service.FQDN
-
-	relPath := `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`
-	if comp.Spec.Parameters.Service.RelativePath == "/" {
-		relPath = "/"
-	}
-
-	values["ingress"] = map[string]any{
-		"enabled":     true,
-		"servicePort": "https",
-
-		"rules": []map[string]any{
-			{
-				"host": fqdn,
-				"paths": []map[string]any{
-					{
-						"path":     relPath,
-						"pathType": "Prefix",
-					},
-				},
-			},
-		},
-		"tls": []map[string]any{
-			{
-				"hosts": []string{
-					fqdn,
-				},
-				"secretName": "keycloak-ingress-cert",
-			},
-		},
-	}
-
-	if svc.Config.Data["ingress_annotations"] != "" {
-		annotations := map[string]any{}
-
-		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), annotations)
-		if err != nil {
-			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
-			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
-		}
-
-		unstructured.SetNestedMap(values, annotations, "ingress", "annotations")
-	}
-
-	if svc.GetBoolFromCompositionConfig("isOpenshift") {
-		err := addOpenShiftCa(svc, comp)
-		if err != nil {
-			svc.Log.Error(err, "cannot add openshift ca secret")
-			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot add openshift ca secret: %s", err)))
-		}
-	}
-
 }
 
 // addOpenShiftCa creates a separate secret just with the ca in it.

@@ -2,6 +2,7 @@ package vshnnextcloud
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -49,7 +50,14 @@ func Test_addCollabora(t *testing.T) {
 	}
 
 	for _, val := range collabora_objects {
-		assert.Equal(t, "1", resources[val])
+		var check func(string) error = func(val string) error {
+			if resources[val] != "1" {
+				return fmt.Errorf("%s does not exist", val)
+			}
+			return nil
+		}
+
+		assert.NoError(t, check(val))
 	}
 
 	comp.Spec.Parameters.Service.Collabora.Enabled = false

@@ -230,8 +230,7 @@ render-diff: ## Render diff between the cluster in KUBECONF and the local branch
 
 setup-kindev: ## Setup kindev in the .kind folder, will always create a new instance
 	rm -rf .kind && \
-	git clone --depth=1 https://github.com/vshn/kindev .kind && \
+	git clone https://github.com/vshn/kindev .kind && \
 	cd .kind && \
-	rm -rf .git && \
 	make clean && \
 	make vshnall

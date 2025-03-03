@@ -23,9 +23,11 @@ complete -F __start_kubectl k
   ./"${KREW}" install krew
 )
 
-ln -s "$HOME/.krew/bin/kubectl-krew" /usr/local/bin/kubectl-krew
+sudo ln -s "$HOME/.krew/bin/kubectl-krew" /usr/local/bin/kubectl-krew
 
 kubectl krew install view-serviceaccount-kubeconfig
+
+sudo ln -s "$HOME/.krew/bin/kubectl-view_serviceaccount_kubeconfig" /usr/local/bin/kubectl-view_serviceaccount_kubeconfig
 
 make setup-kindev
 

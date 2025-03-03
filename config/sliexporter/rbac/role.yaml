@@ -8,13 +8,6 @@ rules:
   - ""
   resources:
   - namespaces
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - secrets
   verbs:
   - get
@@ -32,117 +25,13 @@ rules:
   - vshn.appcat.vshn.io
   resources:
   - vshnmariadbs
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - vshnmariadbs/status
-  verbs:
-  - get
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - vshnminios
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - vshnminios/status
-  verbs:
-  - get
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - vshnpostgresqls
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - vshnpostgresqls/status
-  verbs:
-  - get
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - vshnredis
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - vshnredis/status
-  verbs:
-  - get
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - xvshnkeycloaks
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - xvshnkeycloaks/status
-  verbs:
-  - get
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - xvshnmariadbs
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - xvshnmariadbs/status
-  verbs:
-  - get
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - xvshnminios
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - xvshnminios/status
-  verbs:
-  - get
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - xvshnpostgresqls
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
-  - xvshnpostgresqls/status
-  verbs:
-  - get
-- apiGroups:
-  - vshn.appcat.vshn.io
-  resources:
   - xvshnredis
   verbs:
   - get
@@ -151,6 +40,14 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - vshnmariadbs/status
+  - vshnminios/status
+  - vshnpostgresqls/status
+  - vshnredis/status
+  - xvshnkeycloaks/status
+  - xvshnmariadbs/status
+  - xvshnminios/status
+  - xvshnpostgresqls/status
   - xvshnredis/status
   verbs:
   - get

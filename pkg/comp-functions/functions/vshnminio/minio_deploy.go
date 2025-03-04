@@ -10,7 +10,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
-	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	xhelmbeta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"

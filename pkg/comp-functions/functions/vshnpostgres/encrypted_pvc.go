@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-password/password"
 	controllerruntime "sigs.k8s.io/controller-runtime"

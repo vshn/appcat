@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: vshnpostgresqls.vshn.appcat.vshn.io
 spec:
   group: vshn.appcat.vshn.io
@@ -324,6 +324,8 @@ spec:
                                           type: array
                                       type: object
                                     type: array
+                                required:
+                                  - name
                                 type: object
                               type: array
                             receivers:
@@ -355,9 +357,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -382,9 +382,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -457,9 +455,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the ConfigMap or its key must be defined
@@ -481,9 +477,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -509,9 +503,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the ConfigMap or its key must be defined
@@ -533,9 +525,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -561,9 +551,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -611,9 +599,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -669,9 +655,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -706,9 +690,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -732,9 +714,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -761,9 +741,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -794,9 +772,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -818,9 +794,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -843,9 +817,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -895,9 +867,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -919,9 +889,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -947,9 +915,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -971,9 +937,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -999,9 +963,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1133,9 +1095,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1170,9 +1130,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1196,9 +1154,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1225,9 +1181,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -1258,9 +1212,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -1282,9 +1234,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -1307,9 +1257,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1359,9 +1307,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -1383,9 +1329,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -1411,9 +1355,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -1435,9 +1377,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -1463,9 +1403,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1525,9 +1463,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -1557,9 +1493,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -1613,9 +1547,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1650,9 +1582,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1676,9 +1606,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1705,9 +1633,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -1738,9 +1664,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -1762,9 +1686,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -1787,9 +1709,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1839,9 +1759,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -1863,9 +1781,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -1891,9 +1807,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -1915,9 +1829,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -1943,9 +1855,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -1996,9 +1906,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -2029,9 +1937,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -2040,6 +1946,9 @@ spec:
                                             - key
                                           type: object
                                           x-kubernetes-map-type: atomic
+                                      required:
+                                        - token
+                                        - userKey
                                       type: object
                                     type: array
                                   slackConfigs:
@@ -2113,9 +2022,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -2178,9 +2085,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2215,9 +2120,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2241,9 +2144,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2270,9 +2171,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -2303,9 +2202,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -2327,9 +2224,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -2352,9 +2247,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2404,9 +2297,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -2428,9 +2319,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -2456,9 +2345,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -2480,9 +2367,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -2508,9 +2393,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2593,9 +2476,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2630,9 +2511,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2656,9 +2535,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2685,9 +2562,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -2718,9 +2593,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -2742,9 +2615,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -2767,9 +2638,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2819,9 +2688,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -2843,9 +2710,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -2871,9 +2736,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -2895,9 +2758,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -2923,9 +2784,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -2966,9 +2825,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -2999,9 +2856,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -3054,9 +2909,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -3093,9 +2946,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3130,9 +2981,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3156,9 +3005,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3185,9 +3032,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -3218,9 +3063,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -3242,9 +3085,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -3267,9 +3108,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3319,9 +3158,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -3343,9 +3180,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -3371,9 +3206,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -3395,9 +3228,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -3423,9 +3254,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3477,9 +3306,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -3532,9 +3359,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3569,9 +3394,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3595,9 +3418,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3624,9 +3445,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -3657,9 +3476,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -3681,9 +3498,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -3706,9 +3521,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3758,9 +3571,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -3782,9 +3593,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -3810,9 +3619,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -3834,9 +3641,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -3862,9 +3667,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3923,9 +3726,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3960,9 +3761,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -3986,9 +3785,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -4015,9 +3812,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -4048,9 +3843,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -4072,9 +3865,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -4097,9 +3888,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -4149,9 +3938,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -4173,9 +3960,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -4201,9 +3986,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -4225,9 +4008,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -4253,9 +4034,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -4300,9 +4079,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -4338,9 +4115,7 @@ spec:
                                                 This field is effectively required, but due to backwards compatibility is
                                                 allowed to be empty. Instances of this type with an empty value here are
                                                 almost certainly wrong.
-                                                TODO: Add other useful fields. apiVersion, kind, uid?
                                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                               type: string
                                             optional:
                                               description: Specify whether the Secret or its key must be defined
@@ -4376,9 +4151,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -4413,9 +4186,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -4439,9 +4210,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -4468,9 +4237,7 @@ spec:
                                                     This field is effectively required, but due to backwards compatibility is
                                                     allowed to be empty. Instances of this type with an empty value here are
                                                     almost certainly wrong.
-                                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                                     More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                    TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                   type: string
                                                 optional:
                                                   description: Specify whether the Secret or its key must be defined
@@ -4501,9 +4268,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -4525,9 +4290,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -4550,9 +4313,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -4602,9 +4363,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -4626,9 +4385,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -4654,9 +4411,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the ConfigMap or its key must be defined
@@ -4678,9 +4433,7 @@ spec:
                                                             This field is effectively required, but due to backwards compatibility is
                                                             allowed to be empty. Instances of this type with an empty value here are
                                                             almost certainly wrong.
-                                                            TODO: Add other useful fields. apiVersion, kind, uid?
                                                             More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                           type: string
                                                         optional:
                                                           description: Specify whether the Secret or its key must be defined
@@ -4706,9 +4459,7 @@ spec:
                                                         This field is effectively required, but due to backwards compatibility is
                                                         allowed to be empty. Instances of this type with an empty value here are
                                                         almost certainly wrong.
-                                                        TODO: Add other useful fields. apiVersion, kind, uid?
                                                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                                        TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                                                       type: string
                                                     optional:
                                                       description: Specify whether the Secret or its key must be defined
@@ -4878,27 +4629,22 @@ spec:
                       description: |-
                         This section allows to configure Postgres replication mode and HA roles groups.
 
-
                         The main replication group is implicit and contains the total number of instances less the sum of all instances in other replication groups.
                       properties:
                         mode:
                           description: |-
                             Mode defines the replication mode applied to the whole cluster. Possible values are: "async"(default), "sync", and "strict-sync"
 
-
                             "async": When in asynchronous mode the cluster is allowed to lose some committed transactions.
                             When the primary server fails or becomes unavailable for any other reason a sufficiently healthy standby will automatically be promoted to primary.
                             Any transactions that have not been replicated to that standby remain in a “forked timeline” on the primary, and are effectively unrecoverable
 
-
                             "sync": When in synchronous mode a standby will not be promoted unless it is certain that the standby contains all transactions that may have returned a successful commit status to client.
                              This means that the system may be unavailable for writes even though some servers are available.
-
 
                             "strict-sync": When it is absolutely necessary to guarantee that each write is stored durably on at least two nodes, use the strict synchronous mode.
                             This mode prevents synchronous replication to be switched off on the primary when no synchronous standby candidates are available.
                             As a downside, the primary will not be available for writes, blocking all client write requests until at least one synchronous replica comes up.
-
 
                             NOTE: We recommend to always use three intances when setting the mode to "strict-sync".
                           enum:
@@ -5042,7 +4788,6 @@ spec:
                               description: |-
                                 The `pgbouncer.ini` (Section [databases]) parameters the configuration contains, represented as an object where the keys are valid names for the `pgbouncer.ini` configuration file parameters.
 
-
                                 Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#section-databases) for more information about supported parameters.
                               type: object
                               x-kubernetes-preserve-unknown-fields: true
@@ -5050,14 +4795,12 @@ spec:
                               description: |-
                                 The `pgbouncer.ini` (Section [pgbouncer]) parameters the configuration contains, represented as an object where the keys are valid names for the `pgbouncer.ini` configuration file parameters.
 
-
                                 Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#generic-settings) for more information about supported parameters
                               type: object
                               x-kubernetes-preserve-unknown-fields: true
                             users:
                               description: |-
                                 The `pgbouncer.ini` (Section [users]) parameters the configuration contains, represented as an object where the keys are valid names for the `pgbouncer.ini` configuration file parameters.
-
 
                                 Check [pgbouncer configuration](https://www.pgbouncer.org/config.html#section-users) for more information about supported parameters.
                               type: object

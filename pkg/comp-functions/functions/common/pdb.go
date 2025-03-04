@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	fnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 

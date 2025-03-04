@@ -3,7 +3,7 @@ package common
 import (
 	"context"
 	_ "embed"
-	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	v2 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	v1 "github.com/vshn/appcat/v4/apis/vshn/v1"

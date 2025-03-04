@@ -13,8 +13,8 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xpresource "github.com/crossplane/crossplane-runtime/pkg/resource"
 	xpapi "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
-	fnv1beta1 "github.com/crossplane/function-sdk-go/proto/v1beta1"
-	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	fnv1 "github.com/crossplane/function-sdk-go/proto/v1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/crossplane/function-sdk-go/request"
 	"github.com/crossplane/function-sdk-go/resource"
 	"github.com/crossplane/function-sdk-go/resource/composed"
@@ -73,8 +73,8 @@ type Step[T client.Object] struct {
 // The actual response will be assembled at the end.
 type ServiceRuntime struct {
 	Log    logr.Logger
-	req    *fnv1beta1.RunFunctionRequest
-	resp   *fnv1beta1.RunFunctionResponse
+	req    *fnv1.RunFunctionRequest
+	resp   *fnv1.RunFunctionResponse
 	Config corev1.ConfigMap
 	// Copy of the desired resources from the request. Will be added to the resp
 	// once all steps are finished.
@@ -106,7 +106,7 @@ type Service[T client.Object] struct {
 type Manager struct {
 	log       logr.Logger
 	proxyMode bool
-	fnv1beta1.UnimplementedFunctionRunnerServiceServer
+	fnv1.UnimplementedFunctionRunnerServiceServer
 }
 
 // KubeObjectOption defines the type of functional parameters for kubeObjects
@@ -134,7 +134,7 @@ func init() {
 }
 
 // RunFunction implements the crossplane composition function `FunctionRunnerServiceServer` interface.
-func (m Manager) RunFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequest) (*fnv1beta1.RunFunctionResponse, error) {
+func (m Manager) RunFunction(ctx context.Context, req *fnv1.RunFunctionRequest) (*fnv1.RunFunctionResponse, error) {
 
 	if m.proxyMode {
 		return m.proxyFunction(ctx, req)
@@ -253,7 +253,7 @@ func (m *Manager) executeStep(ctx context.Context, obj client.Object, sr *Servic
 	return vRes.Interface().(*xfnproto.Result)
 }
 
-func (m *Manager) proxyFunction(ctx context.Context, req *fnv1beta1.RunFunctionRequest) (*fnv1beta1.RunFunctionResponse, error) {
+func (m *Manager) proxyFunction(ctx context.Context, req *fnv1.RunFunctionRequest) (*fnv1.RunFunctionResponse, error) {
 
 	m.log.Info("Proxying request")
 
@@ -282,14 +282,14 @@ func (m *Manager) proxyFunction(ctx context.Context, req *fnv1beta1.RunFunctionR
 		return errResp, fmt.Errorf("cannot convert request to json for grpc reques: %w", err)
 	}
 
-	grpcReq := &fnv1beta1.RunFunctionRequest{}
+	grpcReq := &fnv1.RunFunctionRequest{}
 
 	err = json.Unmarshal(jsonReq, grpcReq)
 	if err != nil {
 		return errResp, fmt.Errorf("cannot unmarshal grpc reques: %w", err)
 	}
 
-	rsp, err := fnv1beta1.NewFunctionRunnerServiceClient(con).RunFunction(ctx, grpcReq)
+	rsp, err := fnv1.NewFunctionRunnerServiceClient(con).RunFunction(ctx, grpcReq)
 	if err != nil {
 		return errResp, err
 	}
@@ -310,7 +310,7 @@ func (m *Manager) proxyFunction(ctx context.Context, req *fnv1beta1.RunFunctionR
 }
 
 // NewServiceRuntime returns a new runtime for a given service.
-func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.RunFunctionRequest) (*ServiceRuntime, error) {
+func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunctionRequest) (*ServiceRuntime, error) {
 
 	desiredResources, err := request.GetDesiredComposedResources(req)
 	if err != nil {
@@ -362,7 +362,7 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1beta1.Ru
 // This is the raw GRPC response for crossplane.
 // If at any time s.SetRespones() was called, then this function will
 // return the set response.
-func (s *ServiceRuntime) GetResponse() (*fnv1beta1.RunFunctionResponse, error) {
+func (s *ServiceRuntime) GetResponse() (*fnv1.RunFunctionResponse, error) {
 
 	if s.resp != nil {
 		return s.resp, nil
@@ -904,13 +904,13 @@ func (s *ServiceRuntime) GetBoolFromCompositionConfig(key string) bool {
 }
 
 // GetRequest returns the pointer to the request.
-func (s *ServiceRuntime) GetRequest() *fnv1beta1.RunFunctionRequest {
+func (s *ServiceRuntime) GetRequest() *fnv1.RunFunctionRequest {
 	return s.req
 }
 
 // SetResponse directly sets the response for the service.
 // Please only use this if the service has one single step.
-func (s *ServiceRuntime) SetResponse(resp *fnv1beta1.RunFunctionResponse) {
+func (s *ServiceRuntime) SetResponse(resp *fnv1.RunFunctionResponse) {
 	s.resp = resp
 }
 

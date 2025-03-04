@@ -6,7 +6,7 @@ import (
 
 	// "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 
-	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"

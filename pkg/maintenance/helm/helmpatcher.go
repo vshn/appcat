@@ -248,7 +248,7 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 
 	err = json.NewDecoder(resp.Body).Decode(results)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode docker registry resuls: %w", err)
+		return nil, fmt.Errorf("cannot decode docker registry results: %w", err)
 	}
 
 	return results, nil

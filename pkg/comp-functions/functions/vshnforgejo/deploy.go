@@ -101,9 +101,6 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					"DB_TYPE":             "sqlite3",
 					"SQLITE_JOURNAL_MODE": "WAL",
 				},
-				"image": map[string]any{
-					"tag": comp.Spec.Parameters.Service.MajorVersion,
-				},
 				"indexer": map[string]any{
 					"ISSUE_INDEXER_TYPE":   "bleve",
 					"REPO_INDEXER_ENABLED": true,
@@ -143,6 +140,9 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 			"serviceMonitor": map[string]any{
 				"enabled": true,
 			},
+		},
+		"image": map[string]any{
+			"tag": comp.Spec.Parameters.Service.MajorVersion,
 		},
 		"persistence": map[string]any{
 			"enabled": true,

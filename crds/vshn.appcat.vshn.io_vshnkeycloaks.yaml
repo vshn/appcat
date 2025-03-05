@@ -9963,9 +9963,10 @@ spec:
                           default: "25"
                           description: |-
                             Version contains supported version of keycloak.
-                            Multiple versions are supported. The latest version 23 is the default version.
+                            Multiple versions are supported. Default version is 25.
                           enum:
                             - "25"
+                            - "26"
                           type: string
                       type: object
                       default: {}

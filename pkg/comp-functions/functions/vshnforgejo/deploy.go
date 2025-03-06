@@ -8,6 +8,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
@@ -141,8 +142,23 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				"enabled": true,
 			},
 		},
+<<<<<<< HEAD
 		"image": map[string]any{
 			"tag": comp.Spec.Parameters.Service.MajorVersion,
+=======
+		"ingress": map[string]any{
+			"annotations": map[string]string{
+				"cert-manager.io/cluster-issuer": "letsencrypt-staging",
+			},
+			"enabled": true,
+			"hosts":   []map[string]any{},
+			"tls": []map[string]any{
+				{
+					"hosts":      []string{},
+					"secretName": "forgejo-tls",
+				},
+			},
+>>>>>>> b0d3c3ec0 (Image tag actually didnt properly update after all)
 		},
 		"persistence": map[string]any{
 			"enabled": true,
@@ -201,6 +217,16 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		if err != nil {
 			return err
 		}
+	}
+
+	// NewRelease doesn't actually use resName, but rather comp.GetName() as is
+	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName())
+	if err != nil {
+		return fmt.Errorf("cannot get observed release values: %w", err)
+	}
+	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.MajorVersion, values, observedValues, []string{"image", "tag"})
+	if err != nil {
+		return fmt.Errorf("cannot set forgejo version for release: %w", err)
 	}
 
 	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")

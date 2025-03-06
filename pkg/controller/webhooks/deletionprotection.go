@@ -120,11 +120,8 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 func checkUnmanagedObject(ctx context.Context, obj client.Object, c client.Client, cpClient client.Client, l logr.Logger) (compositeInfo, error) {
 	namespace := &corev1.Namespace{}
 
-	if cpClient == nil {
-		cpClient = c
-	}
-
-	err := cpClient.Get(ctx, client.ObjectKey{Name: obj.GetNamespace()}, namespace)
+	// we need to check namespaces against the local service cluster, otherwise they are never actually found
+	err := c.Get(ctx, client.ObjectKey{Name: obj.GetNamespace()}, namespace)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return compositeInfo{Exists: false}, nil

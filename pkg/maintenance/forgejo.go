@@ -28,7 +28,7 @@ func NewForgejo(c client.Client, hc *http.Client) *Forgejo {
 	}
 }
 
-// DoMaintenance will run minios's maintenance script.
+// DoMaintenance will run forgejo's maintenance script.
 func (m *Forgejo) DoMaintenance(ctx context.Context) error {
 	m.log = logr.FromContextOrDiscard(ctx).WithValues("type", "forgejo")
 	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)

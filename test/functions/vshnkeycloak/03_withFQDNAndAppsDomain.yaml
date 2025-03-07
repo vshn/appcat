@@ -1,4 +1,12 @@
-desired: {}
+desired:
+  resources:
+    keycloak-app1-prod-release:
+      resource:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        metadata:
+          name: keycloak-app1-prod
+        spec: {}
 input:
   apiVersion: v1
   kind: ConfigMap
@@ -14,8 +22,17 @@ input:
             true, "memory": "2Gi"}}, "standard-4": {"size": {"cpu": "1", "disk": "16Gi",
             "enabled": true, "memory": "4Gi"}}, "standard-8": {"size": {"cpu": "2",
             "disk": "16Gi", "enabled": true, "memory": "8Gi"}}}'
-    ocpDefaultAppsDomain: "apps.example.com"
 observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: VSHNKeycloak
+      metadata:
+        name: keycloak-app1-prod
+      spec:
+        parameters:
+          service:
+            fqdn: instance.apps.example.com
   resources:
     mycloak-pg:
       connection_details:

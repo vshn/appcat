@@ -1,34 +1,55 @@
 package vshnkeycloak
 
 import (
-	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	v1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
-func TestEnableIngresValues(t *testing.T) {
+func TestCreateIngress(t *testing.T) {
 	type args struct {
-		comp   *vshnv1.VSHNKeycloak
-		values map[string]any
+		comp *vshnv1.VSHNKeycloak
+	}
+
+	// Static objects that will always be the same across tests
+	keycloakObjectMeta := metav1.ObjectMeta{
+		Name: "keycloak",
+	}
+
+	ingObjectMeta := metav1.ObjectMeta{
+		Annotations: map[string]string{},
+		Name:        "keycloak-ingress",
+		Namespace:   "vshn-keycloak-keycloak",
+	}
+
+	expectedIngressBackend := v1.IngressBackend{
+		Service: &v1.IngressServiceBackend{
+			Name: "keycloak-keycloakx-http",
+			Port: v1.ServiceBackendPort{
+				Name: "https",
+			},
+		},
 	}
 
 	tests := []struct {
 		name string
 		args args
-		want map[string]any
+		want *v1.Ingress
 	}{
 		{
 			name: "GivenFQDN_Then_ExpectIngress",
 			args: struct {
-				comp   *vshnv1.VSHNKeycloak
-				values map[string]any
+				comp *vshnv1.VSHNKeycloak
 			}{
 				comp: &vshnv1.VSHNKeycloak{
+					ObjectMeta: keycloakObjectMeta,
 					Spec: vshnv1.VSHNKeycloakSpec{
 						Parameters: vshnv1.VSHNKeycloakParameters{
 							Service: vshnv1.VSHNKeycloakServiceSpec{
@@ -38,93 +59,108 @@ func TestEnableIngresValues(t *testing.T) {
 						},
 					},
 				},
-				values: map[string]any{},
 			},
-			want: map[string]any{
-				"ingress": map[string]any{
-					"enabled":     true,
-					"servicePort": "https",
-					"rules": []map[string]any{
-						{
-							"host": "example.com",
-							"paths": []map[string]any{
-								{
-									"path":     `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`,
-									"pathType": "Prefix",
+			want: &v1.Ingress{
+				ObjectMeta: ingObjectMeta,
+				Spec: v1.IngressSpec{
+					Rules: []v1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: v1.IngressRuleValue{
+							HTTP: &v1.HTTPIngressRuleValue{
+								Paths: []v1.HTTPIngressPath{
+									{
+										Path:     "/path",
+										PathType: ptr.To(v1.PathType("Prefix")),
+										Backend:  expectedIngressBackend,
+									},
 								},
 							},
 						},
-					},
-					"tls": []map[string]any{
+					}},
+					TLS: []v1.IngressTLS{
 						{
-							"hosts":      []string{"example.com"},
-							"secretName": "keycloak-ingress-cert",
+							Hosts:      []string{"example.com"},
+							SecretName: "keycloak-ingress-cert",
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "GivenNoFQDN_Then_ExpectNoIngress",
+			name: "GivenAppsFQDN_Then_ExpectIngressWithEmptyTLS",
 			args: struct {
-				comp   *vshnv1.VSHNKeycloak
-				values map[string]any
+				comp *vshnv1.VSHNKeycloak
 			}{
 				comp: &vshnv1.VSHNKeycloak{
-					Spec: vshnv1.VSHNKeycloakSpec{},
-				},
-				values: map[string]any{},
-			},
-			want: map[string]any{
-				"ingress": map[string]any{
-					"enabled":     true,
-					"servicePort": "https",
-					"rules": []map[string]any{
-						{
-							"host": "",
-							"paths": []map[string]any{
-								{
-									"path":     `'{{ tpl .Values.http.relativePath $ | trimSuffix " / " }}/'`,
-									"pathType": "Prefix",
-								},
+					ObjectMeta: keycloakObjectMeta,
+					Spec: vshnv1.VSHNKeycloakSpec{
+						Parameters: vshnv1.VSHNKeycloakParameters{
+							Service: vshnv1.VSHNKeycloakServiceSpec{
+								FQDN:         "instance.apps.example.com",
+								RelativePath: "/path",
 							},
 						},
 					},
-					"tls": []map[string]any{
-						{
-							"hosts":      []string{""},
-							"secretName": "keycloak-ingress-cert",
-						},
-					},
 				},
 			},
+			want: &v1.Ingress{
+				ObjectMeta: ingObjectMeta,
+				Spec: v1.IngressSpec{
+					Rules: []v1.IngressRule{{
+						Host: "instance.apps.example.com",
+						IngressRuleValue: v1.IngressRuleValue{
+							HTTP: &v1.HTTPIngressRuleValue{
+								Paths: []v1.HTTPIngressPath{
+									{
+										Path:     "/path",
+										PathType: ptr.To(v1.PathType("Prefix")),
+										Backend:  expectedIngressBackend,
+									},
+								},
+							},
+						},
+					}},
+					TLS: []v1.IngressTLS{{}},
+				},
+			},
+		},
+		{
+			name: "GivenNoFQDN_Then_ExpectNoIngress",
+			args: struct {
+				comp *vshnv1.VSHNKeycloak
+			}{
+				comp: &vshnv1.VSHNKeycloak{},
+			},
+			want: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
-			enableIngresValues(svc, tt.args.comp, tt.args.values)
-			assert.Equal(t, tt.want, tt.args.values)
+			fqdn := tt.args.comp.Spec.Parameters.Service.FQDN
+			relPath := tt.args.comp.Spec.Parameters.Service.RelativePath
+
+			var err error
+			var ing *v1.Ingress
+			if fqdn != "" { // Handle GivenNoFQDN_Then_ExpectNoIngress
+				ing, err = common.GenerateIngress(tt.args.comp, svc, common.IngressConfig{
+					FQDNs: []string{fqdn},
+					ServiceConfig: common.IngressRuleConfig{
+						RelPath:           relPath,
+						ServiceNameSuffix: "keycloakx-http",
+						ServicePortName:   "https",
+					},
+					TlsCertBaseName: "keycloak",
+				})
+			}
+
+			assert.NoError(t, err)
+
+			// By marshalling v1.Ingress first, we can prevent assert.Equal from comparing pointer addresses and thus always failing
+			want, _ := json.MarshalIndent(tt.want, "", "")
+			got, _ := json.MarshalIndent(ing, "", "")
+			assert.Equal(t, string(want), string(got))
 		})
 	}
-}
-
-func TestAddIngress(t *testing.T) {
-	// Given
-	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/02_withFQDN.yaml")
-
-	// When
-	res := AddIngress(context.TODO(), &vshnv1.VSHNKeycloak{}, svc)
-	assert.Nil(t, res)
-
-	// Then
-	release := &xhelmv1.Release{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, "keycloak-app1-prod-release"))
-
-	values, err := common.GetDesiredReleaseValues(svc, "keycloak-app1-prod-release")
-	assert.NoError(t, err)
-	assert.NotEmpty(t, values)
-	assert.NotEmpty(t, values["ingress"])
-
 }

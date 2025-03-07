@@ -142,23 +142,8 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				"enabled": true,
 			},
 		},
-<<<<<<< HEAD
 		"image": map[string]any{
 			"tag": comp.Spec.Parameters.Service.MajorVersion,
-=======
-		"ingress": map[string]any{
-			"annotations": map[string]string{
-				"cert-manager.io/cluster-issuer": "letsencrypt-staging",
-			},
-			"enabled": true,
-			"hosts":   []map[string]any{},
-			"tls": []map[string]any{
-				{
-					"hosts":      []string{},
-					"secretName": "forgejo-tls",
-				},
-			},
->>>>>>> b0d3c3ec0 (Image tag actually didnt properly update after all)
 		},
 		"persistence": map[string]any{
 			"enabled": true,

@@ -8,6 +8,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
@@ -101,9 +102,6 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					"DB_TYPE":             "sqlite3",
 					"SQLITE_JOURNAL_MODE": "WAL",
 				},
-				"image": map[string]any{
-					"tag": comp.Spec.Parameters.Service.MajorVersion,
-				},
 				"indexer": map[string]any{
 					"ISSUE_INDEXER_TYPE":   "bleve",
 					"REPO_INDEXER_ENABLED": true,
@@ -143,6 +141,9 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 			"serviceMonitor": map[string]any{
 				"enabled": true,
 			},
+		},
+		"image": map[string]any{
+			"tag": comp.Spec.Parameters.Service.MajorVersion,
 		},
 		"persistence": map[string]any{
 			"enabled": true,
@@ -201,6 +202,16 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		if err != nil {
 			return err
 		}
+	}
+
+	// NewRelease doesn't actually use resName, but rather comp.GetName() as is
+	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName())
+	if err != nil {
+		return fmt.Errorf("cannot get observed release values: %w", err)
+	}
+	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.MajorVersion, values, observedValues, []string{"image", "tag"})
+	if err != nil {
+		return fmt.Errorf("cannot set forgejo version for release: %w", err)
 	}
 
 	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")

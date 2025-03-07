@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crossplane/function-sdk-go/proto/v1beta1"
+	"github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +22,7 @@ func Test_addCollabora(t *testing.T) {
 
 	res := DeployCollabora(ctx, comp, svc)
 
-	assert.True(t, res.Severity == v1beta1.Severity_SEVERITY_NORMAL)
+	assert.True(t, res.Severity == v1.Severity_SEVERITY_NORMAL)
 
 	// collabora function returned coorect result, now checking for existence of all required resources
 
@@ -63,5 +63,5 @@ func Test_addCollabora(t *testing.T) {
 	comp.Spec.Parameters.Service.Collabora.Enabled = false
 	res = DeployCollabora(ctx, comp, svc)
 
-	assert.True(t, res.Severity == v1beta1.Severity_SEVERITY_NORMAL && res.Message == "Collabora not enabled")
+	assert.True(t, res.Severity == v1.Severity_SEVERITY_NORMAL && res.Message == "Collabora not enabled")
 }

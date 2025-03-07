@@ -12,7 +12,7 @@ import (
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certmgrv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"

@@ -279,6 +279,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"configs": map[string]string{
 				"vshn-nextcloud.config.php": updatedNextcloudConfig,
 			},
+			"extraEnv": []map[string]any{
+				{
+					"name":  "SKIP_MAINTENANCE",
+					"value": strconv.FormatBool(comp.Spec.Parameters.Backup.SkipMaintenance),
+				},
+			},
 			"extraInitContainers": extraInitContainers,
 			"containerPort":       8080,
 			"podSecurityContext":  securityContext,

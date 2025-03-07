@@ -55,6 +55,15 @@ type VSHNNextcloudSpec struct {
 	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
+type VSHNNextcloudBackupSpec struct {
+	K8upBackupSpec `json:",inline"`
+
+	// +kubebuilder:default=false
+
+	// SkipMaintenance defines, if setting maintenance mode should be skipped during the backup. Defaults to false
+	SkipMaintenance bool `json:"skipMaintenance,omitempty"`
+}
+
 // VSHNNextcloudParameters are the configurable fields of a VSHNNextcloud.
 type VSHNNextcloudParameters struct {
 	// Service contains nextcloud DBaaS specific properties
@@ -67,7 +76,7 @@ type VSHNNextcloudParameters struct {
 	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`
 
 	// Backup contains settings to control how the instance should get backed up.
-	Backup K8upBackupSpec `json:"backup,omitempty"`
+	Backup VSHNNextcloudBackupSpec `json:"backup,omitempty"`
 
 	// Restore contains settings to control the restore of an instance.
 	Restore K8upRestoreSpec `json:"restore,omitempty"`

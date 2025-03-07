@@ -10,8 +10,11 @@ function disableMaintenance {
   sudo -u www-data /var/www/html/occ maintenance:mode --off 1>&2
 }
 
-trap disableMaintenance EXIT
+if [ "$SKIP_MAINTENANCE" = false ]; then
 
-sudo -u www-data /var/www/html/occ maintenance:mode --on 1>&2
+  trap disableMaintenance EXIT
+
+  sudo -u www-data /var/www/html/occ maintenance:mode --on 1>&2
+fi
 
 tar -cf - /var/www

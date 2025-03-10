@@ -405,14 +405,14 @@ func createSecretWithRSAKeys(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRun
 	}
 
 	err := svc.GetObservedKubeObject(currentSecret, objName)
-	if err == runtime.ErrNotFound {
+	if err == nil {
 		/*
 		 this part might look weird, but it's necessary because:
 		 - we don't want to overwrite the secret if it already exists
 		 - RSA generation is really slow
 		*/
 		return svc.SetDesiredKubeObject(currentSecret, objName, runtime.KubeOptionAddLabels(labelMap))
-	} else if err != nil {
+	} else if err != runtime.ErrNotFound {
 		return err
 	}
 

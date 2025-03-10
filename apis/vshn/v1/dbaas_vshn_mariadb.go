@@ -145,6 +145,8 @@ type VSHNMariaDBStatus struct {
 	// CurrentInstances tracks the current amount of instances.
 	// Mainly used to detect if there was a change in instances
 	CurrentInstances int `json:"currentInstances,omitempty"`
+	// ResourceStatus represents the observed state of a managed resource.
+	xpv1.ResourceStatus `json:",inline"`
 }
 
 func (v *VSHNMariaDB) GetClaimNamespace() string {

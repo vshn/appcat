@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	fnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	promV1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"

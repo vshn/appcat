@@ -188,6 +188,8 @@ type VSHNKeycloakStatus struct {
 	// Schedules keeps track of random generated schedules, is overwriten by
 	// schedules set in the service's spec.
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
+	// ResourceStatus represents the observed state of a managed resource.
+	xpv1.ResourceStatus `json:",inline"`
 }
 
 func (v *VSHNKeycloak) GetClaimNamespace() string {

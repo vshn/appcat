@@ -182,6 +182,8 @@ type VSHNScheduleStatus struct {
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
 	// Backup keeps track of the backup schedule.
 	Backup string `json:"backup,omitempty"`
+	// ResourceStatus represents the observed state of a managed resource.
+	xpv1.ResourceStatus `json:",inline"`
 }
 
 // Security defines the security of a service

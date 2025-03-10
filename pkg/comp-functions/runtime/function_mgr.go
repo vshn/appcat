@@ -1080,7 +1080,7 @@ func (s *ServiceRuntime) WaitForDesiredDependencies(mainResource string, depende
 }
 
 // WaitForObservedDependenciesWithConnectionDetails does the same as WaitForDependencies but additionally also checks the given list of fields against the
-// available connection details.
+// available connection details. It checks whether the field exists and has a non-empty value.
 // objectCDMap should contain a map where the key is the name of the dependeny and the string slice the necessary connection detail fields.
 func (s *ServiceRuntime) WaitForObservedDependenciesWithConnectionDetails(mainResource string, objectCDMap map[string][]string) (bool, error) {
 	// If the main resource already exists we're done here
@@ -1100,7 +1100,7 @@ func (s *ServiceRuntime) WaitForObservedDependenciesWithConnectionDetails(mainRe
 		}
 
 		for _, field := range cds {
-			if _, ok := cd[field]; !ok {
+			if val, ok := cd[field]; !ok || len(val) == 0 {
 				return false, nil
 			}
 		}

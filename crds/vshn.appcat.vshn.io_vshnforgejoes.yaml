@@ -4641,10 +4641,9 @@ spec:
                                         type: string
                                       type: array
                                     ENABLE_OPENID_SIGNIN:
-                                      default: "true"
+                                      default: true
                                       type: boolean
                                     ENABLE_OPENID_SIGNUP:
-                                      default: '! DISABLE_REGISTRATION'
                                       type: boolean
                                     WHITELISTED_URIS:
                                       items:
@@ -4688,21 +4687,12 @@ spec:
                                     REGISTER_MANUAL_CONFIRM:
                                       description: Enable this to manually confirm new registrations. Requires REGISTER_EMAIL_CONFIRM to be disabled.
                                       type: boolean
-                                      x-kubernetes-validations:
-                                        - message: REGISTER_EMAIL_CONFIRM must be false
-                                          rule: REGISTER_EMAIL_CONFIRM == false
                                     REQUIRE_CAPTCHA_FOR_LOGIN:
                                       description: Enable this to require captcha validation for login. You also must enable ENABLE_CAPTCHA.
                                       type: boolean
-                                      x-kubernetes-validations:
-                                        - message: ENABLE_CAPTCHA must be true
-                                          rule: ENABLE_CAPTCHA == true
                                     REQUIRE_EXTERNAL_REGISTRATION_CAPTCHA:
                                       description: Enable this to force captcha validation even for External Accounts (i.e. GitHub, OpenID Connect, etc). You also must enable ENABLE_CAPTCHA.
                                       type: boolean
-                                      x-kubernetes-validations:
-                                        - message: ENABLE_CAPTCHA must be true
-                                          rule: ENABLE_CAPTCHA == true
                                   type: object
                               type: object
                           type: object

@@ -136,11 +136,10 @@ type VSHNForgejoActionsConfig struct {
 
 // https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
 type VSHNForgejoOpenIdConfig struct {
-	// +kubebuilder:default="true"
+	// +kubebuilder:default=true
 	// +kubebuilder:validation:Optional
 	EnableSignin bool `json:"ENABLE_OPENID_SIGNIN,omitempty"`
 
-	// +kubebuilder:default="! DISABLE_REGISTRATION"
 	// +kubebuilder:validation:Optional
 	EnableSignup bool `json:"ENABLE_OPENID_SIGNUP,omitempty"`
 
@@ -161,7 +160,6 @@ type VSHNForgejoServiceConfig struct {
 	// Enable this to ask for mail confirmation of registration. Requires Mailer to be enabled.
 	RegisterEmailConfirm bool `json:"REGISTER_EMAIL_CONFIRM,omitempty"`
 
-	// +kubebuilder:validation:XValidation:rule="REGISTER_EMAIL_CONFIRM == false", message="REGISTER_EMAIL_CONFIRM must be false"
 	// +kubebuilder:validation:Optional
 	// Enable this to manually confirm new registrations. Requires REGISTER_EMAIL_CONFIRM to be disabled.
 	RegisterManualConfirm bool `json:"REGISTER_MANUAL_CONFIRM,omitempty"`
@@ -174,12 +172,10 @@ type VSHNForgejoServiceConfig struct {
 	// Enable this to use captcha validation for registration.
 	EnableCaptcha bool `json:"ENABLE_CAPTCHA,omitempty"`
 
-	// +kubebuilder:validation:XValidation:rule="ENABLE_CAPTCHA == true", message="ENABLE_CAPTCHA must be true"
 	// +kubebuilder:validation:Optional
 	// Enable this to require captcha validation for login. You also must enable ENABLE_CAPTCHA.
 	RequireCaptchaForLogin bool `json:"REQUIRE_CAPTCHA_FOR_LOGIN,omitempty"`
 
-	// +kubebuilder:validation:XValidation:rule="ENABLE_CAPTCHA == true", message="ENABLE_CAPTCHA must be true"
 	// +kubebuilder:validation:Optional
 	// Enable this to force captcha validation even for External Accounts (i.e. GitHub, OpenID Connect, etc). You also must enable ENABLE_CAPTCHA.
 	RequireExtRegCaptcha bool `json:"REQUIRE_EXTERNAL_REGISTRATION_CAPTCHA,omitempty"`

@@ -81,6 +81,8 @@ type VSHNForgejoServiceSpec struct {
 	// AdminEmail contains the email address of the admin user.
 	AdminEmail string `json:"adminEmail,omitempty"`
 
+	ForgejoSettings VSHNForgejoSettings `json:"forgejoSettings,omitempty"`
+
 	// FQDN contains the FQDNs array, which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.
 	// This also enables strict hostname checking for this FQDN.
@@ -98,6 +100,138 @@ type VSHNForgejoServiceSpec struct {
 	// Multiple versions are supported. Defaults to 10.0.0 if not set.
 	// +kubebuilder:default="10.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
+}
+
+// VSHNForgejoSettings contains user customizable configurations for Forgejo
+// https://forgejo.org/docs/latest/admin/config-cheat-sheet
+type VSHNForgejoSettings struct {
+	// +kubebuilder:validation:Optional
+	// AppName is the application name, used in the page title
+	AppName string `json:"APP_NAME,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Config contains settings to customize the Forgejo instance with
+	Config VSHNForgejoConfig `json:"config,omitempty"`
+}
+
+type VSHNForgejoConfig struct {
+	// +kubebuilder:validation:Optional
+	Actions VSHNForgejoActionsConfig `json:"actions,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	OpenID VSHNForgejoOpenIdConfig `json:"openid,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	Service VSHNForgejoServiceConfig `json:"service,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	Mailer VSHNForgejoMailerConfig `json:"mailer,omitempty"`
+}
+
+// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#actions-actions
+type VSHNForgejoActionsConfig struct {
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"ENABLED,omitempty"`
+}
+
+// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
+type VSHNForgejoOpenIdConfig struct {
+	// +kubebuilder:default="true"
+	// +kubebuilder:validation:Optional
+	EnableSignin bool `json:"ENABLE_OPENID_SIGNIN,omitempty"`
+
+	// +kubebuilder:default="! DISABLE_REGISTRATION"
+	// +kubebuilder:validation:Optional
+	EnableSignup bool `json:"ENABLE_OPENID_SIGNUP,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	WhitelistedUris []string `json:"WHITELISTED_URIS,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	BlacklistedUris []string `json:"BLACKLISTED_URIS,omitempty"`
+}
+
+// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
+type VSHNForgejoServiceConfig struct {
+	// +kubebuilder:validation:Optional
+	// Disable registration, after which only admin can create accounts for users.
+	DisableRegistration bool `json:"DISABLE_REGISTRATION,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Enable this to ask for mail confirmation of registration. Requires Mailer to be enabled.
+	RegisterEmailConfirm bool `json:"REGISTER_EMAIL_CONFIRM,omitempty"`
+
+	// +kubebuilder:validation:XValidation:rule="REGISTER_EMAIL_CONFIRM == false", message="REGISTER_EMAIL_CONFIRM must be false"
+	// +kubebuilder:validation:Optional
+	// Enable this to manually confirm new registrations. Requires REGISTER_EMAIL_CONFIRM to be disabled.
+	RegisterManualConfirm bool `json:"REGISTER_MANUAL_CONFIRM,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Enable this to send e-mail to watchers of a repository when something happens, like creating issues. Requires Mailer to be enabled.
+	EnableNotifyMail bool `json:"ENABLE_NOTIFY_MAIL,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Enable this to use captcha validation for registration.
+	EnableCaptcha bool `json:"ENABLE_CAPTCHA,omitempty"`
+
+	// +kubebuilder:validation:XValidation:rule="ENABLE_CAPTCHA == true", message="ENABLE_CAPTCHA must be true"
+	// +kubebuilder:validation:Optional
+	// Enable this to require captcha validation for login. You also must enable ENABLE_CAPTCHA.
+	RequireCaptchaForLogin bool `json:"REQUIRE_CAPTCHA_FOR_LOGIN,omitempty"`
+
+	// +kubebuilder:validation:XValidation:rule="ENABLE_CAPTCHA == true", message="ENABLE_CAPTCHA must be true"
+	// +kubebuilder:validation:Optional
+	// Enable this to force captcha validation even for External Accounts (i.e. GitHub, OpenID Connect, etc). You also must enable ENABLE_CAPTCHA.
+	RequireExtRegCaptcha bool `json:"REQUIRE_EXTERNAL_REGISTRATION_CAPTCHA,omitempty"`
+
+	// +kubebuilder:default="image"
+	// +kubebuilder:validation:Enum=image;recaptcha;hcaptcha;mcaptcha;cfturnstile
+	// +kubebuilder:validation:Optional
+	CaptchaType string `json:"CAPTCHA_TYPE,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	HCaptchaSecret string `json:"HCAPTCHA_SECRET,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	HCaptchaSitekey string `json:"HCAPTCHA_SITEKEY,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	MCaptchaSecret string `json:"MCAPTCHA_SECRET,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	MCaptchaSitekey string `json:"MCAPTCHA_SITEKEY,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	MCaptchaUrl string `json:"MCAPTCHA_URL,omitempty"`
+}
+
+// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
+type VSHNForgejoMailerConfig struct {
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"ENABLED,omitempty"`
+
+	// +kubebuilder:validation:Enum=smtp;smtps;smtp+starttls;dummy
+	// +kubebuilder:validation:Optional
+	// PROTOCOL is the mail server protocol.
+	Protocol string `json:"PROTOCOL,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// SMTP_ADDR is the mail server address.
+	SmtpAddr string `json:"SMTP_ADDR,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// SMTP_PORT is the mail server port. If no protocol is specified, it will be inferred by this setting.
+	SmtpPort int `json:"SMTP_PORT,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// USER is the username of mailing user
+	User string `json:"USER,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// FROM is the mail from address, RFC 5322. This can be just an email address, or the “Name” <email@example.com> format.
+	From string `json:"FROM,omitempty"`
+
+	// Password is inferred from env FORGEJO__MAILER__PASSWD to allow passing it as a secret
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

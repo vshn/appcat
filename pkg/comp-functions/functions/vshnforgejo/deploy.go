@@ -173,6 +173,11 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		},
 	}
 
+	err := common.SetNestedObjectValue(values, []string{"gitea", "config"}, comp.Spec.Parameters.Service.ForgejoSettings)
+	if err != nil {
+		return err
+	}
+
 	svc.Log.Info("Adding ingress")
 	ingressConfig := common.IngressConfig{
 		FQDNs: comp.Spec.Parameters.Service.FQDN,

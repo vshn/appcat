@@ -122,7 +122,7 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 		},
 	}
 
-	err := svc.SetDesiredKubeObjectWithName(selfSignedIssuer, comp.GetName()+"-localca", "local-ca")
+	err := svc.SetDesiredKubeObjectWithName(selfSignedIssuer, comp.GetName()+"-localca", "local-ca", runtime.KubeOptionProtectedBy("cluster"))
 	if err != nil {
 		err = fmt.Errorf("cannot create local ca object: %w", err)
 		return err
@@ -165,7 +165,7 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 		},
 	}
 
-	err = svc.SetDesiredKubeObjectWithName(certificate, comp.GetName()+"-certificate", "certificate")
+	err = svc.SetDesiredKubeObjectWithName(certificate, comp.GetName()+"-certificate", "certificate", runtime.KubeOptionProtectedBy("cluster"))
 	if err != nil {
 		err = fmt.Errorf("cannot create local ca object: %w", err)
 		return err

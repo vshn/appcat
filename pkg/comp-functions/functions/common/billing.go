@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	xfnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -8,7 +8,7 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	fnproto "github.com/crossplane/function-sdk-go/proto/v1beta1"
+	fnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"

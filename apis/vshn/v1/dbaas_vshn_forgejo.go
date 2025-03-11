@@ -102,128 +102,94 @@ type VSHNForgejoServiceSpec struct {
 	MajorVersion string `json:"majorVersion,omitempty"`
 }
 
+// +kubebuilder:validation:Optional
 // VSHNForgejoSettings contains user customizable configurations for Forgejo
-// https://forgejo.org/docs/latest/admin/config-cheat-sheet
 type VSHNForgejoSettings struct {
-	// +kubebuilder:validation:Optional
 	// AppName is the application name, used in the page title
 	AppName string `json:"APP_NAME,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// Config contains settings to customize the Forgejo instance with
 	Config VSHNForgejoConfig `json:"config,omitempty"`
 }
 
+// +kubebuilder:validation:Optional
 type VSHNForgejoConfig struct {
-	// +kubebuilder:validation:Optional
 	Actions VSHNForgejoActionsConfig `json:"actions,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	OpenID VSHNForgejoOpenIdConfig `json:"openid,omitempty"`
-
-	// +kubebuilder:validation:Optional
+	OpenID  VSHNForgejoOpenIdConfig  `json:"openid,omitempty"`
 	Service VSHNForgejoServiceConfig `json:"service,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	Mailer VSHNForgejoMailerConfig `json:"mailer,omitempty"`
+	Mailer  VSHNForgejoMailerConfig  `json:"mailer,omitempty"`
 }
 
+// +kubebuilder:validation:Optional
 // https://forgejo.org/docs/latest/admin/config-cheat-sheet/#actions-actions
 type VSHNForgejoActionsConfig struct {
-	// +kubebuilder:validation:Optional
 	Enabled bool `json:"ENABLED,omitempty"`
 }
 
+// +kubebuilder:validation:Optional
 // https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
 type VSHNForgejoOpenIdConfig struct {
 	// +kubebuilder:default=true
-	// +kubebuilder:validation:Optional
 	EnableSignin bool `json:"ENABLE_OPENID_SIGNIN,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	EnableSignup bool `json:"ENABLE_OPENID_SIGNUP,omitempty"`
-
-	// +kubebuilder:validation:Optional
+	EnableSignup    bool     `json:"ENABLE_OPENID_SIGNUP,omitempty"`
 	WhitelistedUris []string `json:"WHITELISTED_URIS,omitempty"`
-
-	// +kubebuilder:validation:Optional
 	BlacklistedUris []string `json:"BLACKLISTED_URIS,omitempty"`
 }
 
+// +kubebuilder:validation:Optional
 // https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
 type VSHNForgejoServiceConfig struct {
-	// +kubebuilder:validation:Optional
 	// Disable registration, after which only admin can create accounts for users.
 	DisableRegistration bool `json:"DISABLE_REGISTRATION,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// Enable this to ask for mail confirmation of registration. Requires Mailer to be enabled.
 	RegisterEmailConfirm bool `json:"REGISTER_EMAIL_CONFIRM,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// Enable this to manually confirm new registrations. Requires REGISTER_EMAIL_CONFIRM to be disabled.
 	RegisterManualConfirm bool `json:"REGISTER_MANUAL_CONFIRM,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// Enable this to send e-mail to watchers of a repository when something happens, like creating issues. Requires Mailer to be enabled.
 	EnableNotifyMail bool `json:"ENABLE_NOTIFY_MAIL,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// Enable this to use captcha validation for registration.
 	EnableCaptcha bool `json:"ENABLE_CAPTCHA,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// Enable this to require captcha validation for login. You also must enable ENABLE_CAPTCHA.
 	RequireCaptchaForLogin bool `json:"REQUIRE_CAPTCHA_FOR_LOGIN,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// Enable this to force captcha validation even for External Accounts (i.e. GitHub, OpenID Connect, etc). You also must enable ENABLE_CAPTCHA.
 	RequireExtRegCaptcha bool `json:"REQUIRE_EXTERNAL_REGISTRATION_CAPTCHA,omitempty"`
 
 	// +kubebuilder:default="image"
 	// +kubebuilder:validation:Enum=image;recaptcha;hcaptcha;mcaptcha;cfturnstile
-	// +kubebuilder:validation:Optional
 	CaptchaType string `json:"CAPTCHA_TYPE,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	HCaptchaSecret string `json:"HCAPTCHA_SECRET,omitempty"`
-
-	// +kubebuilder:validation:Optional
+	HCaptchaSecret  string `json:"HCAPTCHA_SECRET,omitempty"`
 	HCaptchaSitekey string `json:"HCAPTCHA_SITEKEY,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	MCaptchaSecret string `json:"MCAPTCHA_SECRET,omitempty"`
-
-	// +kubebuilder:validation:Optional
+	MCaptchaSecret  string `json:"MCAPTCHA_SECRET,omitempty"`
 	MCaptchaSitekey string `json:"MCAPTCHA_SITEKEY,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	MCaptchaUrl string `json:"MCAPTCHA_URL,omitempty"`
+	MCaptchaUrl     string `json:"MCAPTCHA_URL,omitempty"`
 }
 
+// +kubebuilder:validation:Optional
 // https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
 type VSHNForgejoMailerConfig struct {
-	// +kubebuilder:validation:Optional
 	Enabled bool `json:"ENABLED,omitempty"`
 
 	// +kubebuilder:validation:Enum=smtp;smtps;smtp+starttls;dummy
-	// +kubebuilder:validation:Optional
 	// PROTOCOL is the mail server protocol.
 	Protocol string `json:"PROTOCOL,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// SMTP_ADDR is the mail server address.
 	SmtpAddr string `json:"SMTP_ADDR,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	// SMTP_PORT is the mail server port. If no protocol is specified, it will be inferred by this setting.
+	// SMTP_PORT is the mail server port. If no protocol is specified, it will be inferred by PROTOCOL.
 	SmtpPort int `json:"SMTP_PORT,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// USER is the username of mailing user
 	User string `json:"USER,omitempty"`
 
-	// +kubebuilder:validation:Optional
 	// FROM is the mail from address, RFC 5322. This can be just an email address, or the “Name” <email@example.com> format.
 	From string `json:"FROM,omitempty"`
 

@@ -4591,9 +4591,7 @@ spec:
                           pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
                           type: string
                         forgejoSettings:
-                          description: |-
-                            VSHNForgejoSettings contains user customizable configurations for Forgejo
-                            https://forgejo.org/docs/latest/admin/config-cheat-sheet
+                          description: VSHNForgejoSettings contains user customizable configurations for Forgejo
                           properties:
                             APP_NAME:
                               description: AppName is the application name, used in the page title
@@ -4627,7 +4625,7 @@ spec:
                                       description: SMTP_ADDR is the mail server address.
                                       type: string
                                     SMTP_PORT:
-                                      description: SMTP_PORT is the mail server port. If no protocol is specified, it will be inferred by this setting.
+                                      description: SMTP_PORT is the mail server port. If no protocol is specified, it will be inferred by PROTOCOL.
                                       type: integer
                                     USER:
                                       description: USER is the username of mailing user

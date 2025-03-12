@@ -5316,123 +5316,38 @@ spec:
                         pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
                         type: string
                       forgejoSettings:
-                        description: VSHNForgejoSettings contains user customizable
-                          configurations for Forgejo
+                        description: |-
+                          forgejoSettings contains user customiziable configuration for Forgejo.
+                          Refer to https://forgejo.org/docs/latest/admin/config-cheat-sheet.
                         properties:
                           APP_NAME:
                             description: AppName is the application name, used in
                               the page title
                             type: string
                           config:
-                            description: Config contains settings to customize the
-                              Forgejo instance with
+                            description: |-
+                              Config contains settings to customize the Forgejo instance with.
+                              Not all sections are supported. Invalid fields are ignored by Forgejo.
                             properties:
                               actions:
+                                additionalProperties:
+                                  type: string
                                 description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#actions-actions
-                                properties:
-                                  ENABLED:
-                                    type: boolean
                                 type: object
                               mailer:
+                                additionalProperties:
+                                  type: string
                                 description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
-                                properties:
-                                  ENABLED:
-                                    type: boolean
-                                  FROM:
-                                    description: FROM is the mail from address, RFC
-                                      5322. This can be just an email address, or
-                                      the “Name” <email@example.com> format.
-                                    type: string
-                                  PROTOCOL:
-                                    description: PROTOCOL is the mail server protocol.
-                                    enum:
-                                    - smtp
-                                    - smtps
-                                    - smtp+starttls
-                                    - dummy
-                                    type: string
-                                  SMTP_ADDR:
-                                    description: SMTP_ADDR is the mail server address.
-                                    type: string
-                                  SMTP_PORT:
-                                    description: SMTP_PORT is the mail server port.
-                                      If no protocol is specified, it will be inferred
-                                      by PROTOCOL.
-                                    type: integer
-                                  USER:
-                                    description: USER is the username of mailing user
-                                    type: string
                                 type: object
                               openid:
+                                additionalProperties:
+                                  type: string
                                 description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
-                                properties:
-                                  BLACKLISTED_URIS:
-                                    items:
-                                      type: string
-                                    type: array
-                                  ENABLE_OPENID_SIGNIN:
-                                    default: true
-                                    type: boolean
-                                  ENABLE_OPENID_SIGNUP:
-                                    type: boolean
-                                  WHITELISTED_URIS:
-                                    items:
-                                      type: string
-                                    type: array
                                 type: object
                               service:
+                                additionalProperties:
+                                  type: string
                                 description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
-                                properties:
-                                  CAPTCHA_TYPE:
-                                    default: image
-                                    enum:
-                                    - image
-                                    - recaptcha
-                                    - hcaptcha
-                                    - mcaptcha
-                                    - cfturnstile
-                                    type: string
-                                  DISABLE_REGISTRATION:
-                                    description: Disable registration, after which
-                                      only admin can create accounts for users.
-                                    type: boolean
-                                  ENABLE_CAPTCHA:
-                                    description: Enable this to use captcha validation
-                                      for registration.
-                                    type: boolean
-                                  ENABLE_NOTIFY_MAIL:
-                                    description: Enable this to send e-mail to watchers
-                                      of a repository when something happens, like
-                                      creating issues. Requires Mailer to be enabled.
-                                    type: boolean
-                                  HCAPTCHA_SECRET:
-                                    type: string
-                                  HCAPTCHA_SITEKEY:
-                                    type: string
-                                  MCAPTCHA_SECRET:
-                                    type: string
-                                  MCAPTCHA_SITEKEY:
-                                    type: string
-                                  MCAPTCHA_URL:
-                                    type: string
-                                  REGISTER_EMAIL_CONFIRM:
-                                    description: Enable this to ask for mail confirmation
-                                      of registration. Requires Mailer to be enabled.
-                                    type: boolean
-                                  REGISTER_MANUAL_CONFIRM:
-                                    description: Enable this to manually confirm new
-                                      registrations. Requires REGISTER_EMAIL_CONFIRM
-                                      to be disabled.
-                                    type: boolean
-                                  REQUIRE_CAPTCHA_FOR_LOGIN:
-                                    description: Enable this to require captcha validation
-                                      for login. You also must enable ENABLE_CAPTCHA.
-                                    type: boolean
-                                  REQUIRE_EXTERNAL_REGISTRATION_CAPTCHA:
-                                    description: Enable this to force captcha validation
-                                      even for External Accounts (i.e. GitHub, OpenID
-                                      Connect, etc). You also must enable ENABLE_CAPTCHA.
-                                    type: boolean
                                 type: object
                             type: object
                         type: object

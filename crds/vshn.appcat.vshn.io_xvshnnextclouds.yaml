@@ -111,6 +111,11 @@ spec:
                           (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
                         type: string
                       skipMaintenance:
+                        default: false
+                        description: |-
+                          SkipMaintenance defines, if setting maintenance mode should be skipped during the backup. Defaults to false
+                          Warning: If this is set to true, the maintenance mode will not be enabled during the backup. This might
+                          lead to inconsistent backups.
                         type: boolean
                     type: object
                   instances:

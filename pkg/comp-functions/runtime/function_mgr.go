@@ -983,6 +983,13 @@ func (s *ServiceRuntime) GetAllDesired() map[resource.Name]*resource.DesiredComp
 	return s.desiredResources
 }
 
+// SetAllDesired will override the desired resources with the given map.
+// WARNING: please only use this if you know what you're doing. This function
+// can break the state of any given service!
+func (s *ServiceRuntime) SetAllDesired(resources map[resource.Name]*resource.DesiredComposed) {
+	s.desiredResources = resources
+}
+
 // GetDesiredComposite will return the currently desired composite.
 // The only differences from the observed composite will be either in metadata or the status.
 // As Crossplane 1.14 composition function forbid any changes other than those fields.

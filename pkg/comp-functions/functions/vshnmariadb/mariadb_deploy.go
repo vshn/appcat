@@ -62,18 +62,22 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 
 	// To make scaling up and down as seamless as possible we create a cert that also includes the
 	// proxy dns names.
+	tlsOpts := &common.TLSOptions{
+		AdditionalSans: []string{
+			comp.GetName(),
+			fmt.Sprintf("*.%s-headless.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
+			fmt.Sprintf("*.%s.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
+			fmt.Sprintf("%s-headless.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
+			fmt.Sprintf("%s.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
+			fmt.Sprintf("mariadb.%s.svc.cluster.local", comp.GetInstanceNamespace()),
+			fmt.Sprintf("mariadb.%s.svc", comp.GetInstanceNamespace()),
+			fmt.Sprintf("proxysql-0.proxysqlcluster.%s.svc", comp.GetInstanceNamespace()),
+			fmt.Sprintf("proxysql-1.proxysqlcluster.%s.svc", comp.GetInstanceNamespace()),
+		},
+	}
+
 	l.Info("Creating tls certificate for mariadb instance")
-	_, err = common.CreateTLSCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc,
-		comp.GetName(),
-		fmt.Sprintf("*.%s-headless.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
-		fmt.Sprintf("*.%s.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
-		fmt.Sprintf("%s-headless.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
-		fmt.Sprintf("%s.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
-		fmt.Sprintf("mariadb.%s.svc.cluster.local", comp.GetInstanceNamespace()),
-		fmt.Sprintf("mariadb.%s.svc", comp.GetInstanceNamespace()),
-		fmt.Sprintf("proxysql-0.proxysqlcluster.%s.svc", comp.GetInstanceNamespace()),
-		fmt.Sprintf("proxysql-1.proxysqlcluster.%s.svc", comp.GetInstanceNamespace()),
-	)
+	_, err = common.CreateTLSCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts)
 
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())

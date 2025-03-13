@@ -194,6 +194,7 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1.RunFunctionRequest) 
 			result = NewNormalResult(fmt.Sprintf("%s step %s result: ran successfully", service, stepName))
 		} else {
 			result.Message = fmt.Sprintf("%s step %s result: %s", service, stepName, result.Message)
+			sr.Log.Info(result.Message)
 		}
 		sr.AddResult(result)
 	}
@@ -983,6 +984,13 @@ func (s *ServiceRuntime) GetAllDesired() map[resource.Name]*resource.DesiredComp
 	return s.desiredResources
 }
 
+// SetAllDesired will override the desired resources with the given map.
+// WARNING: please only use this if you know what you're doing. This function
+// can break the state of any given service!
+func (s *ServiceRuntime) SetAllDesired(resources map[resource.Name]*resource.DesiredComposed) {
+	s.desiredResources = resources
+}
+
 // GetDesiredComposite will return the currently desired composite.
 // The only differences from the observed composite will be either in metadata or the status.
 // As Crossplane 1.14 composition function forbid any changes other than those fields.
@@ -1342,11 +1350,16 @@ func (s *ServiceRuntime) getCleanGVK() schema.GroupVersionKind {
 // setProviderConfigs loops over all desired objects and adds the providerConfigs
 // according to the annotations on the claim/composite.
 func (s *ServiceRuntime) setProviderConfigs() error {
-	if val, exists := s.observedComposite.GetLabels()[ProviderConfigLabel]; !exists || val == "" || val == "local" {
+	label := ProviderConfigLabel
+	if val, exists := s.Config.Data["providerConfigLabel"]; exists && val != "" {
+		label = val
+	}
+
+	if val, exists := s.observedComposite.GetLabels()[label]; !exists || val == "" || val == "local" {
 		return nil
 	}
 
-	configName := s.observedComposite.GetLabels()[ProviderConfigLabel]
+	configName := s.observedComposite.GetLabels()[label]
 
 	for i := range s.desiredResources {
 		if _, exists := s.desiredResources[i].Resource.GetLabels()[ProviderConfigIgnoreLabel]; exists {
@@ -1364,7 +1377,7 @@ func (s *ServiceRuntime) setProviderConfigs() error {
 		if labels == nil {
 			labels = map[string]string{}
 		}
-		labels[ProviderConfigLabel] = configName
+		labels[label] = configName
 		s.desiredResources[i].Resource.SetLabels(labels)
 	}
 

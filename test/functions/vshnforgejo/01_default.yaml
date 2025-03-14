@@ -45,7 +45,7 @@ observed:
                   REGISTER_EMAIL_CONFIRM: "true"
                 mailer:
                   ENABLED: "true"
-                  PROTOCOL: sendmail # Value should be reset
+                  PROTOCOL: sendmail # Field should be removed due to bad value
             fqdn: ["forgejo.example.com"]
             majorVersion: "10.0.0"
         claimRef:

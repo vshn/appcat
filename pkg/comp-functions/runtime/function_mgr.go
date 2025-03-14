@@ -194,6 +194,7 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1.RunFunctionRequest) 
 			result = NewNormalResult(fmt.Sprintf("%s step %s result: ran successfully", service, stepName))
 		} else {
 			result.Message = fmt.Sprintf("%s step %s result: %s", service, stepName, result.Message)
+			sr.Log.Info(result.Message)
 		}
 		sr.AddResult(result)
 	}
@@ -1349,11 +1350,16 @@ func (s *ServiceRuntime) getCleanGVK() schema.GroupVersionKind {
 // setProviderConfigs loops over all desired objects and adds the providerConfigs
 // according to the annotations on the claim/composite.
 func (s *ServiceRuntime) setProviderConfigs() error {
-	if val, exists := s.observedComposite.GetLabels()[ProviderConfigLabel]; !exists || val == "" || val == "local" {
+	label := ProviderConfigLabel
+	if val, exists := s.Config.Data["providerConfigLabel"]; exists && val != "" {
+		label = val
+	}
+
+	if val, exists := s.observedComposite.GetLabels()[label]; !exists || val == "" || val == "local" {
 		return nil
 	}
 
-	configName := s.observedComposite.GetLabels()[ProviderConfigLabel]
+	configName := s.observedComposite.GetLabels()[label]
 
 	for i := range s.desiredResources {
 		if _, exists := s.desiredResources[i].Resource.GetLabels()[ProviderConfigIgnoreLabel]; exists {
@@ -1371,7 +1377,7 @@ func (s *ServiceRuntime) setProviderConfigs() error {
 		if labels == nil {
 			labels = map[string]string{}
 		}
-		labels[ProviderConfigLabel] = configName
+		labels[label] = configName
 		s.desiredResources[i].Resource.SetLabels(labels)
 	}
 

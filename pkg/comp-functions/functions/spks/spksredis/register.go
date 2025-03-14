@@ -13,6 +13,10 @@ func init() {
 				Name:    "resizePVC",
 				Execute: ResizeSpksPVCs,
 			},
+			{
+				Name:    "handleTLS",
+				Execute: HandleTLS,
+			},
 			// This one should be the last step to call!
 			{
 				Name:    "fixConnectionDetailsSecret",

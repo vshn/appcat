@@ -13,9 +13,31 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TLSOptions let's you pass advanced configurations to the underlying objects.
+type TLSOptions struct {
+	// AdditionalSans is a list of additional SANs that should get added to the
+	// certificate
+	AdditionalSans []string
+	// IssuerOptions is a list of additional functions that manipulate the Issuer resource
+	IssuerOptions []IssuerOption
+	// CertOptions is a list of additional functions that manipulate the Certificate resource
+	CertOptions []CertOptions
+	//KubeOptions is a list of KubecObjectOptions that will be passed to the SetDesiredKubeObject function
+	KubeOptions []runtime.KubeObjectOption
+}
+
+type IssuerOption func(*cmv1.Issuer)
+
+type CertOptions func(*cmv1.Certificate)
+
 // CreateTLSCerts creates ssl/tls certificates. Servicename will be concatenated with the given namespace to generate a proper k8s fqdn.
 // In addition to an error it also returns the name of the secret containing the server certifcates.
-func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *runtime.ServiceRuntime, additionalSANs ...string) (string, error) {
+func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *runtime.ServiceRuntime, opts *TLSOptions) (string, error) {
+
+	kubeOpts := []runtime.KubeObjectOption{}
+	if opts != nil {
+		kubeOpts = opts.KubeOptions
+	}
 
 	selfSignedIssuer := &cmv1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
@@ -31,7 +53,13 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(selfSignedIssuer, serviceName+"-selfsigned-issuer")
+	if opts != nil {
+		for _, opt := range opts.IssuerOptions {
+			opt(selfSignedIssuer)
+		}
+	}
+
+	err := svc.SetDesiredKubeObject(selfSignedIssuer, serviceName+"-selfsigned-issuer", kubeOpts...)
 	if err != nil {
 		err = fmt.Errorf("cannot create selfSignedIssuer object: %w", err)
 		return "", err
@@ -73,7 +101,13 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(caCert, serviceName+"-ca-cert")
+	if opts != nil {
+		for _, opt := range opts.CertOptions {
+			opt(caCert)
+		}
+	}
+
+	err = svc.SetDesiredKubeObject(caCert, serviceName+"-ca-cert", kubeOpts...)
 	if err != nil {
 		err = fmt.Errorf("cannot create caCert object: %w", err)
 		return serverCertsSecret, err
@@ -93,7 +127,13 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(caIssuer, serviceName+"-ca-issuer")
+	if opts != nil {
+		for _, opt := range opts.IssuerOptions {
+			opt(caIssuer)
+		}
+	}
+
+	err = svc.SetDesiredKubeObject(caIssuer, serviceName+"-ca-issuer", kubeOpts...)
 	if err != nil {
 		err = fmt.Errorf("cannot create caIssuer object: %w", err)
 		return serverCertsSecret, err
@@ -136,7 +176,7 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
-	serverCert.Spec.DNSNames = append(serverCert.Spec.DNSNames, additionalSANs...)
+	serverCert.Spec.DNSNames = append(serverCert.Spec.DNSNames, opts.AdditionalSans...)
 
 	cd := []xkube.ConnectionDetail{
 		{
@@ -171,7 +211,15 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(serverCert, serviceName+"-server-cert", runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...))
+	if opts != nil {
+		for _, opt := range opts.CertOptions {
+			opt(serverCert)
+		}
+	}
+
+	serverCertOpts := append(kubeOpts, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...))
+
+	err = svc.SetDesiredKubeObject(serverCert, serviceName+"-server-cert", serverCertOpts...)
 	if err != nil {
 		err = fmt.Errorf("cannot create serverCert object: %w", err)
 		return serverCertsSecret, err

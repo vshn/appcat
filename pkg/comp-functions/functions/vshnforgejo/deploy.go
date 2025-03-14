@@ -3,6 +3,7 @@ package vshnforgejo
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -77,6 +78,11 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
+	var appName string
+	if comp.Spec.Parameters.Service.ForgejoSettings.AppName != "" {
+		appName = comp.Spec.Parameters.Service.ForgejoSettings.AppName
+	}
+
 	values := map[string]any{
 		"gitea": map[string]any{
 			"admin": map[string]any{
@@ -84,6 +90,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				"existingSecret": secretName,
 			},
 			"config": map[string]any{
+				"APP_NAME": appName,
 				"admin": map[string]any{
 					"SEND_NOTIFICATION_EMAIL_ON_NEW_USER": true,
 				},
@@ -171,6 +178,19 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		"strategy": map[string]any{
 			"type": "Recreate",
 		},
+	}
+
+	// Automagically inject entirety of VSHNForgejoConfig into values
+	fields := reflect.VisibleFields(reflect.TypeOf(comp.Spec.Parameters.Service.ForgejoSettings.Config))
+	for _, f := range fields {
+		field := strings.SplitN(f.Tag.Get("json"), ",", 2)[0]
+		if field != "" {
+			common.SetNestedObjectValue(values, []string{"gitea", "config", field},
+				reflect.ValueOf(
+					comp.Spec.Parameters.Service.ForgejoSettings.Config,
+				).FieldByName(f.Name).Interface(),
+			)
+		}
 	}
 
 	svc.Log.Info("Adding ingress")

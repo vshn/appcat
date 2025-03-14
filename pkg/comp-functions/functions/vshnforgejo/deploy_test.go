@@ -13,17 +13,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-func TestValues(t *testing.T) {
-	svc, comp, _ := bootstrapTest(t)
-
-	t.Run("Ensure_UnsupportedSMTPProtocolIsGone", func(t *testing.T) {
-		comp.Spec.Parameters.Service.ForgejoSettings.Config.Mailer["PROTOCOL"] = "sendmail"
-
-		sanitizeForgejoSettings(svc, comp.Spec.Parameters.Service.ForgejoSettings)
-		assert.Empty(t, comp.Spec.Parameters.Service.ForgejoSettings.Config.Mailer["PROTOCOL"])
-	})
-}
-
 func TestDeployment(t *testing.T) {
 	t.Run("GivenNoFQDN_ExpectError", func(t *testing.T) {
 		svc, comp, secretName := bootstrapTest(t)

@@ -54,6 +54,26 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - xvshnforgejos
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - xvshnforgejos/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
   - xvshnkeycloaks
   - xvshnkeycloaks/status
   - xvshnmariadbs

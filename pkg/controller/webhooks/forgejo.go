@@ -2,7 +2,6 @@ package webhooks
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -95,9 +94,6 @@ func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 	if err := validateForgejoConfig(newForgejo.Spec.Parameters.Service.ForgejoSettings); err != nil {
 		return nil, err
 	}
-
-	o, _ := json.Marshal(newForgejo)
-	p.log.Info("all seems OK.", "newForgejo", string(o))
 
 	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
 }

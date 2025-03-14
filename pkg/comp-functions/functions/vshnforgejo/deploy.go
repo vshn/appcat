@@ -193,8 +193,6 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	sanitizeForgejoSettings(svc, comp.Spec.Parameters.Service.ForgejoSettings)
-
 	svc.Log.Info("Adding ingress")
 	ingressConfig := common.IngressConfig{
 		FQDNs: comp.Spec.Parameters.Service.FQDN,
@@ -242,20 +240,4 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	return svc.SetDesiredComposedResource(release)
-}
-
-// Remove select configuration fields from vshnv1.VSHNForgejoSettings as we don't allow the user to set them
-func sanitizeForgejoSettings(svc *runtime.ServiceRuntime, forgejoSettings vshnv1.VSHNForgejoSettings) {
-	// Mailer
-	denied_protocols := []string{
-		"smtp+unix",
-		"sendmail",
-	}
-	for _, v := range denied_protocols {
-		if forgejoSettings.Config.Mailer["PROTOCOL"] == v {
-			svc.Log.Info("Removing bad PROTOCOL", "section", "Mailer", "PROTOCOL", v)
-			delete(forgejoSettings.Config.Mailer, "PROTOCOL")
-			break
-		}
-	}
 }

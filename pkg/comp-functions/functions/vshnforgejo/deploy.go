@@ -254,7 +254,7 @@ func sanitizeForgejoSettings(svc *runtime.ServiceRuntime, forgejoSettings vshnv1
 	for _, v := range denied_protocols {
 		if forgejoSettings.Config.Mailer["PROTOCOL"] == v {
 			svc.Log.Info("Removing bad PROTOCOL", "section", "Mailer", "PROTOCOL", v)
-			forgejoSettings.Config.Mailer["PROTOCOL"] = ""
+			delete(forgejoSettings.Config.Mailer, "PROTOCOL")
 			break
 		}
 	}

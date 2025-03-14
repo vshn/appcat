@@ -15,12 +15,17 @@ import (
 
 //+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnforgejo,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnforgejos,versions=v1,name=vshnforgejo.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnforgejos,verbs=get;list;watch;patch;update
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnforgejos/status,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnforgejoes,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnforgejoes/status,verbs=get;list;watch;patch;update
 
 var (
 	forgejoGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNForgejo"}
 	forgejoGR = schema.GroupResource{Group: forgejoGK.Group, Resource: "vshnforgejo"}
+
+	denied_mailer_protocols = []string{
+		"smtp+unix",
+		"sendmail",
+	}
 )
 
 var _ webhook.CustomValidator = &ForgejoWebhookHandler{}
@@ -57,7 +62,11 @@ func (n *ForgejoWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 
 	forgejo, ok := obj.(*vshnv1.VSHNForgejo)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
+		return nil, fmt.Errorf("provided manifest is not a valid VSHNForgejo object")
+	}
+
+	if err := validateFQDNs(forgejo.Spec.Parameters.Service.FQDN); err != nil {
+		return nil, err
 	}
 
 	if err := validateForgejoConfig(forgejo.Spec.Parameters.Service.ForgejoSettings); err != nil {
@@ -71,11 +80,15 @@ func (n *ForgejoWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	_, ok := oldObj.(*vshnv1.VSHNForgejo)
 	if !ok {
-		return nil, fmt.Errorf("not a valid vshnforgejo object")
+		return nil, fmt.Errorf("not a valid VSHNForgejo object")
 	}
 	newForgejo := newObj.(*vshnv1.VSHNForgejo)
 	if !ok {
-		return nil, fmt.Errorf("not a valid vshnforgejo object")
+		return nil, fmt.Errorf("not a valid VSHNForgejo object")
+	}
+
+	if err := validateFQDNs(newForgejo.Spec.Parameters.Service.FQDN); err != nil {
+		return nil, err
 	}
 
 	if err := validateForgejoConfig(newForgejo.Spec.Parameters.Service.ForgejoSettings); err != nil {
@@ -88,12 +101,8 @@ func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 func validateForgejoConfig(settings vshnv1.VSHNForgejoSettings) error {
 	// Mailer
 	v := settings.Config.Mailer["PROTOCOL"]
-	denied_protocols := []string{
-		"smtp+unix",
-		"sendmail",
-	}
-	if slices.Contains(denied_protocols, v) {
-		return fmt.Errorf("bad mailer.PROTOCOL specified: %s. May not be any of: %v", v, denied_protocols)
+	if slices.Contains(denied_mailer_protocols, v) {
+		return fmt.Errorf("bad mailer.PROTOCOL specified: %s. May not be any of: %v", v, denied_mailer_protocols)
 	}
 
 	return nil

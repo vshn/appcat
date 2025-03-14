@@ -109,7 +109,7 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
-  - xvshnforgejos
+  - xvshnforgejoes
   verbs:
   - get
   - list
@@ -119,7 +119,7 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
-  - xvshnforgejos/status
+  - xvshnforgejoes/status
   verbs:
   - get
   - list

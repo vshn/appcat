@@ -121,6 +121,11 @@ generate-stackgres-crds:
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1beta1/...
 	rm apis/stackgres/v1/*_crd.yaml
 
+.PHONY: generate-with-diff-check
+generate-with-diff-check: generate ## Generate code with controller-gen and diff check
+	@echo 'Check for uncommitted changes ...'
+	git diff --exit-code crds/
+
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
@@ -234,3 +239,4 @@ setup-kindev: ## Setup kindev in the .kind folder, will always create a new inst
 	cd .kind && \
 	make clean && \
 	make vshnall
+

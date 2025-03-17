@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -23,9 +24,15 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		return runtime.NewFatalResult(fmt.Errorf("FQDN array is empty, but requires at least one entry, %w", errors.New("empty fqdn")))
 	}
 
+	var svcNameSuffix string
+	if !strings.Contains(comp.GetName(), "nextcloud") {
+		svcNameSuffix = "nextcloud"
+	}
+
 	ingressConfig := common.IngressConfig{
 		FQDNs: comp.Spec.Parameters.Service.FQDN,
 		ServiceConfig: common.IngressRuleConfig{
+			ServiceNameSuffix: svcNameSuffix,
 			ServicePortNumber: 8080,
 		},
 		TlsCertBaseName: "nextcloud",

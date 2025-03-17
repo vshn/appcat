@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -285,7 +286,10 @@ func (v *VSHNForgejo) GetSLA() string {
 }
 
 func (v *VSHNForgejo) GetWorkloadName() string {
-	return v.GetName() + "-forgejodeployment"
+	if strings.Contains(v.GetName(), "forgejo") {
+		return v.GetName()
+	}
+	return v.GetName() + "-forgejo"
 }
 
 func (v *VSHNForgejo) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {

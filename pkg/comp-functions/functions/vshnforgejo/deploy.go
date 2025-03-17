@@ -173,11 +173,16 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		},
 	}
 
+	svcNameSuffix := "http"
+	if !strings.Contains(comp.GetName(), "forgejo") {
+		svcNameSuffix = "forgejo-" + svcNameSuffix
+	}
+
 	svc.Log.Info("Adding ingress")
 	ingressConfig := common.IngressConfig{
 		FQDNs: comp.Spec.Parameters.Service.FQDN,
 		ServiceConfig: common.IngressRuleConfig{
-			ServiceNameSuffix: "http",
+			ServiceNameSuffix: svcNameSuffix,
 			ServicePortNumber: 3000,
 		},
 		TlsCertBaseName: "forgejo",

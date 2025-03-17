@@ -185,11 +185,10 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	for _, f := range fields {
 		field := strings.SplitN(f.Tag.Get("json"), ",", 2)[0]
 		if field != "" {
-			common.SetNestedObjectValue(values, []string{"gitea", "config", field},
-				reflect.ValueOf(
-					comp.Spec.Parameters.Service.ForgejoSettings.Config,
-				).FieldByName(f.Name).Interface(),
-			)
+			value := reflect.ValueOf(comp.Spec.Parameters.Service.ForgejoSettings.Config).FieldByName(f.Name).Interface()
+			if len(value.(map[string]string)) > 0 {
+				common.SetNestedObjectValue(values, []string{"gitea", "config", field}, value)
+			}
 		}
 	}
 

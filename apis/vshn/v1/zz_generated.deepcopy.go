@@ -301,9 +301,9 @@ func (in *VSHNForgejoConfig) DeepCopyInto(out *VSHNForgejoConfig) {
 	}
 	if in.Service != nil {
 		in, out := &in.Service, &out.Service
-		*out = make(map[string]string, len(*in))
+		*out = make(map[string]runtime.RawExtension, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	if in.Mailer != nil {

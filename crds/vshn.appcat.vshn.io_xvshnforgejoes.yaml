@@ -5346,7 +5346,8 @@ spec:
                                 type: object
                               service:
                                 additionalProperties:
-                                  type: string
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
                                 type: object
                             type: object

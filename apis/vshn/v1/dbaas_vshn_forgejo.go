@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -125,7 +124,10 @@ type VSHNForgejoConfig struct {
 	OpenID map[string]string `json:"openid,omitempty"`
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
-	Service *apiextensionsv1.JSON `json:"service,omitempty"`
+	Service map[string]string `json:"service,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service---explore-serviceexplore
+	ServiceExplore map[string]string `json:"service.explore,omitempty"`
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
 	Mailer map[string]string `json:"mailer,omitempty"`

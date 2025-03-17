@@ -8,7 +8,6 @@ import (
 	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -302,8 +301,17 @@ func (in *VSHNForgejoConfig) DeepCopyInto(out *VSHNForgejoConfig) {
 	}
 	if in.Service != nil {
 		in, out := &in.Service, &out.Service
-		*out = new(apiextensionsv1.JSON)
-		(*in).DeepCopyInto(*out)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.ServiceExplore != nil {
+		in, out := &in.ServiceExplore, &out.ServiceExplore
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.Mailer != nil {
 		in, out := &in.Mailer, &out.Mailer

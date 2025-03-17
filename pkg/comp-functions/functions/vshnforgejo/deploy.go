@@ -180,7 +180,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		},
 	}
 
-	// Automagically inject entirety of VSHNForgejoConfig into values
+	// Automagically inject the entirety of VSHNForgejoConfig into values
 	fields := reflect.VisibleFields(reflect.TypeOf(comp.Spec.Parameters.Service.ForgejoSettings.Config))
 	for _, f := range fields {
 		field := strings.SplitN(f.Tag.Get("json"), ",", 2)[0]

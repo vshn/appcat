@@ -4619,11 +4619,8 @@ spec:
                                   description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
                                   type: object
                                 service:
-                                  additionalProperties:
-                                    type: object
-                                    x-kubernetes-preserve-unknown-fields: true
                                   description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
-                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                               type: object
                           type: object
                         fqdn:

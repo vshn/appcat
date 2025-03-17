@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Workaround to make nested defaulting work.
@@ -125,9 +125,7 @@ type VSHNForgejoConfig struct {
 	OpenID map[string]string `json:"openid,omitempty"`
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
-	Service map[string]runtime.RawExtension `json:"service,omitempty"`
-	// runtime.RawExtension is required because the 'service' obj can have a sub-object 'explore'.
-	// Otherwise, stuff like 'service.explore.REQUIRE_SIGNIN_VIEW = true' wouldn't be possible.
+	Service *apiextensionsv1.JSON `json:"service,omitempty"`
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
 	Mailer map[string]string `json:"mailer,omitempty"`

@@ -8,6 +8,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/k8up"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/watch"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ vshnMariaDBProvider = &mockprovider{}
@@ -33,16 +34,24 @@ func (m *mockprovider) ListVSHNMariaDB(ctx context.Context, namespace string) (*
 	return instances, m.err
 }
 
+func (m *mockprovider) GetKubeConfig(ctx context.Context, instance vshnv1.VSHNMariaDB) ([]byte, error) {
+	return nil, nil
+}
+
+func (m *mockprovider) GetKubeClient(ctx context.Context, instance vshnv1.VSHNMariaDB) (client.WithWatch, error) {
+	return nil, nil
+}
+
 type mockhandler struct {
 	snapshot  *k8upv1.Snapshot
 	snapshots *k8upv1.SnapshotList
 }
 
-func (m *mockhandler) Get(ctx context.Context, id, instanceNamespace string) (*k8upv1.Snapshot, error) {
+func (m *mockhandler) Get(ctx context.Context, id, instanceNamespace string, client client.Client) (*k8upv1.Snapshot, error) {
 	return m.snapshot, nil
 }
 
-func (m *mockhandler) List(ctx context.Context, instanceNamespace string) (*k8upv1.SnapshotList, error) {
+func (m *mockhandler) List(ctx context.Context, instanceNamespace string, client client.Client) (*k8upv1.SnapshotList, error) {
 
 	snapshots := &k8upv1.SnapshotList{
 		Items: []k8upv1.Snapshot{},
@@ -56,7 +65,7 @@ func (m *mockhandler) List(ctx context.Context, instanceNamespace string) (*k8up
 
 	return snapshots, nil
 }
-func (m *mockhandler) Watch(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (watch.Interface, error) {
+func (m *mockhandler) Watch(ctx context.Context, namespace string, options *metainternalversion.ListOptions, client client.WithWatch) (watch.Interface, error) {
 	return nil, nil
 }
 func (m *mockhandler) GetFromEvent(in watch.Event) (*k8upv1.Snapshot, error) {

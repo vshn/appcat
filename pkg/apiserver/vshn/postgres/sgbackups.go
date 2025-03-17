@@ -26,8 +26,8 @@ var (
 
 // sgbackupProvider is an abstraction to interact with the K8s API
 type sgbackupProvider interface {
-	GetSGBackup(ctx context.Context, name, namespace string) (*v1.SGBackupInfo, error)
-	ListSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (*[]v1.SGBackupInfo, error)
+	GetSGBackup(ctx context.Context, name, namespace string, client *client.DynamicClient) (*v1.SGBackupInfo, error)
+	ListSGBackup(ctx context.Context, namespace string, client *client.DynamicClient, options *metainternalversion.ListOptions) (*[]v1.SGBackupInfo, error)
 	WatchSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (watch.Interface, error)
 }
 
@@ -36,8 +36,15 @@ type KubeSGBackupProvider struct {
 }
 
 // GetSGBackup fetches SGBackup resource into unstructured.Unstructured. Relevant data is saved to v1.SGBackupInfo
-func (k *KubeSGBackupProvider) GetSGBackup(ctx context.Context, name, namespace string) (*v1.SGBackupInfo, error) {
-	unstructuredObject, err := k.DynamicClient.Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+func (k *KubeSGBackupProvider) GetSGBackup(ctx context.Context, name, namespace string, scClient *client.DynamicClient) (*v1.SGBackupInfo, error) {
+	var unstructuredObject *unstructured.Unstructured
+	var err error
+	if scClient != nil {
+		dc := scClient.Resource(SGbackupGroupVersionResource)
+		unstructuredObject, err = dc.Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	} else {
+		unstructuredObject, err = k.DynamicClient.Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -45,15 +52,25 @@ func (k *KubeSGBackupProvider) GetSGBackup(ctx context.Context, name, namespace 
 }
 
 // ListSGBackup fetches SGBackup resources into unstructured.UnstructuredList. Relevant data is saved to v1.SGBackupInfo
-func (k *KubeSGBackupProvider) ListSGBackup(ctx context.Context, namespace string, options *metainternalversion.ListOptions) (*[]v1.SGBackupInfo, error) {
-	unstructuredList, err := k.DynamicClient.Namespace(namespace).List(ctx, metav1.ListOptions{
-		Limit:    options.Limit,
-		Continue: options.Continue,
-	})
+func (k *KubeSGBackupProvider) ListSGBackup(ctx context.Context, namespace string, scClient *client.DynamicClient, options *metainternalversion.ListOptions) (*[]v1.SGBackupInfo, error) {
+
+	var unstructuredList *unstructured.UnstructuredList
+	var err error
+	if scClient != nil {
+		dc := scClient.Resource(SGbackupGroupVersionResource)
+		unstructuredList, err = dc.Namespace(namespace).List(ctx, metav1.ListOptions{
+			Limit:    options.Limit,
+			Continue: options.Continue,
+		})
+	} else {
+		unstructuredList, err = k.DynamicClient.Namespace(namespace).List(ctx, metav1.ListOptions{
+			Limit:    options.Limit,
+			Continue: options.Continue,
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
-
 	sgbackupsInfos := make([]v1.SGBackupInfo, 0, len(unstructuredList.Items))
 	for _, v := range unstructuredList.Items {
 		backupsInfo, err := convertToSGBackupInfo(&v)

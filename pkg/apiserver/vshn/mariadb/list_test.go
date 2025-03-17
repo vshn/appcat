@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func Test_vshnMariaDBBackupStorage_List(t *testing.T) {
@@ -58,7 +58,7 @@ func Test_vshnMariaDBBackupStorage_List(t *testing.T) {
 							Namespace: "ins1",
 						},
 						Spec: k8upv1.SnapshotSpec{
-							ID: pointer.String("snap1"),
+							ID: ptr.To("snap1"),
 						},
 					},
 					{
@@ -67,7 +67,7 @@ func Test_vshnMariaDBBackupStorage_List(t *testing.T) {
 							Namespace: "ins2",
 						},
 						Spec: k8upv1.SnapshotSpec{
-							ID: pointer.String("snap2"),
+							ID: ptr.To("snap2"),
 						},
 					},
 				},

@@ -42,7 +42,7 @@ func New() restbuilder.ResourceHandlerProvider {
 				DynamicClient: dc.Resource(SGbackupGroupVersionResource),
 			},
 			vshnpostgresql: &kubeVSHNPostgresqlProvider{
-				Client: c,
+				client: c,
 			},
 			Noop: *noopImplementation,
 		}, nil

@@ -17,6 +17,7 @@ type CompositeRedisInstance struct {
 
 type CompositeRedisInstanceStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
+	ScaleTimeStamp      string `json:"scaleTimeStamp,omitempty"`
 }
 
 type CompositeRedisInstanceSpec struct {

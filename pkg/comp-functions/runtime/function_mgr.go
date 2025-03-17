@@ -328,21 +328,14 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunc
 		return nil, err
 	}
 
-	// We need the observed composition here, as otherwise the
-	// connectionDetails are always empty.
-	comp, err := request.GetObservedCompositeResource(req)
-	if err != nil {
-		return &ServiceRuntime{}, err
-	}
-
 	l = l.WithValues(
-		"resource", comp.Resource.GetName(),
+		"resource", observedComposite.Resource.GetName(),
 	)
 
-	if comp.Resource.GetClaimReference() != nil {
+	if observedComposite.Resource.GetClaimReference() != nil {
 		l = l.WithValues(
-			"claimNamespace", comp.Resource.GetClaimReference().Namespace,
-			"claimName", comp.Resource.GetClaimReference().Name)
+			"claimNamespace", observedComposite.Resource.GetClaimReference().Namespace,
+			"claimName", observedComposite.Resource.GetClaimReference().Name)
 	}
 
 	return &ServiceRuntime{
@@ -350,11 +343,11 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunc
 		Config:            config,
 		req:               req,
 		desiredResources:  desiredResources,
-		connectionDetails: comp.ConnectionDetails,
+		connectionDetails: desiredComposite.ConnectionDetails,
 		results:           []*xfnproto.Result{},
 		desiredComposite:  desiredComposite.Resource,
 		observedComposite: observedComposite.Resource,
-		gvk:               comp.Resource.GetObjectKind().GroupVersionKind(),
+		gvk:               observedComposite.Resource.GetObjectKind().GroupVersionKind(),
 		kubeOptionTracker: map[string][]KubeObjectOption{},
 	}, nil
 }

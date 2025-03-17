@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelm "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	spksv1alpha1 "github.com/vshn/appcat/v4/apis/syntools/v1alpha1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -28,6 +31,7 @@ func HandleTLS(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstance, s
 	}
 
 	if !comp.Spec.Parameters.TLS {
+		svc.SetConnectionDetail("ca.crt", []byte("N/A"))
 		return runtime.NewNormalResult("TLS not enabled")
 	}
 
@@ -61,6 +65,8 @@ func HandleTLS(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstance, s
 		return runtime.NewWarningResult(fmt.Sprintf("cannot apply certificates: %s", err.Error()))
 	}
 
+	svc.AddObservedConnectionDetails(comp.GetName() + "-server-cert")
+
 	return nil
 }
 
@@ -79,7 +85,12 @@ func scaleRedisRelease(svc *runtime.ServiceRuntime, comp *spksv1alpha1.Composite
 		return fmt.Errorf("cannot get desired redis release: %w", err)
 	}
 
-	if getRedisReleaseTLSStatus(obsRelease, svc) != getRedisReleaseTLSStatus(desRelease, svc) {
+	if getRedisReleaseTLSStatus(obsRelease, svc) != getRedisReleaseTLSStatus(desRelease, svc) || isSTSScaling(obsRelease, comp, svc) {
+		err := addSTSObserver(comp, svc)
+		if err != nil {
+			return err
+		}
+
 		values, err := convertValuesToMap(desRelease.Spec.ForProvider.Values.Raw)
 		if err != nil {
 			return err
@@ -96,6 +107,11 @@ func scaleRedisRelease(svc *runtime.ServiceRuntime, comp *spksv1alpha1.Composite
 		}
 
 		desRelease.Spec.ForProvider.Values.Raw = rawValues
+
+		err = updateScaleTimestamp(svc, comp)
+		if err != nil {
+			return fmt.Errorf("cannot update composite status: %w", err)
+		}
 
 	}
 
@@ -134,4 +150,61 @@ func convertValuesToMap(rawValues []byte) (map[string]any, error) {
 	}
 
 	return values, nil
+}
+
+func addSTSObserver(comp *spksv1alpha1.CompositeRedisInstance, svc *runtime.ServiceRuntime) error {
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "redis-node",
+			Namespace: comp.GetName(),
+		},
+	}
+
+	err := svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// isSTSScaling will return true, if the release it set to 0 replicas and
+// the sts hasn't fully scaled down yet.
+// This is necessary to ensure that we don't have mixed tls/non-tls members in the cluster
+// at the same time.
+func isSTSScaling(obsRelease *xhelm.Release, comp *spksv1alpha1.CompositeRedisInstance, svc *runtime.ServiceRuntime) bool {
+	sts := &appsv1.StatefulSet{}
+
+	err := svc.GetObservedKubeObject(sts, comp.GetName()+"-sts-observer")
+	if err != nil {
+		svc.Log.Error(err, "cannot get sts observer")
+		return false
+	}
+
+	obsValues, err := convertValuesToMap(obsRelease.Spec.ForProvider.Values.Raw)
+	if err != nil {
+		svc.Log.Error(err, "cannot convert values to map")
+		return false
+	}
+
+	count, _, err := unstructured.NestedFloat64(obsValues, "replica", "replicaCount")
+	if err != nil {
+		svc.Log.Error(err, "cannot get replica.replicaCount")
+		return false
+	}
+
+	if count == 0 {
+		return !(sts.Status.Replicas == 0)
+	}
+
+	return false
+}
+
+// updateScaleTimestamp will update a field in the status called `scaleTimeStamp`.
+// This will instantly trigger a new reconcile.
+// Making the switch from TLS to non-TLS much faster on SPK. Because SPKS has a
+// default reconcile period of 10 minutes.
+func updateScaleTimestamp(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRedisInstance) error {
+	comp.Status.ScaleTimeStamp = time.Now().Format(time.RFC3339Nano)
+	return svc.SetDesiredCompositeStatus(comp)
 }

@@ -78,6 +78,12 @@ spec:
                   - '*'
                   type: string
                 type: array
+              parameters:
+                properties:
+                  tls:
+                    description: Enable or disable TLS for this instance.
+                    type: boolean
+                type: object
               providerConfigRef:
                 default:
                   name: default
@@ -271,6 +277,8 @@ spec:
                   it can not recover from without human intervention.
                 format: int64
                 type: integer
+              scaleTimeStamp:
+                type: string
             type: object
         required:
         - spec

@@ -42,5 +42,4 @@ jobs:
       
       - name: Comment on PR
         run: |
-          gh pr comment --body "- [ ] Checked out Your new diff at: ${{ steps.trigger_diff.outputs.response }}"
-          echo "done"
+          gh pr comment --body "- [ ] Check out Your new Comp-Functions diff at: ${{ steps.trigger_diff.outputs.response }}"

@@ -1,6 +1,7 @@
 package appcat
 
 import (
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/v1alpha1"
 	crossplane "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	"github.com/vshn/appcat/v4/pkg/apiserver/noop"
@@ -31,6 +32,10 @@ func New() restbuilder.ResourceHandlerProvider {
 			return nil, err
 		}
 		err = crossplane.AddToScheme(c.Scheme())
+		if err != nil {
+			return nil, err
+		}
+		err = xkube.SchemeBuilder.AddToScheme(c.Scheme())
 		if err != nil {
 			return nil, err
 		}

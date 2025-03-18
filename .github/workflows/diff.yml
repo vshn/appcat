@@ -5,8 +5,9 @@ on:
 jobs:
   render-diff:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-
       - name: Wait on Workflow
         uses: lucasssvaz/wait-on-workflow@v1
         with:
@@ -19,12 +20,26 @@ jobs:
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
+      
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.extract_branch.outputs.branch }}
+
+      - name: Run make generate
+        run: make generate-with-diff-check
 
       - name: Trigger diff on internal gitlab
+        id: trigger_diff
         run: |
-          curl -X POST \
+          response=$(curl -X POST \
              --fail \
              -F token=${{ secrets.GITLAB_CI_TOKEN }} \
              -F ref=main \
              -F "variables[BRANCH]=${{ steps.extract_branch.outputs.branch }}" \
-             https://git.vshn.net/api/v4/projects/58084/trigger/pipeline
+             https://git.vshn.net/api/v4/projects/58084/trigger/pipeline | jq .web_url)
+          echo "response=$response" >> $GITHUB_OUTPUT
+      
+      - name: Comment on PR
+        run: |
+          gh pr comment --body "- [ ] Check out Your new Comp-Functions diff at: ${{ steps.trigger_diff.outputs.response }}"

@@ -58,6 +58,10 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 
 func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, secretName string) error {
 
+	if len(comp.Spec.Parameters.Service.FQDN) == 0 {
+		return fmt.Errorf("must supply at least one FQDN")
+	}
+
 	securityContext := map[string]any{}
 	if svc.Config.Data["isOpenshift"] == "true" {
 		securityContext = map[string]any{
@@ -132,6 +136,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					"REVERSE_PROXY_TRUSTED_PROXIES": "*",
 				},
 				"server": map[string]any{
+					"DOMAIN":           comp.Spec.Parameters.Service.FQDN[0],
 					"DISABLE_SSH":      true,
 					"LANDING_PAGE":     "login",
 					"LFS_START_SERVER": true,

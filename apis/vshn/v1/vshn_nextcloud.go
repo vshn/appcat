@@ -111,7 +111,6 @@ type VSHNNextcloudServiceSpec struct {
 	// FQDN contains the FQDNs array, which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.
 	// This also enables strict hostname checking for this FQDN.
-
 	FQDN []string `json:"fqdn"`
 
 	// RelativePath on which Nextcloud will listen.

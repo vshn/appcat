@@ -82,11 +82,6 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	var appName string
-	if comp.Spec.Parameters.Service.ForgejoSettings.AppName != "" {
-		appName = comp.Spec.Parameters.Service.ForgejoSettings.AppName
-	}
-
 	values := map[string]any{
 		"gitea": map[string]any{
 			"admin": map[string]any{
@@ -94,7 +89,6 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				"existingSecret": secretName,
 			},
 			"config": map[string]any{
-				"APP_NAME": appName,
 				"admin": map[string]any{
 					"SEND_NOTIFICATION_EMAIL_ON_NEW_USER": true,
 				},
@@ -183,6 +177,11 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		"strategy": map[string]any{
 			"type": "Recreate",
 		},
+	}
+
+	appName := comp.Spec.Parameters.Service.ForgejoSettings.AppName
+	if appName != "" {
+		common.SetNestedObjectValue(values, []string{"gitea", "config", "APP_NAME"}, appName)
 	}
 
 	// Automagically inject the entirety of VSHNForgejoConfig into values

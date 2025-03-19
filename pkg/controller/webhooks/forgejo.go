@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -100,9 +101,12 @@ func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 
 func validateForgejoConfig(settings vshnv1.VSHNForgejoSettings) error {
 	// Mailer
-	v := settings.Config.Mailer["PROTOCOL"]
-	if slices.Contains(denied_mailer_protocols, v) {
-		return fmt.Errorf("bad mailer.PROTOCOL specified: %s. May not be any of: %v", v, denied_mailer_protocols)
+	for k, v := range settings.Config.Mailer {
+		if strings.EqualFold(k, "PROTOCOL") {
+			if slices.Contains(denied_mailer_protocols, v) {
+				return fmt.Errorf("bad mailer.PROTOCOL specified: %s. May not be any of: %v", v, denied_mailer_protocols)
+			}
+		}
 	}
 
 	return nil

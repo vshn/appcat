@@ -210,6 +210,22 @@ func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule str
 			Name:  "CLAIM_NAMESPACE",
 			Value: m.resource.GetLabels()["crossplane.io/claim-namespace"],
 		},
+		{
+			Name:  "OWNER_GROUP",
+			Value: m.svc.Config.Data["ownerGroup"],
+		},
+		{
+			Name:  "OWNER_VERSION",
+			Value: m.svc.Config.Data["ownerVersion"],
+		},
+		{
+			Name:  "OWNER_KIND",
+			Value: m.svc.Config.Data["ownerKind"],
+		},
+		{
+			Name:  "SERVICE_ID",
+			Value: m.svc.Config.Data["serviceID"],
+		},
 	}
 
 	job := &batchv1.CronJob{

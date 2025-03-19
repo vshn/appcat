@@ -2,6 +2,8 @@ package maintenance
 
 import (
 	"context"
+	"fmt"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -28,8 +30,16 @@ func NewMariaDB(c client.Client, hc *http.Client) *MariaDB {
 }
 
 // DoMaintenance will run redis' maintenance script.
-func (r *MariaDB) DoMaintenance(ctx context.Context) error {
-	patcher := helm.NewImagePatcher(r.k8sClient, r.httpClient, logr.FromContextOrDiscard(ctx).WithValues("type", "mariadb"))
+func (m *MariaDB) DoMaintenance(ctx context.Context) error {
+	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, logr.FromContextOrDiscard(ctx).WithValues("type", "mariadb"))
 
 	return patcher.DoMaintenance(ctx, mariaDBURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
+}
+
+func (m *MariaDB) ReleaseLatestAppCatVersion(ctx context.Context) error {
+	vh, err := release.NewDefaultVersionHandler(m.k8sClient)
+	if err != nil {
+		return fmt.Errorf("could not initialize default version handler: %w", err)
+	}
+	return vh.LatestVersion(ctx)
 }

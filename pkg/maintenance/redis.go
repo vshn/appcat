@@ -2,6 +2,8 @@ package maintenance
 
 import (
 	"context"
+	"fmt"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -32,4 +34,12 @@ func (r *Redis) DoMaintenance(ctx context.Context) error {
 	patcher := helm.NewImagePatcher(r.k8sClient, r.httpClient, logr.FromContextOrDiscard(ctx).WithValues("type", "redis"))
 
 	return patcher.DoMaintenance(ctx, redisURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
+}
+
+func (r *Redis) ReleaseLatestAppCatVersion(ctx context.Context) error {
+	vh, err := release.NewDefaultVersionHandler(r.k8sClient)
+	if err != nil {
+		return fmt.Errorf("could not initialize default version handler: %w", err)
+	}
+	return vh.LatestVersion(ctx)
 }

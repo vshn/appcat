@@ -2,6 +2,8 @@ package maintenance
 
 import (
 	"context"
+	"fmt"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -29,11 +31,19 @@ func NewNextcloud(c client.Client, hc *http.Client) *Nextcloud {
 }
 
 // DoMaintenance will run minios's maintenance script.
-func (m *Nextcloud) DoMaintenance(ctx context.Context) error {
-	m.log = logr.FromContextOrDiscard(ctx).WithValues("type", "nextcloud")
-	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
+func (n *Nextcloud) DoMaintenance(ctx context.Context) error {
+	n.log = logr.FromContextOrDiscard(ctx).WithValues("type", "nextcloud")
+	patcher := helm.NewImagePatcher(n.k8sClient, n.httpClient, n.log)
 
 	valuesPath := helm.NewValuePath("image", "tag")
 
 	return patcher.DoMaintenance(ctx, nextcloudURL, valuesPath, helm.SemVerPatchesOnly(true))
+}
+
+func (n *Nextcloud) ReleaseLatestAppCatVersion(ctx context.Context) error {
+	vh, err := release.NewDefaultVersionHandler(n.k8sClient)
+	if err != nil {
+		return fmt.Errorf("could not initialize default version handler: %w", err)
+	}
+	return vh.LatestVersion(ctx)
 }

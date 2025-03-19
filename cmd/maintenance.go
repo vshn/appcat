@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -25,6 +26,7 @@ var (
 
 type Maintenance interface {
 	DoMaintenance(ctx context.Context) error
+	ReleaseLatestAppCatVersion(ctx context.Context) error
 }
 
 type service enumflag.Flag
@@ -74,7 +76,7 @@ func newMaintenanceCMD() *cobra.Command {
 }
 
 func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
-
+	ctx := cmd.Context()
 	kubeClient, err := client.NewWithWatch(ctrl.GetConfigOrDie(), client.Options{
 		Scheme: pkg.SetupScheme(),
 	})
@@ -131,7 +133,14 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		panic("service name is mandatory")
 	}
 
-	return m.DoMaintenance(cmd.Context())
+	err = errors.Join(
+		m.DoMaintenance(ctx),
+		m.ReleaseLatestAppCatVersion(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("maintenance failed: %w", err)
+	}
+	return nil
 }
 
 func getHTTPClient() *http.Client {

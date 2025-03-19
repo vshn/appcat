@@ -2,6 +2,8 @@ package maintenance
 
 import (
 	"context"
+	"fmt"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -29,11 +31,19 @@ func NewForgejo(c client.Client, hc *http.Client) *Forgejo {
 }
 
 // DoMaintenance will run forgejo's maintenance script.
-func (m *Forgejo) DoMaintenance(ctx context.Context) error {
-	m.log = logr.FromContextOrDiscard(ctx).WithValues("type", "forgejo")
-	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
+func (f *Forgejo) DoMaintenance(ctx context.Context) error {
+	f.log = logr.FromContextOrDiscard(ctx).WithValues("type", "forgejo")
+	patcher := helm.NewImagePatcher(f.k8sClient, f.httpClient, f.log)
 
 	valuesPath := helm.NewValuePath("image", "tag")
 
 	return patcher.DoMaintenance(ctx, forgejoURL, valuesPath, helm.SemVerPatchesOnly(true))
+}
+
+func (f *Forgejo) ReleaseLatestAppCatVersion(ctx context.Context) error {
+	vh, err := release.NewDefaultVersionHandler(f.k8sClient)
+	if err != nil {
+		return fmt.Errorf("could not initialize default version handler: %w", err)
+	}
+	return vh.LatestVersion(ctx)
 }

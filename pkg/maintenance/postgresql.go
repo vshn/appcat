@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"time"
 
 	"k8s.io/apimachinery/pkg/watch"
@@ -127,6 +128,14 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (p *PostgreSQL) ReleaseLatestAppCatVersion(ctx context.Context) error {
+	vh, err := release.NewDefaultVersionHandler(p.Client)
+	if err != nil {
+		return fmt.Errorf("could not initialize default version handler: %w", err)
+	}
+	return vh.LatestVersion(ctx)
 }
 
 func (p *PostgreSQL) checkRequiredUpgrade(sgCluster stackgresv1.SGCluster) bool {

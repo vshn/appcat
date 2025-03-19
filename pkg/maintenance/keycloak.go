@@ -2,6 +2,8 @@ package maintenance
 
 import (
 	"context"
+	"fmt"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -29,11 +31,19 @@ func NewKeycloak(c client.Client, hc *http.Client) *Keycloak {
 }
 
 // DoMaintenance will run minios's maintenance script.
-func (m *Keycloak) DoMaintenance(ctx context.Context) error {
-	m.log = logr.FromContextOrDiscard(ctx).WithValues("type", "keycloak")
-	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
+func (k *Keycloak) DoMaintenance(ctx context.Context) error {
+	k.log = logr.FromContextOrDiscard(ctx).WithValues("type", "keycloak")
+	patcher := helm.NewImagePatcher(k.k8sClient, k.httpClient, k.log)
 
 	valuesPath := helm.NewValuePath("image", "tag")
 
 	return patcher.DoMaintenance(ctx, keycloakURL, valuesPath, helm.SemVerPatchesOnly(true))
+}
+
+func (k *Keycloak) ReleaseLatestAppCatVersion(ctx context.Context) error {
+	vh, err := release.NewDefaultVersionHandler(k.k8sClient)
+	if err != nil {
+		return fmt.Errorf("could not initialize default version handler: %w", err)
+	}
+	return vh.LatestVersion(ctx)
 }

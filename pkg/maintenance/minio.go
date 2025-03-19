@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 	"regexp"
 	"time"
@@ -51,6 +52,14 @@ func (m *Minio) DoMaintenance(ctx context.Context) error {
 	}
 
 	return patcher.DoMaintenance(ctx, minioURL, valuesPath, compareMinioVersions)
+}
+
+func (m *Minio) ReleaseLatestAppCatVersion(ctx context.Context) error {
+	vh, err := release.NewDefaultVersionHandler(m.k8sClient)
+	if err != nil {
+		return fmt.Errorf("could not initialize default version handler: %w", err)
+	}
+	return vh.LatestVersion(ctx)
 }
 
 // compareMinioVersions specifically checks for new Minio versions

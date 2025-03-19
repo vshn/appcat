@@ -81,7 +81,7 @@ type VSHNForgejoServiceSpec struct {
 	// AdminEmail contains the email address of the admin user.
 	AdminEmail string `json:"adminEmail,omitempty"`
 
-	// forgejoSettings contains user customiziable configuration for Forgejo.
+	// ForgejoSettings contains user-customizable configuration for Forgejo.
 	// Refer to https://forgejo.org/docs/latest/admin/config-cheat-sheet.
 	ForgejoSettings VSHNForgejoSettings `json:"forgejoSettings,omitempty"`
 
@@ -105,7 +105,7 @@ type VSHNForgejoServiceSpec struct {
 }
 
 // +kubebuilder:validation:Optional
-// VSHNForgejoSettings contains user customizable configurations for Forgejo
+// VSHNForgejoSettings contains user-customizable configurations for Forgejo
 type VSHNForgejoSettings struct {
 	// AppName is the application name, used in the page title
 	AppName string `json:"APP_NAME,omitempty"`

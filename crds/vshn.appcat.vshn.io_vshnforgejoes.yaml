@@ -4592,7 +4592,7 @@ spec:
                           type: string
                         forgejoSettings:
                           description: |-
-                            forgejoSettings contains user customiziable configuration for Forgejo.
+                            ForgejoSettings contains user-customizable configuration for Forgejo.
                             Refer to https://forgejo.org/docs/latest/admin/config-cheat-sheet.
                           properties:
                             APP_NAME:

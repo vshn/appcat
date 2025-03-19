@@ -53,18 +53,6 @@ var (
 				"get",
 			},
 		},
-		{
-			APIGroups: []string{
-				"vshn.appcat.vshn.io",
-			},
-			Resources: []string{
-				"vshnpostgresqls",
-			},
-			Verbs: []string{
-				"get",
-				"update",
-			},
-		},
 	}
 
 	extraEnvVars = []corev1.EnvVar{
@@ -153,6 +141,7 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 
 	return maintenance.New(comp, svc, schedule, instanceNamespace, service).
 		WithRole(maintRolename).
+		WithAdditionalClusterRoleBinding(fmt.Sprintf("%s:%s", maintRolename, comp.GetName())).
 		WithPolicyRules(policyRules).
 		WithExtraEnvs(additionalVars...).
 		WithExtraResources(createMaintenanceSecret(instanceNamespace, sgNamespace, comp.GetName()+"-maintenance-secret", comp.GetName())).

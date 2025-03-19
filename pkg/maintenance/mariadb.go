@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -17,19 +18,22 @@ const (
 type MariaDB struct {
 	k8sClient  client.Client
 	httpClient *http.Client
+	log        logr.Logger
+	release.VersionHandler
 }
 
 // NewMariaDB returns a new Redis maintenance job runner
-func NewMariaDB(c client.Client, hc *http.Client) *MariaDB {
+func NewMariaDB(c client.Client, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *MariaDB {
 	return &MariaDB{
-		k8sClient:  c,
-		httpClient: hc,
+		k8sClient:      c,
+		httpClient:     hc,
+		log:            logger,
+		VersionHandler: vh,
 	}
 }
 
 // DoMaintenance will run redis' maintenance script.
-func (r *MariaDB) DoMaintenance(ctx context.Context) error {
-	patcher := helm.NewImagePatcher(r.k8sClient, r.httpClient, logr.FromContextOrDiscard(ctx).WithValues("type", "mariadb"))
-
+func (m *MariaDB) DoMaintenance(ctx context.Context) error {
+	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
 	return patcher.DoMaintenance(ctx, mariaDBURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
 }

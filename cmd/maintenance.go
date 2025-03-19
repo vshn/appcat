@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/go-logr/logr"
+	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 	"time"
-
-	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -23,8 +25,28 @@ var (
 	MaintenanceCMD = newMaintenanceCMD()
 )
 
+var (
+	requiredEnvVars = []string{
+		"INSTANCE_NAMESPACE",
+		"CLAIM_NAME",
+		"CLAIM_NAMESPACE",
+		"OWNER_GROUP",
+		"OWNER_KIND",
+		"OWNER_VERSION",
+		"SERVICE_ID",
+	}
+	requireAdditionalPosgresEnv = []string{
+		"SG_NAMESPACE",
+		"API_PASSWORD",
+		"API_USERNAME",
+		"VACUUM_ENABLED",
+		"REPACK_ENABLED",
+	}
+)
+
 type Maintenance interface {
 	DoMaintenance(ctx context.Context) error
+	ReleaseLatest(ctx context.Context) error
 }
 
 type service enumflag.Flag
@@ -56,8 +78,8 @@ func newMaintenanceCMD() *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "maintenance",
-		Short: "Maitenance runner",
-		Long:  "Run the maintenance for services",
+		Short: "Maintenance runner",
+		Long:  "Run maintenance for various services",
 		RunE:  c.runMaintenance,
 	}
 
@@ -74,64 +96,72 @@ func newMaintenanceCMD() *cobra.Command {
 }
 
 func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
+	ctx := cmd.Context()
 
 	kubeClient, err := client.NewWithWatch(ctrl.GetConfigOrDie(), client.Options{
 		Scheme: pkg.SetupScheme(),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to initialize kube client: %w", err)
 	}
+
+	if err = validateMandatoryEnvs(serviceName); err != nil {
+		return fmt.Errorf("missing required environment variables: %w", err)
+	}
+
+	log := logr.FromContextOrDiscard(ctx).WithValues(
+		"instanceNamespace", viper.GetString("INSTANCE_NAMESPACE"),
+		"claimName", viper.GetString("CLAIM_NAME"),
+		"claimNamespace", viper.GetString("CLAIM_NAMESPACE"),
+		"serviceId", viper.GetString("SERVICE_ID"),
+	)
+
+	vh := getVersionHandler(kubeClient, log)
 
 	var m Maintenance
 	switch serviceName {
 	case postgresql:
-
-		sgNamespace := viper.GetString("SG_NAMESPACE")
-		if sgNamespace == "" {
-			return fmt.Errorf("missing environment variable: %s", "SG_NAMESPACE")
-		}
-		apiPassword := viper.GetString("API_PASSWORD")
-		if apiPassword == "" {
-			return fmt.Errorf("missing environment variable: %s", "API_PASSWORD")
-		}
-
-		apiUserName := viper.GetString("API_USERNAME")
-		if apiUserName == "" {
-			return fmt.Errorf("missing environment variable: %s", "API_USERNAME")
-		}
-
-		sClient, err := stackgres.New(apiUserName, apiPassword, sgNamespace)
-		if err != nil {
-			return err
-		}
-		m = &maintenance.PostgreSQL{
-			Client:          kubeClient,
-			StackgresClient: sClient,
-			MaintTimeout:    time.Hour,
+		if m, err = initPostgreSQL(kubeClient, vh, log); err != nil {
+			return fmt.Errorf("failed to initialize postgresql: %w", err)
 		}
 	case redis:
-		m = maintenance.NewRedis(kubeClient, getHTTPClient())
+		m = maintenance.NewRedis(kubeClient, getHTTPClient(), vh, log)
 
 	case minio:
-		m = maintenance.NewMinio(kubeClient, getHTTPClient())
+		m = maintenance.NewMinio(kubeClient, getHTTPClient(), vh, log)
 
 	case mariadb:
-		m = maintenance.NewMariaDB(kubeClient, getHTTPClient())
+		m = maintenance.NewMariaDB(kubeClient, getHTTPClient(), vh, log)
 
 	case keycloak:
-		m = maintenance.NewKeycloak(kubeClient, getHTTPClient())
+		m = maintenance.NewKeycloak(kubeClient, getHTTPClient(), vh, log)
 
 	case nextcloud:
-		m = maintenance.NewNextcloud(kubeClient, getHTTPClient())
+		m = maintenance.NewNextcloud(kubeClient, getHTTPClient(), vh, log)
 
 	case forgejo:
-		m = maintenance.NewForgejo(kubeClient, getHTTPClient())
+		m = maintenance.NewForgejo(kubeClient, getHTTPClient(), vh, log)
 	default:
 
 		panic("service name is mandatory")
 	}
 
-	return m.DoMaintenance(cmd.Context())
+	if err = errors.Join(
+		m.DoMaintenance(ctx),
+		m.ReleaseLatest(ctx),
+	); err != nil {
+		return fmt.Errorf("maintenance failed: %w", err)
+	}
+
+	return nil
+}
+
+func initPostgreSQL(kubeClient client.WithWatch, vh release.VersionHandler, log logr.Logger) (Maintenance, error) {
+	sClient, err := getStackgresClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize stackgres client: %w", err)
+	}
+	return maintenance.NewPostgreSQL(kubeClient, sClient, vh, log), nil
 }
 
 func getHTTPClient() *http.Client {
@@ -141,4 +171,42 @@ func getHTTPClient() *http.Client {
 		}
 	}
 	return auth.GetAuthHTTPClient(viper.GetString("REGISTRY_USERNAME"), viper.GetString("REGISTRY_PASSWORD"))
+}
+
+func validateMandatoryEnvs(s service) error {
+	for _, envVar := range requiredEnvVars {
+		if !viper.IsSet(envVar) {
+			return fmt.Errorf("required environment variable %s not set", envVar)
+		}
+	}
+	if s == postgresql {
+		for _, envVar := range requireAdditionalPosgresEnv {
+			if !viper.IsSet(envVar) {
+				return fmt.Errorf("required environment variable %s not set", envVar)
+			}
+		}
+	}
+	return nil
+}
+
+func getVersionHandler(k8sCLient client.Client, log logr.Logger) release.VersionHandler {
+	return release.NewDefaultVersionHandler(
+		k8sCLient,
+		log,
+		viper.GetString("CLAIM_NAME"),
+		viper.GetString("COMPOSITE_NAME"),
+		viper.GetString("CLAIM_NAMESPACE"),
+		viper.GetString("OWNER_GROUP"),
+		viper.GetString("OWNER_KIND"),
+		viper.GetString("OWNER_VERSION"),
+		viper.GetString("SERVICE_ID"),
+	)
+}
+
+func getStackgresClient() (*stackgres.StackgresClient, error) {
+	sClient, err := stackgres.New(viper.GetString("API_USERNAME"), viper.GetString("API_PASSWORD"), viper.GetString("SG_NAMESPACE"))
+	if err != nil {
+		return nil, fmt.Errorf("cannot initilize stackgres http client: %w", err)
+	}
+	return sClient, nil
 }

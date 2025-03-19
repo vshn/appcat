@@ -2,8 +2,8 @@ package vshnforgejo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -185,14 +185,16 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	// Automagically inject the entirety of VSHNForgejoConfig into values
-	fields := reflect.VisibleFields(reflect.TypeOf(comp.Spec.Parameters.Service.ForgejoSettings.Config))
-	for _, f := range fields {
-		field := strings.SplitN(f.Tag.Get("json"), ",", 2)[0]
-		if field != "" {
-			value := reflect.ValueOf(comp.Spec.Parameters.Service.ForgejoSettings.Config).FieldByName(f.Name).Interface()
-			if len(value.(map[string]string)) > 0 {
-				common.SetNestedObjectValue(values, []string{"gitea", "config", field}, value)
-			}
+	var objmap map[string]any
+	o, err := json.Marshal(comp.Spec.Parameters.Service.ForgejoSettings.Config)
+	if err != nil {
+		return err
+	}
+
+	json.Unmarshal(o, &objmap)
+	for k, v := range objmap {
+		if v != nil {
+			common.SetNestedObjectValue(values, []string{"gitea", "config", k}, v)
 		}
 	}
 

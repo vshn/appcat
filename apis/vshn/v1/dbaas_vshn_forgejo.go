@@ -81,6 +81,10 @@ type VSHNForgejoServiceSpec struct {
 	// AdminEmail contains the email address of the admin user.
 	AdminEmail string `json:"adminEmail,omitempty"`
 
+	// ForgejoSettings contains user-customizable configuration for Forgejo.
+	// Refer to https://forgejo.org/docs/latest/admin/config-cheat-sheet.
+	ForgejoSettings VSHNForgejoSettings `json:"forgejoSettings,omitempty"`
+
 	// FQDN contains the FQDNs array, which will be used for the ingress.
 	// If it's not set, no ingress will be deployed.
 	// This also enables strict hostname checking for this FQDN.
@@ -98,6 +102,35 @@ type VSHNForgejoServiceSpec struct {
 	// Multiple versions are supported. Defaults to 10.0.0 if not set.
 	// +kubebuilder:default="10.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
+}
+
+// +kubebuilder:validation:Optional
+// VSHNForgejoSettings contains user-customizable configurations for Forgejo
+type VSHNForgejoSettings struct {
+	// AppName is the application name, used in the page title
+	AppName string `json:"APP_NAME,omitempty"`
+
+	// Config contains settings to customize the Forgejo instance with.
+	// Not all sections are supported. Invalid fields are ignored by Forgejo.
+	Config VSHNForgejoConfig `json:"config,omitempty"`
+}
+
+// +kubebuilder:validation:Optional
+type VSHNForgejoConfig struct {
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#actions-actions
+	Actions map[string]string `json:"actions,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
+	OpenID map[string]string `json:"openid,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
+	Service map[string]string `json:"service,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service---explore-serviceexplore
+	ServiceExplore map[string]string `json:"service.explore,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
+	Mailer map[string]string `json:"mailer,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

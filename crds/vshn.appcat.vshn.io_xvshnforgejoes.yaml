@@ -5315,6 +5315,47 @@ spec:
                           admin user.
                         pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
                         type: string
+                      forgejoSettings:
+                        description: |-
+                          ForgejoSettings contains user-customizable configuration for Forgejo.
+                          Refer to https://forgejo.org/docs/latest/admin/config-cheat-sheet.
+                        properties:
+                          APP_NAME:
+                            description: AppName is the application name, used in
+                              the page title
+                            type: string
+                          config:
+                            description: |-
+                              Config contains settings to customize the Forgejo instance with.
+                              Not all sections are supported. Invalid fields are ignored by Forgejo.
+                            properties:
+                              actions:
+                                additionalProperties:
+                                  type: string
+                                description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#actions-actions
+                                type: object
+                              mailer:
+                                additionalProperties:
+                                  type: string
+                                description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
+                                type: object
+                              openid:
+                                additionalProperties:
+                                  type: string
+                                description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
+                                type: object
+                              service:
+                                additionalProperties:
+                                  type: string
+                                description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
+                                type: object
+                              service.explore:
+                                additionalProperties:
+                                  type: string
+                                description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service---explore-serviceexplore
+                                type: object
+                            type: object
+                        type: object
                       fqdn:
                         description: |-
                           FQDN contains the FQDNs array, which will be used for the ingress.

@@ -1,0 +1,60 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    defaultPlan: standard-2
+    controlNamespace: appcat-control
+    plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled":
+            true, "memory": "2Gi"}}, "standard-4": {"size": {"cpu": "1", "disk": "16Gi",
+            "enabled": true, "memory": "4Gi"}}, "standard-8": {"size": {"cpu": "2",
+            "disk": "16Gi", "enabled": true, "memory": "8Gi"}}}'
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNForgejo
+      metadata:
+        annotations: null
+        creationTimestamp: "2024-07-08T16:30:28Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: forgejo-
+        generation: 1
+        labels:
+          crossplane.io/claim-name: forgejo
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: forgejo-unit-test
+        name: forgejo-unit-test
+      spec:
+        parameters:
+          service:
+            forgejoSettings:
+              APP_NAME: "My_App"
+              config:
+                actions:
+                  ENABLED: "true"
+                openid:
+                  ENABLE_OPENID_SIGNIN: "false"
+                service:
+                  REGISTER_EMAIL_CONFIRM: "true"
+                mailer:
+                  ENABLED: "true"
+                  PROTOCOL: sendmail # Field should be removed due to bad value
+            fqdn: ["forgejo.example.com"]
+            majorVersion: "10.0.0"
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNForgejo
+          name: forgejo
+          namespace: unit-test
+        compositionRef:
+          name: VSHNForgejo.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: VSHNForgejo.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic

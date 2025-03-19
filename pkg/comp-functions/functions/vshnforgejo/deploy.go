@@ -2,6 +2,7 @@ package vshnforgejo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -56,6 +57,10 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 }
 
 func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, secretName string) error {
+
+	if len(comp.Spec.Parameters.Service.FQDN) == 0 {
+		return fmt.Errorf("must supply at least one FQDN")
+	}
 
 	securityContext := map[string]any{}
 	if svc.Config.Data["isOpenshift"] == "true" {
@@ -125,6 +130,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					"REVERSE_PROXY_TRUSTED_PROXIES": "*",
 				},
 				"server": map[string]any{
+					"DOMAIN":           comp.Spec.Parameters.Service.FQDN[0],
 					"DISABLE_SSH":      true,
 					"LANDING_PAGE":     "login",
 					"LFS_START_SERVER": true,
@@ -171,6 +177,25 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		"strategy": map[string]any{
 			"type": "Recreate",
 		},
+	}
+
+	appName := comp.Spec.Parameters.Service.ForgejoSettings.AppName
+	if appName != "" {
+		common.SetNestedObjectValue(values, []string{"gitea", "config", "APP_NAME"}, appName)
+	}
+
+	// Automagically inject the entirety of VSHNForgejoConfig into values
+	var objmap map[string]any
+	o, err := json.Marshal(comp.Spec.Parameters.Service.ForgejoSettings.Config)
+	if err != nil {
+		return err
+	}
+
+	json.Unmarshal(o, &objmap)
+	for k, v := range objmap {
+		if v != nil {
+			common.SetNestedObjectValue(values, []string{"gitea", "config", k}, v)
+		}
 	}
 
 	svcNameSuffix := "http"

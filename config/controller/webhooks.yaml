@@ -183,6 +183,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-vshnforgejo
+  failurePolicy: Fail
+  name: vshnforgejo.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - vshnforgejoes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-vshn-appcat-vshn-io-v1-vshnkeycloak
   failurePolicy: Fail
   name: vshnkeycloak.vshn.appcat.vshn.io

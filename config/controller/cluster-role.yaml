@@ -54,6 +54,8 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - xvshnforgejoes
+  - xvshnforgejoes/status
   - xvshnkeycloaks
   - xvshnkeycloaks/status
   - xvshnmariadbs

@@ -3,6 +3,8 @@ package maintenance
 import (
 	"context"
 	"encoding/json"
+	"github.com/go-logr/logr"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 	"testing"
 
@@ -72,7 +74,7 @@ func TestRedis_DoMaintenance(t *testing.T) {
 				WithObjects(tt.givenReleases...).
 				Build()
 
-			r := NewRedis(fClient, http.DefaultClient)
+			r := NewRedis(fClient, http.DefaultClient, &release.DefaultVersionHandler{}, logr.FromContextOrDiscard(context.Background()))
 			ctx := context.Background()
 
 			// WHEN

@@ -8,7 +8,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/resource/unstructured/claim"
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
-	"github.com/spf13/viper"
+	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -24,6 +24,7 @@ type VersionHandler interface {
 // DefaultVersionHandler handles AppCat version change for a claim using composition revisions.
 type DefaultVersionHandler struct {
 	client         client.Client
+	log            logr.Logger
 	claimName      string
 	claimNamespace string
 	ownerGroup     string
@@ -32,24 +33,33 @@ type DefaultVersionHandler struct {
 	serviceId      string
 }
 
-func NewDefaultVersionHandler(k8sClient client.Client) (VersionHandler, error) {
-	vh := &DefaultVersionHandler{client: k8sClient}
-	if err := vh.initMandatoryEnvs(); err != nil {
-		return nil, fmt.Errorf("failed to initialize environment variables: %w", err)
+func NewDefaultVersionHandler(k8sClient client.Client, l logr.Logger, name, namespace, group, kind, version, service string) VersionHandler {
+	return &DefaultVersionHandler{
+		client:         k8sClient,
+		log:            l,
+		claimName:      name,
+		claimNamespace: namespace,
+		ownerGroup:     group,
+		ownerKind:      kind,
+		ownerVersion:   version,
+		serviceId:      service,
 	}
-	return vh, nil
 }
 
 // LatestVersion function releases the latest AppCat version for a given claim via latest composition revision
 func (vh *DefaultVersionHandler) LatestVersion(ctx context.Context) error {
+	vh.log.Info("Releasing latest version of AppCat")
 	cr, err := vh.getLatestRevision(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch latest revision: %w", err)
 	}
 
-	revisionLabel, exists := cr.GetLabels()["metadata.appcat.vshn.io/revision"]
-	if !exists || revisionLabel == "" {
-		return errors.New("missing metadata.appcat.vshn.io/revision label in composition revision")
+	revision, exists := cr.GetLabels()["metadata.appcat.vshn.io/revision"]
+	if !exists || revision == "" {
+		vh.log.Info("Label metadata.appcat.vshn.io/revision is missing from composition revision")
+		return nil
+		//TODO return this error when CI/CD is enabled
+		//return errors.New("missing metadata.appcat.vshn.io/revision label in composition revision")
 	}
 
 	c, err := vh.getClaim(ctx)
@@ -59,12 +69,13 @@ func (vh *DefaultVersionHandler) LatestVersion(ctx context.Context) error {
 
 	c.SetCompositionUpdatePolicy(stringPtr(xpv1.UpdateAutomatic))
 	c.SetCompositionRevisionSelector(&metav1.LabelSelector{
-		MatchLabels: map[string]string{"metadata.appcat.vshn.io/revision": revisionLabel},
+		MatchLabels: map[string]string{"metadata.appcat.vshn.io/revision": revision},
 	})
 	err = vh.client.Update(ctx, c)
 	if err != nil {
 		return fmt.Errorf("failed to update claim: %w", err)
 	}
+	vh.log.Info("Claim updated successfully", "revision", revision)
 
 	return nil
 }
@@ -87,6 +98,7 @@ func (vh *DefaultVersionHandler) getClaim(ctx context.Context) (resource.Composi
 }
 
 func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.CompositionRevision, error) {
+	vh.log.Info("Filtering composition revisions by service id")
 	crl := &v1.CompositionRevisionList{}
 	if err := vh.client.List(ctx, crl, client.MatchingLabelsSelector{
 		Selector: labels.SelectorFromSet(labels.Set{"metadata.appcat.vshn.io/serviceID": vh.serviceId}),
@@ -97,30 +109,16 @@ func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.Com
 	if len(crl.Items) == 0 {
 		return nil, errors.New("no composition revisions found")
 	}
-
+	vh.log.V(1).Info("Found", "composition revisions", crl.Items)
 	latestRevision := crl.Items[0]
 	for _, item := range crl.Items[1:] {
 		if item.Spec.Revision > latestRevision.Spec.Revision {
 			latestRevision = item
 		}
 	}
+	vh.log.Info("Found latest resource", "composition revision", latestRevision.GetName())
 
 	return &latestRevision, nil
-}
-
-func (vh *DefaultVersionHandler) initMandatoryEnvs() error {
-	vh.claimName = viper.GetString("CLAIM_NAME")
-	vh.claimNamespace = viper.GetString("CLAIM_NAMESPACE")
-	vh.ownerGroup = viper.GetString("OWNER_GROUP")
-	vh.ownerKind = viper.GetString("OWNER_KIND")
-	vh.ownerVersion = viper.GetString("OWNER_VERSION")
-	vh.serviceId = viper.GetString("SERVICE_ID")
-
-	if vh.claimName == "" || vh.claimNamespace == "" || vh.ownerGroup == "" ||
-		vh.ownerKind == "" || vh.ownerVersion == "" || vh.serviceId == "" {
-		return errors.New("missing mandatory environment variables")
-	}
-	return nil
 }
 
 func stringPtr(s xpv1.UpdatePolicy) *xpv1.UpdatePolicy {

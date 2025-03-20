@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -15,25 +16,29 @@ const (
 
 // Nextcloud contains all necessary dependencies to successfully run a Nextcloud maintenance
 type Nextcloud struct {
-	k8sClient  client.Client
-	httpClient *http.Client
-	log        logr.Logger
+	k8sClient      client.Client
+	httpClient     *http.Client
+	versionHandler release.VersionHandler
+	log            logr.Logger
 }
 
 // NewNextcloud returns a new Nextcloud object
-func NewNextcloud(c client.Client, hc *http.Client) *Nextcloud {
+func NewNextcloud(c client.Client, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *Nextcloud {
 	return &Nextcloud{
-		k8sClient:  c,
-		httpClient: hc,
+		k8sClient:      c,
+		httpClient:     hc,
+		versionHandler: vh,
+		log:            logger,
 	}
 }
 
 // DoMaintenance will run minios's maintenance script.
-func (m *Nextcloud) DoMaintenance(ctx context.Context) error {
-	m.log = logr.FromContextOrDiscard(ctx).WithValues("type", "nextcloud")
-	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
-
+func (n *Nextcloud) DoMaintenance(ctx context.Context) error {
+	patcher := helm.NewImagePatcher(n.k8sClient, n.httpClient, n.log)
 	valuesPath := helm.NewValuePath("image", "tag")
-
 	return patcher.DoMaintenance(ctx, nextcloudURL, valuesPath, helm.SemVerPatchesOnly(true))
+}
+
+func (n *Nextcloud) ReleaseLatestAppCatVersion(ctx context.Context) error {
+	return n.versionHandler.LatestVersion(ctx)
 }

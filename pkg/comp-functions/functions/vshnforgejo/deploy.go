@@ -131,6 +131,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				},
 				"server": map[string]any{
 					"DOMAIN":           comp.Spec.Parameters.Service.FQDN[0],
+					"ROOT_URL":         "https://" + comp.Spec.Parameters.Service.FQDN[0],
 					"DISABLE_SSH":      true,
 					"LANDING_PAGE":     "login",
 					"LFS_START_SERVER": true,

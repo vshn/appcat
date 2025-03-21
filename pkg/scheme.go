@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"github.com/vshn/appcat/v4/apis/codey"
 	xhelm "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 
 	apix "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
@@ -66,4 +67,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = exoscalev1.SchemeBuilder.AddToScheme(s)
 	_ = spksv1alpha1.SchemeBuilder.AddToScheme(s)
 	_ = my1alpha1.SchemeBuilder.AddToScheme(s)
+	_ = codey.SchemeBuilder.AddToScheme(s)
 }

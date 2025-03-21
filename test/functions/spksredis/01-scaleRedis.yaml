@@ -1,0 +1,38 @@
+desired:
+  resources:
+    redis-chart:
+      resource:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        spec:
+          forProvider:
+            values:
+              tls:
+                enabled: true
+              replica:
+                replicaCount: 3
+
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    controlNamespace: appcat-control
+
+observed:
+  resources:
+    redis-chart:
+      resource:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        spec:
+          forProvider:
+            values:
+              tls:
+                enabled: false
+              replica:
+                replicaCount: 0

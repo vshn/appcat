@@ -144,6 +144,10 @@ func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool,
 		if err != nil {
 			return err
 		}
+		err = webhooks.SetupCodeyInstanceWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
 		err = webhooks.SetupXObjectbucketCDeletionProtectionHandlerWithManager(mgr)
 		if err != nil {
 			return err

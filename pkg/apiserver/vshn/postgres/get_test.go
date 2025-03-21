@@ -7,10 +7,11 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/test/mocks"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	client "k8s.io/client-go/dynamic"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
@@ -23,6 +24,7 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 		backupInfoCalls    func(mocks.MocksgbackupProvider, string)
 		vshnPostgresBackup *v1.VSHNPostgresBackup
 		err                error
+		client             *client.DynamicClient
 	}{
 		"GivenAListOfPostgresAndBackups_ThenVSHNPostgresBackup": {
 			name:        "one",
@@ -30,17 +32,19 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 			backupInfo:  backupInfoOne,
 			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), name, "namespace-one").
+					GetSGBackup(gomock.Any(), name, "namespace-one", gomock.Nil()).
 					Return(backupInfoOne, nil).
 					Times(1)
 
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), name, "namespace-two").
+					GetSGBackup(gomock.Any(), name, "namespace-two", gomock.Nil()).
 					Return(nil, apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), name)).
 					Times(1)
+
 			},
 			vshnPostgresBackup: vshnBackupOne,
 			err:                nil,
+			client:             nil,
 		},
 		"GivenErrNotFound_ThenErrNotFound": {
 			name:        "one",
@@ -48,17 +52,18 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 			backupInfo:  nil,
 			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), name, "namespace-one").
+					GetSGBackup(gomock.Any(), name, "namespace-one", gomock.Nil()).
 					Return(nil, apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), name)).
 					Times(1)
 
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), name, "namespace-two").
+					GetSGBackup(gomock.Any(), name, "namespace-two", gomock.Nil()).
 					Return(nil, apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), name)).
 					Times(1)
 			},
 			vshnPostgresBackup: nil,
 			err:                apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), "one"),
+			client:             nil,
 		},
 		"GivenNoPostgresInstances_ThenErrNotFound": {
 			name:        "one",
@@ -66,11 +71,12 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 			backupInfo:  nil,
 			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), gomock.Any(), gomock.Any()).
+					GetSGBackup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
 					Times(0)
 			},
 			vshnPostgresBackup: nil,
 			err:                apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), "one"),
+			client:             nil,
 		},
 	}
 
@@ -85,6 +91,11 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 				ListVSHNPostgreSQL(gomock.Any(), gomock.Any()).
 				Return(tc.postgresqls, nil).
 				Times(1)
+
+			postgresProvider.EXPECT().
+				GetKubeClient(gomock.Any(), gomock.Any()).
+				Return(tc.client, nil).
+				Times(len(tc.postgresqls.Items))
 
 			tc.backupInfoCalls(*backupProvider, tc.name)
 

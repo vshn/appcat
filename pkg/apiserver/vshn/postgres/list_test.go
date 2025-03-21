@@ -11,10 +11,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
+	client "k8s.io/client-go/dynamic"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
@@ -28,18 +29,19 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 		backupInfosErr  error
 
 		vshnBackups *v1.VSHNPostgresBackupList
+		client      *client.DynamicClient
 		err         error
 	}{
 		"GivenPostgresDataAndListOfBackupInfos_ThenReturnVshnBackups": {
 			postgresqls: vshnPostgreSQLInstances,
 			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error) {
 				provider.EXPECT().
-					ListSGBackup(gomock.Any(), "namespace-one", gomock.Any()).
+					ListSGBackup(gomock.Any(), "namespace-one", gomock.Nil(), gomock.Any()).
 					Return(&[]v1.SGBackupInfo{*backupInfoOne}, nil).
 					Times(1)
 
 				provider.EXPECT().
-					ListSGBackup(gomock.Any(), "namespace-two", gomock.Any()).
+					ListSGBackup(gomock.Any(), "namespace-two", gomock.Nil(), gomock.Any()).
 					Return(&[]v1.SGBackupInfo{*backupInfoTwo}, err).
 					Times(1)
 			},
@@ -49,6 +51,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 					*vshnBackupTwo,
 				},
 			},
+			client: nil,
 		},
 		"GivenNoPostgresData_ThenReturnEmpty": {
 			postgresqls:     &vshnv1.VSHNPostgreSQLList{},
@@ -56,23 +59,25 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 			vshnBackups: &v1.VSHNPostgresBackupList{
 				Items: []v1.VSHNPostgresBackup(nil),
 			},
+			client: nil,
 		},
 		"GivenNoBackups_ThenReturnEmpty": {
 			postgresqls: vshnPostgreSQLInstances,
 			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error) {
 				provider.EXPECT().
-					ListSGBackup(gomock.Any(), "namespace-one", gomock.Any()).
+					ListSGBackup(gomock.Any(), "namespace-one", gomock.Nil(), gomock.Any()).
 					Return(&[]v1.SGBackupInfo{}, nil).
 					Times(1)
 
 				provider.EXPECT().
-					ListSGBackup(gomock.Any(), "namespace-two", gomock.Any()).
+					ListSGBackup(gomock.Any(), "namespace-two", gomock.Nil(), gomock.Any()).
 					Return(&[]v1.SGBackupInfo{}, err).
 					Times(1)
 			},
 			vshnBackups: &v1.VSHNPostgresBackupList{
 				Items: []v1.VSHNPostgresBackup(nil),
 			},
+			client: nil,
 		},
 		"GivenBackupErrList_ThenReturnError": {
 			postgresqls: &vshnv1.VSHNPostgreSQLList{
@@ -89,12 +94,13 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 			},
 			backupInfoCalls: func(provider mocks.MocksgbackupProvider, err error) {
 				provider.EXPECT().
-					ListSGBackup(gomock.Any(), "namespace-two", gomock.Any()).
+					ListSGBackup(gomock.Any(), "namespace-two", gomock.Nil(), gomock.Any()).
 					Return(&[]v1.SGBackupInfo{}, err).
 					Times(1)
 			},
 			backupInfosErr: fmt.Errorf("cannot get list"),
 			err:            fmt.Errorf("cannot get list"),
+			client:         nil,
 		},
 	}
 	for n, tc := range tests {
@@ -107,6 +113,10 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 				ListVSHNPostgreSQL(gomock.Any(), gomock.Any()).
 				Return(tc.postgresqls, nil).
 				Times(1)
+			vshnPostgresProvider.EXPECT().
+				GetKubeClient(gomock.Any(), gomock.Any()).
+				Return(tc.client, nil).
+				Times(len(tc.postgresqls.Items))
 
 			tc.backupInfoCalls(*backupsProvider, tc.backupInfosErr)
 

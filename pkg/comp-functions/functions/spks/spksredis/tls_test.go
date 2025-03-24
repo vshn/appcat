@@ -22,7 +22,7 @@ func Test_scaleRedisRelease(t *testing.T) {
 	assert.NoError(t, scaleRedisRelease(svc, comp))
 	assert.Equal(t, 2, len(svc.GetAllDesired()))
 	assert.NoError(t, svc.GetDesiredComposite(comp))
-	assert.NotEmpty(t, comp.Status.ScaleTimeStamp)
+	assert.NotEmpty(t, comp.Status.ReconcileTimeStamp)
 
 	svc = commontest.LoadRuntimeFromFile(t, "spksredis/02-scaleRedisFinished.yaml")
 	comp = &spksv1alpha1.CompositeRedisInstance{
@@ -37,6 +37,6 @@ func Test_scaleRedisRelease(t *testing.T) {
 	assert.NoError(t, scaleRedisRelease(svc, comp))
 	assert.Equal(t, 1, len(svc.GetAllDesired()))
 	assert.NoError(t, svc.GetDesiredComposite(comp))
-	assert.Empty(t, comp.Status.ScaleTimeStamp)
+	assert.Empty(t, comp.Status.ReconcileTimeStamp)
 
 }

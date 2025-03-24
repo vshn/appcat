@@ -277,7 +277,7 @@ spec:
                   it can not recover from without human intervention.
                 format: int64
                 type: integer
-              scaleTimeStamp:
+              reconcileTimeStamp:
                 type: string
             type: object
         required:

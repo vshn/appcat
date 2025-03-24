@@ -57,6 +57,9 @@ const (
 	ProviderConfigIgnoreLabel         = "appcat.vshn.io/ignore-provider-config"
 	WebhookAllowDeletionLabel         = "appcat.vshn.io/webhook-allowdeletion"
 	IgnoreConnectionDetailsAnnotation = "appcat.vshn.io/ignore-connection-details"
+
+	ResourceReady   ResourceReadiness = ResourceReadiness(resource.ReadyTrue)
+	ResourceUnReady ResourceReadiness = ResourceReadiness(resource.ReadyFalse)
 )
 
 // Step describes a single change within a service.
@@ -115,6 +118,8 @@ type KubeObjectOption func(obj *xkube.Object)
 // ComposedResourceOption defines the type of functional parameters for Crossplane
 // managed resources
 type ComposedResourceOption func(obj xpresource.Managed)
+
+type ResourceReadiness resource.Ready
 
 // RegisterService will register a service to the map of all services.
 func RegisterService[T client.Object](name string, function Service[T]) {
@@ -1438,4 +1443,14 @@ func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 	}
 
 	return nil
+}
+
+// SetDesiredResourceReadiness allows us to explicitly set the readiness of any given
+// desired resource. This will directly impact the `ready` column in the composite/claim.
+func (s *ServiceRuntime) SetDesiredResourceReadiness(name string, ready ResourceReadiness) {
+	res := s.desiredResources[resource.Name(name)]
+	if res != nil {
+		res.Ready = resource.Ready(ready)
+		s.desiredResources[resource.Name(name)] = res
+	}
 }

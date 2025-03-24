@@ -67,6 +67,14 @@ func HandleTLS(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstance, s
 
 	svc.AddObservedConnectionDetails(comp.GetName() + "-server-cert")
 
+	if !isCertAvailable(svc, comp) {
+		err := updateReconcileTimestamp(svc, comp)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot update reconcile timestamp: %s", err.Error()))
+		}
+		svc.SetDesiredResourceReadiness(comp.GetName()+"-server-cert", runtime.ResourceUnReady)
+	}
+
 	return nil
 }
 
@@ -108,7 +116,7 @@ func scaleRedisRelease(svc *runtime.ServiceRuntime, comp *spksv1alpha1.Composite
 
 		desRelease.Spec.ForProvider.Values.Raw = rawValues
 
-		err = updateScaleTimestamp(svc, comp)
+		err = updateReconcileTimestamp(svc, comp)
 		if err != nil {
 			return fmt.Errorf("cannot update composite status: %w", err)
 		}
@@ -200,11 +208,32 @@ func isSTSScaling(obsRelease *xhelm.Release, comp *spksv1alpha1.CompositeRedisIn
 	return false
 }
 
-// updateScaleTimestamp will update a field in the status called `scaleTimeStamp`.
+func isCertAvailable(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRedisInstance) bool {
+	// Safety measure, if the instance is older than 10 minutes we don't do this check anymore.
+	now := time.Now()
+	creation := comp.GetCreationTimestamp()
+	diff := now.Sub(creation.Time)
+	if diff.Minutes() >= 10 {
+		return true
+	}
+
+	cd := svc.GetConnectionDetails()
+
+	cert := string(cd["ca.crt"])
+
+	if cert == "" {
+		return false
+	}
+
+	return true
+}
+
+// updateReconcileTimestamp will update a field in the status called `reconcileTimeStamp`.
 // This will instantly trigger a new reconcile.
 // Making the switch from TLS to non-TLS much faster on SPK. Because SPKS has a
 // default reconcile period of 10 minutes.
-func updateScaleTimestamp(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRedisInstance) error {
-	comp.Status.ScaleTimeStamp = time.Now().Format(time.RFC3339Nano)
+func updateReconcileTimestamp(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRedisInstance) error {
+	comp.Status.ReconcileTimeStamp = time.Now().Format(time.RFC3339Nano)
+	time.Sleep(time.Millisecond * 500)
 	return svc.SetDesiredCompositeStatus(comp)
 }

@@ -17,6 +17,7 @@ import (
 
 //+kubebuilder:webhook:verbs=create;update,path=/validate-codey-io-v1-codeyinstance,mutating=false,failurePolicy=fail,groups=codey.io,resources=codeyinstances,versions=v1,name=codeyinstance.codey.io,sideEffects=None,admissionReviewVersions=v1
 
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list
 //+kubebuilder:rbac:groups=codey.io,resources=codeyinstances,verbs=get;list;watch;patch;update
 //+kubebuilder:rbac:groups=codey.io,resources=codeyinstances/status,verbs=get;list;watch;patch;update
 
@@ -67,8 +68,8 @@ func (n *CodeyInstanceWebhookHandler) ValidateCreate(ctx context.Context, obj ru
 	}
 
 	codeyFqdn := codey.ObjectMeta.Name + codeyUrlSuffix
-	if !isCodeyFqdnUnique(codeyFqdn) {
-		return nil, fmt.Errorf("generated codey FQDN already exists: %s", codeyFqdn)
+	if err := isCodeyFqdnUnique(codeyFqdn); err != nil {
+		return nil, fmt.Errorf("failed FQDN validation: %v", err)
 	}
 
 	return nil, nil
@@ -86,16 +87,15 @@ func (p *CodeyInstanceWebhookHandler) ValidateUpdate(ctx context.Context, oldObj
 	}
 
 	codeyFqdn := newCodeyInstance.ObjectMeta.Name + codeyUrlSuffix
-	if !isCodeyFqdnUnique(codeyFqdn) {
-		return nil, fmt.Errorf("generated codey FQDN already exists: %s", codeyFqdn)
+	if err := isCodeyFqdnUnique(codeyFqdn); err != nil {
+		return nil, fmt.Errorf("failed FQDN validation: %v", err)
 	}
 
 	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
 }
 
 // Checks if a given FQDN is already in use by some CodeyInstance in the cluster
-func isCodeyFqdnUnique(fqdn string) bool {
-	fmt.Printf("Checking fqdn: %s", fqdn)
+func isCodeyFqdnUnique(fqdn string) error {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err.Error())
@@ -109,25 +109,23 @@ func isCodeyFqdnUnique(fqdn string) bool {
 		LabelSelector: "appcat.vshn.io/ownerkind=XVSHNForgejo",
 	})
 	if err != nil {
-		fmt.Printf("Error listing namespaces: %v\n", err)
-		return false
+		return fmt.Errorf("failed listing namespaces: %v", err)
 	}
 
 	for _, namespace := range namespaceList.Items {
 		ingressList, err := clientset.NetworkingV1().Ingresses(namespace.Name).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
-			fmt.Printf("Error listing ingresses in namespace %s: %v\n", namespace.Name, err)
-			continue
+			return fmt.Errorf("failed listing ingresses in namespace %s: %v", namespace.Name, err)
 		}
 
 		for _, ingress := range ingressList.Items {
 			for _, rule := range ingress.Spec.Rules {
 				if rule.Host == fqdn {
-					return false
+					return fmt.Errorf("codey FQDN '%s' already present in namespace '%s'", fqdn, namespace.Name)
 				}
 			}
 		}
 	}
 
-	return true
+	return nil
 }

@@ -57,6 +57,9 @@ const (
 	ProviderConfigIgnoreLabel         = "appcat.vshn.io/ignore-provider-config"
 	WebhookAllowDeletionLabel         = "appcat.vshn.io/webhook-allowdeletion"
 	IgnoreConnectionDetailsAnnotation = "appcat.vshn.io/ignore-connection-details"
+
+	ResourceReady   ResourceReadiness = ResourceReadiness(resource.ReadyTrue)
+	ResourceUnReady ResourceReadiness = ResourceReadiness(resource.ReadyFalse)
 )
 
 // Step describes a single change within a service.
@@ -115,6 +118,8 @@ type KubeObjectOption func(obj *xkube.Object)
 // ComposedResourceOption defines the type of functional parameters for Crossplane
 // managed resources
 type ComposedResourceOption func(obj xpresource.Managed)
+
+type ResourceReadiness resource.Ready
 
 // RegisterService will register a service to the map of all services.
 func RegisterService[T client.Object](name string, function Service[T]) {
@@ -194,6 +199,7 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1.RunFunctionRequest) 
 			result = NewNormalResult(fmt.Sprintf("%s step %s result: ran successfully", service, stepName))
 		} else {
 			result.Message = fmt.Sprintf("%s step %s result: %s", service, stepName, result.Message)
+			sr.Log.Info(result.Message)
 		}
 		sr.AddResult(result)
 	}
@@ -327,21 +333,14 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunc
 		return nil, err
 	}
 
-	// We need the observed composition here, as otherwise the
-	// connectionDetails are always empty.
-	comp, err := request.GetObservedCompositeResource(req)
-	if err != nil {
-		return &ServiceRuntime{}, err
-	}
-
 	l = l.WithValues(
-		"resource", comp.Resource.GetName(),
+		"resource", observedComposite.Resource.GetName(),
 	)
 
-	if comp.Resource.GetClaimReference() != nil {
+	if observedComposite.Resource.GetClaimReference() != nil {
 		l = l.WithValues(
-			"claimNamespace", comp.Resource.GetClaimReference().Namespace,
-			"claimName", comp.Resource.GetClaimReference().Name)
+			"claimNamespace", observedComposite.Resource.GetClaimReference().Namespace,
+			"claimName", observedComposite.Resource.GetClaimReference().Name)
 	}
 
 	return &ServiceRuntime{
@@ -349,11 +348,11 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunc
 		Config:            config,
 		req:               req,
 		desiredResources:  desiredResources,
-		connectionDetails: comp.ConnectionDetails,
+		connectionDetails: desiredComposite.ConnectionDetails,
 		results:           []*xfnproto.Result{},
 		desiredComposite:  desiredComposite.Resource,
 		observedComposite: observedComposite.Resource,
-		gvk:               comp.Resource.GetObjectKind().GroupVersionKind(),
+		gvk:               observedComposite.Resource.GetObjectKind().GroupVersionKind(),
 		kubeOptionTracker: map[string][]KubeObjectOption{},
 	}, nil
 }
@@ -983,6 +982,13 @@ func (s *ServiceRuntime) GetAllDesired() map[resource.Name]*resource.DesiredComp
 	return s.desiredResources
 }
 
+// SetAllDesired will override the desired resources with the given map.
+// WARNING: please only use this if you know what you're doing. This function
+// can break the state of any given service!
+func (s *ServiceRuntime) SetAllDesired(resources map[resource.Name]*resource.DesiredComposed) {
+	s.desiredResources = resources
+}
+
 // GetDesiredComposite will return the currently desired composite.
 // The only differences from the observed composite will be either in metadata or the status.
 // As Crossplane 1.14 composition function forbid any changes other than those fields.
@@ -1342,11 +1348,16 @@ func (s *ServiceRuntime) getCleanGVK() schema.GroupVersionKind {
 // setProviderConfigs loops over all desired objects and adds the providerConfigs
 // according to the annotations on the claim/composite.
 func (s *ServiceRuntime) setProviderConfigs() error {
-	if val, exists := s.observedComposite.GetLabels()[ProviderConfigLabel]; !exists || val == "" || val == "local" {
+	label := ProviderConfigLabel
+	if val, exists := s.Config.Data["providerConfigLabel"]; exists && val != "" {
+		label = val
+	}
+
+	if val, exists := s.observedComposite.GetLabels()[label]; !exists || val == "" || val == "local" {
 		return nil
 	}
 
-	configName := s.observedComposite.GetLabels()[ProviderConfigLabel]
+	configName := s.observedComposite.GetLabels()[label]
 
 	for i := range s.desiredResources {
 		if _, exists := s.desiredResources[i].Resource.GetLabels()[ProviderConfigIgnoreLabel]; exists {
@@ -1364,7 +1375,7 @@ func (s *ServiceRuntime) setProviderConfigs() error {
 		if labels == nil {
 			labels = map[string]string{}
 		}
-		labels[ProviderConfigLabel] = configName
+		labels[label] = configName
 		s.desiredResources[i].Resource.SetLabels(labels)
 	}
 
@@ -1432,4 +1443,14 @@ func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 	}
 
 	return nil
+}
+
+// SetDesiredResourceReadiness allows us to explicitly set the readiness of any given
+// desired resource. This will directly impact the `ready` column in the composite/claim.
+func (s *ServiceRuntime) SetDesiredResourceReadiness(name string, ready ResourceReadiness) {
+	res := s.desiredResources[resource.Name(name)]
+	if res != nil {
+		res.Ready = resource.Ready(ready)
+		s.desiredResources[resource.Name(name)] = res
+	}
 }

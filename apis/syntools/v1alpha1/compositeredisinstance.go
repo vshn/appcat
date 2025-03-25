@@ -17,10 +17,17 @@ type CompositeRedisInstance struct {
 
 type CompositeRedisInstanceStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
+	ReconcileTimeStamp  string `json:"reconcileTimeStamp,omitempty"`
 }
 
 type CompositeRedisInstanceSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
+	Parameters        CompositeRedisInstanceParameters `json:"parameters,omitempty"`
+}
+
+type CompositeRedisInstanceParameters struct {
+	// Enable or disable TLS for this instance.
+	TLS bool `json:"tls,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

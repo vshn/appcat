@@ -176,7 +176,7 @@ func addSTSObserver(comp *spksv1alpha1.CompositeRedisInstance, svc *runtime.Serv
 	return nil
 }
 
-// isSTSScaling will return true, if the release it set to 0 replicas and
+// isSTSScaling will return true, if the release is set to 0 replicas and
 // the sts hasn't fully scaled down yet.
 // This is necessary to ensure that we don't have mixed tls/non-tls members in the cluster
 // at the same time.

@@ -3,11 +3,13 @@ package webhooks
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	codey "github.com/vshn/appcat/v4/apis/codey"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	field "k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -106,7 +108,11 @@ func isCodeyFqdnUnique(fqdn string, cl client.Client) error {
 	for _, ingress := range ingressList.Items {
 		for _, rule := range ingress.Spec.Rules {
 			if rule.Host == fqdn {
-				return fmt.Errorf("codey FQDN '%s' is already in use", fqdn)
+				return field.Invalid(
+					field.NewPath("metadata", "name"),
+					strings.Split(fqdn, ".")[0],
+					fmt.Sprintf("produces a codey FQDN (%s) that is already in use", fqdn),
+				)
 			}
 		}
 	}

@@ -5,12 +5,11 @@ import (
 	"fmt"
 
 	codey "github.com/vshn/appcat/v4/apis/codey"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -68,7 +67,7 @@ func (n *CodeyInstanceWebhookHandler) ValidateCreate(ctx context.Context, obj ru
 	}
 
 	codeyFqdn := codey.ObjectMeta.Name + codeyUrlSuffix
-	if err := isCodeyFqdnUnique(codeyFqdn); err != nil {
+	if err := isCodeyFqdnUnique(codeyFqdn, n.client); err != nil {
 		return nil, fmt.Errorf("failed FQDN validation: %v", err)
 	}
 
@@ -87,7 +86,7 @@ func (p *CodeyInstanceWebhookHandler) ValidateUpdate(ctx context.Context, oldObj
 	}
 
 	codeyFqdn := newCodeyInstance.ObjectMeta.Name + codeyUrlSuffix
-	if err := isCodeyFqdnUnique(codeyFqdn); err != nil {
+	if err := isCodeyFqdnUnique(codeyFqdn, p.client); err != nil {
 		return nil, fmt.Errorf("failed FQDN validation: %v", err)
 	}
 
@@ -95,34 +94,19 @@ func (p *CodeyInstanceWebhookHandler) ValidateUpdate(ctx context.Context, oldObj
 }
 
 // Checks if a given FQDN is already in use by some CodeyInstance in the cluster
-func isCodeyFqdnUnique(fqdn string) error {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	namespaceList, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "appcat.vshn.io/ownerkind=XVSHNForgejo",
+func isCodeyFqdnUnique(fqdn string, cl client.Client) error {
+	ingressList := &netv1.IngressList{}
+	err := cl.List(context.TODO(), ingressList, client.MatchingLabels{
+		"appcat.vshn.io/ownerkind": "XVSHNForgejo",
 	})
 	if err != nil {
-		return fmt.Errorf("failed listing namespaces: %v", err)
+		return fmt.Errorf("failed listing ingresses: %v", err)
 	}
 
-	for _, namespace := range namespaceList.Items {
-		ingressList, err := clientset.NetworkingV1().Ingresses(namespace.Name).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("failed listing ingresses in namespace %s: %v", namespace.Name, err)
-		}
-
-		for _, ingress := range ingressList.Items {
-			for _, rule := range ingress.Spec.Rules {
-				if rule.Host == fqdn {
-					return fmt.Errorf("codey FQDN '%s' already present in namespace '%s'", fqdn, namespace.Name)
-				}
+	for _, ingress := range ingressList.Items {
+		for _, rule := range ingress.Spec.Rules {
+			if rule.Host == fqdn {
+				return fmt.Errorf("codey FQDN '%s' is already in use", fqdn)
 			}
 		}
 	}

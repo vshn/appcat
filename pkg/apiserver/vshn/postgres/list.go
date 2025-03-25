@@ -34,7 +34,7 @@ func (v *vshnPostgresBackupStorage) List(ctx context.Context, options *metainter
 	// Aggregate all backups from all postgres clusters from the same namespace
 	backups := v1.VSHNPostgresBackupList{}
 	for _, value := range instances.Items {
-		client, err := v.vshnpostgresql.GetKubeClient(ctx, value)
+		client, err := v.vshnpostgresql.GetDynKubeClient(ctx, &value)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
 		}

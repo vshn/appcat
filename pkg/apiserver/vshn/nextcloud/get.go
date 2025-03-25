@@ -30,7 +30,7 @@ func (v *vshnNextcloudBackupStorage) Get(ctx context.Context, name string, _ *me
 	nextcloudSnap := &appcatv1.VSHNNextcloudBackup{}
 
 	for _, instance := range instances.Items {
-		client, err := v.vshnNextcloud.GetKubeClient(ctx, instance)
+		client, err := v.vshnNextcloud.GetKubeClient(ctx, &instance)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
 		}
@@ -46,7 +46,7 @@ func (v *vshnNextcloudBackupStorage) Get(ctx context.Context, name string, _ *me
 		var sgBackup *appcatv1.SGBackupInfo
 		backupMeta := metav1.ObjectMeta{}
 		pgNamespace, pgName := v.getPostgreSQLNamespaceAndName(ctx, &instance)
-		dynClient, err := v.vshnNextcloud.GetDynKubeClient(ctx, instance)
+		dynClient, err := v.vshnNextcloud.GetDynKubeClient(ctx, &instance)
 		if err != nil {
 			return nil, err
 		}

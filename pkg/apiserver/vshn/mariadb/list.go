@@ -31,7 +31,7 @@ func (v *vshnMariaDBBackupStorage) List(ctx context.Context, _ *metainternalvers
 	}
 
 	for _, instance := range instances.Items {
-		client, err := v.vshnMariaDB.GetKubeClient(ctx, instance)
+		client, err := v.vshnMariaDB.GetKubeClient(ctx, &instance)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
 		}

@@ -39,15 +39,11 @@ type ConcreteSnapshotHandler struct {
 }
 
 // Get returns the snapshot with the given ID.
-func (c *ConcreteSnapshotHandler) Get(ctx context.Context, id, instanceNamespace string, scClient client.Client) (*k8upv1.Snapshot, error) {
+func (c *ConcreteSnapshotHandler) Get(ctx context.Context, id, instanceNamespace string, kubeclient client.Client) (*k8upv1.Snapshot, error) {
 
 	snapshot := &k8upv1.Snapshot{}
-	var err error
-	if scClient != nil {
-		err = scClient.Get(ctx, client.ObjectKey{Namespace: instanceNamespace, Name: id}, snapshot)
-	} else {
-		err = c.client.Get(ctx, client.ObjectKey{Namespace: instanceNamespace, Name: id}, snapshot)
-	}
+	err := kubeclient.Get(ctx, client.ObjectKey{Namespace: instanceNamespace, Name: id}, snapshot)
+
 	if err != nil {
 		return nil, err
 	}
@@ -56,15 +52,11 @@ func (c *ConcreteSnapshotHandler) Get(ctx context.Context, id, instanceNamespace
 }
 
 // List returns all snapshots in the given namespace.
-func (c *ConcreteSnapshotHandler) List(ctx context.Context, instanceNamespace string, scClient client.Client) (*k8upv1.SnapshotList, error) {
+func (c *ConcreteSnapshotHandler) List(ctx context.Context, instanceNamespace string, kubeclient client.Client) (*k8upv1.SnapshotList, error) {
 
 	snapshots := &k8upv1.SnapshotList{}
-	var err error
-	if scClient != nil {
-		err = scClient.List(ctx, snapshots, &client.ListOptions{Namespace: instanceNamespace})
-	} else {
-		err = c.client.List(ctx, snapshots, &client.ListOptions{Namespace: instanceNamespace})
-	}
+	err := kubeclient.List(ctx, snapshots, &client.ListOptions{Namespace: instanceNamespace})
+
 	if err != nil {
 		return nil, err
 	}
@@ -73,19 +65,13 @@ func (c *ConcreteSnapshotHandler) List(ctx context.Context, instanceNamespace st
 }
 
 // Watch returns a watcher for the given objects
-func (c *ConcreteSnapshotHandler) Watch(ctx context.Context, namespace string, options *metainternalversion.ListOptions, scClient client.WithWatch) (watch.Interface, error) {
+func (c *ConcreteSnapshotHandler) Watch(ctx context.Context, namespace string, options *metainternalversion.ListOptions, kubeclient client.WithWatch) (watch.Interface, error) {
 
-	snapshots, err := c.List(ctx, namespace, scClient)
+	snapshots, err := c.List(ctx, namespace, kubeclient)
 	if err != nil {
 		return nil, err
 	}
-
-	if scClient != nil {
-		return scClient.Watch(ctx, snapshots)
-	} else {
-		return c.client.Watch(ctx, snapshots)
-
-	}
+	return kubeclient.Watch(ctx, snapshots)
 }
 
 // GetFromEvent resolves watch.Event into k8upv1.Snapshot

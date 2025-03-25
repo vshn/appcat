@@ -3,6 +3,7 @@ package postgres
 import (
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/pkg/apiserver/noop"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,7 +18,7 @@ import (
 // New returns a new storage provider for VSHNPostgresBackup
 func New() restbuilder.ResourceHandlerProvider {
 	return func(s *runtime.Scheme, gasdf genericregistry.RESTOptionsGetter) (rest.Storage, error) {
-		c, err := client.New(loopback.GetLoopbackMasterClientConfig(), client.Options{})
+		c, err := client.NewWithWatch(loopback.GetLoopbackMasterClientConfig(), client.Options{})
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +43,9 @@ func New() restbuilder.ResourceHandlerProvider {
 				DynamicClient: dc.Resource(SGbackupGroupVersionResource),
 			},
 			vshnpostgresql: &kubeVSHNPostgresqlProvider{
-				client: c,
+				ClientConfigurator: &apiserver.KubeClient{
+					WithWatch: c,
+				},
 			},
 			Noop: *noopImplementation,
 		}, nil

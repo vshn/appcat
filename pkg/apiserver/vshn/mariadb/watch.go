@@ -28,7 +28,7 @@ func (v *vshnMariaDBBackupStorage) Watch(ctx context.Context, options *metainter
 
 	mw := apiserver.NewEmptyMultiWatch()
 	for _, value := range instances.Items {
-		client, err := v.vshnMariaDB.GetKubeClient(ctx, value)
+		client, err := v.vshnMariaDB.GetKubeClient(ctx, &value)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
 		}

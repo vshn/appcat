@@ -27,7 +27,7 @@ func (v *vshnRedisBackupStorage) Watch(ctx context.Context, options *metainterna
 
 	mw := apiserver.NewEmptyMultiWatch()
 	for _, value := range instances.Items {
-		client, err := v.vshnRedis.GetKubeClient(ctx, value)
+		client, err := v.vshnRedis.GetKubeClient(ctx, &value)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
 		}

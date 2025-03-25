@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/test/mocks"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -52,6 +53,7 @@ func Test_ListVSHNPostgreSQL(t *testing.T) {
 			client := mocks.NewMockClient(ctrl)
 			provider := kubeVSHNPostgresqlProvider{
 				client,
+				ClientConfigurator: &apiserver.KubeClient{},
 			}
 
 			client.EXPECT().

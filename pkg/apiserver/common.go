@@ -1,15 +1,23 @@
 package apiserver
 
 import (
+	"context"
 	"errors"
 	"sync"
 
+	"github.com/vshn/appcat/v4/pkg"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	xkube "github.com/crossplane-contrib/provider-kubernetes/apis/v1alpha1"
+	appcatruntime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
+	dynClient "k8s.io/client-go/dynamic"
 )
 
 func ResolveError(groupResource schema.GroupResource, err error) error {
@@ -88,4 +96,86 @@ func GetBackupColumnDefinition() []metav1.TableColumnDefinition {
 		{Name: "Status", Type: "string", Description: "The state of this backup"},
 		{Name: "Age", Type: "date", Description: desc["creationTimestamp"]},
 	}
+}
+
+type ClientConfigurator interface {
+	GetDynKubeClient(ctx context.Context, instance client.Object) (*dynClient.DynamicClient, error)
+	GetKubeClient(ctx context.Context, instance client.Object) (client.WithWatch, error)
+	client.WithWatch
+}
+
+type KubeClient struct {
+	client.WithWatch
+}
+
+// GetKubeClient will return a `Client` for the provided instance and kubeclient
+// It will check where the instance is running on and will return either the client
+// for the remote cluster (non-converged) or nil for the local cluster
+func (k *KubeClient) GetKubeClient(ctx context.Context, instance client.Object) (client.WithWatch, error) {
+	if instance.GetLabels()[appcatruntime.ProviderConfigLabel] == "" {
+		return nil, nil
+	}
+
+	kubeconfig, err := k.getKubeConfig(ctx, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := clientcmd.RESTConfigFromKubeConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	client, err := client.NewWithWatch(config, client.Options{
+		Scheme: pkg.SetupScheme(),
+	})
+	if err != nil {
+		return client, err
+	}
+	return client, nil
+}
+
+// GetDynKubeClient will return a `DynamicClient` for the provided instance and kubeclient
+// It will check where the instance is running on and will return either the client
+// for the remote cluster (non-converged) or the local cluster (converged)
+func (k *KubeClient) GetDynKubeClient(ctx context.Context, instance client.Object) (*dynClient.DynamicClient, error) {
+	if instance.GetLabels()[appcatruntime.ProviderConfigLabel] == "" {
+		return nil, nil
+	}
+
+	kubeconfig, err := k.getKubeConfig(ctx, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := clientcmd.RESTConfigFromKubeConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	client, err := dynClient.NewForConfig(config)
+	if err != nil {
+		return client, err
+	}
+	return client, nil
+}
+
+// GetKubeConfig will return a `Kubeconfig` for the provided instance and kubeclient
+func (k *KubeClient) getKubeConfig(ctx context.Context, instance client.Object) ([]byte, error) {
+	providerConfigName := instance.GetLabels()[appcatruntime.ProviderConfigLabel]
+
+	providerConfig := xkube.ProviderConfig{}
+	err := k.Get(ctx, client.ObjectKey{Name: providerConfigName}, &providerConfig)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	secretRef := providerConfig.Spec.Credentials.SecretRef
+	secret := v1.Secret{}
+	err = k.Get(ctx, client.ObjectKey{Name: secretRef.Name, Namespace: secretRef.Namespace}, &secret)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	kubeconfig := secret.Data[secretRef.Key]
+
+	return kubeconfig, nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/dgraph-io/ristretto/v2"
 	"github.com/vshn/appcat/v4/pkg"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,6 +107,14 @@ type ClientConfigurator interface {
 
 type KubeClient struct {
 	client.WithWatch
+	cache *ristretto.Cache[string, []byte]
+}
+
+func New(client client.WithWatch, cache *ristretto.Cache[string, []byte]) *KubeClient {
+	return &KubeClient{
+		WithWatch: client,
+		cache:     cache,
+	}
 }
 
 // GetKubeClient will return a `Client` for the provided instance and kubeclient
@@ -162,6 +171,11 @@ func (k *KubeClient) GetDynKubeClient(ctx context.Context, instance client.Objec
 func (k *KubeClient) getKubeConfig(ctx context.Context, instance client.Object) ([]byte, error) {
 	providerConfigName := instance.GetLabels()[appcatruntime.ProviderConfigLabel]
 
+	kubeconfig, found := k.cache.Get(instance.GetLabels()[appcatruntime.ProviderConfigLabel])
+	if found {
+		return kubeconfig, nil
+	}
+
 	providerConfig := xkube.ProviderConfig{}
 	err := k.Get(ctx, client.ObjectKey{Name: providerConfigName}, &providerConfig)
 	if err != nil {
@@ -175,7 +189,8 @@ func (k *KubeClient) getKubeConfig(ctx context.Context, instance client.Object) 
 		return []byte{}, err
 	}
 
-	kubeconfig := secret.Data[secretRef.Key]
+	kubeconfig = secret.Data[secretRef.Key]
+	k.cache.Set(instance.GetLabels()[appcatruntime.ProviderConfigLabel], kubeconfig, 0)
 
 	return kubeconfig, nil
 }

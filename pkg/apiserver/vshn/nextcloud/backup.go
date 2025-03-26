@@ -1,6 +1,7 @@
 package nextcloud
 
 import (
+	"github.com/dgraph-io/ristretto/v2"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -37,6 +38,15 @@ func New() restbuilder.ResourceHandlerProvider {
 			return nil, err
 		}
 
+		cache, err := ristretto.NewCache(&ristretto.Config[string, []byte]{
+			NumCounters: 1e3,
+			MaxCost:     10000000, // maximum cost of cache (10 MB).
+			BufferItems: 64,       // number of keys per Get buffer
+		})
+		if err != nil {
+			return nil, err
+		}
+
 		_ = k8upv1.AddToScheme(c.Scheme())
 
 		noopImplementation := noop.New(s, &appcatv1.VSHNNextcloudBackup{}, &appcatv1.VSHNNextcloudBackupList{})
@@ -53,8 +63,7 @@ func New() restbuilder.ResourceHandlerProvider {
 		return &vshnNextcloudBackupStorage{
 			snapshothandler: k8up.New(c),
 			vshnNextcloud: &concreteNextcloudProvider{
-				client:             c,
-				ClientConfigurator: &apiserver.KubeClient{},
+				ClientConfigurator: apiserver.New(c, cache),
 			},
 			Noop: *noopImplementation,
 			sgBackup: postgres.KubeSGBackupProvider{

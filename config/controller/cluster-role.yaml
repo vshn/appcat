@@ -29,6 +29,24 @@ rules:
   - update
   - watch
 - apiGroups:
+  - codey.io
+  resources:
+  - codeyinstances
+  - codeyinstances/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+- apiGroups:
   - syn.tools
   resources:
   - compositemariadbdatabaseinstances

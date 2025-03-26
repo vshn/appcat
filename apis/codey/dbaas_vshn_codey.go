@@ -1,7 +1,11 @@
 package codey
 
 import (
+	"fmt"
+	"strings"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -112,4 +116,87 @@ type VSHNCodeyInstanceSizeSpec struct {
 	// +kubebuilder:default=mini
 	// Plan is the name of the resource plan that defines the compute resources.
 	Plan string `json:"plan,omitempty"`
+}
+
+// No-ops to statisfy common.Composite
+func (v *CodeyInstance) GetAllowAllNamespaces() bool {
+	return false
+}
+
+func (v *CodeyInstance) GetAllowedNamespaces() []string {
+	return []string{}
+}
+
+func (v *CodeyInstance) GetBackupRetention() vshnv1.K8upRetentionPolicy {
+	return vshnv1.K8upRetentionPolicy{}
+}
+func (v *CodeyInstance) GetBackupSchedule() string {
+	return ""
+}
+
+func (v *CodeyInstance) GetServiceName() string {
+	return "codey"
+}
+
+func (v *CodeyInstance) GetBillingName() string {
+	return "appcat-" + v.GetServiceName()
+}
+
+func (v *CodeyInstance) GetClaimName() string {
+	return v.GetLabels()["crossplane.io/claim-name"]
+}
+
+func (v *CodeyInstance) GetClaimNamespace() string {
+	return v.GetLabels()["crossplane.io/claim-namespace"]
+}
+
+func (v *CodeyInstance) GetFullMaintenanceSchedule() vshnv1.VSHNDBaaSMaintenanceScheduleSpec {
+	return vshnv1.VSHNDBaaSMaintenanceScheduleSpec{}
+}
+
+func (v *CodeyInstance) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-forgejo-%s", v.GetName())
+}
+
+func (v *XCodeyInstance) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-forgejo-%s", v.GetName())
+}
+
+func (v *CodeyInstance) GetInstances() int {
+	return 0
+}
+
+func (v *CodeyInstance) GetMonitoring() vshnv1.VSHNMonitoring {
+	return vshnv1.VSHNMonitoring{}
+}
+
+func (v *CodeyInstance) GetPDBLabels() map[string]string {
+	return map[string]string{}
+}
+
+func (v *CodeyInstance) GetSLA() string {
+	return ""
+}
+
+func (v *CodeyInstance) GetSecurity() *vshnv1.Security {
+	return &vshnv1.Security{}
+}
+
+func (v *CodeyInstance) GetSize() vshnv1.VSHNSizeSpec {
+	return vshnv1.VSHNSizeSpec{}
+}
+
+func (v *CodeyInstance) GetWorkloadName() string {
+	if strings.Contains(v.GetName(), "forgejo") {
+		return v.GetName()
+	}
+	return v.GetName() + "-forgejo"
+}
+
+func (v *CodeyInstance) GetWorkloadPodTemplateLabelsManager() vshnv1.PodTemplateLabelsManager {
+	return &vshnv1.StatefulSetManager{}
+}
+
+func (v *CodeyInstance) SetInstanceNamespaceStatus() {
+	// No-op
 }

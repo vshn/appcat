@@ -53,8 +53,7 @@ func New() restbuilder.ResourceHandlerProvider {
 		return &vshnNextcloudBackupStorage{
 			snapshothandler: k8up.New(c),
 			vshnNextcloud: &concreteNextcloudProvider{
-				client:             c,
-				ClientConfigurator: &apiserver.KubeClient{},
+				ClientConfigurator: apiserver.New(c),
 			},
 			Noop: *noopImplementation,
 			sgBackup: postgres.KubeSGBackupProvider{

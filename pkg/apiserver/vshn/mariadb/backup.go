@@ -4,6 +4,7 @@ import (
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/pkg/apiserver/noop"
 	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/k8up"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -44,7 +45,7 @@ func New() restbuilder.ResourceHandlerProvider {
 		return &vshnMariaDBBackupStorage{
 			snapshothandler: k8up.New(c),
 			vshnMariaDB: &concreteMariaDBProvider{
-				client: c,
+				ClientConfigurator: apiserver.New(c),
 			},
 			Noop: *noopImplementation,
 		}, nil

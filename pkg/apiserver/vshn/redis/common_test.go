@@ -5,6 +5,7 @@ import (
 
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/k8up"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/watch"
@@ -17,6 +18,7 @@ var _ k8up.Snapshothandler = &mockhandler{}
 type mockprovider struct {
 	err       error
 	instances *vshnv1.VSHNRedisList
+	apiserver.ClientConfigurator
 }
 
 func (m *mockprovider) ListVSHNRedis(ctx context.Context, namespace string) (*vshnv1.VSHNRedisList, error) {
@@ -34,11 +36,7 @@ func (m *mockprovider) ListVSHNRedis(ctx context.Context, namespace string) (*vs
 	return instances, m.err
 }
 
-func (m *mockprovider) GetKubeConfig(ctx context.Context, instance vshnv1.VSHNRedis) ([]byte, error) {
-	return nil, nil
-}
-
-func (m *mockprovider) GetKubeClient(ctx context.Context, instance vshnv1.VSHNRedis) (client.WithWatch, error) {
+func (m *mockprovider) GetKubeClient(ctx context.Context, instance client.Object) (client.WithWatch, error) {
 	return nil, nil
 }
 

@@ -114,7 +114,7 @@ func TestVSHNPostgresBackupStorage_List(t *testing.T) {
 				Return(tc.postgresqls, nil).
 				Times(1)
 			vshnPostgresProvider.EXPECT().
-				GetKubeClient(gomock.Any(), gomock.Any()).
+				GetDynKubeClient(gomock.Any(), gomock.Any()).
 				Return(tc.client, nil).
 				Times(len(tc.postgresqls.Items))
 

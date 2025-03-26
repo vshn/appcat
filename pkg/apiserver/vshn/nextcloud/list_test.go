@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -17,7 +18,9 @@ func Test_vshnNextcloudBackupStorage_getPostgreSQLNamespaceAndName(t *testing.T)
 		WithObjects().Build()
 
 	nextCloudStorage := vshnNextcloudBackupStorage{
-		client: fclient,
+		vshnNextcloud: &concreteNextcloudProvider{
+			ClientConfigurator: apiserver.New(fclient),
+		},
 	}
 
 	// Given

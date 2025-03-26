@@ -108,6 +108,12 @@ type KubeClient struct {
 	client.WithWatch
 }
 
+func New(client client.WithWatch) *KubeClient {
+	return &KubeClient{
+		WithWatch: client,
+	}
+}
+
 // GetKubeClient will return a `Client` for the provided instance and kubeclient
 // It will check where the instance is running on and will return either the client
 // for the remote cluster (non-converged) or nil for the local cluster
@@ -125,13 +131,14 @@ func (k *KubeClient) GetKubeClient(ctx context.Context, instance client.Object) 
 	if err != nil {
 		return nil, err
 	}
-	client, err := client.NewWithWatch(config, client.Options{
+	kubeClient, err := client.NewWithWatch(config, client.Options{
 		Scheme: pkg.SetupScheme(),
 	})
 	if err != nil {
-		return client, err
+		return nil, err
 	}
-	return client, nil
+
+	return kubeClient, nil
 }
 
 // GetDynKubeClient will return a `DynamicClient` for the provided instance and kubeclient
@@ -176,6 +183,5 @@ func (k *KubeClient) getKubeConfig(ctx context.Context, instance client.Object) 
 	}
 
 	kubeconfig := secret.Data[secretRef.Key]
-
 	return kubeconfig, nil
 }

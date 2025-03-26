@@ -110,7 +110,7 @@ func GetFromEvent(in watch.Event) *v1.SGBackupInfo {
 func convertToSGBackupInfo(object *unstructured.Unstructured) (*v1.SGBackupInfo, error) {
 	content := object.UnstructuredContent()
 	objectMeta, exists, err := unstructured.NestedMap(content, v1.Metadata)
-	if err != nil || exists == false {
+	if err != nil || !exists {
 		return nil, fmt.Errorf("cannot parse metadata from object %s", object)
 	}
 

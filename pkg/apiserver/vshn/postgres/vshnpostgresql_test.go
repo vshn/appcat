@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/test/mocks"
+	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -50,10 +50,9 @@ func Test_ListVSHNPostgreSQL(t *testing.T) {
 			// GIVEN
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-			client := mocks.NewMockClient(ctrl)
+			client := mocks.NewMockWithWatch(ctrl)
 			provider := kubeVSHNPostgresqlProvider{
-				client,
-				ClientConfigurator: &apiserver.KubeClient{},
+				ClientConfigurator: apiserver.New(client),
 			}
 
 			client.EXPECT().

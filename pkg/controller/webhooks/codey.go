@@ -111,7 +111,7 @@ func isCodeyFqdnUnique(fqdn string, cl client.Client) error {
 				return field.Invalid(
 					field.NewPath("metadata", "name"),
 					strings.Split(fqdn, ".")[0],
-					fmt.Sprintf("produces a codey FQDN (%s) that is already in use", fqdn),
+					fmt.Sprintf("produces an FQDN '%s' that is already in use, please choose another name", fqdn),
 				)
 			}
 		}

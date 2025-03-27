@@ -28,7 +28,7 @@ func TestPostgreSQL_Probe(t *testing.T) {
 	password := "bar"
 	db := "buzz"
 
-	res, err := pool.Run("postgres", "12.3", []string{
+	res, err := pool.Run("quay.io/lib/postgres", "12.3", []string{
 		"POSTGRES_USER=" + user,
 		"POSTGRES_PASSWORD=" + password,
 		"POSTGRES_DB=" + db,

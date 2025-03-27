@@ -176,7 +176,9 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 		},
 	}
 
-	serverCert.Spec.DNSNames = append(serverCert.Spec.DNSNames, opts.AdditionalSans...)
+	if opts != nil {
+		serverCert.Spec.DNSNames = append(serverCert.Spec.DNSNames, opts.AdditionalSans...)
+	}
 
 	cd := []xkube.ConnectionDetail{
 		{

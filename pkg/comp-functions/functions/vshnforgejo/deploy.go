@@ -180,6 +180,13 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		},
 	}
 
+	if svc.Config.Data["imageRegistry"] == "" {
+		err := common.SetNestedObjectValue(values, []string{"image", "registry"}, svc.Config.Data["imageRegistry"])
+		if err != nil {
+			return err
+		}
+	}
+
 	appName := comp.Spec.Parameters.Service.ForgejoSettings.AppName
 	if appName != "" {
 		common.SetNestedObjectValue(values, []string{"gitea", "config", "APP_NAME"}, appName)

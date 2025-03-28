@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 	"regexp"
 	"time"
@@ -28,26 +29,26 @@ type Minio struct {
 	k8sClient  client.Client
 	httpClient *http.Client
 	log        logr.Logger
+	release.VersionHandler
 }
 
 // NewMinio returns a new Minio object
-func NewMinio(c client.Client, hc *http.Client) *Minio {
+func NewMinio(c client.Client, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *Minio {
 	return &Minio{
-		k8sClient:  c,
-		httpClient: hc,
+		k8sClient:      c,
+		httpClient:     hc,
+		log:            logger,
+		VersionHandler: vh,
 	}
 }
 
-// DoMaintenance will run minios's maintenance script.
+// DoMaintenance will run minio's maintenance script.
 func (m *Minio) DoMaintenance(ctx context.Context) error {
-	m.log = logr.FromContextOrDiscard(ctx).WithValues("type", "minio")
 	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
-
 	valuesPath := helm.NewValuePath("image", "tag")
-
 	err := m.ensureTagIsNotNil(ctx, valuesPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not ensure tag exists: %w", err)
 	}
 
 	return patcher.DoMaintenance(ctx, minioURL, valuesPath, compareMinioVersions)
@@ -101,9 +102,6 @@ func parseMinioDate(currentTag string) (time.Time, error) {
 
 func (m *Minio) ensureTagIsNotNil(ctx context.Context, valuesPath helm.ValuePath) error {
 	instanceNamespace := viper.GetString("INSTANCE_NAMESPACE")
-	if instanceNamespace == "" {
-		return fmt.Errorf("missing environment variable: %s", "INSTANCE_NAMESPACE")
-	}
 
 	m.log.Info("Ensuring that the release contains the tag path in values")
 

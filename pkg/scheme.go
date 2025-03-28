@@ -4,7 +4,8 @@ import (
 	"github.com/vshn/appcat/v4/apis/codey"
 	xhelm "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 
-	apix "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
+	apixv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
+	apixalphav1 "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
 
 	managedupgradev1beta1 "github.com/appuio/openshift-upgrade-controller/api/v1beta1"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -61,7 +62,8 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = netv1.AddToScheme(s)
 	_ = managedupgradev1beta1.AddToScheme(s)
 	_ = pgv1alpha1.SchemeBuilder.AddToScheme(s)
-	_ = apix.AddToScheme(s)
+	_ = apixalphav1.AddToScheme(s)
+	_ = apixv1.AddToScheme(s)
 	_ = pdbv1.AddToScheme(s)
 	_ = cloudscalev1.SchemeBuilder.AddToScheme(s)
 	_ = exoscalev1.SchemeBuilder.AddToScheme(s)

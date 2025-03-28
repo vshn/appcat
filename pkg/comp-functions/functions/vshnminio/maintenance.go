@@ -11,8 +11,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-var service = "minio"
-
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -33,7 +31,7 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime
 	instanceNamespace := getInstanceNamespace(comp)
 	schedule := comp.GetFullMaintenanceSchedule()
 
-	return maintenance.New(comp, svc, schedule, instanceNamespace, service).
+	return maintenance.New(comp, svc, schedule, instanceNamespace, comp.GetServiceName()).
 		WithHelmBasedService().
 		Run(ctx)
 }

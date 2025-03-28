@@ -3,13 +3,14 @@ package maintenance
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"time"
 
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/go-logr/logr"
-	"github.com/spf13/viper"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,32 +32,46 @@ var (
 
 // PostgreSQL handles the maintenance of postgresql services
 type PostgreSQL struct {
-	Client            client.WithWatch
-	StackgresClient   *stackgres.StackgresClient
-	log               logr.Logger
-	MaintTimeout      time.Duration
+	k8sClient client.WithWatch
+	sClient   *stackgres.StackgresClient
+	log       logr.Logger
+	timeout   time.Duration
+	release.VersionHandler
 	instanceNamespace string
-	ctx               context.Context
 	apiUserName       string
 	apiPassword       string
+	sgNamespace       string
 	claimNamespace    string
 	claimName         string
-	Repack, Vacuum    string
+	repack            string
+	vacuum            string
+}
+
+// NewPostgreSQL returns a new PostgreSQL maintenance job runner
+func NewPostgreSQL(c client.WithWatch, sClient *stackgres.StackgresClient, versionHandler release.VersionHandler, log logr.Logger) *PostgreSQL {
+	return &PostgreSQL{
+		k8sClient:         c,
+		sClient:           sClient,
+		timeout:           time.Hour,
+		log:               log,
+		VersionHandler:    versionHandler,
+		instanceNamespace: viper.GetString("INSTANCE_NAMESPACE"),
+		apiUserName:       viper.GetString("API_USERNAME"),
+		apiPassword:       viper.GetString("API_PASSWORD"),
+		sgNamespace:       viper.GetString("SG_NAMESPACE"),
+		claimNamespace:    viper.GetString("CLAIM_NAMESPACE"),
+		claimName:         viper.GetString("CLAIM_NAME"),
+		repack:            viper.GetString("REPACK_ENABLED"),
+		vacuum:            viper.GetString("VACUUM_ENABLED"),
+	}
 }
 
 // DoMaintenance will run postgresql's maintenance script.
 func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
-	if err := p.configure(); err != nil {
-		return err
-	}
-	p.ctx = ctx
-
-	p.log = logr.FromContextOrDiscard(p.ctx).WithValues("instanceNamespace", p.instanceNamespace)
-
 	p.log.Info("Starting maintenance on postgresql instance")
 
-	sgclusters, err := p.listClustersInNamespace()
+	sgclusters, err := p.listClustersInNamespace(ctx)
 	if err != nil {
 		return err
 	}
@@ -73,7 +88,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
 	if upgradeRequired {
 		p.log.Info("Doing a security maintenance")
-		err := p.createSecurityUpgrade(sgCluster.GetName())
+		err := p.createSecurityUpgrade(ctx, sgCluster.GetName())
 		if err != nil {
 			return err
 		}
@@ -88,7 +103,7 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 	}
 
 	p.log.Info("Checking for upgrades...")
-	op, err := p.upgradeVersion(currentVersion, sgCluster.GetName())
+	op, err := p.upgradeVersion(ctx, currentVersion, sgCluster.GetName())
 	if err != nil {
 		return err
 	}
@@ -102,25 +117,25 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 		return fmt.Errorf("cannot watch for maintenance sgdbops resources: %v", err)
 	}
 
-	if p.Vacuum == "true" {
+	if p.vacuum == "true" {
 		p.log.Info("Vacuuming databases...")
-		err = p.createVacuum(sgCluster.GetName())
+		err = p.createVacuum(ctx, sgCluster.GetName())
 		if err != nil {
 			return fmt.Errorf("cannot create vacuum: %v", err)
 		}
 	}
 
-	if p.Repack == "true" {
+	if p.repack == "true" {
 		p.log.Info("Repacking databases...")
-		err = p.createRepack(sgCluster.GetName())
+		err = p.createRepack(ctx, sgCluster.GetName())
 		if err != nil {
 			return fmt.Errorf("cannot create repack: %v", err)
 		}
 	}
 	// default to repack if for some reason it was possible to disable both vacuum and repack
 	// this should be catched by webhook
-	if p.Vacuum != "true" && p.Repack != "true" {
-		err = p.createRepack(sgCluster.GetName())
+	if p.vacuum != "true" && p.repack != "true" {
+		err = p.createRepack(ctx, sgCluster.GetName())
 		if err != nil {
 			return fmt.Errorf("cannot create repack: %v", err)
 		}
@@ -143,7 +158,7 @@ func (p *PostgreSQL) checkRequiredUpgrade(sgCluster stackgresv1.SGCluster) bool 
 	return false
 }
 
-func (p *PostgreSQL) upgradeVersion(currentVersion string, sgClusterName string) (OpName, error) {
+func (p *PostgreSQL) upgradeVersion(ctx context.Context, currentVersion string, sgClusterName string) (OpName, error) {
 	versionList, err := p.fetchVersionList()
 	if err != nil {
 		p.log.Error(err, "StackGres API error")
@@ -160,30 +175,30 @@ func (p *PostgreSQL) upgradeVersion(currentVersion string, sgClusterName string)
 	p.log.Info("Found versions", "current", currentVersion, "latest", latestMinor)
 	if currentVersion != latestMinor {
 		p.log.Info("Doing a minor upgrade")
-		return mvu, p.createMinorUpgrade(sgClusterName, latestMinor)
+		return mvu, p.createMinorUpgrade(ctx, sgClusterName, latestMinor)
 	}
 
 	p.log.Info("Checking for EOL")
 	if versionList != nil && p.isEOL(currentVersion, versionList) {
-		err = p.setEOLStatus()
+		err = p.setEOLStatus(ctx)
 		if err != nil {
 			return "", fmt.Errorf("cannot set EOL status on claim: %w", err)
 		}
 	}
 
 	p.log.Info("Doing a security maintenance")
-	return su, p.createSecurityUpgrade(sgClusterName)
+	return su, p.createSecurityUpgrade(ctx, sgClusterName)
 }
 
 func (p *PostgreSQL) waitForUpgrade(ctx context.Context, op OpName) error {
 	ls := &stackgresv1.SGDbOpsList{}
-	watcher, err := p.Client.Watch(ctx, ls, client.InNamespace(p.instanceNamespace))
+	watcher, err := p.k8sClient.Watch(ctx, ls, client.InNamespace(p.instanceNamespace))
 	if err != nil {
 		return fmt.Errorf("watch error:%v for sgdbops resources in %s", err, p.instanceNamespace)
 	}
 	defer watcher.Stop()
 	rc := watcher.ResultChan()
-	timer := time.NewTimer(p.MaintTimeout)
+	timer := time.NewTimer(p.timeout)
 	for {
 		select {
 
@@ -221,10 +236,10 @@ func isUpgradeFinished(v stackgresv1.SGDbOpsStatusConditionsItem) bool {
 	return *v.Reason == "OperationCompleted" && *v.Status == "True"
 }
 
-func (p *PostgreSQL) listClustersInNamespace() (*stackgresv1.SGClusterList, error) {
+func (p *PostgreSQL) listClustersInNamespace(ctx context.Context) (*stackgresv1.SGClusterList, error) {
 	sgClusters := &stackgresv1.SGClusterList{}
 
-	err := p.Client.List(p.ctx, sgClusters, &client.ListOptions{Namespace: p.instanceNamespace})
+	err := p.k8sClient.List(ctx, sgClusters, &client.ListOptions{Namespace: p.instanceNamespace})
 	if err != nil {
 		return nil, err
 	}
@@ -234,36 +249,36 @@ func (p *PostgreSQL) listClustersInNamespace() (*stackgresv1.SGClusterList, erro
 }
 
 func (p *PostgreSQL) fetchVersionList() (*stackgres.PgVersions, error) {
-	return p.StackgresClient.GetAvailableVersions()
+	return p.sClient.GetAvailableVersions()
 }
 
-func (p *PostgreSQL) createRepack(clusterName string) error {
+func (p *PostgreSQL) createRepack(ctx context.Context, clusterName string) error {
 	repack := p.getDbOpsObject(clusterName, "databasesrepack", r)
 
-	return p.applyDbOps(repack)
+	return p.applyDbOps(ctx, repack)
 }
 
-func (p *PostgreSQL) createVacuum(clusterName string) error {
+func (p *PostgreSQL) createVacuum(ctx context.Context, clusterName string) error {
 	vacuum := p.getDbOpsObject(clusterName, "vacuum", v)
 
-	return p.applyDbOps(vacuum)
+	return p.applyDbOps(ctx, vacuum)
 }
 
-func (p *PostgreSQL) createMinorUpgrade(clusterName, minorVersion string) error {
+func (p *PostgreSQL) createMinorUpgrade(ctx context.Context, clusterName, minorVersion string) error {
 	minorMaint := p.getDbOpsObject(clusterName, "minorupgrade", mvu)
 	minorMaint.Spec.MinorVersionUpgrade = &stackgresv1.SGDbOpsSpecMinorVersionUpgrade{
 		Method:          pointer.String("InPlace"),
 		PostgresVersion: &minorVersion,
 	}
-	return p.applyDbOps(minorMaint)
+	return p.applyDbOps(ctx, minorMaint)
 }
 
-func (p *PostgreSQL) createSecurityUpgrade(clusterName string) error {
+func (p *PostgreSQL) createSecurityUpgrade(ctx context.Context, clusterName string) error {
 	secMaint := p.getDbOpsObject(clusterName, "securitymaintenance", su)
 	secMaint.Spec.SecurityUpgrade = &stackgresv1.SGDbOpsSpecSecurityUpgrade{
 		Method: pointer.String("InPlace"),
 	}
-	return p.applyDbOps(secMaint)
+	return p.applyDbOps(ctx, secMaint)
 }
 
 func (p *PostgreSQL) getDbOpsObject(clusterName, objectName string, op OpName) *stackgresv1.SGDbOps {
@@ -281,60 +296,28 @@ func (p *PostgreSQL) getDbOpsObject(clusterName, objectName string, op OpName) *
 
 }
 
-func (p *PostgreSQL) applyDbOps(obj *stackgresv1.SGDbOps) error {
-	err := p.Client.Delete(p.ctx, obj)
+func (p *PostgreSQL) applyDbOps(ctx context.Context, obj *stackgresv1.SGDbOps) error {
+	err := p.k8sClient.Delete(ctx, obj)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
-	return p.Client.Create(p.ctx, obj)
-}
-
-func (p *PostgreSQL) configure() error {
-
-	errString := "missing environment variable: %s"
-
-	p.instanceNamespace = viper.GetString("INSTANCE_NAMESPACE")
-	if p.instanceNamespace == "" {
-		return fmt.Errorf(errString, "INSTANCE_NAMESPACE")
-	}
-
-	p.claimName = viper.GetString("CLAIM_NAME")
-	if p.claimName == "" {
-		return fmt.Errorf(errString, "CLAIM_NAME")
-	}
-
-	p.claimNamespace = viper.GetString("CLAIM_NAMESPACE")
-	if p.claimNamespace == "" {
-		return fmt.Errorf(errString, "CLAIM_NAMESPACE")
-	}
-
-	p.Vacuum = viper.GetString("VACUUM_ENABLED")
-	if p.claimNamespace == "" {
-		return fmt.Errorf(errString, "VACUUM_ENABLED")
-	}
-
-	p.Repack = viper.GetString("REPACK_ENABLED")
-	if p.claimNamespace == "" {
-		return fmt.Errorf(errString, "REPACK_ENABLED")
-	}
-
-	return nil
+	return p.k8sClient.Create(ctx, obj)
 }
 
 func (p *PostgreSQL) isEOL(currentVersion string, versionList *stackgres.PgVersions) bool {
 	return !slices.Contains(versionList.Postgresql, currentVersion)
 }
 
-func (p *PostgreSQL) setEOLStatus() error {
+func (p *PostgreSQL) setEOLStatus(ctx context.Context) error {
 	claim := &vshnv1.VSHNPostgreSQL{}
 
-	err := p.Client.Get(p.ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim)
+	err := p.k8sClient.Get(ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim)
 	if err != nil {
 		return err
 	}
 
 	claim.Status.IsEOL = true
 
-	return p.Client.Update(p.ctx, claim)
+	return p.k8sClient.Update(ctx, claim)
 }

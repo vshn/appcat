@@ -25,6 +25,8 @@ type Maintenance struct {
 	instanceNamespace string
 	// mainRole is maintenance role name
 	mainRole string
+	// additionalClusterRoleBinding adds another binding to a cluster role from component
+	additionalClusterRoleBinding string
 	// service is the service for which this maintenance is supposed to run. Ex:. postgresql
 	service string
 	// helmBasedService whether the maintenance is for a helm based service
@@ -119,6 +121,13 @@ func (m *Maintenance) WithRole(role string) *Maintenance {
 	return m
 }
 
+// WithAdditionalClusterRoleBinding will add an additional role at cluster level
+// The role must be created in component appcat and must be passed via composition's config map
+func (m *Maintenance) WithAdditionalClusterRoleBinding(clusterrolebinding string) *Maintenance {
+	m.additionalClusterRoleBinding = clusterrolebinding
+	return m
+}
+
 // Run generates k8s resources for maintenance
 func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
@@ -135,7 +144,7 @@ func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 
 	// Helm based services are having maintenance done in a control namespace therefore rbac rules are created
 	// once in the component
-	if !m.helmBasedService && m.mainRole != "" {
+	if !m.helmBasedService && m.mainRole != "" && m.additionalClusterRoleBinding != "" {
 		err = m.createRBAC(ctx)
 		if err != nil {
 			return runtime.NewFatalResult(err)
@@ -167,14 +176,19 @@ func (m *Maintenance) createRBAC(ctx context.Context) error {
 		return fmt.Errorf("can't create maintenance role: %v", err)
 	}
 
-	err = m.createMaintenanceRolebinding(ctx)
+	err = m.createMaintenanceRoleBinding(ctx)
 	if err != nil {
 		return fmt.Errorf("can't create maintenance rolebinding: %v", err)
+	}
+
+	err = m.createMaintenanceClusterRoleBinding(ctx)
+	if err != nil {
+		return fmt.Errorf("can't create maintenance clusterrolebinding: %v", err)
 	}
 	return nil
 }
 
-func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule string) error {
+func (m *Maintenance) createMaintenanceJob(_ context.Context, cronSchedule string) error {
 	imageTag := m.svc.Config.Data["imageTag"]
 	if imageTag == "" {
 		return fmt.Errorf("no imageTag field in composition function configuration")
@@ -207,8 +221,28 @@ func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule str
 			Value: m.resource.GetLabels()["crossplane.io/claim-name"],
 		},
 		{
+			Name:  "COMPOSITE_NAME",
+			Value: m.resource.GetName(),
+		},
+		{
 			Name:  "CLAIM_NAMESPACE",
 			Value: m.resource.GetLabels()["crossplane.io/claim-namespace"],
+		},
+		{
+			Name:  "OWNER_GROUP",
+			Value: m.svc.Config.Data["ownerGroup"],
+		},
+		{
+			Name:  "OWNER_VERSION",
+			Value: m.svc.Config.Data["ownerVersion"],
+		},
+		{
+			Name:  "OWNER_KIND",
+			Value: m.svc.Config.Data["ownerKind"],
+		},
+		{
+			Name:  "SERVICE_ID",
+			Value: m.svc.Config.Data["serviceID"],
 		},
 	}
 
@@ -247,8 +281,33 @@ func (m *Maintenance) createMaintenanceJob(ctx context.Context, cronSchedule str
 
 	return m.svc.SetDesiredKubeObject(job, m.resource.GetName()+"-maintenancejob")
 }
+func (m *Maintenance) createMaintenanceClusterRoleBinding(_ context.Context) error {
+	name := m.svc.Config.Data["additionalMaintenanceClusterRole"]
+	if name == "" {
+		return fmt.Errorf("no additionalMaintenanceClusterRole field in composition function configuration")
+	}
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: m.additionalClusterRoleBinding,
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     name,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      maintServiceAccountName,
+				Namespace: m.instanceNamespace,
+			},
+		},
+	}
 
-func (m *Maintenance) createMaintenanceRolebinding(ctx context.Context) error {
+	return m.svc.SetDesiredKubeObject(clusterRoleBinding, m.resource.GetName()+"-maintenance-clusterrolebinding")
+}
+
+func (m *Maintenance) createMaintenanceRoleBinding(_ context.Context) error {
 	roleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.mainRole,
@@ -270,7 +329,7 @@ func (m *Maintenance) createMaintenanceRolebinding(ctx context.Context) error {
 	return m.svc.SetDesiredKubeObject(roleBinding, m.resource.GetName()+"-maintenance-rolebinding")
 }
 
-func (m *Maintenance) createMaintenanceRole(ctx context.Context) error {
+func (m *Maintenance) createMaintenanceRole(_ context.Context) error {
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.mainRole,
@@ -282,7 +341,7 @@ func (m *Maintenance) createMaintenanceRole(ctx context.Context) error {
 	return m.svc.SetDesiredKubeObject(role, m.resource.GetName()+"-maintenance-role")
 }
 
-func (m *Maintenance) createMaintenanceServiceAccount(ctx context.Context) error {
+func (m *Maintenance) createMaintenanceServiceAccount(_ context.Context) error {
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      maintServiceAccountName,

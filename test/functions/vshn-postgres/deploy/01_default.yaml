@@ -65,6 +65,7 @@ desired:
 input:
   apiVersion: v1
   data:
+    additionalMaintenanceClusterRole: role
     defaultPlan: standard-1
     controlNamespace: appcat-control
     plans:

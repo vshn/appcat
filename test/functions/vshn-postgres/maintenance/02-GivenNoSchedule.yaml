@@ -24,6 +24,7 @@ input:
   data:
     imageTag: v4.1.0
     sgNamespace: stackgres
+    additionalMaintenanceClusterRole: role
   kind: ConfigMap
   metadata:
     annotations: {}

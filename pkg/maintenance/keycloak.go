@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -18,22 +19,22 @@ type Keycloak struct {
 	k8sClient  client.Client
 	httpClient *http.Client
 	log        logr.Logger
+	release.VersionHandler
 }
 
 // NewKeycloak returns a new Keycloak object
-func NewKeycloak(c client.Client, hc *http.Client) *Keycloak {
+func NewKeycloak(c client.Client, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *Keycloak {
 	return &Keycloak{
-		k8sClient:  c,
-		httpClient: hc,
+		k8sClient:      c,
+		httpClient:     hc,
+		log:            logger,
+		VersionHandler: vh,
 	}
 }
 
 // DoMaintenance will run minios's maintenance script.
-func (m *Keycloak) DoMaintenance(ctx context.Context) error {
-	m.log = logr.FromContextOrDiscard(ctx).WithValues("type", "keycloak")
-	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
-
+func (k *Keycloak) DoMaintenance(ctx context.Context) error {
+	patcher := helm.NewImagePatcher(k.k8sClient, k.httpClient, k.log)
 	valuesPath := helm.NewValuePath("image", "tag")
-
 	return patcher.DoMaintenance(ctx, keycloakURL, valuesPath, helm.SemVerPatchesOnly(true))
 }

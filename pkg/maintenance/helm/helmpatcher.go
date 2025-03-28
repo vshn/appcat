@@ -121,13 +121,7 @@ type VersionComparisonStrategy func(VersionLister, string) (string, error)
 // tagPath should be the specific path in the helm values where the tag is specified. It must not be nil and needs to be initialized at least with an empty string.
 // versionComp contains the function to compare if a given list of versions actually contains a valid new version or not.
 func (h *ImagePatcher) DoMaintenance(ctx context.Context, tagURL string, tagPath ValuePath, versionComp VersionComparisonStrategy) error {
-	err := h.configure()
-	if err != nil {
-		return fmt.Errorf("cannot configure job to run: %v", err)
-	}
-
-	h.log = h.log.WithValues("instanceNamespace", h.instanceNamespace)
-
+	h.instanceNamespace = viper.GetString("INSTANCE_NAMESPACE")
 	h.log.Info("Starting maintenance on instance")
 
 	h.log.Info("Getting current versions")
@@ -276,15 +270,6 @@ func (h *ImagePatcher) getHubVersions(imageURL string) (VersionLister, error) {
 	}
 
 	return &Payload{Results: results}, nil
-}
-
-func (h *ImagePatcher) configure() error {
-	errString := "missing environment variable: %s"
-	h.instanceNamespace = viper.GetString("INSTANCE_NAMESPACE")
-	if h.instanceNamespace == "" {
-		return fmt.Errorf(errString, "INSTANCE_NAMESPACE")
-	}
-	return nil
 }
 
 // SemVerPatchesOnly is a VersionComparisonStrategy that will determine if the latest version as long as it adheres to semver

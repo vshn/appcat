@@ -115,6 +115,7 @@ func TestAddMaintenanceJob(t *testing.T) {
 			in := "vshn-postgresql-" + comp.GetName()
 			m := New(comp, svc, comp.Spec.Parameters.Maintenance, in, "postgresql").
 				WithPolicyRules([]rbacv1.PolicyRule{}).
+				WithAdditionalClusterRoleBinding("cluster-role-binding").
 				WithRole("crossplane:appcat:job:postgres:maintenance").
 				WithExtraResources(createMaintenanceSecretTest(in, svc.Config.Data["sgNamespace"], comp.GetName()+"-maintenance-secret"))
 

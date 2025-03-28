@@ -9,7 +9,6 @@ import (
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
-	"k8s.io/utils/ptr"
 )
 
 func Test_enableTimescaleDB(t *testing.T) {
@@ -110,8 +109,7 @@ func TestAddExtensions(t *testing.T) {
 			want:    nil,
 			wantExensions: []stackgresv1.SGClusterSpecPostgresExtensionsItem{
 				{
-					Name:    "pg_repack",
-					Version: ptr.To("1.5.0"),
+					Name: "pg_repack",
 				},
 			},
 		},
@@ -122,8 +120,7 @@ func TestAddExtensions(t *testing.T) {
 			want:    nil,
 			wantExensions: []stackgresv1.SGClusterSpecPostgresExtensionsItem{
 				{
-					Name:    "pg_repack",
-					Version: ptr.To("1.5.0"),
+					Name: "pg_repack",
 				},
 			},
 		},

@@ -37,7 +37,11 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 	}
 
 	for _, instance := range instances.Items {
-		snapshots, err := v.snapshothandler.List(ctx, instance.Status.InstanceNamespace)
+		client, err := v.vshnNextcloud.GetKubeClient(ctx, &instance)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
+		}
+		snapshots, err := v.snapshothandler.List(ctx, instance.Status.InstanceNamespace, client)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return nil, err
 		}
@@ -46,7 +50,11 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 
 		sgBackups := []appcatv1.SGBackupInfo{}
 		if pgNamespace != "" {
-			sg, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, options)
+			dynClient, err := v.vshnNextcloud.GetDynKubeClient(ctx, &instance)
+			if err != nil {
+				return nil, err
+			}
+			sg, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, dynClient, options)
 			if err != nil {
 				return nil, err
 			}
@@ -123,7 +131,11 @@ func (v *vshnNextcloudBackupStorage) Watch(ctx context.Context, options *metaint
 
 	mw := apiserver.NewEmptyMultiWatch()
 	for _, value := range instances.Items {
-		backupWatcher, err := v.snapshothandler.Watch(ctx, value.Status.InstanceNamespace, options)
+		client, err := v.vshnNextcloud.GetKubeClient(ctx, &value)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
+		}
+		backupWatcher, err := v.snapshothandler.Watch(ctx, value.Status.InstanceNamespace, options, client)
 		if err != nil {
 			return nil, apiserver.ResolveError(appcatv1.GetGroupResource(appcatv1.ResourceBackup), err)
 		}
@@ -177,7 +189,7 @@ func (v *vshnNextcloudBackupStorage) getPostgreSQLNamespaceAndName(ctx context.C
 	compName := inst.Spec.ResourceRef.Name
 	ncComp := vshnv1.XVSHNNextcloud{}
 
-	err := v.client.Get(ctx, client.ObjectKey{Name: compName}, &ncComp)
+	err := v.vshnNextcloud.Get(ctx, client.ObjectKey{Name: compName}, &ncComp)
 	if err != nil {
 		return "", ""
 	}
@@ -192,7 +204,7 @@ func (v *vshnNextcloudBackupStorage) getPostgreSQLNamespaceAndName(ctx context.C
 
 	pgComp := &vshnv1.XVSHNPostgreSQL{}
 
-	err = v.client.Get(ctx, client.ObjectKey{Name: pgName}, pgComp)
+	err = v.vshnNextcloud.Get(ctx, client.ObjectKey{Name: pgName}, pgComp)
 	if err != nil {
 		return "", ""
 	}

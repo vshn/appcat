@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func Test_vshnRedisBackupStorage_Get(t *testing.T) {
@@ -56,7 +56,7 @@ func Test_vshnRedisBackupStorage_Get(t *testing.T) {
 					Namespace: "ns1",
 				},
 				Spec: k8upv1.SnapshotSpec{
-					ID: pointer.String("myid"),
+					ID: ptr.To("myid"),
 				},
 			},
 			wantDate: metav1.Date(2023, time.April, 3, 13, 37, 0, 0, time.UTC),

@@ -1,8 +1,10 @@
 package postgres
 
 import (
+	"github.com/dgraph-io/ristretto/v2"
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/pkg/apiserver/noop"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,7 +19,16 @@ import (
 // New returns a new storage provider for VSHNPostgresBackup
 func New() restbuilder.ResourceHandlerProvider {
 	return func(s *runtime.Scheme, gasdf genericregistry.RESTOptionsGetter) (rest.Storage, error) {
-		c, err := client.New(loopback.GetLoopbackMasterClientConfig(), client.Options{})
+		c, err := client.NewWithWatch(loopback.GetLoopbackMasterClientConfig(), client.Options{})
+		if err != nil {
+			return nil, err
+		}
+
+		cache, err := ristretto.NewCache(&ristretto.Config[string, []byte]{
+			NumCounters: 1e3,
+			MaxCost:     10000000, // maximum cost of cache (10 MB).
+			BufferItems: 64,       // number of keys per Get buffer
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +53,7 @@ func New() restbuilder.ResourceHandlerProvider {
 				DynamicClient: dc.Resource(SGbackupGroupVersionResource),
 			},
 			vshnpostgresql: &kubeVSHNPostgresqlProvider{
-				Client: c,
+				ClientConfigurator: apiserver.New(c, cache),
 			},
 			Noop: *noopImplementation,
 		}, nil

@@ -51,25 +51,25 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 	ownerKind, ok := obj.GetLabels()[runtime.OwnerKindAnnotation]
 	if !ok || ownerKind == "" {
 		l.Info(runtime.OwnerKindAnnotation + " label not set, skipping evaluation")
-		return compositeInfo{Exists: false}, nil
+		return compositeInfo{Exists: true}, nil
 	}
 
 	ownerVersion, ok := obj.GetLabels()[runtime.OwnerVersionAnnotation]
 	if !ok || ownerVersion == "" {
 		l.Info(runtime.OwnerVersionAnnotation + " label not found, skipping evaluation")
-		return compositeInfo{Exists: false}, nil
+		return compositeInfo{Exists: true}, nil
 	}
 
 	onwerGroup, ok := obj.GetLabels()[runtime.OwnerGroupAnnotation]
 	if !ok || onwerGroup == "" {
 		l.Info(runtime.OwnerGroupAnnotation + " label not found, skipping evaluation")
-		return compositeInfo{Exists: false}, nil
+		return compositeInfo{Exists: true}, nil
 	}
 
 	ownerName, ok := obj.GetLabels()["crossplane.io/composite"]
 	if !ok || ownerName == "" {
 		l.Info("crossplane.io/composite label not found, skipping evaluation")
-		return compositeInfo{Exists: false}, nil
+		return compositeInfo{Exists: true}, nil
 	}
 
 	gvk := schema.GroupVersionKind{
@@ -104,13 +104,7 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 		return compositeInfo{Exists: true, Name: ownerName}, fmt.Errorf("cannot get composite: %w", err)
 	}
 
-	// Check if the composite is already being deleted, then we disengage the
-	// protection.
-	if comp.GetDeletionTimestamp() != nil {
-		return compositeInfo{Exists: false, Name: ownerName}, nil
-	}
-
-	return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName}, nil
+	return compositeInfo{Exists: true, Name: ownerName}, nil
 }
 
 // checkUnmanagedObject tries to get the composite information about objects that are not directly managed by Crossplane.

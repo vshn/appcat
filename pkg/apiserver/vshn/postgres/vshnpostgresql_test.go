@@ -4,10 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
+	"github.com/dgraph-io/ristretto/v2"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/test/mocks"
+	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -49,9 +51,14 @@ func Test_ListVSHNPostgreSQL(t *testing.T) {
 			// GIVEN
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-			client := mocks.NewMockClient(ctrl)
+			client := mocks.NewMockWithWatch(ctrl)
+			cache, _ := ristretto.NewCache(&ristretto.Config[string, []byte]{
+				NumCounters: 1e3,
+				MaxCost:     10000000, // maximum cost of cache (10 MB).
+				BufferItems: 64,       // number of keys per Get buffer
+			})
 			provider := kubeVSHNPostgresqlProvider{
-				client,
+				ClientConfigurator: apiserver.New(client, cache),
 			}
 
 			client.EXPECT().

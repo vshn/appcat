@@ -29,7 +29,11 @@ func (v *vshnPostgresBackupStorage) Get(ctx context.Context, name string, _ *met
 
 	var vshnBackup *v1.VSHNPostgresBackup
 	for _, value := range instances.Items {
-		backupInfo, err := v.sgbackups.GetSGBackup(ctx, name, value.Status.InstanceNamespace)
+		client, err := v.vshnpostgresql.GetDynKubeClient(ctx, &value)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
+		}
+		backupInfo, err := v.sgbackups.GetSGBackup(ctx, name, value.Status.InstanceNamespace, client)
 		if err != nil {
 			resolvedErr := apiserver.ResolveError(SGbackupGroupVersionResource.GroupResource(), err)
 			if apierrors.IsNotFound(resolvedErr) {

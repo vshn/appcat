@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/dgraph-io/ristretto/v2"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -16,8 +18,16 @@ func Test_vshnNextcloudBackupStorage_getPostgreSQLNamespaceAndName(t *testing.T)
 	fclient := fake.NewClientBuilder().WithScheme(pkg.SetupScheme()).
 		WithObjects().Build()
 
+	cache, _ := ristretto.NewCache(&ristretto.Config[string, []byte]{
+		NumCounters: 1e3,
+		MaxCost:     10000000, // maximum cost of cache (10 MB).
+		BufferItems: 64,       // number of keys per Get buffer
+	})
+
 	nextCloudStorage := vshnNextcloudBackupStorage{
-		client: fclient,
+		vshnNextcloud: &concreteNextcloudProvider{
+			ClientConfigurator: apiserver.New(fclient, cache),
+		},
 	}
 
 	// Given

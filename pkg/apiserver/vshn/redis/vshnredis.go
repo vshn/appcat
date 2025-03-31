@@ -4,6 +4,7 @@ import (
 	"context"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -11,17 +12,18 @@ import (
 
 type vshnRedisProvider interface {
 	ListVSHNRedis(ctx context.Context, namespace string) (*vshnv1.VSHNRedisList, error)
+	apiserver.ClientConfigurator
 }
 
 type concreteRedisProvider struct {
-	client client.Client
+	apiserver.ClientConfigurator
 }
 
 func (c *concreteRedisProvider) ListVSHNRedis(ctx context.Context, namespace string) (*vshnv1.VSHNRedisList, error) {
 
 	instances := &vshnv1.VSHNRedisList{}
 
-	err := c.client.List(ctx, instances, &client.ListOptions{Namespace: namespace})
+	err := c.List(ctx, instances, &client.ListOptions{Namespace: namespace})
 	if err != nil {
 		return nil, err
 	}

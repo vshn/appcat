@@ -372,10 +372,22 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
-	if svc.Config.Data["imageRegistry"] != "" {
+	if image := svc.Config.Data["nextcloud_image"]; image != "" {
 		values["image"] = map[string]interface{}{
-			"repository": svc.Config.Data["imageRegistry"],
+			"repository": image,
 		}
+	}
+
+	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
+		image := fmt.Sprintf("%s/%s", registry, "xperimental/nextcloud-exporter")
+
+		err := common.SetNestedObjectValue(values, []string{"metrics", "image"}, map[string]any{
+			"repository": image,
+		})
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	return values, nil
@@ -397,7 +409,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
 	}
 
-	err = configureCronSidecar(values, version)
+	err = configureCronSidecar(values, version, svc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot set keycloak version for cron sidecar: %w", err)
 	}
@@ -409,14 +421,20 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	return release, err
 }
 
-func configureCronSidecar(values map[string]interface{}, version string) error {
+func configureCronSidecar(values map[string]interface{}, version string, svc *runtime.ServiceRuntime) error {
+	image := "nextcloud:" + version
+
+	if nextcloudImage := svc.Config.Data["nextcloud_image"]; nextcloudImage != "" {
+		image = fmt.Sprintf("%s:%s", nextcloudImage, version)
+	}
+
 	extraSidecarContainers := []any{
 		map[string]any{
 			"name": "cron",
 			"command": []any{
 				"/cron.sh",
 			},
-			"image": "nextcloud:" + version,
+			"image": image,
 			"volumeMounts": []any{
 				map[string]any{
 					"mountPath": "/var/www",

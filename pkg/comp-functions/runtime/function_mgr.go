@@ -121,6 +121,19 @@ type ComposedResourceOption func(obj xpresource.Managed)
 
 type ResourceReadiness resource.Ready
 
+type DesiredManifest interface {
+	GetUnstructured() runtime.RawExtension
+}
+
+type ObservedManifest interface {
+	FromUnstructured(manifest runtime.RawExtension)
+}
+
+type ServiceState interface {
+	GetDesiredState() any
+	// SetObservedState(map[resource.Name]*resource.ObservedComposed) error
+}
+
 // RegisterService will register a service to the map of all services.
 func RegisterService[T client.Object](name string, function Service[T]) {
 	serviceRegistry[name] = function
@@ -1453,4 +1466,42 @@ func (s *ServiceRuntime) SetDesiredResourceReadiness(name string, ready Resource
 		res.Ready = resource.Ready(ready)
 		s.desiredResources[resource.Name(name)] = res
 	}
+}
+
+func (s *ServiceRuntime) ApplyState(state ServiceState) {
+
+	compName := s.observedComposite.GetName()
+
+	desiredState := state.GetDesiredState()
+
+	values := reflect.ValueOf(desiredState)
+	typeOfD := values.Type()
+
+	for i := 0; i < values.NumField(); i++ {
+		name := strings.ToLower(typeOfD.Field(i).Name)
+		iManifest := values.Field(i).Interface()
+
+		concreteManifest, ok := iManifest.(client.Object)
+		if !ok {
+			panic("not a runtime.Object")
+		}
+
+		cmp, err := composed.From(concreteManifest)
+		if err != nil {
+			panic(err)
+		}
+
+		if concreteManifest.GetObjectKind().GroupVersionKind().Kind != xkube.ObjectGroupVersionKind.Kind {
+			obj, err := s.putIntoObject(concreteManifest, compName+"-"+name, name)
+			if err != nil {
+				panic(err)
+			}
+
+			tmpCmp, err := composed.From(obj)
+			cmp = tmpCmp
+		}
+
+		s.desiredResources[resource.Name(name)] = &resource.DesiredComposed{Resource: cmp}
+	}
+
 }

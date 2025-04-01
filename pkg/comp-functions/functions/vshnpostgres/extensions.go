@@ -3,6 +3,7 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/ptr"
 	"sort"
 	"strings"
 
@@ -41,7 +42,8 @@ func AddExtensions(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtim
 
 	// ensure pg_repack is always enabled
 	extensionsMap["pg_repack"] = stackgresv1.SGClusterSpecPostgresExtensionsItem{
-		Name: "pg_repack",
+		Name:    "pg_repack",
+		Version: ptr.To("1.5.2"),
 	}
 
 	if _, ok := extensionsMap["timescaledb"]; ok {

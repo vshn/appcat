@@ -2,6 +2,9 @@
 
 set -e
 
+# ensure apt doesn't ask questions
+export DEBIAN_FRONTEND=noninteractive
+
 # We need to run the occ command as the www-data user, but there's no sudo by default
 apt update 1>&2 && apt install sudo -y 1>&2
 

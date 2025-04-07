@@ -123,7 +123,7 @@ func TestAddExtensions(t *testing.T) {
 			wantExensions: []stackgresv1.SGClusterSpecPostgresExtensionsItem{
 				{
 					Name:    "pg_repack",
-					Version: ptr.To("1.5.0"),
+					Version: ptr.To("1.5.2"),
 				},
 			},
 		},

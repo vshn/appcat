@@ -121,14 +121,6 @@ type ComposedResourceOption func(obj xpresource.Managed)
 
 type ResourceReadiness resource.Ready
 
-type DesiredManifest interface {
-	GetUnstructured() runtime.RawExtension
-}
-
-type ObservedManifest interface {
-	FromUnstructured(manifest runtime.RawExtension)
-}
-
 type ServiceState interface {
 	GetDesiredState() any
 	// SetObservedState(map[resource.Name]*resource.ObservedComposed) error
@@ -1480,6 +1472,11 @@ func (s *ServiceRuntime) ApplyState(state ServiceState) {
 	for i := 0; i < values.NumField(); i++ {
 		name := strings.ToLower(typeOfD.Field(i).Name)
 		iManifest := values.Field(i).Interface()
+
+		if reflect.ValueOf(iManifest).IsNil() {
+			s.AddResult(NewFatalResult(fmt.Errorf("one static object is nil, emergency abort! object %s", name)))
+			return
+		}
 
 		concreteManifest, ok := iManifest.(client.Object)
 		if !ok {

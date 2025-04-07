@@ -2,6 +2,7 @@ package vshnpostgres
 
 import (
 	"context"
+	"k8s.io/utils/ptr"
 	"testing"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -109,7 +110,8 @@ func TestAddExtensions(t *testing.T) {
 			want:    nil,
 			wantExensions: []stackgresv1.SGClusterSpecPostgresExtensionsItem{
 				{
-					Name: "pg_repack",
+					Name:    "pg_repack",
+					Version: ptr.To("1.5.2"),
 				},
 			},
 		},
@@ -120,7 +122,8 @@ func TestAddExtensions(t *testing.T) {
 			want:    nil,
 			wantExensions: []stackgresv1.SGClusterSpecPostgresExtensionsItem{
 				{
-					Name: "pg_repack",
+					Name:    "pg_repack",
+					Version: ptr.To("1.5.2"),
 				},
 			},
 		},

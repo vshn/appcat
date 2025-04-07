@@ -228,7 +228,7 @@ observed:
                 namespace: vshn-postgresql-psql-gc9x4
               spec:
                 op: restart
-                runAt: "2023-04-26T07:22:22Z"
+                runAt: "2023-04-27T10:00:22Z"
                 sgCluster: psql-gc9x4
               status: {}
         status:
@@ -241,7 +241,7 @@ observed:
                 namespace: vshn-postgresql-psql-gc9x4
               spec:
                 op: restart
-                runAt: "2023-04-26T07:22:22Z"
+                runAt: "2023-04-27T10:00:22Z"
                 sgCluster: psql-gc9x4
               status: {}
     pgsql-gc9x4-pg-restart-1682587342:
@@ -273,7 +273,6 @@ observed:
                 namespace: vshn-postgresql-psql-gc9x4
               spec:
                 op: restart
-                runAt: "2023-04-27T09:22:22Z"
+                runAt: "2023-04-27T10:02:22Z"
                 sgCluster: psql-gc9x4
               status: {}
-

@@ -194,6 +194,8 @@ func createStackgresObjects(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, sv
 		return err
 	}
 
+	setClusterUnreadyIfProfilesNotEqual(svc)
+
 	return nil
 }
 
@@ -302,6 +304,7 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 		err = fmt.Errorf("cannot create sgInstanceProfile: %w", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -479,9 +482,22 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 
 	configureReplication(comp, sgCluster)
 
+	readiness := xkubev1.Readiness{
+		// Not ready if `PendingRestart` but ready if `PendingRestart and PendingUpgrade`
+		CelQuery: `object.status.conditions.exists(c, c.type == "PendingRestart" && c.status == "False" )
+  || (object.status.conditions.exists(c, c.type == "PendingUpgrade" && c.status == "True") && object.status.conditions.exists(c, c.type == "PendingRestart" && c.status == "False" ))`,
+	}
+
 	// We need to protect the namespace, otherwise, if the namespace get deleted first during de-provisioning, it can delete objects that
 	// are referenced in the kube object. This will lead to the object getting stuck indefinitely.
-	err = svc.SetDesiredKubeObjectWithName(sgCluster, comp.GetName()+"-cluster", "cluster", runtime.KubeOptionAddRefs(backupRef), runtime.KubeOptionProtects(namespaceResName))
+	err = svc.SetDesiredKubeObjectWithName(
+		sgCluster,
+		comp.GetName()+"-cluster",
+		"cluster",
+		runtime.KubeOptionAddRefs(backupRef),
+		runtime.KubeOptionProtects(namespaceResName),
+		runtime.KubeOptionCustomReadiness(readiness),
+	)
 	if err != nil {
 		err = fmt.Errorf("cannot create sgCluster: %w", err)
 		return err
@@ -670,4 +686,32 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 	}
 
 	return nil
+}
+
+func setClusterUnreadyIfProfilesNotEqual(svc *runtime.ServiceRuntime) {
+	desProfile := &sgv1.SGInstanceProfile{}
+	obsProfile := &sgv1.SGInstanceProfile{}
+
+	changed := false
+
+	err := svc.GetObservedKubeObject(obsProfile, "profile")
+	if err != nil {
+		// There's no profile yet, so we can't compare
+		svc.SetDesiredResourceReadiness("cluster", runtime.ResourceUnReady)
+	}
+
+	err = svc.GetDesiredKubeObject(desProfile, "profile")
+	if err != nil {
+		svc.Log.Error(err, "cannot get desired profile")
+	}
+
+	if (obsProfile.Spec.Cpu != desProfile.Spec.Cpu) ||
+		(obsProfile.Spec.Memory != desProfile.Spec.Memory) {
+		changed = true
+	}
+
+	if changed {
+		svc.SetDesiredResourceReadiness("cluster", runtime.ResourceUnReady)
+	}
+
 }

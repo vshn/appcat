@@ -16,7 +16,7 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
-var sgDbOpsRestartRetention time.Duration = 30 * 24 * time.Hour
+var sgDbOpsRestartRetention time.Duration = 10 * time.Minute
 
 // TransformRestart triggers a restart of the postgreqsql instance if there is a pending restart and the composite is configured to restart on update.
 func TransformRestart(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {

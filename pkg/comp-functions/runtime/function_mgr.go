@@ -428,12 +428,19 @@ func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Manag
 		opt(obj)
 	}
 
+	dr, found := s.desiredResources[resource.Name(name)]
+	if !found {
+		dr = &resource.DesiredComposed{}
+	}
+
 	unstructuredObj, err := composed.From(obj)
 	if err != nil {
 		return err
 	}
 
-	s.desiredResources[resource.Name(name)] = &resource.DesiredComposed{Resource: unstructuredObj}
+	dr.Resource = unstructuredObj
+
+	s.desiredResources[resource.Name(name)] = dr
 	return nil
 }
 
@@ -509,6 +516,13 @@ func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
 func KubeOptionAddRefs(refs ...xkube.Reference) KubeObjectOption {
 	return func(obj *xkube.Object) {
 		obj.Spec.References = refs
+	}
+}
+
+// KubeOptionCustomReadiness sets the readiness of the object to the given readiness
+func KubeOptionCustomReadiness(readines xkube.Readiness) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		obj.Spec.Readiness = readines
 	}
 }
 

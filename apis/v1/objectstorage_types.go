@@ -50,11 +50,9 @@ type ObjectBucketParameters struct {
 	// Be aware that S3 providers may require a unique name across the platform or region.
 	BucketName string `json:"bucketName"`
 
-	// +kubebuilder:validation:Required
-
 	// Region is the name of the region where the bucket shall be created.
 	// The region must be available in the S3 endpoint.
-	Region string `json:"region"`
+	Region string `json:"region,omitempty"`
 
 	// +kubebuilder:default=DeleteAll
 

@@ -66,7 +66,6 @@ func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtim
 		Spec: appcatv1.XObjectBucketSpec{
 			Parameters: appcatv1.ObjectBucketParameters{
 				BucketName: comp.GetName() + "-backup",
-				Region:     svc.Config.Data["bucketRegion"],
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{

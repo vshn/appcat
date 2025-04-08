@@ -4,6 +4,8 @@ import (
 	"context"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -11,17 +13,18 @@ import (
 
 type vshnMariaDBProvider interface {
 	ListVSHNMariaDB(ctx context.Context, namespace string) (*vshnv1.VSHNMariaDBList, error)
+	apiserver.ClientConfigurator
 }
 
 type concreteMariaDBProvider struct {
-	client client.Client
+	apiserver.ClientConfigurator
 }
 
 func (c *concreteMariaDBProvider) ListVSHNMariaDB(ctx context.Context, namespace string) (*vshnv1.VSHNMariaDBList, error) {
 
 	instances := &vshnv1.VSHNMariaDBList{}
 
-	err := c.client.List(ctx, instances, &client.ListOptions{Namespace: namespace})
+	err := c.List(ctx, instances, &client.ListOptions{Namespace: namespace})
 	if err != nil {
 		return nil, err
 	}

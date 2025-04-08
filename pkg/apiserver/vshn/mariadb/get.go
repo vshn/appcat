@@ -29,8 +29,12 @@ func (v *vshnMariaDBBackupStorage) Get(ctx context.Context, name string, _ *meta
 	mariadbSnap := &appcatv1.VSHNMariaDBBackup{}
 
 	for _, instance := range instances.Items {
+		client, err := v.vshnMariaDB.GetKubeClient(ctx, &instance)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
+		}
 		ins := instance.Status.InstanceNamespace
-		snap, err := v.snapshothandler.Get(ctx, name, ins)
+		snap, err := v.snapshothandler.Get(ctx, name, ins, client)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue

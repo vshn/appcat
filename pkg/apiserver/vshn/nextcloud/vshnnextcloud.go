@@ -4,6 +4,7 @@ import (
 	"context"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -13,17 +14,18 @@ import (
 
 type vshnNextcloudProvider interface {
 	ListVSHNnextcloud(ctx context.Context, namespace string) (*vshnv1.VSHNNextcloudList, error)
+	apiserver.ClientConfigurator
 }
 
 type concreteNextcloudProvider struct {
-	client client.Client
+	apiserver.ClientConfigurator
 }
 
 func (c *concreteNextcloudProvider) ListVSHNnextcloud(ctx context.Context, namespace string) (*vshnv1.VSHNNextcloudList, error) {
 
 	instances := &vshnv1.VSHNNextcloudList{}
 
-	err := c.client.List(ctx, instances, &client.ListOptions{Namespace: namespace})
+	err := c.List(ctx, instances, &client.ListOptions{Namespace: namespace})
 	if err != nil {
 		return nil, err
 	}

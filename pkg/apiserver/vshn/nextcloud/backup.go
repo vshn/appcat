@@ -4,6 +4,7 @@ import (
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver"
 	"github.com/vshn/appcat/v4/pkg/apiserver/noop"
 	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/k8up"
 	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/postgres"
@@ -25,7 +26,6 @@ type vshnNextcloudBackupStorage struct {
 	snapshothandler k8up.Snapshothandler
 	vshnNextcloud   vshnNextcloudProvider
 	sgBackup        postgres.KubeSGBackupProvider
-	client          client.Client
 	noop.Noop
 }
 
@@ -53,13 +53,12 @@ func New() restbuilder.ResourceHandlerProvider {
 		return &vshnNextcloudBackupStorage{
 			snapshothandler: k8up.New(c),
 			vshnNextcloud: &concreteNextcloudProvider{
-				client: c,
+				ClientConfigurator: apiserver.New(c),
 			},
 			Noop: *noopImplementation,
 			sgBackup: postgres.KubeSGBackupProvider{
 				DynamicClient: dc.Resource(postgres.SGbackupGroupVersionResource),
 			},
-			client: c,
 		}, nil
 	}
 }

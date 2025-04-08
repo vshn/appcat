@@ -15,6 +15,7 @@ import (
 type IngressConfig struct {
 	AdditionalAnnotations  map[string]string // Optional
 	AdditionalIngressNames []string          // Optional
+	AdditionalLabels       map[string]string // Optional
 	FQDNs                  []string
 	ServiceConfig          IngressRuleConfig
 	TlsCertBaseName        string
@@ -57,6 +58,26 @@ func getIngressAnnotations(svc *runtime.ServiceRuntime, additionalAnnotations ma
 	}
 
 	return annotations
+}
+
+// Obtain ingress labels and optionally extend them using additionalLabels
+func getIngressLabels(svc *runtime.ServiceRuntime, additionalLabels map[string]string) map[string]string {
+	labels := map[string]string{}
+	if svc.Config.Data["ingress_labels"] != "" {
+		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_labels"]), labels)
+		if err != nil {
+			svc.Log.Error(err, "cannot unmarshal ingress labels from input")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress labels from input: %s", err)))
+		}
+	} else {
+		svc.Log.Info("no ingress labels are defined")
+	}
+
+	for k, v := range additionalLabels {
+		labels[k] = v
+	}
+
+	return labels
 }
 
 // Creates ingress rules based on a single service name and port.
@@ -176,6 +197,7 @@ func GenerateBundledIngresses(comp InfoGetter, svc *runtime.ServiceRuntime, ingr
 	ingressMetadata := metav1.ObjectMeta{
 		Namespace:   comp.GetInstanceNamespace(),
 		Annotations: getIngressAnnotations(svc, ingressConfig.AdditionalAnnotations),
+		Labels:      getIngressLabels(svc, ingressConfig.AdditionalLabels),
 	}
 
 	// Ingress using Let's Encrypt
@@ -238,6 +260,7 @@ func GenerateIngress(comp InfoGetter, svc *runtime.ServiceRuntime, ingressConfig
 	}
 
 	annotations := getIngressAnnotations(svc, ingressConfig.AdditionalAnnotations)
+	labels := getIngressLabels(svc, ingressConfig.AdditionalLabels)
 
 	tlsName := ingressConfig.TlsCertBaseName
 	if tlsName == "" {
@@ -263,6 +286,7 @@ func GenerateIngress(comp InfoGetter, svc *runtime.ServiceRuntime, ingressConfig
 			Name:        generateIngressName(comp, ingressConfig.AdditionalIngressNames...),
 			Namespace:   comp.GetInstanceNamespace(),
 			Annotations: annotations,
+			Labels:      labels,
 		},
 		Spec: netv1.IngressSpec{
 			Rules: rules,

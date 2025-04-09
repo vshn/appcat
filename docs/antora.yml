@@ -1,6 +1,6 @@
 name: appcat
 title: Application Catalog
-version: master
+version: "4.143"
 start_page: ROOT:index.adoc
 nav:
   - modules/ROOT/nav.adoc

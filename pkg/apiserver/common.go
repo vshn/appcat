@@ -119,7 +119,7 @@ func New(client client.WithWatch) *KubeClient {
 // for the remote cluster (non-converged) or nil for the local cluster
 func (k *KubeClient) GetKubeClient(ctx context.Context, instance client.Object) (client.WithWatch, error) {
 	if instance.GetLabels()[appcatruntime.ProviderConfigLabel] == "" {
-		return nil, nil
+		return k.WithWatch, nil
 	}
 
 	kubeconfig, err := k.getKubeConfig(ctx, instance)

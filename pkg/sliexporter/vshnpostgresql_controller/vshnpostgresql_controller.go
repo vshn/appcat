@@ -110,10 +110,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, obj slirec
 		sla = vshnv1.BestEffort
 	}
 
-	ha := true
-	if inst.Spec.Parameters.Instances == 1 {
-		ha = false
-	}
+	ha := inst.Spec.Parameters.Instances > 1
 
 	sslmode := "verify-ca"
 	if !inst.Spec.Parameters.Service.TLS.Enabled {

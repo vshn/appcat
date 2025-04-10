@@ -138,7 +138,6 @@ spec:
                     type: object
                 required:
                 - bucketName
-                - region
                 type: object
               providerConfigRef:
                 default:

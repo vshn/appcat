@@ -107,7 +107,6 @@ spec:
                       default: {}
                   required:
                     - bucketName
-                    - region
                   type: object
                 writeConnectionSecretToRef:
                   description: WriteConnectionSecretToRef references a secret to which the connection details will be written.

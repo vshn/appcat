@@ -97,7 +97,7 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 			},
 			ForProvider: exoscalev1.IAMKeyParameters{
 				Zone:    bucket.Spec.Parameters.Region,
-				KeyName: fmt.Sprintf("%s.%s", bucket.GetLabels()["crossplane.io/claim-namespace"], bucket.GetLabels()["crossplane.io/claim-name"]),
+				KeyName: fmt.Sprintf("%s.%s", bucket.GetLabels()["crossplane.io/claim-namespace"], bucket.GetName()),
 				Services: exoscalev1.ServicesSpec{
 					SOS: exoscalev1.SOSSpec{
 						Buckets: []string{
@@ -123,6 +123,8 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 		svc.SetConnectionDetail(v, k)
 	}
 
+	user.Spec.ForProvider.KeyName = getIAMName(svc, user)
+
 	return svc.SetDesiredComposedResourceWithName(user, iamResName)
 }
 
@@ -142,4 +144,16 @@ func populateEndpointConnectionDetails(svc *runtime.ServiceRuntime) error {
 
 	return nil
 
+}
+
+func getIAMName(svc *runtime.ServiceRuntime, currentIAM *exoscalev1.IAMKey) string {
+
+	key := &exoscalev1.IAMKey{}
+
+	err := svc.GetObservedComposedResource(key, iamResName)
+	if err != nil {
+		return currentIAM.Spec.ForProvider.KeyName
+	}
+
+	return key.Spec.ForProvider.KeyName
 }

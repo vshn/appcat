@@ -519,7 +519,6 @@ func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime
 		Spec: appcatv1.XObjectBucketSpec{
 			Parameters: appcatv1.ObjectBucketParameters{
 				BucketName: comp.GetName(),
-				Region:     svc.Config.Data["bucketRegion"],
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
@@ -541,14 +540,14 @@ func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime
 
 func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 
-	sgBackupExists, err := svc.WaitForObservedDependenciesWithConnectionDetails("sgbackup-"+comp.GetName(), map[string][]string{
-		"pg-bucket": {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
-	})
-
 	certificateExists := svc.WaitForObservedDependencies("sgbackup-"+comp.GetName(), "certificate")
+	if !certificateExists {
+		return fmt.Errorf("waiting for dependencies: certificate")
+	}
 
-	if err != nil || !sgBackupExists || !certificateExists {
-		return fmt.Errorf("waiting for dependencies: %w", err)
+	cd, err := svc.GetObservedComposedResourceConnectionDetails("pg-bucket")
+	if err != nil {
+		return err
 	}
 
 	sgObjectStorage := &sgv1beta1.SGObjectStorage{
@@ -561,8 +560,8 @@ func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRunt
 			S3Compatible: &sgv1beta1.SGObjectStorageSpecS3Compatible{
 				Bucket:                    comp.GetName(),
 				EnablePathStyleAddressing: ptr.To(true),
-				Region:                    ptr.To(svc.Config.Data["bucketRegion"]),
-				Endpoint:                  ptr.To(svc.Config.Data["bucketEndpoint"]),
+				Region:                    ptr.To(string(cd["AWS_REGION"])),
+				Endpoint:                  ptr.To(string(cd["ENDPOINT_URL"])),
 				AwsCredentials: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentials{
 					SecretKeySelectors: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectors{
 						AccessKeyId: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId{

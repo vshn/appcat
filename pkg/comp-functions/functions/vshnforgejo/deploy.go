@@ -85,6 +85,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	values := map[string]any{
 		"gitea": map[string]any{
 			"admin": map[string]any{
+				"email":          "forgejo@local.domain",
 				"username":       "forgejo_admin",
 				"existingSecret": secretName,
 			},

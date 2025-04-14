@@ -44,6 +44,7 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 	// "," as separator for multiple FQDNs, it's better than anything else as highlighting with mouse in terminal works well
 	// result is fqdn[0],fqdn[1],fqdn[2]
 	svc.SetConnectionDetail("FORGEJO_URL", []byte(strings.Join(comp.Spec.Parameters.Service.FQDN, ",")))
+	svc.SetConnectionDetail("FORGEJO_HOST", []byte(fmt.Sprintf("%s-http.%s.svc", comp.GetName(), comp.GetInstanceNamespace())))
 
 	svc.Log.Info("Adding forgejo release")
 	err = addForgejo(ctx, svc, comp, secretName)

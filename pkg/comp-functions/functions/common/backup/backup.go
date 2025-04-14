@@ -65,7 +65,7 @@ func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtim
 		},
 		Spec: appcatv1.XObjectBucketSpec{
 			Parameters: appcatv1.ObjectBucketParameters{
-				BucketName: comp.GetName() + "-backup",
+				BucketName: fmt.Sprintf("%s-%s-%s", comp.GetName(), svc.Config.Data["bucketRegion"], "backup"),
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
@@ -75,6 +75,8 @@ func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtim
 			},
 		},
 	}
+
+	ob.Spec.Parameters.BucketName = getBucketName(svc, ob)
 
 	return svc.SetDesiredComposedResource(ob)
 }
@@ -269,4 +271,16 @@ func AddBackupScriptCM(svc *runtime.ServiceRuntime, comp common.Composite, scrip
 	}
 
 	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-backup-script")
+}
+
+func getBucketName(svc *runtime.ServiceRuntime, currentBucket *appcatv1.XObjectBucket) string {
+
+	bucket := &appcatv1.XObjectBucket{}
+
+	err := svc.GetObservedComposedResource(bucket, currentBucket.GetName())
+	if err != nil {
+		return currentBucket.Spec.Parameters.BucketName
+	}
+
+	return bucket.Spec.Parameters.BucketName
 }

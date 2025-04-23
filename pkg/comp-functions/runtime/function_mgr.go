@@ -1488,7 +1488,8 @@ func (s *ServiceRuntime) ApplyState(state ServiceState) {
 			panic(err)
 		}
 
-		if concreteManifest.GetObjectKind().GroupVersionKind().Kind != xkube.ObjectGroupVersionKind.Kind {
+		// If it's not a crossplane manage resource we wrap it.
+		if _, ok := concreteManifest.(xpresource.Managed); !ok {
 			obj, err := s.putIntoObject(concreteManifest, compName+"-"+name, name)
 			if err != nil {
 				panic(err)

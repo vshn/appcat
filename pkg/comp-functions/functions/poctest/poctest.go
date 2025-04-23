@@ -18,8 +18,8 @@ type forgejoState struct {
 
 type forgejoDesired struct {
 	Namespace *corev1.Namespace
-	// Configmap *corev1.ConfigMap
-	// Release   xhelm.Release
+	Configmap *corev1.ConfigMap
+	// Release   *xhelm.Release
 	// Dynamic []client.Object
 }
 
@@ -42,15 +42,15 @@ func test(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.ServiceRun
 		},
 	}
 
-	// state.desired.Configmap = &corev1.ConfigMap{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name:      comp.GetName(),
-	// 		Namespace: comp.GetName(),
-	// 	},
-	// 	Data: map[string]string{
-	// 		"test": "test",
-	// 	},
-	// }
+	state.desired.Configmap = &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName(),
+			Namespace: comp.GetName(),
+		},
+		Data: map[string]string{
+			"test": "test",
+		},
+	}
 
 	svc.ApplyState(state)
 

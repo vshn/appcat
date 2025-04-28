@@ -69,10 +69,10 @@ Vscode handles all port-forwarding automagically, so kindev and all endpoints wi
 Simply point `KUBECONFIG` to `.kind/.kind/kind-config` and use `kubectl` as usual.
 
 > [!NOTE]
-> On linux, Podman and rootless Docker have been found to cause issues.  
-> Ensure that you are using **rootful Docker** to save yourself loads of trouble.  
+> On linux, Podman and rootless Docker have been found to cause issues.
+> Ensure that you are using **rootful Docker** to save yourself loads of trouble.
 >
-> Additionally, on Fedora, you might encounter issues with `iptables`.  
+> Additionally, on Fedora, you might encounter issues with `iptables`.
 > Execute the following on the host prior to building the devcontainer:
 > ```bash
 > sudo dnf install -y iptables-legacy
@@ -81,7 +81,7 @@ Simply point `KUBECONFIG` to `.kind/.kind/kind-config` and use `kubectl` as usua
 > ```
 >
 > *To further debug dind, consult `/tmp/dockerd.log` in the container.*
-> Please refer to official documentation under: https://docs.docker.com/engine/install/ 
+> Please refer to official documentation under: https://docs.docker.com/engine/install/
 
 ### Devcontainer customizations
 
@@ -145,6 +145,7 @@ The controller manages and achieves the following:
 ### Local Webhook debugging
 
 **This assumes that you've already applied the vshn golden test in component-appcat!**
+**Disable ArgoCD autosync!**
 
 Also you might need to set the right host ip:
 ```bash

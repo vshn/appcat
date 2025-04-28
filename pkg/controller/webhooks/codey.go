@@ -7,8 +7,10 @@ import (
 
 	codey "github.com/vshn/appcat/v4/apis/codey"
 	netv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	field "k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -69,7 +71,7 @@ func (n *CodeyInstanceWebhookHandler) ValidateCreate(ctx context.Context, obj ru
 	}
 
 	codeyFqdn := codey.ObjectMeta.Name + codeyUrlSuffix
-	if err := isCodeyFqdnUnique(codeyFqdn, n.client); err != nil {
+	if err := isCodeyFqdnUnique(codeyFqdn, codey.Spec.ResourceRef.Name, n.client); err != nil {
 		return nil, fmt.Errorf("failed FQDN validation: %v", err)
 	}
 
@@ -88,7 +90,7 @@ func (p *CodeyInstanceWebhookHandler) ValidateUpdate(ctx context.Context, oldObj
 	}
 
 	codeyFqdn := newCodeyInstance.ObjectMeta.Name + codeyUrlSuffix
-	if err := isCodeyFqdnUnique(codeyFqdn, p.client); err != nil {
+	if err := isCodeyFqdnUnique(codeyFqdn, newCodeyInstance.Spec.ResourceRef.Name, p.client); err != nil {
 		return nil, fmt.Errorf("failed FQDN validation: %v", err)
 	}
 
@@ -96,11 +98,28 @@ func (p *CodeyInstanceWebhookHandler) ValidateUpdate(ctx context.Context, oldObj
 }
 
 // Checks if a given FQDN is already in use by some CodeyInstance in the cluster
-func isCodeyFqdnUnique(fqdn string, cl client.Client) error {
+func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) error {
 	ingressList := &netv1.IngressList{}
-	err := cl.List(context.TODO(), ingressList, client.MatchingLabels{
-		"appcat.vshn.io/ownerkind": "XVSHNForgejo",
-	})
+
+	// We get all namespaces for XVSHNForgejo...
+	reqOwnerkind, err := labels.NewRequirement("appcat.vshn.io/ownerkind", selection.Equals, []string{"XVSHNForgejo"})
+	if err != nil {
+		return err
+	}
+
+	//... but not the one belonging to ourself.
+	reqComposite, err := labels.NewRequirement("crossplane.io/composite", selection.NotEquals, []string{compositeName})
+	if err != nil {
+		return err
+	}
+
+	err = cl.List(context.TODO(), ingressList,
+		client.MatchingLabelsSelector{
+			Selector: labels.NewSelector().Add(*reqOwnerkind),
+		},
+		client.MatchingLabelsSelector{
+			Selector: labels.NewSelector().Add(*reqComposite),
+		})
 	if err != nil {
 		return fmt.Errorf("failed listing ingresses: %v", err)
 	}

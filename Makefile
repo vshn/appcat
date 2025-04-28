@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 PROJECT_ROOT_DIR = .
 PROJECT_NAME ?= appcat
 PROJECT_OWNER ?= vshn

@@ -44,6 +44,9 @@ type CodeyInstanceSpec struct {
 
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
 	WriteConnectionSecretToRef xpv1.LocalSecretReference `json:"writeConnectionSecretToRef,omitempty"`
+
+	// ResourceRef tracks the internal composite belonging to this claim
+	ResourceRef xpv1.TypedReference `json:"resourceRef,omitempty"`
 }
 
 // CodeyInstanceParameters are the configurable fields of a CodeyInstance.

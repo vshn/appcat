@@ -2,8 +2,9 @@ package maintenance
 
 import (
 	"context"
-	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
+
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 
 	"github.com/go-logr/logr"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
@@ -36,5 +37,5 @@ func NewKeycloak(c client.Client, hc *http.Client, vh release.VersionHandler, lo
 func (k *Keycloak) DoMaintenance(ctx context.Context) error {
 	patcher := helm.NewImagePatcher(k.k8sClient, k.httpClient, k.log)
 	valuesPath := helm.NewValuePath("image", "tag")
-	return patcher.DoMaintenance(ctx, keycloakURL, valuesPath, helm.SemVerPatchesOnly(true))
+	return patcher.DoMaintenance(ctx, keycloakURL, valuesPath, helm.SemVerMinorAndPatches(true))
 }

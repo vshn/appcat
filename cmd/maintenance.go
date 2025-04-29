@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/go-logr/logr"
 	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
-	"net/http"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

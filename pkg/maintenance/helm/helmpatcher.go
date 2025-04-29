@@ -276,6 +276,17 @@ func (h *ImagePatcher) getHubVersions(imageURL string) (VersionLister, error) {
 // It will only update the patch part of the version, it will not consider the Major or Minor version.
 // It's able to either ignore the build information appended to the semver version, or not.
 func SemVerPatchesOnly(ignoreBuild bool) func(results VersionLister, currentTag string) (string, error) {
+	return semVerPatches(ignoreBuild, false)
+}
+
+// SemVerMinorAndPatches is a VersionComparisonStrategy that will determine if the latest version as long as it adheres to semver
+// It will update the minor and the patch version, but keep the major version.
+// It's able to either ignore the build information appended to the semver version, or not.
+func SemVerMinorAndPatches(ignoreBuild bool) func(results VersionLister, currentTag string) (string, error) {
+	return semVerPatches(ignoreBuild, true)
+}
+
+func semVerPatches(ignoreBuild, checkMinor bool) func(results VersionLister, currentTag string) (string, error) {
 	return func(results VersionLister, currentTag string) (string, error) {
 		currentV, err := semver.ParseTolerant(currentTag)
 		if err != nil {
@@ -288,6 +299,12 @@ func SemVerPatchesOnly(ignoreBuild bool) func(results VersionLister, currentTag 
 			if err != nil {
 				continue
 			}
+			// first get to the higest minor
+			if checkMinor && v.Major == newV.Major && v.Minor > newV.Minor {
+				newV = *v
+			}
+
+			// then just get the latest patch
 			if v.Major == newV.Major && v.Minor == newV.Minor && v.Patch > newV.Patch {
 				if ignoreBuild && v.Pre != nil {
 					continue

@@ -208,16 +208,8 @@ func Test_compareSemanticVersion(t *testing.T) {
 				},
 			},
 			results: []Result{
-				getResult("6.5.4", "active", "image"),
-				getResult("6.6.4", "inactive", "image"),
-				getResult("6.8", "active", "image"),
 				getResult("7.0", "active", "image"),
-				getResult("7.1.4", "active", "image"),
-				getResult("7.2.4", "inactive", "image"),
-				getResult("7.1.12-alpha", "active", "image"),
-				getResult("7.3.11", "active", "image"),
-				getResult("7.0.14-alpha", "active", "image"),
-				getResult("7.0.14%alpa", "active", "image"),
+				getResult("7.0.0", "active", "image"),
 			},
 			expectedVer: defaultV,
 		},
@@ -456,5 +448,156 @@ func getResult(n, s, ct string) Result {
 		Name:        n,
 		TagStatus:   s,
 		ContentType: ct,
+	}
+}
+
+func Test_minorVersionUpgrades(t *testing.T) {
+	defaultV := "7.0"
+	tests := []struct {
+		name              string
+		instanceNamespace string
+		release           *v1beta1.Release
+		results           []Result
+		expectedVer       string
+		expectedNew       bool
+		expectedErr       string
+	}{
+		{
+			name:              "WhenNewVersionFromReleases_ThenGetNewVersion",
+			instanceNamespace: "test-namespace",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+				Spec: v1beta1.ReleaseSpec{
+					ForProvider: v1beta1.ReleaseParameters{
+						ValuesSpec: v1beta1.ValuesSpec{
+							Values: runtime.RawExtension{
+								Raw: []byte("{\"image\":{\"tag\":\"7.0\"}}"),
+								Object: &runtime.Unknown{
+									Raw: []byte("{\"image\":{\"tag\":\"7.0\"}}"),
+								},
+							},
+						},
+					},
+				},
+			},
+			results: []Result{
+				getResult("6.5.4", "active", "image"),
+				getResult("6.6.4", "inactive", "image"),
+				getResult("6.8", "active", "image"),
+				getResult("7.0", "active", "image"),
+				getResult("7.0.1", "active", "registry"),
+				getResult("7.0.4", "active", "image"),
+				getResult("7.1.4", "active", "image"),
+				getResult("7.2.4", "inactive", "image"),
+				getResult("7.1.12-alpha", "active", "image"),
+				getResult("7.3.11", "active", "image"),
+				getResult("7.3.12", "active", "image"),
+				getResult("7.3.13", "active", "image"),
+				getResult("7.3.14", "active", "image"),
+				getResult("7.0.13", "active", "image"),
+				getResult("7.0.13-debian", "active", "image"),
+				getResult("7.0.14-alpha", "active", "image"),
+				getResult("7.0.14%alpa", "active", "image"),
+			},
+			expectedVer: semver.MustParse("7.3.14").String(),
+		},
+		{
+			name:              "WhenNoNewVersion_ThenReleaseNoNewVersion",
+			instanceNamespace: "test-namespace",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+				Spec: v1beta1.ReleaseSpec{
+					ForProvider: v1beta1.ReleaseParameters{
+						ValuesSpec: v1beta1.ValuesSpec{
+							Values: runtime.RawExtension{
+								Raw: []byte("{\"image\":{\"tag\":\"7.0\"}}"),
+								Object: &runtime.Unknown{
+									Raw: []byte("{\"image\":{\"tag\":\"7.0\"}}"),
+								},
+							},
+						},
+					},
+				},
+			},
+			results: []Result{
+				getResult("7.0", "active", "image"),
+				getResult("7.0.0", "active", "image"),
+			},
+			expectedVer: "7.0",
+		},
+		{
+			name:              "WhenNoResult_ThenReleaseNoNewVersion",
+			instanceNamespace: "test-namespace",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+				Spec: v1beta1.ReleaseSpec{
+					ForProvider: v1beta1.ReleaseParameters{
+						ValuesSpec: v1beta1.ValuesSpec{
+							Values: runtime.RawExtension{
+								Raw: []byte("{\"image\":{\"tag\":\"7.0\"}}"),
+								Object: &runtime.Unknown{
+									Raw: []byte("{\"image\":{\"tag\":\"7.0\"}}"),
+								},
+							},
+						},
+					},
+				},
+			},
+			results:     []Result{},
+			expectedVer: defaultV,
+		},
+		{
+			name:              "WhenCurrentVersionWrong_ThenError",
+			instanceNamespace: "test-namespace",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+				Spec: v1beta1.ReleaseSpec{
+					ForProvider: v1beta1.ReleaseParameters{
+						ValuesSpec: v1beta1.ValuesSpec{
+							Values: runtime.RawExtension{
+								Raw: []byte("{\"image\":{\"tag\":\"miss\"}}"),
+								Object: &runtime.Unknown{
+									Raw: []byte("{\"image\":{\"tag\":\"miss\"}}"),
+								},
+							},
+						},
+					},
+				},
+			},
+			results:     []Result{},
+			expectedErr: "current version miss of release is not sem ver: Invalid character(s) found in major number \"0miss\"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			// GIVEN
+			r := ImagePatcher{
+				log:               logr.Logger{},
+				instanceNamespace: tt.instanceNamespace,
+			}
+
+			// WHEN
+			tag, err := r.getCurrentTagFromRelease(tt.release, []string{"image", "tag"})
+			assert.NoError(t, err)
+			version, err := SemVerMinorAndPatches(true)(&Payload{Results: tt.results}, tag)
+
+			// THEN
+			if tt.expectedErr != "" {
+				assert.Equal(t, err.Error(), tt.expectedErr)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedVer, version)
+		})
 	}
 }

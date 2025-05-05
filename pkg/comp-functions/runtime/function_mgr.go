@@ -123,7 +123,7 @@ type ResourceReadiness resource.Ready
 
 type ServiceState interface {
 	GetDesiredState() any
-	// SetObservedState(map[resource.Name]*resource.ObservedComposed) error
+	SetObservedState(map[resource.Name]resource.ObservedComposed) error
 }
 
 // RegisterService will register a service to the map of all services.
@@ -1480,19 +1480,21 @@ func (s *ServiceRuntime) ApplyState(state ServiceState) {
 
 		concreteManifest, ok := iManifest.(client.Object)
 		if !ok {
-			panic("not a runtime.Object")
+			s.AddResult(NewFatalResult(fmt.Errorf("static object not a client.Object: %s", name)))
+			return
 		}
 
 		cmp, err := composed.From(concreteManifest)
 		if err != nil {
-			panic(err)
+			s.AddResult(NewFatalResult(fmt.Errorf("cannot convert object %s to composed resource: %w", name, err)))
+			return
 		}
 
 		// If it's not a crossplane manage resource we wrap it.
 		if _, ok := concreteManifest.(xpresource.Managed); !ok {
 			obj, err := s.putIntoObject(concreteManifest, compName+"-"+name, name)
 			if err != nil {
-				panic(err)
+				s.AddResult(NewFatalResult(fmt.Errorf("cannot put into kubeObject %s: %w", name, err)))
 			}
 
 			tmpCmp, err := composed.From(obj)
@@ -1502,4 +1504,14 @@ func (s *ServiceRuntime) ApplyState(state ServiceState) {
 		s.desiredResources[resource.Name(name)] = &resource.DesiredComposed{Resource: cmp}
 	}
 
+}
+
+func (s *ServiceRuntime) ObserveState(state ServiceState) {
+
+	allObserved, err := request.GetObservedComposedResources(s.req)
+	if err != nil {
+		panic(err)
+	}
+
+	state.SetObservedState(allObserved)
 }

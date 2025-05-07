@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"strconv"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -298,6 +299,15 @@ func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSH
 				fmt.Sprintf("invalid major version: %s", err.Error()),
 			))
 		}
+	}
+
+	if newVersion != oldVersion {
+		errList = append(errList, field.Invalid(
+			field.NewPath("spec.parameters.service.majorVersion"),
+			newPg.Spec.Parameters.Service.MajorVersion,
+			"major version upgrade is not allowed.",
+		))
+		return errList
 	}
 
 	// Check if the upgrade is allowed

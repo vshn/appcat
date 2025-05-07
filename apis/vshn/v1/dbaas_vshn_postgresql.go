@@ -132,6 +132,7 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// MajorVersion contains supported version of PostgreSQL.
 	// Multiple versions are supported. The latest version "15" is the default version.
+	// Currently it's impossible to change the version of an existing instance - we're working on it.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
 	// PGSettings contains additional PostgreSQL settings.

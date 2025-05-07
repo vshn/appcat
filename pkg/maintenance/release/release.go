@@ -4,18 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource/unstructured/claim"
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/crossplane/function-sdk-go/resource/composite"
 	"github.com/go-logr/logr"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
+)
+
+const (
+	ServiceIDLabel = "metadata.appcat.vshn.io/serviceID"
 )
 
 // Interface for both Claim and Composite objects
@@ -42,17 +46,23 @@ type DefaultVersionHandler struct {
 	serviceId      string
 }
 
-func NewDefaultVersionHandler(k8sClient client.Client, l logr.Logger, name, composite, namespace, group, kind, version, service string) VersionHandler {
+// ReleaserOpts holds all necessary information for a
+// release handler to switch the revisions.
+type ReleaserOpts struct {
+	ClaimName, Composite, ClaimNamespace, Group, Kind, Version, ServiceID string
+}
+
+func NewDefaultVersionHandler(k8sClient client.Client, l logr.Logger, opts ReleaserOpts) VersionHandler {
 	return &DefaultVersionHandler{
 		client:         k8sClient,
 		log:            l,
-		claimName:      name,
-		compositeName:  composite,
-		claimNamespace: namespace,
-		ownerGroup:     group,
-		ownerKind:      kind,
-		ownerVersion:   version,
-		serviceId:      service,
+		claimName:      opts.ClaimName,
+		compositeName:  opts.Composite,
+		claimNamespace: opts.ClaimNamespace,
+		ownerGroup:     opts.Group,
+		ownerKind:      opts.Kind,
+		ownerVersion:   opts.Version,
+		serviceId:      opts.ServiceID,
 	}
 }
 
@@ -66,16 +76,23 @@ func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context) error {
 		return err
 	}
 
-	// Try to update claim first
-	if err := vh.updateClaim(ctx, revision); err != nil {
-		if apierrors.IsNotFound(err) {
-			// If claim is not found, fallback to updating composite
-			return vh.updateComposite(ctx, revision)
+	if vh.claimNamespace == "" {
+		err := vh.updateComposite(ctx, revision)
+		if err != nil {
+			return err
 		}
+		vh.log.Info("Composite updated successfully", ServiceIDLabel, revision)
+		return nil
+	}
+
+	// Try to update claim first
+	err = vh.updateClaim(ctx, revision)
+	if err != nil {
+
 		return fmt.Errorf("failed to update claim %s/%s: %w", vh.claimNamespace, vh.claimName, err)
 	}
 
-	vh.log.Info("Claim updated successfully", "revision", revision)
+	vh.log.Info("Claim updated successfully", ServiceIDLabel, revision)
 	return nil
 }
 
@@ -98,10 +115,10 @@ func (vh *DefaultVersionHandler) getLatestRevisionLabel(ctx context.Context) (st
 }
 
 func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.CompositionRevision, error) {
-	vh.log.Info("Filtering composition revisions by service id")
+	vh.log.Info("Filtering composition revisions by service id", "serviceID", vh.serviceId)
 	crl := &v1.CompositionRevisionList{}
 	if err := vh.client.List(ctx, crl, client.MatchingLabelsSelector{
-		Selector: labels.SelectorFromSet(labels.Set{"metadata.appcat.vshn.io/serviceID": vh.serviceId}),
+		Selector: labels.SelectorFromSet(labels.Set{ServiceIDLabel: vh.serviceId}),
 	}); err != nil {
 		return nil, fmt.Errorf("failed to list composition revisions: %w", err)
 	}
@@ -116,7 +133,7 @@ func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.Com
 			latestRevision = item
 		}
 	}
-	vh.log.Info("Found latest resource", "composition revision", latestRevision.GetName())
+	vh.log.Info("Found latest resource", "composition revision", latestRevision.GetName(), "metadata.appcat.vshn.io/revision", latestRevision.GetLabels()["metadata.appcat.vshn.io/revision"])
 
 	return &latestRevision, nil
 }

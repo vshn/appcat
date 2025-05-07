@@ -2,9 +2,10 @@ package release_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/crossplane/function-sdk-go/resource/composite"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
-	"testing"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource/unstructured/claim"
@@ -33,7 +34,16 @@ func TestGetLatestRevision_NoRevisions(t *testing.T) {
 	// When: No composition revisions exist
 	fakeClient := setupFakeClient()
 	logger := testr.New(t)
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, "test-claim", "test-composite", "default", "test.group", "TestKind", "v1", "service-123")
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		Composite:      "test-composite",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "TestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
 
 	// Do
 	err := vh.ReleaseLatest(context.Background())
@@ -92,7 +102,16 @@ func TestLatestVersion_UpdateClaim(t *testing.T) {
 
 	fakeClient := setupFakeClient(claimObj, cr1, cr2, cr3)
 	logger := testr.New(t)
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, "test-claim", "composite", "default", "test.group", "XTestKind", "v1", "service-123")
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		Composite:      "composite",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "XTestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
 
 	// Do
 	err := vh.ReleaseLatest(context.Background())
@@ -163,7 +182,14 @@ func TestLatestVersion_UpdateComposite(t *testing.T) {
 
 	fakeClient := setupFakeClient(comp, cr1, cr2, cr3)
 	logger := testr.New(t)
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, "test-claim", "composite", "default", "test.group", "XTestKind", "v1", "service-123")
+	opts := release.ReleaserOpts{
+		Composite: "composite",
+		Group:     "test.group",
+		Kind:      "XTestKind",
+		Version:   "v1",
+		ServiceID: "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
 
 	// Do
 	err := vh.ReleaseLatest(context.Background())
@@ -209,7 +235,16 @@ func TestLatestVersion_MissingRevisionLabel(t *testing.T) {
 
 	fakeClient := setupFakeClient(claimObj, cr)
 	logger := testr.New(t)
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, "test-claim", "composite", "default", "test.group", "TestKind", "v1", "service-123")
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		Composite:      "composite",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "TestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
 
 	// Do
 	err := vh.ReleaseLatest(context.Background())

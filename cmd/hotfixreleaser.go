@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/crossplane/crossplane-runtime/pkg/fieldpath"
@@ -37,9 +38,15 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 	log := logr.FromContextOrDiscard(ctx)
 
 	dynClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
-
 	if err != nil {
 		return fmt.Errorf("failed to initialize kube client: %w", err)
+	}
+
+	kubeClient, err := client.New(ctrl.GetConfigOrDie(), client.Options{
+		Scheme: pkg.SetupScheme(),
+	})
+	if err != nil {
+		return err
 	}
 
 	xrds, err := dynClient.Resource(schema.GroupVersionResource{
@@ -53,9 +60,11 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 	}
 
 	// collect all installed xrds
-	foundGVK := []schema.GroupVersionResource{}
+	// and then loop over every single composite
 	for _, xrd := range xrds.Items {
 		p := fieldpath.Pave(xrd.Object)
+
+		XRDLabels := xrd.GetLabels()
 
 		compositeResource, err := p.GetString("spec.names.plural")
 		if err != nil {
@@ -69,52 +78,49 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 
-		foundGVK = append(foundGVK, schema.GroupVersionResource{
+		foundGVK := schema.GroupVersionResource{
 			Resource: compositeResource,
 			Version:  compositeVersion,
 			Group:    compositeGroup,
-		})
-	}
+		}
 
-	// get every composite of every xrd
-	for _, f := range foundGVK {
-		l, err := dynClient.Resource(f).List(ctx, metav1.ListOptions{})
+		l, err := dynClient.Resource(foundGVK).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
 
 		for _, composite := range l.Items {
 			p := fieldpath.Pave(composite.Object)
-			claimRef, err := p.GetValue("spec.claimRef")
+			claimRef, err := p.GetStringObject("spec.claimRef")
+			log := log.WithValues("xrd", compositeResource, "composite", composite.GetName())
+
 			if err != nil {
 				if !fieldpath.IsNotFound(err) {
 					return err
 				}
 				//TODO: do something with this information
-				labels, err := p.GetStringObject("metadata.labels")
+				labels := composite.GetLabels()
+
+				labels[release.ServiceIDLabel] = XRDLabels[release.ServiceIDLabel]
+
+				err := h.handleLabels(ctx, labels, log, kubeClient)
 				if err != nil {
 					return err
 				}
-				fmt.Println(labels)
 			}
-			fmt.Println(claimRef)
+			err = h.handleClaimRef(ctx, claimRef, log, kubeClient, composite.GetLabels(), composite.GetName())
+			if err != nil {
+				return err
+			}
 		}
-
 	}
 
 	return nil
 }
 
-func (h *hotfixer) handleLabels(labels map[string]string, log logr.Logger) error {
+func (h *hotfixer) handleLabels(ctx context.Context, labels map[string]string, log logr.Logger, kubeClient client.Client) error {
 
-	kubeClient, err := client.New(ctrl.GetConfigOrDie(), client.Options{
-		Scheme: pkg.SetupScheme(),
-	})
-	if err != nil {
-		return err
-	}
-
-	release.NewDefaultVersionHandler(
+	r := release.NewDefaultVersionHandler(
 		kubeClient,
 		log,
 		labels["crossplane.io/claim-name"],
@@ -122,13 +128,31 @@ func (h *hotfixer) handleLabels(labels map[string]string, log logr.Logger) error
 		labels["crossplane.io/claim-namespace"],
 		labels["appcat.vshn.io/ownergroup"],
 		labels["appcat.vshn.io/ownerkind"],
-		labels["appcat.vshn.io/ownergroup"],
-		"hotfixer",
+		labels["appcat.vshn.io/ownerversion"],
+		labels[release.ServiceIDLabel],
 	)
 
-	return nil
+	return r.ReleaseLatest(ctx)
 }
 
-func (h *hotfixer) handleClaimRef() error {
-	return nil
+func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, log logr.Logger, kubeClient client.Client, labels map[string]string, compName string) error {
+
+	gv, err := schema.ParseGroupVersion(ref["apiVersion"])
+	if err != nil {
+		return err
+	}
+
+	r := release.NewDefaultVersionHandler(
+		kubeClient,
+		log,
+		ref["name"],
+		compName,
+		ref["namespace"],
+		gv.Group,
+		ref["kind"],
+		gv.Version,
+		labels[release.ServiceIDLabel],
+	)
+
+	return r.ReleaseLatest(ctx)
 }

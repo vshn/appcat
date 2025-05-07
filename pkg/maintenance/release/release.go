@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource/unstructured/claim"
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
@@ -15,7 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
+)
+
+const (
+	ServiceIDLabel = "metadata.appcat.vshn.io/serviceID"
 )
 
 // Interface for both Claim and Composite objects
@@ -101,7 +106,7 @@ func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.Com
 	vh.log.Info("Filtering composition revisions by service id")
 	crl := &v1.CompositionRevisionList{}
 	if err := vh.client.List(ctx, crl, client.MatchingLabelsSelector{
-		Selector: labels.SelectorFromSet(labels.Set{"metadata.appcat.vshn.io/serviceID": vh.serviceId}),
+		Selector: labels.SelectorFromSet(labels.Set{ServiceIDLabel: vh.serviceId}),
 	}); err != nil {
 		return nil, fmt.Errorf("failed to list composition revisions: %w", err)
 	}

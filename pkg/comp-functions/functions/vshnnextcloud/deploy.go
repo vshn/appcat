@@ -84,7 +84,7 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 			SetCustomMaintenanceSchedule(pgTime)
 
 		if pgDiskSize != "" {
-			pgBuilder.SetSize(pgDiskSize)
+			pgBuilder.SetDiskSize(pgDiskSize)
 		}
 
 		pgSecret, err = pgBuilder.CreateDependency()
@@ -172,7 +172,9 @@ func getObservedPostgresSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNN
 
 	existing := &vshnv1.XVSHNPostgreSQL{}
 	err := svc.GetObservedComposedResource(existing, comp.GetName()+pgInstanceNameSuffix)
-	if err == nil {
+
+	switch {
+	case err == nil:
 		if existing.Spec.Parameters.Size.Disk != "" {
 			pgDiskSize = existing.Spec.Parameters.Size.Disk
 		}
@@ -210,8 +212,12 @@ func getObservedPostgresSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNN
 				return nil, nil, "", fmt.Errorf("cannot merge existing pgsettings: %w", err)
 			}
 		}
-	} else if err == runtime.ErrNotFound {
+
+	case err == runtime.ErrNotFound:
 		pgDiskSize = "10Gi"
+
+	default:
+		return nil, nil, "", fmt.Errorf("cannot get observed postgres instance: %w", err)
 	}
 
 	if params := comp.Spec.Parameters.Service.PostgreSQLParameters; params != nil {

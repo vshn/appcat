@@ -34,7 +34,7 @@ func NewPostgreSQLDependencyBuilder(svc *runtime.ServiceRuntime, comp InfoGetter
 	}
 }
 
-func (a *PostgreSQLDependencyBuilder) SetSize(size string) *PostgreSQLDependencyBuilder {
+func (a *PostgreSQLDependencyBuilder) SetDiskSize(size string) *PostgreSQLDependencyBuilder {
 	if a.psqlParams == nil {
 		a.psqlParams = &vshnv1.VSHNPostgreSQLParameters{}
 	}
@@ -74,29 +74,25 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 
 	pgBouncerRaw := k8sruntime.RawExtension{}
 	if a.pgBouncerConfig != nil {
-		if a.pgBouncerConfig != nil {
 
-			pgBouncerConfigBytes, err := json.Marshal(a.pgBouncerConfig)
-			if err != nil {
-				return "", err
-			}
-			pgBouncerRaw = k8sruntime.RawExtension{
-				Raw: pgBouncerConfigBytes,
-			}
+		pgBouncerConfigBytes, err := json.Marshal(a.pgBouncerConfig)
+		if err != nil {
+			return "", err
+		}
+		pgBouncerRaw = k8sruntime.RawExtension{
+			Raw: pgBouncerConfigBytes,
 		}
 	}
 
 	pgSettingsRaw := k8sruntime.RawExtension{}
 	if a.pgSettings != nil {
-		if a.pgSettings != nil {
 
-			pgSettingsBytes, err := json.Marshal(a.pgSettings)
-			if err != nil {
-				return "", err
-			}
-			pgSettingsRaw = k8sruntime.RawExtension{
-				Raw: pgSettingsBytes,
-			}
+		pgSettingsBytes, err := json.Marshal(a.pgSettings)
+		if err != nil {
+			return "", err
+		}
+		pgSettingsRaw = k8sruntime.RawExtension{
+			Raw: pgSettingsBytes,
 		}
 	}
 

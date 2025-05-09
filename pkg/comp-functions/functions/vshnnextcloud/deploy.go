@@ -20,6 +20,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -221,8 +222,20 @@ func getObservedPostgresSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNN
 	}
 
 	if params := comp.Spec.Parameters.Service.PostgreSQLParameters; params != nil {
-		if params.Size.Disk != "" && !(pgDiskSize == "10Gi" && params.Size.Disk < pgDiskSize) {
-			pgDiskSize = params.Size.Disk
+		if params.Size.Disk != "" {
+			desiredDiskSize, err := resource.ParseQuantity(params.Size.Disk)
+			if err != nil {
+				return nil, nil, "", fmt.Errorf("cannot parse desired disk size %q: %w", params.Size.Disk, err)
+			}
+
+			currentDiskSize, err := resource.ParseQuantity(pgDiskSize)
+			if err != nil {
+				return nil, nil, "", fmt.Errorf("cannot parse current disk size %q: %w", pgDiskSize, err)
+			}
+
+			if desiredDiskSize.Cmp(currentDiskSize) >= 0 {
+				pgDiskSize = params.Size.Disk
+			}
 		}
 
 		if params.Service.PgBouncerSettings != nil && len(params.Service.PgBouncerSettings.Pgbouncer.Raw) > 0 {

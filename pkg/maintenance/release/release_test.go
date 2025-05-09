@@ -2,9 +2,10 @@ package release_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/crossplane/function-sdk-go/resource/composite"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
-	"testing"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource/unstructured/claim"

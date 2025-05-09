@@ -23,6 +23,7 @@ type PostgreSQLDependencyBuilder struct {
 	comp                 InfoGetter
 	psqlParams           *vshnv1.VSHNPostgreSQLParameters
 	pgBouncerConfig      map[string]string
+	pgSettings           map[string]string
 	timeOfDayMaintenance vshnv1.TimeOfDay
 }
 
@@ -33,6 +34,14 @@ func NewPostgreSQLDependencyBuilder(svc *runtime.ServiceRuntime, comp InfoGetter
 	}
 }
 
+func (a *PostgreSQLDependencyBuilder) SetDiskSize(size string) *PostgreSQLDependencyBuilder {
+	if a.psqlParams == nil {
+		a.psqlParams = &vshnv1.VSHNPostgreSQLParameters{}
+	}
+	a.psqlParams.Size.Disk = size
+	return a
+}
+
 func (a *PostgreSQLDependencyBuilder) AddParameters(psqlParams *vshnv1.VSHNPostgreSQLParameters) *PostgreSQLDependencyBuilder {
 	a.psqlParams = psqlParams
 	return a
@@ -40,6 +49,11 @@ func (a *PostgreSQLDependencyBuilder) AddParameters(psqlParams *vshnv1.VSHNPostg
 
 func (a *PostgreSQLDependencyBuilder) AddPGBouncerConfig(pgBouncerConfig map[string]string) *PostgreSQLDependencyBuilder {
 	a.pgBouncerConfig = pgBouncerConfig
+	return a
+}
+
+func (a *PostgreSQLDependencyBuilder) AddPGSettings(pgSettings map[string]string) *PostgreSQLDependencyBuilder {
+	a.pgSettings = pgSettings
 	return a
 }
 
@@ -60,15 +74,25 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 
 	pgBouncerRaw := k8sruntime.RawExtension{}
 	if a.pgBouncerConfig != nil {
-		if a.pgBouncerConfig != nil {
 
-			pgBouncerConfigBytes, err := json.Marshal(a.pgBouncerConfig)
-			if err != nil {
-				return "", err
-			}
-			pgBouncerRaw = k8sruntime.RawExtension{
-				Raw: pgBouncerConfigBytes,
-			}
+		pgBouncerConfigBytes, err := json.Marshal(a.pgBouncerConfig)
+		if err != nil {
+			return "", err
+		}
+		pgBouncerRaw = k8sruntime.RawExtension{
+			Raw: pgBouncerConfigBytes,
+		}
+	}
+
+	pgSettingsRaw := k8sruntime.RawExtension{}
+	if a.pgSettings != nil {
+
+		pgSettingsBytes, err := json.Marshal(a.pgSettings)
+		if err != nil {
+			return "", err
+		}
+		pgSettingsRaw = k8sruntime.RawExtension{
+			Raw: pgSettingsBytes,
 		}
 	}
 
@@ -85,6 +109,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 			PgBouncerSettings: &sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni{
 				Pgbouncer: pgBouncerRaw,
 			},
+			PostgreSQLSettings: pgSettingsRaw,
 		},
 		Monitoring: a.comp.GetMonitoring(),
 	}

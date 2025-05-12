@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -70,6 +71,10 @@ func (n *ForgejoWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 		return nil, err
 	}
 
+	if _, err := resource.ParseQuantity(forgejo.Spec.Parameters.Size.Disk); err != nil {
+		return nil, err
+	}
+
 	if err := validateForgejoConfig(forgejo.Spec.Parameters.Service.ForgejoSettings); err != nil {
 		return nil, err
 	}
@@ -89,6 +94,10 @@ func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 	}
 
 	if err := validateFQDNs(newForgejo.Spec.Parameters.Service.FQDN); err != nil {
+		return nil, err
+	}
+
+	if _, err := resource.ParseQuantity(newForgejo.Spec.Parameters.Size.Disk); err != nil {
 		return nil, err
 	}
 

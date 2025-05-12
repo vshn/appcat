@@ -3,12 +3,14 @@ package vshnnextcloud
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"dario.cat/mergo"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -18,7 +20,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -67,13 +69,26 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	var pgTime vshnv1.TimeOfDay
 	pgTime.SetTime(comp.GetMaintenanceTimeOfDay().GetTime().Add(20 * time.Minute))
 
+	pgBouncerConfig, pgSettings, pgDiskSize, err := getObservedPostgresSettings(svc, comp)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed postgres settings: %s", err))
+	}
+
 	pgSecret := ""
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
 		svc.Log.Info("Adding postgresql instance")
-		pgSecret, err = common.NewPostgreSQLDependencyBuilder(svc, comp).
+
+		pgBuilder := common.NewPostgreSQLDependencyBuilder(svc, comp).
 			AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
-			SetCustomMaintenanceSchedule(pgTime).
-			CreateDependency()
+			AddPGBouncerConfig(pgBouncerConfig).
+			AddPGSettings(pgSettings).
+			SetCustomMaintenanceSchedule(pgTime)
+
+		if pgDiskSize != "" {
+			pgBuilder.SetDiskSize(pgDiskSize)
+		}
+
+		pgSecret, err = pgBuilder.CreateDependency()
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
 		}
@@ -141,6 +156,122 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	}
 
 	return nil
+}
+
+func getObservedPostgresSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) (map[string]string, map[string]string, string, error) {
+	pgBouncerConfig := map[string]string{
+		"max_client_conn": "1000",
+	}
+	pgSettings := map[string]string{
+		"max_connections": "1000",
+	}
+	pgDiskSize := ""
+
+	if !comp.Spec.Parameters.Service.UseExternalPostgreSQL {
+		return pgBouncerConfig, pgSettings, pgDiskSize, nil
+	}
+
+	existing := &vshnv1.XVSHNPostgreSQL{}
+	err := svc.GetObservedComposedResource(existing, comp.GetName()+pgInstanceNameSuffix)
+
+	switch {
+	case err == nil:
+		if existing.Spec.Parameters.Size.Disk != "" {
+			pgDiskSize = existing.Spec.Parameters.Size.Disk
+		}
+
+		if existing.Spec.Parameters.Service.PgBouncerSettings != nil {
+			if bouncer := existing.Spec.Parameters.Service.PgBouncerSettings.Pgbouncer.Raw; len(bouncer) > 0 {
+				var rawBouncer map[string]interface{}
+				if err := json.Unmarshal(bouncer, &rawBouncer); err != nil {
+					return nil, nil, "", fmt.Errorf("cannot unmarshal existing pgbouncersettings: %w", err)
+				}
+
+				bouncerSettings := make(map[string]string)
+				for k, v := range rawBouncer {
+					bouncerSettings[k] = fmt.Sprint(v)
+				}
+
+				if err := mergo.Merge(&pgBouncerConfig, bouncerSettings, mergo.WithOverride); err != nil {
+					return nil, nil, "", fmt.Errorf("cannot merge existing pgbouncerconfig: %w", err)
+				}
+			}
+		}
+
+		if settings := existing.Spec.Parameters.Service.PostgreSQLSettings.Raw; len(settings) > 0 {
+			var rawSettings map[string]interface{}
+			if err := json.Unmarshal(settings, &rawSettings); err != nil {
+				return nil, nil, "", fmt.Errorf("cannot unmarshal existing pgsettings: %w", err)
+			}
+
+			pgSettingsMap := make(map[string]string)
+			for k, v := range rawSettings {
+				pgSettingsMap[k] = fmt.Sprint(v)
+			}
+
+			if err := mergo.Merge(&pgSettings, pgSettingsMap, mergo.WithOverride); err != nil {
+				return nil, nil, "", fmt.Errorf("cannot merge existing pgsettings: %w", err)
+			}
+		}
+
+	case err == runtime.ErrNotFound:
+		pgDiskSize = "10Gi"
+
+	default:
+		return nil, nil, "", fmt.Errorf("cannot get observed postgres instance: %w", err)
+	}
+
+	if params := comp.Spec.Parameters.Service.PostgreSQLParameters; params != nil {
+		if params.Size.Disk != "" {
+			desiredDiskSize, err := resource.ParseQuantity(params.Size.Disk)
+			if err != nil {
+				return nil, nil, "", fmt.Errorf("cannot parse desired disk size %q: %w", params.Size.Disk, err)
+			}
+
+			currentDiskSize, err := resource.ParseQuantity(pgDiskSize)
+			if err != nil {
+				return nil, nil, "", fmt.Errorf("cannot parse current disk size %q: %w", pgDiskSize, err)
+			}
+
+			if desiredDiskSize.Cmp(currentDiskSize) >= 0 {
+				pgDiskSize = params.Size.Disk
+			}
+		}
+
+		if params.Service.PgBouncerSettings != nil && len(params.Service.PgBouncerSettings.Pgbouncer.Raw) > 0 {
+			var rawBouncer map[string]interface{}
+			if err := json.Unmarshal(params.Service.PgBouncerSettings.Pgbouncer.Raw, &rawBouncer); err != nil {
+				return nil, nil, "", fmt.Errorf("cannot unmarshal user pgbouncersettings: %w", err)
+			}
+
+			bouncerSettings := make(map[string]string)
+			for k, v := range rawBouncer {
+				bouncerSettings[k] = fmt.Sprint(v)
+			}
+
+			if err := mergo.Merge(&pgBouncerConfig, bouncerSettings, mergo.WithOverride); err != nil {
+				return nil, nil, "", fmt.Errorf("cannot merge user pgbouncerconfig: %w", err)
+			}
+		}
+
+		if len(params.Service.PostgreSQLSettings.Raw) > 0 {
+			var rawSettings map[string]interface{}
+			if err := json.Unmarshal(params.Service.PostgreSQLSettings.Raw, &rawSettings); err != nil {
+				return nil, nil, "", fmt.Errorf("cannot unmarshal user pgsettings: %w", err)
+			}
+
+			pgSettingsMap := make(map[string]string)
+			for k, v := range rawSettings {
+				pgSettingsMap[k] = fmt.Sprint(v)
+			}
+
+			if err := mergo.Merge(&pgSettings, pgSettingsMap, mergo.WithOverride); err != nil {
+				return nil, nil, "", fmt.Errorf("cannot merge user pgsettings: %w", err)
+			}
+		}
+	}
+
+	return pgBouncerConfig, pgSettings, pgDiskSize, nil
 }
 
 func createInstallCollaboraConfigMap(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
@@ -480,7 +611,7 @@ func configureCronSidecar(values map[string]interface{}, version string, svc *ru
 
 func addApacheConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
 
-	cm := &v1.ConfigMap{
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apache-config",
 			Namespace: comp.GetInstanceNamespace(),
@@ -500,7 +631,7 @@ func addApacheConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) er
 
 func addNextcloudHooks(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {
 
-	cm := &v1.ConfigMap{
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "nextcloud-hooks",
 			Namespace: comp.GetInstanceNamespace(),

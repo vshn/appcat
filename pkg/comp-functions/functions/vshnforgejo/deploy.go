@@ -189,6 +189,18 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
+	// Storage size
+	size := comp.Spec.Parameters.Size.Disk
+	if size != "" {
+		if err := common.SetNestedObjectValue(
+			values,
+			[]string{"persistence", "size"},
+			size,
+		); err != nil {
+			return err
+		}
+	}
+
 	appName := comp.Spec.Parameters.Service.ForgejoSettings.AppName
 	if appName != "" {
 		common.SetNestedObjectValue(values, []string{"gitea", "config", "APP_NAME"}, appName)

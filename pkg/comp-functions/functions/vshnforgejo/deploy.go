@@ -201,10 +201,14 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	svc.Log.Info("Got plan", "plan", plan)
 
 	// If this is a codey abstraction, we need to refer to codey plans
-	svc.Log.Info("This comps annotations", "annotations", comp.Annotations)
 	if comp.Annotations["metadata.appcat.vshn.io/abstraction"] == "codey" {
-		svc.Log.Info("This is a codey abstraction, using codey plans")
-		svc.Config.Data["plans"] = comp.Annotations["metadata.appcat.vshn.io/codeyplans"]
+		v, ok := comp.Annotations["metadata.appcat.vshn.io/codeyplans"]
+		if !ok {
+			return fmt.Errorf("this is a codey abstraction but has no codey plans")
+		}
+
+		svc.Log.Info("This is a codey abstraction, using codey plans", "codeyplans", v)
+		svc.Config.Data["plans"] = v
 	}
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)

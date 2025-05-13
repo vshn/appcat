@@ -4623,7 +4623,6 @@ spec:
                             version:
                               description: Version defines the Collabora version to use.
                               type: string
-                              default: {}
                           required:
                             - enabled
                             - fqdn

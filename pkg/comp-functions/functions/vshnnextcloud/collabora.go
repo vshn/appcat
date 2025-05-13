@@ -146,6 +146,16 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 
 func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
+	collaboraBaseImage := svc.Config.Data["collabora_image"]
+	defaultImageTag := svc.Config.Data["collabora_image_tag"]
+	collaboraVersion := comp.Spec.Parameters.Service.Collabora.Version
+
+	if collaboraVersion != "" {
+		defaultImageTag = collaboraVersion
+	}
+
+	image := fmt.Sprintf("%s:%s", collaboraBaseImage, defaultImageTag)
+
 	sts := &v1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
@@ -180,7 +190,7 @@ func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) er
 									Value: "--o:net.proto=IPv4",
 								},
 							},
-							Image: svc.Config.Data["collabora_image"],
+							Image: image,
 							Name:  comp.GetName() + "-collabora-code",
 							Ports: []corev1.ContainerPort{
 								{
@@ -289,6 +299,7 @@ func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) er
 
 	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-collabora-code-sts", runtime.KubeOptionAddLabels(labelMap))
 }
+
 func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
 	service := &corev1.Service{

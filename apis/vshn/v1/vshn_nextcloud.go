@@ -19,6 +19,7 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.properties.retention.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.collabora.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnnextclouds.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.collabora.properties.version.default={})"
 
 // +kubebuilder:object:root=true
 
@@ -204,6 +205,8 @@ type CollaboraSpec struct {
 	// FQDN contains the FQDN of the Collabora server. This is used to configure the Collabora server URL in Your Nextcloud instance.
 	//+kubebuilder:validation:Required
 	FQDN string `json:"fqdn,omitempty"`
+	// Version defines the Collabora version to use.
+	Version string `json:"version,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

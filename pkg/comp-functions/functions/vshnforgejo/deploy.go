@@ -184,8 +184,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		},
 		// This will be overwritten by setResources() later
 		"resources": map[string]any{
-			"requests": map[string]any{},
-			"limits":   map[string]any{},
+			"limits": map[string]any{},
 		},
 	}
 
@@ -197,27 +196,20 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	// Resources
+	svc.Log.Info("Fetching and setting resources")
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
-
-	// Debug
-	o, _ := json.Marshal(plan)
-	fmt.Printf("Got plan: %s\n", string(o))
+	svc.Log.Info("Got plan", "plan", plan)
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
 	if err != nil {
 		return fmt.Errorf("cannot fetch plans from config: %w", err)
 	}
 
-	o, _ = json.Marshal(resources)
-	fmt.Printf("Got resources: %s\n", string(o))
-
 	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
 	if len(errs) > 0 {
 		svc.Log.Error(fmt.Errorf("could not get resources"), "errors", errors.Join(errs...))
 	}
-
-	o, _ = json.Marshal(res)
-	fmt.Printf("Got res: %s\n", string(o))
+	svc.Log.Info("Got resources", "resources", res)
 
 	err = setResources(values, res)
 	if err != nil {
@@ -231,8 +223,9 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	// Automagically inject the entirety of VSHNForgejoConfig into values
+	svc.Log.Info("Updating forgejo settings")
 	var objmap map[string]any
-	o, err = json.Marshal(comp.Spec.Parameters.Service.ForgejoSettings.Config)
+	o, err := json.Marshal(comp.Spec.Parameters.Service.ForgejoSettings.Config)
 	if err != nil {
 		return err
 	}

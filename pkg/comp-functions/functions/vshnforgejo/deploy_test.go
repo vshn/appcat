@@ -49,18 +49,25 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, appName, values["gitea"].(map[string]any)["config"].(map[string]any)["APP_NAME"])
 	})
 
-	t.Run("Ensure_DiskSizeCanBeSet", func(t *testing.T) {
-		const diskSize = "15Gi"
+	t.Run("GivenPlan_ExpectAppropriateResources", func(t *testing.T) {
+		const (
+			plan = "small"
+			cpu  = "1"
+			mem  = "4Gi"
+			disk = "50Gi"
+		)
 
 		svc, comp, secretName := bootstrapTest(t)
-		comp.Spec.Parameters.Size.Disk = diskSize
+		svc.Config.Data["defaultPlan"] = plan
 		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))
 
 		release := &xhelmv1.Release{}
 		assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
 
 		values := getReleaseValues(t, *release)
-		assert.Equal(t, diskSize, values["persistence"].(map[string]any)["size"])
+		assert.Equal(t, cpu, values["resources"].(map[string]any)["limits"].(map[string]any)["cpu"])
+		assert.Equal(t, mem, values["resources"].(map[string]any)["limits"].(map[string]any)["memory"])
+		assert.Equal(t, disk, values["persistence"].(map[string]any)["size"])
 	})
 }
 
@@ -74,6 +81,9 @@ func getReleaseValues(t *testing.T, release xhelmv1.Release) map[string]any {
 
 func bootstrapTest(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNForgejo, string) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshnforgejo/01_default.yaml")
+
+	o, _ := json.MarshalIndent(svc.Config, "", "  ")
+	t.Logf("Loaded config: %s", o)
 
 	comp := &vshnv1.VSHNForgejo{}
 	err := svc.GetObservedComposite(comp)

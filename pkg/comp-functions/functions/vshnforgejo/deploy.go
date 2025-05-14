@@ -3,11 +3,13 @@ package vshnforgejo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -180,6 +182,11 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		"strategy": map[string]any{
 			"type": "Recreate",
 		},
+		// This will be overwritten by setResources() later
+		"resources": map[string]any{
+			"limits":   map[string]any{},
+			"requests": map[string]any{},
+		},
 	}
 
 	if svc.Config.Data["imageRegistry"] == "" {
@@ -189,12 +196,35 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
+	// Compute resources
+	svc.Log.Info("Fetching and setting compute resources")
+	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
+
+	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
+	if err != nil {
+		return fmt.Errorf("could not fetch plans from config: %w", err)
+	}
+	svc.Log.Info("Got resources from plan", "plan", plan, "resources", resources)
+
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) > 0 {
+		svc.Log.Error(fmt.Errorf("could not get resources"), "errors", errors.Join(errs...))
+	}
+	svc.Log.Info("Final resources to use", "resources", res)
+
+	err = setResources(values, res)
+	if err != nil {
+		return fmt.Errorf("cannot set resources: %w", err)
+	}
+
+	// App name
 	appName := comp.Spec.Parameters.Service.ForgejoSettings.AppName
 	if appName != "" {
 		common.SetNestedObjectValue(values, []string{"gitea", "config", "APP_NAME"}, appName)
 	}
 
 	// Automagically inject the entirety of VSHNForgejoConfig into values
+	svc.Log.Info("Updating forgejo settings")
 	var objmap map[string]any
 	o, err := json.Marshal(comp.Spec.Parameters.Service.ForgejoSettings.Config)
 	if err != nil {
@@ -208,6 +238,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
+	// Ingress
 	svcNameSuffix := "http"
 	if !strings.Contains(comp.GetName(), "forgejo") {
 		svcNameSuffix = "forgejo-" + svcNameSuffix
@@ -260,4 +291,32 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	return svc.SetDesiredComposedResource(release)
+}
+
+// Set compute resources in the values map
+func setResources(values map[string]any, resources common.Resources) error {
+	err := common.SetNestedObjectValue(values, []string{"resources", "limits", "cpu"}, resources.CPU.String())
+	if err != nil {
+		return fmt.Errorf("cannot set cpu limits: %w", err)
+	}
+	err = common.SetNestedObjectValue(values, []string{"resources", "requests", "cpu"}, resources.ReqCPU.String())
+	if err != nil {
+		return fmt.Errorf("cannot set cpu requests: %w", err)
+	}
+
+	err = common.SetNestedObjectValue(values, []string{"resources", "limits", "memory"}, resources.Mem.String())
+	if err != nil {
+		return fmt.Errorf("cannot set memory limits: %w", err)
+	}
+	err = common.SetNestedObjectValue(values, []string{"resources", "requests", "memory"}, resources.ReqMem.String())
+	if err != nil {
+		return fmt.Errorf("cannot set memory requests: %w", err)
+	}
+
+	err = common.SetNestedObjectValue(values, []string{"persistence", "size"}, resources.Disk.String())
+	if err != nil {
+		return fmt.Errorf("cannot set disk size: %w", err)
+	}
+
+	return nil
 }

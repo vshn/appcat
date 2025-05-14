@@ -195,33 +195,21 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	// Resources
-	svc.Log.Info("Fetching and setting resources")
+	// Compute resources
+	svc.Log.Info("Fetching and setting compute resources")
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
-	svc.Log.Info("Got plan", "plan", plan)
-
-	// If this is a codey abstraction, we need to refer to codey plans
-	if comp.Annotations["metadata.appcat.vshn.io/abstraction"] == "codey" {
-		v, ok := comp.Annotations["metadata.appcat.vshn.io/codeyplans"]
-		if !ok {
-			return fmt.Errorf("this is a codey abstraction but has no codey plans")
-		}
-
-		svc.Log.Info("This is a codey abstraction, using codey plans", "codeyplans", v)
-		svc.Config.Data["plans"] = v
-	}
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
 	if err != nil {
-		return fmt.Errorf("cannot fetch plans from config: %w", err)
+		return fmt.Errorf("could not fetch plans from config: %w", err)
 	}
-	svc.Log.Info("Got resources from config", "resources", resources)
+	svc.Log.Info("Got resources from plan", "plan", plan, "resources", resources)
 
 	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
 	if len(errs) > 0 {
 		svc.Log.Error(fmt.Errorf("could not get resources"), "errors", errors.Join(errs...))
 	}
-	svc.Log.Info("Got resources", "resources", res)
+	svc.Log.Info("Final resources to use", "resources", res)
 
 	err = setResources(values, res)
 	if err != nil {

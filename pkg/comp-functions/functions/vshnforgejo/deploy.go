@@ -184,7 +184,8 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		},
 		// This will be overwritten by setResources() later
 		"resources": map[string]any{
-			"limits": map[string]any{},
+			"limits":   map[string]any{},
+			"requests": map[string]any{},
 		},
 	}
 
@@ -298,10 +299,18 @@ func setResources(values map[string]any, resources common.Resources) error {
 	if err != nil {
 		return fmt.Errorf("cannot set cpu limits: %w", err)
 	}
+	err = common.SetNestedObjectValue(values, []string{"resources", "requests", "cpu"}, resources.ReqCPU.String())
+	if err != nil {
+		return fmt.Errorf("cannot set cpu requests: %w", err)
+	}
 
 	err = common.SetNestedObjectValue(values, []string{"resources", "limits", "memory"}, resources.Mem.String())
 	if err != nil {
 		return fmt.Errorf("cannot set memory limits: %w", err)
+	}
+	err = common.SetNestedObjectValue(values, []string{"resources", "requests", "memory"}, resources.ReqMem.String())
+	if err != nil {
+		return fmt.Errorf("cannot set memory requests: %w", err)
 	}
 
 	err = common.SetNestedObjectValue(values, []string{"persistence", "size"}, resources.Disk.String())

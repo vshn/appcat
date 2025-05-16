@@ -9,7 +9,8 @@ input:
     name: xfn-config
   data:
     defaultPlan: standard-2
-    collabora_image: docker.io/collabora/code:24.04.9.2.1
+    collabora_image: docker.io/collabora/code
+    collabora_image_tag: latest
     collaboraCPULimit: "1"
     collaboraCPURequests: 250m
     collaboraMemoryLimit: 1Gi

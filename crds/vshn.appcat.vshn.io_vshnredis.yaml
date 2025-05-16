@@ -4606,13 +4606,14 @@ spec:
                             - guaranteed
                           type: string
                         version:
-                          default: "7.0"
+                          default: "7.2"
                           description: |-
                             Version contains supported version of Redis.
                             Multiple versions are supported. The latest version "7.0" is the default version.
                           enum:
-                            - "6.2"
                             - "7.0"
+                            - "7.2"
+                            - "8.0"
                           type: string
                       type: object
                       default: {}

@@ -220,7 +220,7 @@ func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) er
 									},
 								},
 								// https://github.com/CollaboraOnline/online/blob/master/docker/from-packages/Dockerfile#L138
-								RunAsUser: ptr.To[int64](100),
+								RunAsUser: ptr.To[int64](1001),
 							},
 
 							// Mount certificates

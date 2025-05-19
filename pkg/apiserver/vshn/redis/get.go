@@ -31,7 +31,7 @@ func (v *vshnRedisBackupStorage) Get(ctx context.Context, name string, opts *met
 	for _, instance := range instances.Items {
 		client, err := v.vshnRedis.GetKubeClient(ctx, &instance)
 		if err != nil {
-			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
+			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig: %w", err)
 		}
 		ins := instance.Status.InstanceNamespace
 		snap, err := v.snapshothandler.Get(ctx, name, ins, client)

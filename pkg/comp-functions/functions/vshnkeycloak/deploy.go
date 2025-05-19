@@ -378,18 +378,8 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"livenessProbe":  "{\"httpGet\": {\"path\": \"/health/live\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 0, \"timeoutSeconds\": 5}",
 		"readinessProbe": "{\"httpGet\": {\"path\": \"/health/ready\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 10, \"timeoutSeconds\": 1}",
 		"startupProbe":   "{\"httpGet\": {\"path\": \"/health\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 15, \"timeoutSeconds\": 1, \"failureThreshold\": 60, \"periodSeconds\": 5}",
-		"service": map[string]any{
-			"extraPorts": []map[string]any{
-				{
-					"name":       "http-internal",
-					"port":       9000,
-					"targetPort": 9000,
-				},
-			},
-		},
 		"http": map[string]any{
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
-			//	"internalPort": "http-internal",
 		},
 		"podSecurityContext": nil,
 		"podAnnotations":     podAnnotations,

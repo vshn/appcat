@@ -172,6 +172,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	values = map[string]interface{}{
+		// Otherwise we can't use our mirror
+		// https://github.com/bitnami/charts/issues/30850
+		"global": map[string]any{
+			"security": map[string]any{
+				"allowInsecureImages": true,
+			},
+		},
 		"existingSecret":   secretName,
 		"fullnameOverride": comp.GetName(),
 		"replicaCount":     comp.GetInstances(),
@@ -231,7 +238,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
-		values["global"] = map[string]any{}
 		err := common.SetNestedObjectValue(values, []string{"global", "imageRegistry"}, registry)
 		if err != nil {
 			return nil, err

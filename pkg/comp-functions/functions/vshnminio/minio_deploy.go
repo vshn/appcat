@@ -117,6 +117,8 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, svc *r
 		"fullnameOverride": comp.GetName(),
 		"mode":             comp.Spec.Parameters.Service.Mode,
 		"replicas":         comp.Spec.Parameters.Instances,
+		// Disable creation of "console" user
+		"users": "",
 		"deploymentUpdate": map[string]interface{}{
 			"type": "Recreate",
 		},

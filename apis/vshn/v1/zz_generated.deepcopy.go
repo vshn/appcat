@@ -8,6 +8,7 @@ import (
 	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -394,6 +395,13 @@ func (in *VSHNForgejoServiceSpec) DeepCopyInto(out *VSHNForgejoServiceSpec) {
 		in, out := &in.FQDN, &out.FQDN
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.ExtraEnv != nil {
+		in, out := &in.ExtraEnv, &out.ExtraEnv
+		*out = make([]corev1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 }
 

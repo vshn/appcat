@@ -148,8 +148,11 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 	}
 
 	if err = errors.Join(
-		m.DoMaintenance(ctx),
+		// We do the release first and then the maintenance
+		// This is to avoid deadlocks, where a maintenance might be broken
+		// in a version and the fix is in the next version.
 		m.ReleaseLatest(ctx),
+		m.DoMaintenance(ctx),
 	); err != nil {
 		return fmt.Errorf("maintenance failed: %w", err)
 	}
@@ -191,16 +194,21 @@ func validateMandatoryEnvs(s service) error {
 }
 
 func getVersionHandler(k8sCLient client.Client, log logr.Logger) release.VersionHandler {
+
+	opts := release.ReleaserOpts{
+		ClaimName:      viper.GetString("CLAIM_NAME"),
+		ClaimNamespace: viper.GetString("CLAIM_NAMESPACE"),
+		Composite:      viper.GetString("COMPOSITE_NAME"),
+		Group:          viper.GetString("OWNER_GROUP"),
+		Kind:           viper.GetString("OWNER_KIND"),
+		Version:        viper.GetString("OWNER_VERSION"),
+		ServiceID:      viper.GetString("SERVICE_ID"),
+	}
+
 	return release.NewDefaultVersionHandler(
 		k8sCLient,
 		log,
-		viper.GetString("CLAIM_NAME"),
-		viper.GetString("COMPOSITE_NAME"),
-		viper.GetString("CLAIM_NAMESPACE"),
-		viper.GetString("OWNER_GROUP"),
-		viper.GetString("OWNER_KIND"),
-		viper.GetString("OWNER_VERSION"),
-		viper.GetString("SERVICE_ID"),
+		opts,
 	)
 }
 

@@ -130,6 +130,11 @@ func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) error {
 	fmt.Printf("IngressList: %s\n", string(o))
 
 	for _, ingress := range ingressList.Items {
+		// Additional filtering to check if the Ingress is actually an ACME solver
+		if _, exists := ingress.Labels["acme.cert-manager.io/http01-solver"]; exists {
+			continue
+		}
+
 		for _, rule := range ingress.Spec.Rules {
 			if rule.Host == fqdn {
 				return field.Invalid(

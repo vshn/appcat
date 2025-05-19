@@ -34,6 +34,7 @@ const (
 	adminConnectionDetailsField   = "NEXTCLOUD_USERNAME"
 	hostConnectionDetailsField    = "NEXTCLOUD_HOST"
 	urlConnectionDetailsField     = "NEXTCLOUD_URL"
+	collaboraHostField            = "COLLABORA_HOST"
 	serviceSuffix                 = "nextcloud"
 )
 
@@ -129,6 +130,10 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	hostname := comp.GetName()
 	if !strings.Contains(hostname, serviceSuffix) {
 		hostname = hostname + "-" + serviceSuffix
+	}
+
+	if comp.Spec.Parameters.Service.Collabora.Enabled {
+		svc.SetConnectionDetail(collaboraHostField, []byte(fmt.Sprintf("%s-collabora-code.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace())))
 	}
 
 	svc.SetConnectionDetail(adminPWConnectionDetailsField, cd[adminPWSecretField])

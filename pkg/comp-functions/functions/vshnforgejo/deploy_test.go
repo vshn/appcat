@@ -108,9 +108,6 @@ func getReleaseValues(t *testing.T, release xhelmv1.Release) map[string]any {
 func bootstrapTest(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNForgejo, string) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshnforgejo/01_default.yaml")
 
-	o, _ := json.MarshalIndent(svc.Config, "", "  ")
-	t.Logf("Loaded config: %s", o)
-
 	comp := &vshnv1.VSHNForgejo{}
 	err := svc.GetObservedComposite(comp)
 	assert.NoError(t, err)

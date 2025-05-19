@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -123,6 +124,10 @@ func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) error {
 	if err != nil {
 		return fmt.Errorf("failed listing ingresses: %v", err)
 	}
+
+	// Debug
+	o, _ := json.MarshalIndent(ingressList, "", "  ")
+	fmt.Printf("IngressList: %s\n", string(o))
 
 	for _, ingress := range ingressList.Items {
 		for _, rule := range ingress.Spec.Rules {

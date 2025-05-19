@@ -11,6 +11,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // DeployForgejo deploys a Forgejo instance via the Helm Chart.
@@ -192,6 +193,13 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	appName := comp.Spec.Parameters.Service.ForgejoSettings.AppName
 	if appName != "" {
 		common.SetNestedObjectValue(values, []string{"gitea", "config", "APP_NAME"}, appName)
+	}
+
+	// Extra env vars
+	if comp.Spec.Parameters.Service.ExtraEnv != nil {
+		values["deployment"] = map[string][]corev1.EnvVar{
+			"env": comp.Spec.Parameters.Service.ExtraEnv,
+		}
 	}
 
 	// Automagically inject the entirety of VSHNForgejoConfig into values

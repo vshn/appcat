@@ -213,10 +213,10 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1.RunFunctionRequest) 
 	if err != nil {
 		return errResp, fmt.Errorf("cannot add usages: %w", err)
 	}
-	err = sr.ForwardEvents()
-	if err != nil {
-		return errResp, fmt.Errorf("cannot forward events: %w", err)
-	}
+	// err = sr.ForwardEvents()
+	// if err != nil {
+	// 	return errResp, fmt.Errorf("cannot forward events: %w", err)
+	// }
 	err = sr.deployConnectionDetailsToInstanceNS()
 	if err != nil {
 		return errResp, fmt.Errorf("cannot deploy connection details: %w", err)
@@ -1498,6 +1498,13 @@ func (s *ServiceRuntime) ApplyState(state ServiceState) {
 			}
 
 			tmpCmp, err := composed.From(obj)
+
+			// unstructured.RemoveNestedField(tmpCmp.Object, "status")
+			// unstructured.RemoveNestedField(tmpCmp.Object, "spec", "watch")
+			// unstructured.RemoveNestedField(tmpCmp.Object, "spec", "forProvider", "manifest", "spec")
+			// unstructured.RemoveNestedField(tmpCmp.Object, "spec", "forProvider", "manifest", "status")
+			unstructured.RemoveNestedField(tmpCmp.Object, "spec", "forProvider", "manifest", "metadata", "creationTimestamp")
+
 			cmp = tmpCmp
 		}
 

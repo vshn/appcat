@@ -4717,6 +4717,11 @@ spec:
                                     type: string
                                   description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#actions-actions
                                   type: object
+                                email.incoming:
+                                  additionalProperties:
+                                    type: string
+                                  description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#incoming-email-emailincoming
+                                  type: object
                                 mailer:
                                   additionalProperties:
                                     type: string

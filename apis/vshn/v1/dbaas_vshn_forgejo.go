@@ -135,6 +135,9 @@ type VSHNForgejoConfig struct {
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
 	Mailer map[string]string `json:"mailer,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#incoming-email-emailincoming
+	EmailIncoming map[string]string `json:"email.incoming,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

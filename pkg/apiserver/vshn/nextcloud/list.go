@@ -39,7 +39,7 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 	for _, instance := range instances.Items {
 		client, err := v.vshnNextcloud.GetKubeClient(ctx, &instance)
 		if err != nil {
-			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig")
+			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig: %w", err)
 		}
 		snapshots, err := v.snapshothandler.List(ctx, instance.Status.InstanceNamespace, client)
 		if err != nil && !apierrors.IsNotFound(err) {

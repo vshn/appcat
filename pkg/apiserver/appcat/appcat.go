@@ -19,6 +19,8 @@ import (
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;delete;update
 // +kubebuilder:rbac:groups="authorization.k8s.io",resources=subjectaccessreviews,verbs=get;list;watch;create;delete;update
 // +kubebuilder:rbac:groups="apiextensions.crossplane.io",resources=compositions,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="kubernetes.crossplane.io",resources=providerconfigs,verbs=get;list;watch
 
 // New returns a new storage provider for AppCat
 func New() restbuilder.ResourceHandlerProvider {

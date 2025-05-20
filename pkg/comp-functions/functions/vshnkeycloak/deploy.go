@@ -343,10 +343,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": true,
 		},
 		"extraServiceMonitor": map[string]any{
-			"enabled": false,
+			"enabled": true,
 		},
 		"serviceMonitor": map[string]any{
-			"enabled": false,
+			"enabled": true,
 		},
 		"resources": map[string]any{
 			"requests": map[string]any{

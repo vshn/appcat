@@ -438,6 +438,12 @@ func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Manag
 		return err
 	}
 
+	// We need to remove some fields to make realtime compositions work.
+	// CreationTimestamp is set to nil due to our marshalling, but this will cause the object to go into an endless loop
+	unstructured.RemoveNestedField(unstructuredObj.Object, "spec", "forProvider", "manifest", "metadata", "creationTimestamp")
+	// We need to remove the managedFields, because realtime compositions use server-side-apply
+	unstructured.RemoveNestedField(unstructuredObj.Object, "spec", "forProvider", "manifest", "metadata", "managedFields")
+
 	dr.Resource = unstructuredObj
 
 	s.desiredResources[resource.Name(name)] = dr

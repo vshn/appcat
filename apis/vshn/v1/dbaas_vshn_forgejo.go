@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -93,9 +92,6 @@ type VSHNForgejoServiceSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	FQDN []string `json:"fqdn"`
 
-	// Extra environment variables to pass to the Forgejo deployment.
-	ExtraEnv []corev1.EnvVar `json:"extraEnv,omitempty"`
-
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
 	// +kubebuilder:default="besteffort"
 
@@ -135,6 +131,9 @@ type VSHNForgejoConfig struct {
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#mailer-mailer
 	Mailer map[string]string `json:"mailer,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#incoming-email-emailincoming
+	EmailIncoming map[string]string `json:"email.incoming,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

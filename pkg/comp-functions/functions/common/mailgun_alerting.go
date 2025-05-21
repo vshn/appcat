@@ -116,9 +116,12 @@ func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespac
 	patchSecretWithOtherSecret := xkube.Reference{
 		PatchesFrom: &xkube.PatchesFrom{
 			DependsOn: xkube.DependsOn{
-				Name: alertManagerConfigSecretName,
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  svc.Config.Data["emailAlertingSecretNamespace"],
+				Name:       svc.Config.Data["emailAlertingSecretName"],
 			},
-			FieldPath: ptr.To("status.atProvider.manifest.data.password"),
+			FieldPath: ptr.To("data.password"),
 		},
 		ToFieldPath: ptr.To("data.password"),
 	}

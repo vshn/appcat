@@ -28,12 +28,12 @@ func ManageRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("can't get composite: %w", err).Error())
 	}
 
 	desiredRelease, err := getRelease(svc)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot get redis release from iof: %w", err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot get redis release from iof: %w", err).Error())
 	}
 	observedRelease, err := getObservedRelease(svc)
 	if err != nil {
@@ -51,7 +51,7 @@ func ManageRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 	l.Info("Updating helm values")
 	desiredRelease, err = updateRelease(ctx, comp, desiredRelease, observedRelease, passwordSecret)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot update redis release %q: %q: %w", releaseName, err.Error(), err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot update redis release %q: %q: %w", releaseName, err.Error(), err).Error())
 	}
 
 	err = svc.AddObservedConnectionDetails("release")
@@ -61,7 +61,7 @@ func ManageRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 
 	err = svc.SetDesiredComposedResourceWithName(desiredRelease, redisRelease)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot update release %q: %w", releaseName, err))
+		return runtime.NewWarningResult(fmt.Errorf("cannot update release %q: %w", releaseName, err).Error())
 	}
 
 	return nil

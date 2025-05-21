@@ -105,10 +105,7 @@ func (vh *DefaultVersionHandler) getLatestRevisionLabel(ctx context.Context) (st
 
 	revision, exists := cr.GetLabels()["metadata.appcat.vshn.io/revision"]
 	if !exists || revision == "" {
-		vh.log.Info("Label metadata.appcat.vshn.io/revision is missing from composition revision")
-		return "", nil
-		//TODO return this error when CI/CD is enabled
-		//return errors.New("missing metadata.appcat.vshn.io/revision label in composition revision")
+		return "", errors.New("missing metadata.appcat.vshn.io/revision label in composition revision")
 	}
 
 	return revision, nil

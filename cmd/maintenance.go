@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -151,7 +152,17 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		// We do the release first and then the maintenance
 		// This is to avoid deadlocks, where a maintenance might be broken
 		// in a version and the fix is in the next version.
-		m.ReleaseLatest(ctx),
+		func() error {
+			enabled, err := strconv.ParseBool(viper.GetString("RELEASE_MANAGEMENT_ENABLED"))
+			if err != nil {
+				return fmt.Errorf("cannot determine if release management is enabled: %w", err)
+			}
+			if enabled {
+				return m.ReleaseLatest(ctx)
+			}
+			log.Info("release management disabled, skipping rollout of latest revisions")
+			return nil
+		}(),
 		m.DoMaintenance(ctx),
 	); err != nil {
 		return fmt.Errorf("maintenance failed: %w", err)

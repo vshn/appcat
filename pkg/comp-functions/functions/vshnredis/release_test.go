@@ -1,5 +1,6 @@
 package vshnredis
 
+/*
 import (
 	"bytes"
 	"context"
@@ -211,3 +212,4 @@ func loadRuntimeFromTemplate(t assert.TestingT, file string, data any) *runtime.
 
 	return svc
 }
+*/

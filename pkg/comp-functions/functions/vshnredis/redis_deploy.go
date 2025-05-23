@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -36,13 +35,13 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
+	if err := common.BootstrapInstanceNs(ctx, comp, comp.GetServiceName(), comp.GetName()+"-instanceNs", svc); err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
+	}
+
 	secretName, err := common.AddCredentialsSecret(comp, svc, []string{passwordKey}, common.DisallowDeletion)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create credentials secret: %w", err).Error())
-	}
-
-	if err := common.BootstrapInstanceNs(ctx, comp, comp.GetServiceName(), comp.GetName()+"-instanceNs", svc); err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
 
 	tlsOpts := &common.TLSOptions{
@@ -50,14 +49,11 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 			fmt.Sprintf("redis-headless.vshn-redis-%s.svc.cluster.local", comp.GetName()),
 			fmt.Sprintf("redis-headless.vshn-redis-%s.svc", comp.GetName()),
 		},
-		CertOptions: []common.CertOptions{func(c *cmv1.Certificate) {
-			c.Spec.CommonName = "vshn-appcat"
-			c.Spec.Subject = &cmv1.X509Subject{Organizations: []string{"vshn-appcat-server"}}
-		}},
 	}
 
-	if _, err := common.CreateTLSCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts); err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot create TLS certificates: %w", err).Error())
+	_, _, err = common.CreateMTLSCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot create mTLS certificates: %w", err).Error())
 	}
 
 	if err := createObjectHelmRelease(ctx, comp, svc, secretName); err != nil {
@@ -127,6 +123,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, err
 	}
 
+	commonConfig := ""
+	if comp.Spec.Parameters.Service.RedisSettings != "" {
+		commonConfig = comp.Spec.Parameters.Service.RedisSettings
+	}
+
 	values := map[string]any{
 		"fullnameOverride": comp.GetName(),
 		"architecture":     "standalone",
@@ -186,7 +187,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 		"master": map[string]any{
 			"persistence": map[string]any{
-				"size": comp.Spec.Parameters.Size.Disk,
+				"size": res.Disk,
 			},
 			"podSecurityContext": map[string]any{
 				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
@@ -196,18 +197,18 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 			"resources": map[string]any{
 				"requests": map[string]any{
-					"memory": res.ReqMem.String(),
-					"cpu":    res.ReqCPU.String(),
+					"memory": res.ReqMem,
+					"cpu":    res.ReqCPU,
 				},
 				"limits": map[string]any{
-					"memory": res.Mem.String(),
-					"cpu":    res.CPU.String(),
+					"memory": res.Mem,
+					"cpu":    res.CPU,
 				},
 			},
 			"nodeSelector": nodeSelector,
 		},
 
-		"commonConfiguration": map[string]any{},
+		"commonConfiguration": commonConfig,
 	}
 
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
@@ -232,7 +233,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 			ObjectReference: corev1.ObjectReference{
 				APIVersion: "v1",
 				Kind:       "Secret",
-				Name:       comp.Name,
+				Name:       comp.GetName() + "-credentials-secret",
 				Namespace:  comp.GetInstanceNamespace(),
 				FieldPath:  "data." + passwordKey,
 			},

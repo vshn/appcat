@@ -9,7 +9,6 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -70,10 +69,6 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime, secretName string) error {
 	values, err := newValues(ctx, svc, comp, secretName)
 	if err != nil {
-		return err
-	}
-
-	if err := enrichValues(values); err != nil {
 		return err
 	}
 
@@ -219,16 +214,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		_ = common.SetNestedObjectValue(values, []string{"global", "imageRegistry"}, registry)
 	}
 	return values, nil
-}
-
-func enrichValues(values map[string]any) error {
-	if err := backup.AddPVCAnnotationToValues(values, "master", "persistence", "annotations"); err != nil {
-		return err
-	}
-	if err := backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "master", "podAnnotations"); err != nil {
-		return err
-	}
-	return backup.AddBackupCMToValues(values, []string{"master", "extraVolumes"}, []string{"master", "extraVolumeMounts"})
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[string]any, comp *vshnv1.VSHNRedis) (*xhelmv1.Release, error) {

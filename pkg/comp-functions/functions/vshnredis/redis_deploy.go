@@ -35,7 +35,7 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
-	if err := common.BootstrapInstanceNs(ctx, comp, comp.GetServiceName(), comp.GetName()+"-instanceNs", svc); err != nil {
+	if err := common.BootstrapInstanceNs(ctx, comp, comp.GetServiceName(), "namespace-conditions", svc); err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
 
@@ -129,7 +129,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	values := map[string]any{
-		"fullnameOverride": comp.GetName(),
+		"fullnameOverride": "redis",
 		"architecture":     "standalone",
 
 		"global": map[string]any{
@@ -209,6 +209,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 
 		"commonConfiguration": commonConfig,
+
+		"networkPolicy": map[string]any{
+			"enabled": false,
+		},
 	}
 
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {

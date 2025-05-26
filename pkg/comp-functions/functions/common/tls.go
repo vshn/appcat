@@ -242,7 +242,7 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 	// Create self-signed issuer
 	selfSignedIssuer := &cmv1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceName + "-selfsigned",
+			Name:      serviceName + "-selfsigned-issuer",
 			Namespace: ns,
 		},
 		Spec: cmv1.IssuerSpec{
@@ -296,7 +296,7 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 			},
 			CommonName: serviceName + "-ca",
 			IssuerRef: certmgrv1.ObjectReference{
-				Name:  serviceName + "-selfsigned",
+				Name:  serviceName + "-selfsigned-issuer",
 				Kind:  "Issuer",
 				Group: "cert-manager.io",
 			},
@@ -318,7 +318,7 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 	// Create CA issuer
 	caIssuer := &cmv1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceName + "-ca",
+			Name:      serviceName + "-ca-issuer",
 			Namespace: ns,
 		},
 		Spec: cmv1.IssuerSpec{
@@ -368,12 +368,12 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 				Size:      4096,
 			},
 			Usages: []cmv1.KeyUsage{"server auth", "client auth"},
-			DNSNames: []string{
-				serviceName + "." + ns + ".svc.cluster.local",
-				serviceName + "." + ns + ".svc",
-			},
+			//DNSNames: []string{
+			//	serviceName + "." + ns + ".svc.cluster.local",
+			//	serviceName + "." + ns + ".svc",
+			//},
 			IssuerRef: certmgrv1.ObjectReference{
-				Name:  serviceName + "-ca",
+				Name:  serviceName + "-ca-issuer",
 				Kind:  "Issuer",
 				Group: "cert-manager.io",
 			},
@@ -445,10 +445,10 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 				},
 			},
 			IsCA: false,
-			DNSNames: []string{
-				serviceName + "." + ns + ".svc.cluster.local",
-				serviceName + "." + ns + ".svc",
-			},
+			//DNSNames: []string{
+			//	serviceName + "." + ns + ".svc.cluster.local",
+			//	serviceName + "." + ns + ".svc",
+			//},
 			PrivateKey: &cmv1.CertificatePrivateKey{
 				Algorithm: cmv1.RSAKeyAlgorithm,
 				Encoding:  cmv1.PKCS1,
@@ -456,7 +456,7 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 			},
 			Usages: []cmv1.KeyUsage{"client auth"},
 			IssuerRef: certmgrv1.ObjectReference{
-				Name:  serviceName + "-ca",
+				Name:  serviceName + "-ca-issuer",
 				Kind:  "Issuer",
 				Group: "cert-manager.io",
 			},

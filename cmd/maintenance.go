@@ -48,7 +48,7 @@ var (
 
 type Maintenance interface {
 	DoMaintenance(ctx context.Context) error
-	ReleaseLatest(ctx context.Context) error
+	ReleaseLatest(ctx context.Context, enabled bool) error
 }
 
 type service enumflag.Flag
@@ -157,11 +157,10 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 			if err != nil {
 				return fmt.Errorf("cannot determine if release management is enabled: %w", err)
 			}
-			if enabled {
-				return m.ReleaseLatest(ctx)
+			if !enabled {
+				log.Info("release management disabled, skipping rollout of latest revisions")
 			}
-			log.Info("release management disabled, skipping rollout of latest revisions")
-			return nil
+			return m.ReleaseLatest(ctx, enabled)
 		}(),
 		m.DoMaintenance(ctx),
 	); err != nil {

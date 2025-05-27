@@ -65,6 +65,10 @@ type CodeyInstanceServiceSpec struct {
 	// Multiple versions are supported.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
+	// Disable or enable registration of new users.
+	// +kubebuilder:default=false
+	DisableRegistration bool `json:"disableRegistration,omitempty"`
+
 	// AdminEmail for email notifications.
 	// +kubebuilder:validation:Required
 	AdminEmail string `json:"adminEmail"`

@@ -49,6 +49,10 @@ spec:
                         adminEmail:
                           description: AdminEmail for email notifications.
                           type: string
+                        disableRegistration:
+                          default: false
+                          description: Disable or enable registration of new users.
+                          type: boolean
                         majorVersion:
                           description: |-
                             Version contains supported version of CodeyInstance.

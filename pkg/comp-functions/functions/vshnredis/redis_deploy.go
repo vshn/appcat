@@ -134,8 +134,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 
 		"image": map[string]any{
-			"repository": "bitnami/redis",
-			"tag":        comp.Spec.Parameters.Service.Version,
+			"tag": comp.Spec.Parameters.Service.Version,
 		},
 
 		"auth": map[string]any{

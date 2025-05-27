@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
+	"github.com/vshn/appcat/v4/pkg/controller/pendingfixer"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -76,6 +77,14 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		}),
 	})
 	if err != nil {
+		return err
+	}
+
+	if err := pendingfixer.SetupWithManagerObject(mgr); err != nil {
+		return err
+	}
+
+	if err := pendingfixer.SetupWithManagerRelease(mgr); err != nil {
 		return err
 	}
 

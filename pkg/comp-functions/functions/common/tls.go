@@ -368,10 +368,6 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 				Size:      4096,
 			},
 			Usages: []cmv1.KeyUsage{"server auth", "client auth"},
-			//DNSNames: []string{
-			//	serviceName + "." + ns + ".svc.cluster.local",
-			//	serviceName + "." + ns + ".svc",
-			//},
 			IssuerRef: certmgrv1.ObjectReference{
 				Name:  serviceName + "-ca-issuer",
 				Kind:  "Issuer",
@@ -380,10 +376,12 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 		},
 	}
 
-	if opts != nil {
-		serverCert.Spec.DNSNames = append(serverCert.Spec.DNSNames, opts.AdditionalSans...)
-		for _, opt := range opts.CertOptions {
-			opt(serverCert)
+	if opts != nil && len(opts.AdditionalSans) > 0 {
+		serverCert.Spec.DNSNames = opts.AdditionalSans
+	} else {
+		serverCert.Spec.DNSNames = []string{
+			serviceName + "." + ns + ".svc.cluster.local",
+			serviceName + "." + ns + ".svc",
 		}
 	}
 
@@ -445,10 +443,6 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 				},
 			},
 			IsCA: false,
-			//DNSNames: []string{
-			//	serviceName + "." + ns + ".svc.cluster.local",
-			//	serviceName + "." + ns + ".svc",
-			//},
 			PrivateKey: &cmv1.CertificatePrivateKey{
 				Algorithm: cmv1.RSAKeyAlgorithm,
 				Encoding:  cmv1.PKCS1,
@@ -463,10 +457,12 @@ func CreateMTLSCerts(ctx context.Context, ns string, serviceName string, svc *ru
 		},
 	}
 
-	if opts != nil {
-		clientCert.Spec.DNSNames = append(clientCert.Spec.DNSNames, opts.AdditionalSans...)
-		for _, opt := range opts.CertOptions {
-			opt(clientCert)
+	if opts != nil && len(opts.AdditionalSans) > 0 {
+		clientCert.Spec.DNSNames = opts.AdditionalSans
+	} else {
+		clientCert.Spec.DNSNames = []string{
+			serviceName + "." + ns + ".svc.cluster.local",
+			serviceName + "." + ns + ".svc",
 		}
 	}
 

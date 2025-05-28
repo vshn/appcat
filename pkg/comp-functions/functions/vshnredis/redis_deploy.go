@@ -50,7 +50,7 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 		},
 	}
 
-	_, _, err = common.CreateMTLSCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts)
+	_, _, err = createMTLSCerts(comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create mTLS certificates: %w", err).Error())
 	}

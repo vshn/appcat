@@ -278,6 +278,8 @@ func getConnectionDetails(comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime, s
 	host := fmt.Sprintf("redis-headless.vshn-redis-%s.svc.cluster.local", comp.GetName())
 	url := fmt.Sprintf("rediss://%s:%s@%s:%s", redisUser, pass, host, redisPort)
 
+	svc.SetConnectionDetail(redisHostConnectionDetailsField, []byte(host))
+	svc.SetConnectionDetail(redisPortConnectionDetailsField, []byte(redisPort))
 	svc.SetConnectionDetail(redisUsernameConnectionDetailsField, []byte(redisUser))
 	svc.SetConnectionDetail(redisPasswordConnectionDetailsField, []byte(pass))
 	svc.SetConnectionDetail(redisURLConnectionDetailsField, []byte(url))

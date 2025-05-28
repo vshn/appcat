@@ -4,8 +4,10 @@
 # are no AOF rewritings happening at the time of backup. If there's a dump file
 # it will also backup that one.
 
+REDIS_PASSWORD=$(cat "${REDIS_PASSWORD_FILE}")
+
 redis_cmd() {
-  if [ -z "$REDIS_TLS_CERT_FILE" ]; then 
+  if [ -z "$REDIS_TLS_CERT_FILE" ]; then
     redis-cli -a "${REDIS_PASSWORD}" "$@"
   else
     redis-cli -a "${REDIS_PASSWORD}" --cacert "${REDIS_TLS_CA_FILE}" --cert "${REDIS_TLS_CERT_FILE}" --key "${REDIS_TLS_KEY_FILE}" --tls "$@"

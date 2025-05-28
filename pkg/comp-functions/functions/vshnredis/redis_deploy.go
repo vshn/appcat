@@ -269,20 +269,33 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 }
 
 func getConnectionDetails(comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime, secretName string) error {
-	secretCD, err := svc.GetObservedComposedResourceConnectionDetails(secretName)
+	redisPassword, err := getRedisRootPassword(secretName, svc)
 	if err != nil {
 		return err
 	}
-	pass := string(secretCD[passwordKey])
 
 	host := fmt.Sprintf("redis-headless.vshn-redis-%s.svc.cluster.local", comp.GetName())
-	url := fmt.Sprintf("rediss://%s:%s@%s:%s", redisUser, pass, host, redisPort)
+	url := fmt.Sprintf("rediss://%s:%s@%s:%s", redisUser, string(redisPassword), host, redisPort)
 
 	svc.SetConnectionDetail(redisHostConnectionDetailsField, []byte(host))
 	svc.SetConnectionDetail(redisPortConnectionDetailsField, []byte(redisPort))
 	svc.SetConnectionDetail(redisUsernameConnectionDetailsField, []byte(redisUser))
-	svc.SetConnectionDetail(redisPasswordConnectionDetailsField, []byte(pass))
+	svc.SetConnectionDetail(redisPasswordConnectionDetailsField, redisPassword)
 	svc.SetConnectionDetail(redisURLConnectionDetailsField, []byte(url))
 
 	return nil
+}
+
+func getRedisRootPassword(secretName string, svc *runtime.ServiceRuntime) ([]byte, error) {
+	secret := &corev1.Secret{}
+
+	err := svc.GetObservedKubeObject(secret, secretName)
+
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return secret.Data[passwordKey], nil
 }

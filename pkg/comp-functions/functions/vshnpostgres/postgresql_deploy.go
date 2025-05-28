@@ -453,6 +453,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 					NodeSelector: nodeSelector,
 				},
 				DisableConnectionPooling: ptr.To(comp.Spec.Parameters.Service.DisablePgBouncer),
+				DisableEnvoy:             ptr.To(true),
 			},
 			NonProductionOptions: &sgv1.SGClusterSpecNonProductionOptions{
 				EnableSetPatroniCpuRequests:    ptr.To(true),

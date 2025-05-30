@@ -399,6 +399,9 @@ type SGClusterSpecPods struct {
 	// If set to `true`, avoids creating the Prometheus exporter sidecar. Recommended when there's no intention to use Prometheus for monitoring.
 	DisableMetricsExporter *bool `json:"disableMetricsExporter,omitempty"`
 
+	// If set to `true`, avoids creating the envoy sidecar. This sidecar is used as the endge proxy for the cluster’s Pods providing extra metrics to the monitoring layer.
+	DisableEnvoy *bool `json:"disableEnvoy,omitempty"`
+
 	// If set to `true`, avoids creating the `postgres-util` sidecar. This sidecar contains usual Postgres administration utilities *that are not present in the main (`patroni`) container*, like `psql`. Only disable if you know what you are doing.
 	DisablePostgresUtil *bool `json:"disablePostgresUtil,omitempty"`
 

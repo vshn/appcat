@@ -20,6 +20,7 @@ import (
 
 const (
 	ServiceIDLabel = "metadata.appcat.vshn.io/serviceID"
+	RevisionLabel  = "metadata.appcat.vshn.io/revision"
 )
 
 // Interface for both Claim and Composite objects
@@ -30,7 +31,7 @@ type compositionObject interface {
 
 // VersionHandler is an interface for handling AppCat versions
 type VersionHandler interface {
-	ReleaseLatest(ctx context.Context) error
+	ReleaseLatest(ctx context.Context, enabled bool) error
 }
 
 // DefaultVersionHandler handles AppCat version change for a claim using composition revisions.
@@ -67,17 +68,23 @@ func NewDefaultVersionHandler(k8sClient client.Client, l logr.Logger, opts Relea
 }
 
 // ReleaseLatest function releases the latest AppCat version for a given claim via latest composition revision
-func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context) error {
+func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool) error {
 	vh.log.Info("Releasing latest version of AppCat")
 
-	// Get latest revision
-	revision, err := vh.getLatestRevisionLabel(ctx)
-	if err != nil || revision == "" {
-		return err
+	revision := ""
+	if enabled {
+		// Get latest revision
+		rev, err := vh.getLatestRevisionLabel(ctx)
+		if err != nil || rev == "" {
+			return err
+		}
+		revision = rev
+	} else {
+		vh.log.Info("Disabling release management and resetting to default policy")
 	}
 
 	if vh.claimNamespace == "" {
-		err := vh.updateComposite(ctx, revision)
+		err := vh.updateComposite(ctx, revision, enabled)
 		if err != nil {
 			return err
 		}
@@ -85,14 +92,13 @@ func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context) error {
 		return nil
 	}
 
-	// Try to update claim first
-	err = vh.updateClaim(ctx, revision)
+	err := vh.updateClaim(ctx, revision, enabled)
 	if err != nil {
 
 		return fmt.Errorf("failed to update claim %s/%s: %w", vh.claimNamespace, vh.claimName, err)
 	}
 
-	vh.log.Info("Claim updated successfully", ServiceIDLabel, revision)
+	vh.log.Info("Claim updated successfully", RevisionLabel, revision)
 	return nil
 }
 
@@ -103,19 +109,16 @@ func (vh *DefaultVersionHandler) getLatestRevisionLabel(ctx context.Context) (st
 		return "", fmt.Errorf("failed to fetch latest revision: %w", err)
 	}
 
-	revision, exists := cr.GetLabels()["metadata.appcat.vshn.io/revision"]
+	revision, exists := cr.GetLabels()[RevisionLabel]
 	if !exists || revision == "" {
-		vh.log.Info("Label metadata.appcat.vshn.io/revision is missing from composition revision")
-		return "", nil
-		//TODO return this error when CI/CD is enabled
-		//return errors.New("missing metadata.appcat.vshn.io/revision label in composition revision")
+		return "", errors.New("missing " + RevisionLabel + " label in composition revision")
 	}
 
 	return revision, nil
 }
 
 func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.CompositionRevision, error) {
-	vh.log.Info("Filtering composition revisions by service id", "serviceID", vh.serviceId)
+	vh.log.Info("Filtering composition revisions by service id", ServiceIDLabel, vh.serviceId)
 	crl := &v1.CompositionRevisionList{}
 	if err := vh.client.List(ctx, crl, client.MatchingLabelsSelector{
 		Selector: labels.SelectorFromSet(labels.Set{ServiceIDLabel: vh.serviceId}),
@@ -133,12 +136,12 @@ func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.Com
 			latestRevision = item
 		}
 	}
-	vh.log.Info("Found latest resource", "composition revision", latestRevision.GetName(), "metadata.appcat.vshn.io/revision", latestRevision.GetLabels()["metadata.appcat.vshn.io/revision"])
+	vh.log.Info("Found latest resource", "composition revision", latestRevision.GetName(), RevisionLabel, latestRevision.GetLabels()[RevisionLabel])
 
 	return &latestRevision, nil
 }
 
-func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision string) error {
+func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision string, enabled bool) error {
 	c := claim.New()
 	c.SetGroupVersionKind(vh.getClaimGVK())
 
@@ -151,7 +154,11 @@ func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision strin
 		return err
 	}
 
-	vh.applyUpdatePolicy(c, revision)
+	if enabled {
+		vh.applyUpdatePolicy(c, revision)
+	} else {
+		vh.setAutoPolicy(c)
+	}
 
 	if err = vh.client.Update(ctx, c); err != nil {
 		return fmt.Errorf("failed to update claim: %w", err)
@@ -160,7 +167,7 @@ func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision strin
 	return nil
 }
 
-func (vh *DefaultVersionHandler) updateComposite(ctx context.Context, revision string) error {
+func (vh *DefaultVersionHandler) updateComposite(ctx context.Context, revision string, enabled bool) error {
 	comp := composite.New()
 	comp.SetGroupVersionKind(vh.getCompositeGVK())
 
@@ -168,7 +175,11 @@ func (vh *DefaultVersionHandler) updateComposite(ctx context.Context, revision s
 		return fmt.Errorf("failed to get composite %s of type %s: %w", vh.compositeName, vh.ownerKind, err)
 	}
 
-	vh.applyUpdatePolicy(comp, revision)
+	if enabled {
+		vh.applyUpdatePolicy(comp, revision)
+	} else {
+		vh.setAutoPolicy(comp)
+	}
 
 	if err := vh.client.Update(ctx, comp); err != nil {
 		return fmt.Errorf("failed to update composite %s: %w", vh.compositeName, err)
@@ -182,8 +193,14 @@ func (vh *DefaultVersionHandler) updateComposite(ctx context.Context, revision s
 func (vh *DefaultVersionHandler) applyUpdatePolicy(obj compositionObject, revision string) {
 	obj.SetCompositionUpdatePolicy(UpdatePolicyPtr(xpv1.UpdateAutomatic))
 	obj.SetCompositionRevisionSelector(&metav1.LabelSelector{
-		MatchLabels: map[string]string{"metadata.appcat.vshn.io/revision": revision},
+		MatchLabels: map[string]string{RevisionLabel: revision},
 	})
+}
+
+// Helper function to set the policy to automatic and remove the label selector
+func (vh *DefaultVersionHandler) setAutoPolicy(obj compositionObject) {
+	obj.SetCompositionUpdatePolicy(UpdatePolicyPtr(xpv1.UpdateAutomatic))
+	obj.SetCompositionRevisionSelector(nil)
 }
 
 // Helper function to get the GVK for claims

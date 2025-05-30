@@ -3,10 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/crossplane/crossplane-runtime/pkg/fieldpath"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -149,7 +151,12 @@ func (h *hotfixer) handleComposite(ctx context.Context, comp unstructured.Unstru
 		opts,
 	)
 
-	return r.ReleaseLatest(ctx)
+	enabled, err := strconv.ParseBool(viper.GetString("RELEASE_MANAGEMENT_ENABLED"))
+	if err != nil {
+		return fmt.Errorf("cannot determine if release management is enabled: %w", err)
+	}
+
+	return r.ReleaseLatest(ctx, enabled)
 }
 
 func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, log logr.Logger, kubeClient client.Client, labels map[string]string, compName string) error {
@@ -175,5 +182,10 @@ func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, lo
 		opts,
 	)
 
-	return r.ReleaseLatest(ctx)
+	enabled, err := strconv.ParseBool(viper.GetString("RELEASE_MANAGEMENT_ENABLED"))
+	if err != nil {
+		return fmt.Errorf("cannot determine if release management is enabled: %w", err)
+	}
+
+	return r.ReleaseLatest(ctx, enabled)
 }

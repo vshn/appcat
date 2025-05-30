@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	"github.com/vshn/appcat/v4/pkg/apiserver/appcat"
+	vshnkeycloak "github.com/vshn/appcat/v4/pkg/apiserver/vshn/keycloak"
 	vshnmariadb "github.com/vshn/appcat/v4/pkg/apiserver/vshn/mariadb"
 	vshnnextcloud "github.com/vshn/appcat/v4/pkg/apiserver/vshn/nextcloud"
 	vshnpostgres "github.com/vshn/appcat/v4/pkg/apiserver/vshn/postgres"
@@ -30,6 +31,8 @@ func newAPIServerCMD() *cobra.Command {
 
 	b.WithResourceAndHandler(&appcatv1.VSHNNextcloudBackup{}, vshnnextcloud.New())
 
+	b.WithResourceAndHandler(&appcatv1.VSHNKeycloakBackup{}, vshnkeycloak.New())
+
 	b.WithoutEtcd().
 		ExposeLoopbackAuthorizer().
 		ExposeLoopbackMasterClientConfig()
@@ -43,5 +46,6 @@ func newAPIServerCMD() *cobra.Command {
 	if err != nil {
 		log.Fatal(err, "Unable to load build API Server")
 	}
+
 	return cmd
 }

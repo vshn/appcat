@@ -37,6 +37,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&VSHNMariaDBBackupList{},
 		&VSHNNextcloudBackup{},
 		&VSHNNextcloudBackupList{},
+		&VSHNKeycloakBackup{},
+		&VSHNKeycloakBackupList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

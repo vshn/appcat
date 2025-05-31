@@ -3,20 +3,16 @@ package vshnredis
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
+	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-)
-
-const (
-	backupScriptCMName = "backup-script"
 )
 
 //go:embed script/backup.sh
@@ -44,26 +40,56 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Service
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add k8up backup: %s", err.Error()))
 	}
 
-	l.Info("Creating backup config map")
-	err = createScriptCM(comp, svc)
+	l.Info("Adding backup script config map")
+	err = backup.AddBackupScriptCM(svc, comp, redisBackupScript)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create backup config map: %w", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create backup script configMap: %s", err.Error()))
+	}
+
+	l.Info("Updating the release object")
+	err = updateRelease(ctx, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot update release: %s", err.Error()))
 	}
 
 	return nil
 }
 
-func createScriptCM(comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) error {
+func updateRelease(ctx context.Context, svc *runtime.ServiceRuntime) error {
+	l := controllerruntime.LoggerFrom(ctx)
 
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      backupScriptCMName,
-			Namespace: getInstanceNamespace(comp),
-		},
-		Data: map[string]string{
-			"backup.sh": redisBackupScript,
-		},
+	release := &xhelmv1.Release{}
+
+	err := svc.GetDesiredComposedResourceByName(release, redisRelease)
+	if err != nil {
+		return err
 	}
 
-	return svc.SetDesiredKubeObject(cm, comp.Name+"-backup-cm")
+	values, err := common.GetReleaseValues(release)
+	if err != nil {
+		return err
+	}
+
+	l.Info("Adding the PVC k8up annotations")
+	if err := backup.AddPVCAnnotationToValues(values, "master", "persistence", "annotations"); err != nil {
+		return err
+	}
+
+	l.Info("Adding the Pod k8up annotations")
+	if err := backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "master", "podAnnotations"); err != nil {
+		return err
+	}
+
+	l.Info("Mounting CM into pod")
+	if err := backup.AddBackupCMToValues(values, []string{"master", "extraVolumes"}, []string{"master", "extraVolumeMounts"}); err != nil {
+		return err
+	}
+
+	byteValues, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+	release.Spec.ForProvider.Values.Raw = byteValues
+
+	return svc.SetDesiredComposedResourceWithName(release, redisRelease)
 }

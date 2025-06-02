@@ -8,12 +8,10 @@ input:
       name: xfn-config
     name: xfn-config
   data:
-    defaultPlan: standard-2
+    defaultPlan: mini
     controlNamespace: appcat-control
-    plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled":
-            true, "memory": "2Gi"}}, "standard-4": {"size": {"cpu": "1", "disk": "16Gi",
-            "enabled": true, "memory": "4Gi"}}, "standard-8": {"size": {"cpu": "2",
-            "disk": "16Gi", "enabled": true, "memory": "8Gi"}}}'
+    plans: |
+      {"large": {"size": {"cpu": "4", "disk": "500Gi", "enabled": true, "memory": "16Gi"}}, "medium": {"size": {"cpu": "2", "disk": "200Gi", "enabled": true, "memory": "8Gi"}}, "mini": {"size": {"cpu": "500m", "disk": "10Gi", "enabled": true, "memory": "2Gi"}}, "small": {"size": {"cpu": "1", "disk": "50Gi", "enabled": true, "memory": "4Gi"}}}
 observed:
   composite:
     resource:

@@ -48,6 +48,53 @@ func TestDeployment(t *testing.T) {
 		values := getReleaseValues(t, *release)
 		assert.Equal(t, appName, values["gitea"].(map[string]any)["config"].(map[string]any)["APP_NAME"])
 	})
+
+	t.Run("GivenPlan_ExpectPlanResources", func(t *testing.T) {
+		const (
+			plan = "small"
+			cpu  = "1"
+			mem  = "4Gi"
+			disk = "50Gi"
+		)
+
+		svc, comp, secretName := bootstrapTest(t)
+		svc.Config.Data["defaultPlan"] = plan
+		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))
+
+		release := &xhelmv1.Release{}
+		assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
+
+		values := getReleaseValues(t, *release)
+		// We explect plan resources
+		assert.Equal(t, cpu, values["resources"].(map[string]any)["limits"].(map[string]any)["cpu"])
+		assert.Equal(t, mem, values["resources"].(map[string]any)["limits"].(map[string]any)["memory"])
+		assert.Equal(t, disk, values["persistence"].(map[string]any)["size"])
+	})
+
+	t.Run("GivenPlanAndExplicitSizeObj_ExpectSizeObjValues", func(t *testing.T) {
+		const (
+			plan   = "large"
+			cpu    = "2"
+			memory = "1337Gi"
+			disk   = "123Gi"
+		)
+
+		svc, comp, secretName := bootstrapTest(t)
+		svc.Config.Data["defaultPlan"] = plan
+		comp.Spec.Parameters.Size.CPU = cpu
+		comp.Spec.Parameters.Size.Memory = memory
+		comp.Spec.Parameters.Size.Disk = disk
+		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))
+
+		release := &xhelmv1.Release{}
+		assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
+
+		values := getReleaseValues(t, *release)
+		// We expect our own values instead of plan values
+		assert.Equal(t, cpu, values["resources"].(map[string]any)["limits"].(map[string]any)["cpu"])
+		assert.Equal(t, memory, values["resources"].(map[string]any)["limits"].(map[string]any)["memory"])
+		assert.Equal(t, disk, values["persistence"].(map[string]any)["size"])
+	})
 }
 
 func getReleaseValues(t *testing.T, release xhelmv1.Release) map[string]any {

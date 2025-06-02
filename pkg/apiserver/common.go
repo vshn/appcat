@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	dynClient "k8s.io/client-go/dynamic"
+	"sigs.k8s.io/apiserver-runtime/pkg/util/loopback"
 )
 
 func ResolveError(groupResource schema.GroupResource, err error) error {
@@ -145,8 +146,10 @@ func (k *KubeClient) GetKubeClient(ctx context.Context, instance client.Object) 
 // It will check where the instance is running on and will return either the client
 // for the remote cluster (non-converged) or the local cluster (converged)
 func (k *KubeClient) GetDynKubeClient(ctx context.Context, instance client.Object) (*dynClient.DynamicClient, error) {
-	if instance.GetLabels()[appcatruntime.ProviderConfigLabel] == "" {
-		return nil, nil
+	providerConfig := instance.GetLabels()[appcatruntime.ProviderConfigLabel]
+	if providerConfig == "" || providerConfig == "local" {
+		// For converged clusters, create a dynamic client using the loopback config
+		return dynClient.NewForConfig(loopback.GetLoopbackMasterClientConfig())
 	}
 
 	kubeconfig, err := k.getKubeConfig(ctx, instance)

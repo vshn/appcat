@@ -643,6 +643,7 @@ func (in *VSHNKeycloakSizeSpec) DeepCopy() *VSHNKeycloakSizeSpec {
 func (in *VSHNKeycloakSpec) DeepCopyInto(out *VSHNKeycloakSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.ResourceRef = in.ResourceRef
 	out.WriteConnectionSecretToRef = in.WriteConnectionSecretToRef
 }
 
@@ -1954,6 +1955,11 @@ func (in *XVSHNKeycloakList) DeepCopyObject() runtime.Object {
 func (in *XVSHNKeycloakSpec) DeepCopyInto(out *XVSHNKeycloakSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	if in.ResourceRefs != nil {
+		in, out := &in.ResourceRefs, &out.ResourceRefs
+		*out = make([]commonv1.TypedReference, len(*in))
+		copy(*out, *in)
+	}
 	in.ResourceSpec.DeepCopyInto(&out.ResourceSpec)
 }
 

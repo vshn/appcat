@@ -17,6 +17,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/vshn/appcat/v4/apis/apiserver/v1.AppCat":                        schema_v4_apis_apiserver_v1_AppCat(ref),
 		"github.com/vshn/appcat/v4/apis/apiserver/v1.AppCatList":                    schema_v4_apis_apiserver_v1_AppCatList(ref),
 		"github.com/vshn/appcat/v4/apis/apiserver/v1.AppCatStatus":                  schema_v4_apis_apiserver_v1_AppCatStatus(ref),
+		"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNKeycloakBackup":            schema_v4_apis_apiserver_v1_VSHNKeycloakBackup(ref),
+		"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNKeycloakBackupList":        schema_v4_apis_apiserver_v1_VSHNKeycloakBackupList(ref),
+		"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNKeycloakBackupStatus":      schema_v4_apis_apiserver_v1_VSHNKeycloakBackupStatus(ref),
 		"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNMariaDBBackup":             schema_v4_apis_apiserver_v1_VSHNMariaDBBackup(ref),
 		"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNMariaDBBackupList":         schema_v4_apis_apiserver_v1_VSHNMariaDBBackupList(ref),
 		"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNMariaDBBackupStatus":       schema_v4_apis_apiserver_v1_VSHNMariaDBBackupStatus(ref),
@@ -226,6 +229,122 @@ func schema_v4_apis_apiserver_v1_AppCatStatus(ref common.ReferenceCallback) comm
 				},
 			},
 		},
+	}
+}
+
+func schema_v4_apis_apiserver_v1_VSHNKeycloakBackup(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNKeycloakBackupStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNKeycloakBackupStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_v4_apis_apiserver_v1_VSHNKeycloakBackupList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNKeycloakBackup"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNKeycloakBackup", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_v4_apis_apiserver_v1_VSHNKeycloakBackupStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"DatabaseBackupAvailable": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DatabaseBackupAvailable indicates if this backup contains a database backup for Keycloak.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"databaseBackupStatus": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNPostgresBackupStatus"),
+						},
+					},
+				},
+				Required: []string{"DatabaseBackupAvailable"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNPostgresBackupStatus"},
 	}
 }
 

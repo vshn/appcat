@@ -327,7 +327,7 @@ func schema_v4_apis_apiserver_v1_VSHNKeycloakBackupStatus(ref common.ReferenceCa
 				Properties: map[string]spec.Schema{
 					"DatabaseBackupAvailable": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DatabaseBackupAvailable indicates if this backup contains a database backup for Keycloak. Not every file backup might have a database backup associated, because the retention is not enforced at the same time.",
+							Description: "DatabaseBackupAvailable indicates if this backup contains a database backup for Keycloak.",
 							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",

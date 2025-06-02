@@ -23,7 +23,6 @@ type VSHNKeycloakBackup struct {
 // +k8s:openapi-gen=true
 type VSHNKeycloakBackupStatus struct {
 	// DatabaseBackupAvailable indicates if this backup contains a database backup for Keycloak.
-	// Not every file backup might have a database backup associated, because the retention is not enforced at the same time.
 	DatabaseBackupAvailable bool
 	DatabaseBackupStatus    VSHNPostgresBackupStatus `json:"databaseBackupStatus,omitempty"`
 }

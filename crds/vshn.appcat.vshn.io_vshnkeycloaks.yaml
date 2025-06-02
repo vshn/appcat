@@ -9507,6 +9507,26 @@ spec:
                       default: {}
                   type: object
                   default: {}
+                resourceRef:
+                  description: ResourceRef tracks the internal composite belonging to this claim
+                  properties:
+                    apiVersion:
+                      description: APIVersion of the referenced object.
+                      type: string
+                    kind:
+                      description: Kind of the referenced object.
+                      type: string
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                    uid:
+                      description: UID of the referenced object.
+                      type: string
+                  required:
+                    - apiVersion
+                    - kind
+                    - name
+                  type: object
                 writeConnectionSecretToRef:
                   description: WriteConnectionSecretToRef references a secret to which the connection details will be written.
                   properties:

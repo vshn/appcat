@@ -49,6 +49,9 @@ type VSHNKeycloakSpec struct {
 	// Parameters are the configurable fields of a VSHNKeycloak.
 	Parameters VSHNKeycloakParameters `json:"parameters,omitempty"`
 
+	// ResourceRef tracks the internal composite belonging to this claim
+	ResourceRef xpv1.TypedReference `json:"resourceRef,omitempty"`
+
 	// WriteConnectionSecretToRef references a secret to which the connection details will be written.
 	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
@@ -228,6 +231,8 @@ type XVSHNKeycloak struct {
 type XVSHNKeycloakSpec struct {
 	// Parameters are the configurable fields of a VSHNKeycloak.
 	Parameters VSHNKeycloakParameters `json:"parameters,omitempty"`
+
+	ResourceRefs []xpv1.TypedReference `json:"resourceRefs,omitempty"`
 
 	xpv1.ResourceSpec `json:",inline"`
 }

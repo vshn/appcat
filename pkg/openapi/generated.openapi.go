@@ -335,9 +335,8 @@ func schema_v4_apis_apiserver_v1_VSHNKeycloakBackupStatus(ref common.ReferenceCa
 					},
 					"databaseBackupStatus": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DatabaseBackupStatus contains the PostgreSQL backup status.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNPostgresBackupStatus"),
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/vshn/appcat/v4/apis/apiserver/v1.VSHNPostgresBackupStatus"),
 						},
 					},
 				},

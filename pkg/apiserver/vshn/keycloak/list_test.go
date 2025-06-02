@@ -24,7 +24,7 @@ func Test_vshnKeycloakBackupStorage_getPostgreSQLNamespaceAndName(t *testing.T) 
 	}
 
 	// Given
-	pgComp := &vshnv1.XVSHNPostgreSQL{
+	comp := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
@@ -35,31 +35,25 @@ func Test_vshnKeycloakBackupStorage_getPostgreSQLNamespaceAndName(t *testing.T) 
 		},
 	}
 
-	assert.NoError(t, fclient.Create(context.TODO(), pgComp))
+	assert.NoError(t, fclient.Create(context.TODO(), comp))
 
 	claim := &vshnv1.VSHNKeycloak{
 		Spec: vshnv1.VSHNKeycloakSpec{
-			Parameters: vshnv1.VSHNKeycloakParameters{
-				Service: vshnv1.VSHNKeycloakServiceSpec{
-					FQDN: "test-kc-comp",
-				},
+			ResourceRef: xpv1.TypedReference{
+				Name: "test-nc-comp",
 			},
 		},
 	}
 
 	kcComp := &vshnv1.XVSHNKeycloak{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-kc-comp",
+			Name: "test-nc-comp",
 		},
 		Spec: vshnv1.XVSHNKeycloakSpec{
-			Parameters: vshnv1.VSHNKeycloakParameters{
-				Service: vshnv1.VSHNKeycloakServiceSpec{
-					FQDN: "test",
-				},
-			},
-			ResourceSpec: xpv1.ResourceSpec{
-				WriteConnectionSecretToReference: &xpv1.SecretReference{
+			ResourceRefs: []xpv1.TypedReference{
+				{
 					Name: "test",
+					Kind: "XVSHNPostgreSQL",
 				},
 			},
 		},

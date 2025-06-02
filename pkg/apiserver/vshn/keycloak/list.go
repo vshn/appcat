@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ rest.Lister = &vshnKeycloakBackupStorage{}
@@ -139,12 +140,30 @@ func (v *vshnKeycloakBackupStorage) Watch(ctx context.Context, options *metainte
 }
 
 func (v *vshnKeycloakBackupStorage) getPostgreSQLNamespaceAndName(ctx context.Context, inst *vshnv1.VSHNKeycloak) (string, string) {
-	pgCompName := inst.Status.InstanceNamespace
-	if pgCompName == "" {
+	compName := inst.Spec.ResourceRef.Name
+	ncComp := vshnv1.XVSHNKeycloak{}
+
+	err := v.vshnKeycloak.Get(ctx, client.ObjectKey{Name: compName}, &ncComp)
+	if err != nil {
 		return "", ""
 	}
 
-	return inst.Status.InstanceNamespace, pgCompName
+	pgName := ""
+	for _, comp := range ncComp.Spec.ResourceRefs {
+		if comp.Kind == "XVSHNPostgreSQL" {
+			pgName = comp.Name
+			break
+		}
+	}
+
+	pgComp := &vshnv1.XVSHNPostgreSQL{}
+
+	err = v.vshnKeycloak.Get(ctx, client.ObjectKey{Name: pgName}, pgComp)
+	if err != nil {
+		return "", ""
+	}
+
+	return pgComp.Status.InstanceNamespace, pgName
 }
 
 func (v *vshnKeycloakBackupStorage) NewList() runtime.Object {

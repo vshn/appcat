@@ -89,6 +89,7 @@ jobs:
         with:
           repository: ${{ env.COMPONENT_REPO }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Extract branch name
         shell: bash

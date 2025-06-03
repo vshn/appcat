@@ -90,9 +90,12 @@ spec:
                         description: AdminEmail for email notifications.
                         type: string
                       disableRegistration:
-                        default: false
+                        default: "false"
                         description: Disable or enable registration of new users.
-                        type: boolean
+                        enum:
+                        - "true"
+                        - "false"
+                        type: string
                       majorVersion:
                         description: |-
                           Version contains supported version of CodeyInstance.

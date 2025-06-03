@@ -414,8 +414,10 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		initialData = &sgv1.SGClusterSpecInitialData{
 			Restore: &sgv1.SGClusterSpecInitialDataRestore{
 				FromBackup: &sgv1.SGClusterSpecInitialDataRestoreFromBackup{
-					Name:           &comp.Spec.Parameters.Restore.BackupName,
-					TargetTimeline: &comp.Spec.Parameters.Restore.RecoveryTimeStamp,
+					Name: &comp.Spec.Parameters.Restore.BackupName,
+					PointInTimeRecovery: &sgv1.SGClusterSpecInitialDataRestoreFromBackupPointInTimeRecovery{
+						RestoreToTimestamp: &comp.Spec.Parameters.Restore.RecoveryTimeStamp,
+					},
 				},
 			},
 		}

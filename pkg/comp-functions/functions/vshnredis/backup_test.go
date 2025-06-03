@@ -27,7 +27,7 @@ func TestAddBackupObjectCreation(t *testing.T) {
 	assert.NoError(t, svc.GetDesiredKubeObject(repoPW, comp.Name+"-k8up-repo-pw"))
 
 	cm := &corev1.ConfigMap{}
-	assert.NoError(t, svc.GetDesiredKubeObject(cm, comp.Name+"-backup-cm"))
+	assert.NoError(t, svc.GetDesiredKubeObject(cm, comp.Name+"-backup-script"))
 
 }
 

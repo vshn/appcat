@@ -15,10 +15,6 @@ func init() {
 				Execute: DeployRedis,
 			},
 			{
-				Name:    "manage-release",
-				Execute: ManageRelease,
-			},
-			{
 				Name:    "backup",
 				Execute: AddBackup,
 			},
@@ -33,10 +29,6 @@ func init() {
 			{
 				Name:    "resizePVC",
 				Execute: ResizePVCs,
-			},
-			{
-				Name:    "redis_url",
-				Execute: AddUrlToConnectionDetails,
 			},
 			{
 				Name:    "mailgun-alerting",

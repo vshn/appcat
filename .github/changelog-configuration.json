@@ -4,6 +4,7 @@
     {
       "title": "## 🚀 Features",
       "labels": [
+<<<<<<< ours
         "enhancement"
       ]
     },
@@ -11,18 +12,29 @@
       "title": "## 🛠️ Minor Changes",
       "labels": [
         "change"
+=======
+        "minor"
+>>>>>>> theirs
       ]
     },
     {
       "title": "## 🔎 Breaking Changes",
       "labels": [
+<<<<<<< ours
         "breaking"
+=======
+        "major"
+>>>>>>> theirs
       ]
     },
     {
       "title": "## 🐛 Fixes",
       "labels": [
+<<<<<<< ours
         "bug"
+=======
+        "patch"
+>>>>>>> theirs
       ]
     },
     {

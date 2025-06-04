@@ -1,15 +1,20 @@
 {
   "template": "https://github.com/vshn/appcat-cookiecutter",
-  "commit": "bab9c85e9d17274dbc753343111f49e08be2c502",
-  "checkout": null,
+  "commit": "0191e8e005352b98879bcde19b454e5cc3b413e8",
+  "checkout": "change/gitflow",
   "context": {
     "cookiecutter": {
       "app_name": "appcat",
       "component_repo": "kidswiss/component-appcat",
+      "push_upbound": false,
+      "push_package": true,
+      "push_image": true,
       "_copy_without_render": [
-        ".github/workflows/cruft-update.yml"
+        ".github/workflows/cruft-update.yml",
+        ".github/changelog-configuration.json"
       ],
-      "_template": "https://github.com/vshn/appcat-cookiecutter"
+      "_template": "https://github.com/vshn/appcat-cookiecutter",
+      "_commit": "0191e8e005352b98879bcde19b454e5cc3b413e8"
     }
   },
   "directory": null

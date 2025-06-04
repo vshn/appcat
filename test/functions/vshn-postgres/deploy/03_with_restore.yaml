@@ -20,6 +20,7 @@ desired:
           restore:
             claimName: pgsql
             backupName: "pgsql-gc9x4-2024-06-11-16-01-02"
+            recoveryTimeStamp: "2024-06-15T22:00:00Z"
           service:
             majorVersion: "15"
           instances: 1
@@ -115,6 +116,7 @@ observed:
           restore:
             claimName: pgsql
             backupName: "pgsql-gc9x4-2024-06-11-16-01-02"
+            recoveryTimeStamp: "2024-06-15T22:00:00Z"
           service:
             majorVersion: "15"
             pgSettings:

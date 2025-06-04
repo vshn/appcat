@@ -23,6 +23,8 @@ jobs:
         if: (github.base_ref == 'master' && github.head_ref != 'develop') || (github.base_ref == 'master' && ! contains(github.event.pull_request.labels.*.name, 'hotfix') )
         run: |
           echo "ERROR: You can only merge to master from develop or hotfixes."
+          echo "is develop: ${{ (github.base_ref == 'master' && github.head_ref != 'develop') }}"
+          echo "is hotfix: ${{ (github.base_ref == 'master' && ! contains(github.event.pull_request.labels.*.name, 'hotfix') ) }}"
           exit 1
   check-labels:
     # Act doesn't set a pull request number by default, so we skip if it's 0

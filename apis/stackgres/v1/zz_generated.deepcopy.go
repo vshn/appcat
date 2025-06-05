@@ -785,11 +785,6 @@ func (in *SGClusterSpecPods) DeepCopyInto(out *SGClusterSpecPods) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.DisableEnvoy != nil {
-		in, out := &in.DisableEnvoy, &out.DisableEnvoy
-		*out = new(bool)
-		**out = **in
-	}
 	if in.DisablePostgresUtil != nil {
 		in, out := &in.DisablePostgresUtil, &out.DisablePostgresUtil
 		*out = new(bool)

@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check if merge is allowed
-        if: github.base_ref == 'master' && (github.head_ref != 'develop' || ! contains(github.event.pull_request.labels.*.name, 'hotfix'))
+        if: github.base_ref == 'master' && ( ! contains(github.event.pull_request.labels.*.name, 'hotfix') || github.head_ref != 'develop')
         run: |
           echo "ERROR: You can only merge to master from develop or hotfixes."
           echo "is develop: ${{ github.head_ref != 'develop' }}"

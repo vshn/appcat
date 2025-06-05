@@ -119,6 +119,9 @@ jobs:
         run: |
           make gen-golden-all
 
+      - name: Get current labels
+        uses: snnaplab/get-labels-action@v1
+
       - name: Check if it's a hotfix
         id: hotfix_check
         run: |

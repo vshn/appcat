@@ -7,54 +7,34 @@ on:
 
 env:
   APP_NAME: appcat
-<<<<<<< ours
-=======
   PUSH_UPBOUND: "False"
   PUSH_PACKAGE: "True"
   PUSH_IMAGE: "True"
   SUFFIX: ""
->>>>>>> theirs
 
 jobs:
   dist:
     runs-on: ubuntu-latest
     steps:
 
-<<<<<<< ours
-      - uses: actions/checkout@v3
-=======
       - uses: actions/checkout@v4
->>>>>>> theirs
         with:
           fetch-depth: 0
 
       - name: Determine Go version from go.mod
         run: echo "GO_VERSION=$(grep "go 1." go.mod | cut -d " " -f 2)" >> $GITHUB_ENV
 
-<<<<<<< ours
-      - uses: actions/setup-go@v3
-=======
       - uses: actions/setup-go@v5
->>>>>>> theirs
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Set up QEMU
-<<<<<<< ours
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - uses: actions/cache@v3
-=======
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - uses: actions/cache@v4
->>>>>>> theirs
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -62,27 +42,13 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Login to GHCR
-<<<<<<< ours
-        uses: docker/login-action@v2
-=======
         uses: docker/login-action@v3
->>>>>>> theirs
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push docker image
-<<<<<<< ours
-        run: make docker-push -e IMG_TAG=${GITHUB_REF##*/} -e APP_NAME=${{ env.APP_NAME }}
-
-      - name: Build and push function package
-        run: make push-function-package -e IMG_TAG=${GITHUB_REF##*/} -e APP_NAME=${{ env.APP_NAME }}
-
-      - name: Build changelog from PRs with labels
-        id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v3
-=======
         if: env.PUSH_IMAGE == 'true'
         run: make docker-push -e IMG_TAG=${GITHUB_REF##*/} -e APP_NAME=${{ env.APP_NAME }}
 
@@ -105,7 +71,6 @@ jobs:
       - name: Build changelog from PRs with labels
         id: build_changelog
         uses: mikepenz/release-changelog-builder-action@v5
->>>>>>> theirs
         with:
           configuration: ".github/changelog-configuration.json"
           # PreReleases still get a changelog, but the next full release gets a diff since the last full release,
@@ -117,18 +82,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish releases
-<<<<<<< ours
-        uses: goreleaser/goreleaser-action@v4
-=======
         uses: goreleaser/goreleaser-action@v6
->>>>>>> theirs
         with:
           args: release --release-notes .github/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-<<<<<<< ours
-=======
           CONTAINER_REGISTRY: ghcr.io
           IMAGE_NAME: ${{ github.repository }}${{ env.SUFFIX }}
 
->>>>>>> theirs

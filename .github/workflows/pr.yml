@@ -23,6 +23,7 @@ jobs:
         if: github.base_ref == 'master' &&  github.head_ref != 'develop'
         run: |
           [ "${{ contains(github.event.pull_request.labels.*.name, 'hotfix') }}" ] && exit 0
+
           echo "ERROR: You can only merge to master from develop or hotfixes."
           echo "is develop: ${{ github.head_ref != 'develop' }}"
           echo "is hotfix: ${{ ! contains(github.event.pull_request.labels.*.name, 'hotfix') }}"

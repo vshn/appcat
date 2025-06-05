@@ -115,7 +115,7 @@ jobs:
       - name: Generate new golden
         # Act uses the host's docker to run containers, but then
         # they can't access the files that were previously cloned.
-        if: github.event.pull_request.number != 0 || github.event.action == 'opened'
+        if: github.event.pull_request.number != 0 && github.event.action == 'opened'
         run: |
           make gen-golden-all
 

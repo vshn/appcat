@@ -11,6 +11,7 @@ import (
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/crossplane/function-sdk-go/resource/composite"
 	"github.com/go-logr/logr"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -83,17 +84,17 @@ func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool
 		vh.log.Info("Disabling release management and resetting to default policy")
 	}
 
-	if vh.claimNamespace == "" {
-		err := vh.updateComposite(ctx, revision, enabled)
-		if err != nil {
-			return err
-		}
-		vh.log.Info("Composite updated successfully", ServiceIDLabel, revision)
-		return nil
-	}
-
 	err := vh.updateClaim(ctx, revision, enabled)
 	if err != nil {
+
+		if apierrors.IsNotFound(err) {
+			err := vh.updateComposite(ctx, revision, enabled)
+			if err != nil {
+				return err
+			}
+			vh.log.Info("Composite updated successfully", ServiceIDLabel, revision)
+			return nil
+		}
 
 		return fmt.Errorf("failed to update claim %s/%s: %w", vh.claimNamespace, vh.claimName, err)
 	}
@@ -161,6 +162,9 @@ func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision strin
 	}
 
 	if err = vh.client.Update(ctx, c); err != nil {
+		if apierrors.IsNotFound(err) {
+			return err
+		}
 		return fmt.Errorf("failed to update claim: %w", err)
 	}
 
@@ -185,7 +189,6 @@ func (vh *DefaultVersionHandler) updateComposite(ctx context.Context, revision s
 		return fmt.Errorf("failed to update composite %s: %w", vh.compositeName, err)
 	}
 
-	vh.log.Info("Composite updated successfully", "revision", revision)
 	return nil
 }
 

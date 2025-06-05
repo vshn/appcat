@@ -138,11 +138,13 @@ func (h *hotfixer) handleComposite(ctx context.Context, comp unstructured.Unstru
 	}
 
 	opts := release.ReleaserOpts{
-		Composite: comp.GetName(),
-		Group:     gv.Group,
-		Kind:      comp.GetKind(),
-		Version:   gv.Version,
-		ServiceID: serviceID,
+		Composite:      comp.GetName(),
+		ClaimName:      comp.GetLabels()["crossplane.io/claim-name"],
+		ClaimNamespace: comp.GetLabels()["crossplane.io/claim-namespace"],
+		Group:          gv.Group,
+		Kind:           comp.GetKind(),
+		Version:        gv.Version,
+		ServiceID:      serviceID,
 	}
 
 	r := release.NewDefaultVersionHandler(

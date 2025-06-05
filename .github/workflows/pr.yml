@@ -112,6 +112,8 @@ jobs:
 
           git --no-pager diff
 
+
+          asdf
       - name: Generate new golden
         # Act uses the host's docker to run containers, but then
         # they can't access the files that were previously cloned.

@@ -46,7 +46,7 @@ function run_single_diff() {
   kubectl get "$type" "$name" -oyaml > hack/tmp/xr.yaml
   comp=$(kubectl get "$type" "$name" -oyaml | yq -r '.spec.compositionRef.name')
   echo "composition: $comp $type/$name"
-  kubectl get compositions.apiextensions.crossplane.io "$comp" -oyaml > hack/tmp/composition.yaml
+  kubectl get compositions.apiextensions.crossplane.io "$comp" -oyaml | yq -r '(.spec.pipeline | .[] | select(.functionRef.name == "*appcat*") | .functionRef.name) = "function-appcat"' > hack/tmp/composition.yaml
   crank_func render hack/tmp/xr.yaml hack/tmp/composition.yaml hack/diff/function.yaml -o "$dir_name" > "$res_dir_name/$3.yaml"
 }
 
@@ -59,7 +59,8 @@ function crank_func() {
 }
 
 function get_running_func_version() {
-  version=$(kubectl get function function-appcat -oyaml | yq -r '.spec.package' | cut -d ":" -f2)
+  # We diff against the latest version on the target cluster
+  version=$(kubectl get function | grep appcat | tr -s ' ' | cut -d " " -f 4 | cut -d ":" -f 2 | sort -rV | head -n 1)
   echo "${version%"-func"}"
 }
 

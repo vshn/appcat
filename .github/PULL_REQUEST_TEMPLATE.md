@@ -5,9 +5,6 @@
 
 ## Checklist
 
-- [ ] Categorize the PR by setting a good title and adding one of the labels:
-      `bug`, `enhancement`, `documentation`, `change`, `breaking`, `dependency`
-      as they show up in the changelog
 - [ ] Update tests.
 - [ ] Link this PR to related issues.
 

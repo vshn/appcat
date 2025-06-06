@@ -35,7 +35,7 @@ func Test_addPostgreSQL(t *testing.T) {
 
 	// Assert default overrides
 	comp.Spec.Parameters.Service.PostgreSQLParameters = &vshnv1.VSHNPostgreSQLParameters{
-		Backup: vshnv1.VSHNPostgreSQLBackup{
+		Backup: &vshnv1.VSHNPostgreSQLBackup{
 			DeletionProtection: ptr.To(false),
 			Retention:          1,
 		},

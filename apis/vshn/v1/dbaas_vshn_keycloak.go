@@ -18,7 +18,6 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.postgreSQLParameters.properties.service.properties.tls.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.properties.retention.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnkeycloaks.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
 
 // +kubebuilder:object:root=true
@@ -71,10 +70,10 @@ type VSHNKeycloakParameters struct {
 	TLS VSHNKeycloakTLSSpec `json:"tls,omitempty"`
 
 	// Backup contains settings to control how the instance should get backed up.
-	Backup K8upBackupSpec `json:"backup,omitempty"`
+	Backup *VSHNPostgreSQLBackup `json:"backup,omitempty"`
 
 	// Restore contains settings to control the restore of an instance.
-	Restore K8upRestoreSpec `json:"restore,omitempty"`
+	Restore *VSHNPostgreSQLRestore `json:"restore,omitempty"`
 
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
@@ -294,7 +293,9 @@ func (v *VSHNKeycloak) SetBackupSchedule(schedule string) {
 
 // GetBackupRetention returns the retention definition for this backup.
 func (v *VSHNKeycloak) GetBackupRetention() K8upRetentionPolicy {
-	return v.Spec.Parameters.Backup.Retention
+	return K8upRetentionPolicy{
+		KeepDaily: v.Spec.Parameters.Backup.Retention,
+	}
 }
 
 // GetServiceName returns the name of this service

@@ -58,7 +58,7 @@ type VSHNPostgreSQLParameters struct {
 	Network VSHNDBaaSNetworkSpec `json:"network,omitempty"`
 
 	// Backup contains settings to control the backups of an instance.
-	Backup VSHNPostgreSQLBackup `json:"backup,omitempty"`
+	Backup *VSHNPostgreSQLBackup `json:"backup,omitempty"`
 
 	// Restore contains settings to control the restore of an instance.
 	Restore *VSHNPostgreSQLRestore `json:"restore,omitempty"`
@@ -384,9 +384,10 @@ func (v *XVSHNPostgreSQL) GetInstanceNamespace() string {
 }
 
 // GetBackupRetention returns the retention definition for this backup.
-// !!! This is just a placeholder to satisfy InfoGetter interface
 func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
-	return K8upRetentionPolicy{}
+	return K8upRetentionPolicy{
+		KeepDaily: v.Spec.Parameters.Backup.Retention,
+	}
 }
 
 // GetServiceName returns the name of this service

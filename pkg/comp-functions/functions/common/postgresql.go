@@ -25,6 +25,8 @@ type PostgreSQLDependencyBuilder struct {
 	pgBouncerConfig      map[string]string
 	pgSettings           map[string]string
 	timeOfDayMaintenance vshnv1.TimeOfDay
+	backup               *vshnv1.VSHNPostgreSQLBackup
+	restore              *vshnv1.VSHNPostgreSQLRestore
 }
 
 func NewPostgreSQLDependencyBuilder(svc *runtime.ServiceRuntime, comp InfoGetter) *PostgreSQLDependencyBuilder {
@@ -62,14 +64,36 @@ func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(timeOfDayMain
 	return a
 }
 
+func (a *PostgreSQLDependencyBuilder) AddRestore(restore *vshnv1.VSHNPostgreSQLRestore) *PostgreSQLDependencyBuilder {
+	a.restore = restore
+	return a
+}
+
+func (a *PostgreSQLDependencyBuilder) AddBackup(backup *vshnv1.VSHNPostgreSQLBackup) *PostgreSQLDependencyBuilder {
+	a.backup = backup
+	return a
+}
+
 // CreateDependency applies the postgresql instance to the desired state.
 // It returns the name of the secret that will contain the connection details.
 func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
-	// Unfortunately k8up and stackgres backups don't match up very well...
-	// if no daily backup is set we just do the default.
-	retention := 6
-	if a.comp.GetBackupRetention().KeepDaily != 0 {
-		retention = a.comp.GetBackupRetention().KeepDaily
+
+	backup := &vshnv1.VSHNPostgreSQLBackup{}
+	if a.backup != nil {
+		backup = a.backup
+	} else {
+		// Unfortunately k8up and stackgres backups don't match up very well...
+		// if no daily backup is set we just do the default.
+		retention := 6
+		if a.comp.GetBackupRetention().KeepDaily != 0 {
+			retention = a.comp.GetBackupRetention().KeepDaily
+		}
+		backup = &vshnv1.VSHNPostgreSQLBackup{
+			Retention:          retention,
+			DeletionProtection: ptr.To(true),
+			DeletionRetention:  7,
+			Schedule:           a.comp.GetBackupSchedule(),
+		}
 	}
 
 	pgBouncerRaw := k8sruntime.RawExtension{}
@@ -99,12 +123,8 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 	params := &vshnv1.VSHNPostgreSQLParameters{
 		Size:        a.comp.GetSize(),
 		Maintenance: a.comp.GetFullMaintenanceSchedule(),
-		Backup: vshnv1.VSHNPostgreSQLBackup{
-			Retention:          retention,
-			DeletionProtection: ptr.To(true),
-			DeletionRetention:  7,
-			Schedule:           a.comp.GetBackupSchedule(),
-		},
+		Backup:      backup,
+		Restore:     a.restore,
 		Service: vshnv1.VSHNPostgreSQLServiceSpec{
 			PgBouncerSettings: &sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni{
 				Pgbouncer: pgBouncerRaw,

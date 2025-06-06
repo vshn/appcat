@@ -674,6 +674,10 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 									Value: comp.Spec.Parameters.Restore.ClaimName,
 								},
 								{
+									Name:  "CLAIM_TYPE",
+									Value: comp.Spec.Parameters.Restore.ClaimType,
+								},
+								{
 									Name:  "BACKUP_NAME",
 									Value: comp.Spec.Parameters.Restore.BackupName,
 								},

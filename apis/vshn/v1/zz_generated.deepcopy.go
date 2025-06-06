@@ -561,8 +561,16 @@ func (in *VSHNKeycloakParameters) DeepCopyInto(out *VSHNKeycloakParameters) {
 	out.Size = in.Size
 	in.Scheduling.DeepCopyInto(&out.Scheduling)
 	out.TLS = in.TLS
-	out.Backup = in.Backup
-	out.Restore = in.Restore
+	if in.Backup != nil {
+		in, out := &in.Backup, &out.Backup
+		*out = new(VSHNPostgreSQLBackup)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Restore != nil {
+		in, out := &in.Restore, &out.Restore
+		*out = new(VSHNPostgreSQLRestore)
+		**out = **in
+	}
 	out.Maintenance = in.Maintenance
 	in.Monitoring.DeepCopyInto(&out.Monitoring)
 	in.Security.DeepCopyInto(&out.Security)
@@ -1334,7 +1342,11 @@ func (in *VSHNPostgreSQLParameters) DeepCopyInto(out *VSHNPostgreSQLParameters) 
 	out.Size = in.Size
 	in.Scheduling.DeepCopyInto(&out.Scheduling)
 	in.Network.DeepCopyInto(&out.Network)
-	in.Backup.DeepCopyInto(&out.Backup)
+	if in.Backup != nil {
+		in, out := &in.Backup, &out.Backup
+		*out = new(VSHNPostgreSQLBackup)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Restore != nil {
 		in, out := &in.Restore, &out.Restore
 		*out = new(VSHNPostgreSQLRestore)

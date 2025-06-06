@@ -61,6 +61,7 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 	pgSecret, err := common.NewPostgreSQLDependencyBuilder(svc, comp).
 		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
 		AddPGBouncerConfig(pgBuncerConfig).
+		AddRestore(comp.Spec.Parameters.Restore, comp.Kind).
 		SetCustomMaintenanceSchedule(comp.Spec.Parameters.Maintenance.TimeOfDay.AddTime(20 * time.Minute)).
 		CreateDependency()
 	if err != nil {

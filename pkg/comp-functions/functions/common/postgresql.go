@@ -64,8 +64,9 @@ func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(timeOfDayMain
 	return a
 }
 
-func (a *PostgreSQLDependencyBuilder) AddRestore(restore *vshnv1.VSHNPostgreSQLRestore) *PostgreSQLDependencyBuilder {
+func (a *PostgreSQLDependencyBuilder) AddRestore(restore *vshnv1.VSHNPostgreSQLRestore, kind string) *PostgreSQLDependencyBuilder {
 	a.restore = restore
+	a.restore.ClaimType = kind
 	return a
 }
 
@@ -145,7 +146,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		// This is a small hack to fix this.
 		// `mergo.WithOverwriteWithEmptyValue` opens a new can of worms, so it's
 		// not used here. https://github.com/darccio/mergo/issues/249
-		if a.psqlParams.Backup.DeletionProtection != nil {
+		if a.psqlParams.Backup != nil && a.psqlParams.Backup.DeletionProtection != nil {
 			params.Backup.DeletionProtection = a.psqlParams.Backup.DeletionProtection
 		}
 	}

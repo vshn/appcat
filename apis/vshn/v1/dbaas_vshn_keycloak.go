@@ -137,6 +137,10 @@ type VSHNKeycloakServiceSpec struct {
 	// can for example be used in the custom JSON configuration provided in the `Configuration`
 	// field with `$(env:<ENV_VAR_NAME>:-<some_default_value>)`
 	CustomEnvVariablesRef *string `json:"customEnvVariablesRef,omitempty"`
+
+	// CustomMounts is a list of Secrets/ConfigMaps that get observed and copied into the Keycloak instance namespace.
+	// Once copied, they will be mounted under /custom/secrets/<name> or /custom/configs/<name>.
+	CustomMounts []VSHNCustomMount `json:"customMounts,omitempty"`
 }
 
 type VSHNKeycloakCustomizationImage struct {
@@ -145,6 +149,16 @@ type VSHNKeycloakCustomizationImage struct {
 
 	// Reference to an imagePullSecret
 	ImagePullSecretRef corev1.SecretReference `json:"imagePullSecretRef,omitempty"`
+}
+
+// VSHNCustomMount defines a Secret or ConfigMap that will be copied into the Keycloak namespace and mounted into the Keycloak pod.
+type VSHNCustomMount struct {
+	// Name is the exact name of the Secret or ConfigMap in the claim namespace.
+	Name string `json:"name"`
+
+	// Type must be either "secret" or "configMap".
+	// +kubebuilder:validation:Enum="secret";"configMap"
+	Type string `json:"type"`
 }
 
 // VSHNKeycloakSettings contains Keycloak specific settings.

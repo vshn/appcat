@@ -5339,6 +5339,10 @@ spec:
                           ClaimName specifies the name of the instance you want to restore from.
                           The claim has to be in the same namespace as this new instance.
                         type: string
+                      claimType:
+                        description: ClaimType specifies the type of the instance
+                          you want to restore from.
+                        type: string
                       recoveryTimeStamp:
                         description: |-
                           RecoveryTimeStamp an ISO 8601 date, that holds UTC date indicating at which point-in-time the database has to be restored.

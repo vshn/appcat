@@ -577,7 +577,11 @@ func (in *VSHNKeycloakParameters) DeepCopyInto(out *VSHNKeycloakParameters) {
 	in.Scheduling.DeepCopyInto(&out.Scheduling)
 	out.TLS = in.TLS
 	out.Backup = in.Backup
-	out.Restore = in.Restore
+	if in.Restore != nil {
+		in, out := &in.Restore, &out.Restore
+		*out = new(VSHNPostgreSQLRestore)
+		**out = **in
+	}
 	out.Maintenance = in.Maintenance
 	in.Monitoring.DeepCopyInto(&out.Monitoring)
 	in.Security.DeepCopyInto(&out.Security)

@@ -411,14 +411,17 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 	initialData := &sgv1.SGClusterSpecInitialData{}
 	backupRef := xkubev1.Reference{}
 	if comp.Spec.Parameters.Restore != nil && comp.Spec.Parameters.Restore.BackupName != "" {
+		fromBackup := &sgv1.SGClusterSpecInitialDataRestoreFromBackup{
+			Name: &comp.Spec.Parameters.Restore.BackupName,
+		}
+		if comp.Spec.Parameters.Restore.RecoveryTimeStamp != "" {
+			fromBackup.PointInTimeRecovery = &sgv1.SGClusterSpecInitialDataRestoreFromBackupPointInTimeRecovery{
+				RestoreToTimestamp: &comp.Spec.Parameters.Restore.RecoveryTimeStamp,
+			}
+		}
 		initialData = &sgv1.SGClusterSpecInitialData{
 			Restore: &sgv1.SGClusterSpecInitialDataRestore{
-				FromBackup: &sgv1.SGClusterSpecInitialDataRestoreFromBackup{
-					Name: &comp.Spec.Parameters.Restore.BackupName,
-					PointInTimeRecovery: &sgv1.SGClusterSpecInitialDataRestoreFromBackupPointInTimeRecovery{
-						RestoreToTimestamp: &comp.Spec.Parameters.Restore.RecoveryTimeStamp,
-					},
-				},
+				FromBackup: fromBackup,
 			},
 		}
 	}
@@ -672,6 +675,10 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 								{
 									Name:  "CLAIM_NAME",
 									Value: comp.Spec.Parameters.Restore.ClaimName,
+								},
+								{
+									Name:  "CLAIM_TYPE",
+									Value: comp.Spec.Parameters.Restore.ClaimType,
 								},
 								{
 									Name:  "BACKUP_NAME",

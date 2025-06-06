@@ -3,6 +3,7 @@ package vshnkeycloak
 import (
 	"context"
 	"crypto/md5"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -19,7 +20,9 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
@@ -46,6 +49,9 @@ const (
 	customMountTypeConfigMap      = "configMap"
 )
 
+//go:embed scripts/copy-kc-creds.sh
+var keycloakCredentialsCopyJobScript string
+
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
 func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -63,6 +69,7 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 	pgSecret, err := common.NewPostgreSQLDependencyBuilder(svc, comp).
 		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
 		AddPGBouncerConfig(pgBuncerConfig).
+		AddRestore(comp.Spec.Parameters.Restore, comp.Kind).
 		SetCustomMaintenanceSchedule(comp.Spec.Parameters.Maintenance.TimeOfDay.AddTime(20 * time.Minute)).
 		CreateDependency()
 	if err != nil {
@@ -103,7 +110,14 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 
 	svc.Log.Info("Adding release")
 
-	adminSecret, err := common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
+	var adminSecret string
+	if comp.Spec.Parameters.Restore != nil {
+		err := copyKeycloakCredentials(comp, svc)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot copy keycloak secret: %s", err))
+		}
+	}
+	adminSecret, err = common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin secret: %s", err))
 	}
@@ -679,4 +693,129 @@ exit 0`,
 		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
 	}
 	return extraInitContainersMap, nil
+}
+
+func copyConfigMap(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) (*corev1.ConfigMap, error) {
+
+	cmObjectName := comp.GetName() + "-config-claim-observer"
+
+	cmClaimObserver := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      *comp.Spec.Parameters.Service.CustomConfigurationRef,
+			Namespace: comp.GetClaimNamespace(),
+		},
+	}
+	err := svc.SetDesiredKubeObject(cmClaimObserver, cmObjectName, runtime.KubeOptionObserve)
+
+	if err != nil {
+		svc.Log.Info("Can't observe Keycloak config Configmap")
+		svc.AddResult(runtime.NewFatalResult(fmt.Errorf("cannot get configMap: %w", err)))
+	}
+
+	configMapClaim := &corev1.ConfigMap{}
+	err = svc.GetObservedKubeObject(configMapClaim, cmObjectName)
+	if err != nil {
+		svc.Log.Info("cannot get observed Keycloak config map")
+		svc.AddResult(runtime.NewWarningResult("cannot get observed Keycloak config map"))
+	}
+
+	configMapInstance := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        *comp.Spec.Parameters.Service.CustomConfigurationRef,
+			Namespace:   comp.GetInstanceNamespace(),
+			Labels:      configMapClaim.Labels,
+			Annotations: configMapClaim.Annotations,
+		},
+		Data: configMapClaim.Data,
+	}
+
+	return configMapInstance, svc.SetDesiredKubeObject(configMapInstance, comp.GetName()+"-config-map")
+}
+
+func copySecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+
+	secretObjectName := comp.GetName() + "-env-secret-claim-observer"
+
+	secretClaimObserver := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+			Namespace: comp.GetClaimNamespace(),
+		},
+	}
+	err := svc.SetDesiredKubeObject(secretClaimObserver, secretObjectName, runtime.KubeOptionObserve)
+
+	if err != nil {
+		svc.Log.Info("Can't observe Keycloak env variable secret")
+		svc.AddResult(runtime.NewFatalResult(fmt.Errorf("cannot get secret: %w", err)))
+	}
+
+	secretClaim := &corev1.Secret{}
+	err = svc.GetObservedKubeObject(secretClaim, secretObjectName)
+	if err != nil {
+		svc.Log.Info("cannot get observed Keycloak env variable secret")
+		svc.AddResult(runtime.NewWarningResult("cannot get observed Keycloak env variable secret"))
+	}
+
+	secretInstance := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+			Namespace:   comp.GetInstanceNamespace(),
+			Labels:      secretClaim.Labels,
+			Annotations: secretClaim.Annotations,
+		},
+		Data: secretClaim.Data,
+	}
+
+	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-env-secret")
+}
+
+func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	copyJob := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-copyjob",
+			Namespace: svc.Config.Data["controlNamespace"],
+		},
+		Spec: batchv1.JobSpec{
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					RestartPolicy:      "Never",
+					ServiceAccountName: "copyserviceaccount",
+					Containers: []v1.Container{
+						{
+							Name:    "copyjob",
+							Image:   "bitnami/kubectl:latest",
+							Command: []string{"sh", "-c"},
+							Args:    []string{keycloakCredentialsCopyJobScript},
+							Env: []v1.EnvVar{
+								{
+									Name:  "CLAIM_NAMESPACE",
+									Value: comp.GetClaimNamespace(),
+								},
+								{
+									Name:  "CLAIM_NAME",
+									Value: comp.Spec.Parameters.Restore.ClaimName,
+								},
+								{
+									Name:  "TARGET_NAMESPACE",
+									Value: comp.GetInstanceNamespace(),
+								},
+								{
+									Name:  "TARGET_CLAIM",
+									Value: comp.GetClaimName(),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := svc.SetDesiredKubeObjectWithName(copyJob, comp.GetName()+"-copyjob", "copy-job")
+	if err != nil {
+		err = fmt.Errorf("cannot create copyJob: %w", err)
+		return err
+	}
+
+	return nil
 }

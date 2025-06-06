@@ -39,10 +39,9 @@ func (v *vshnKeycloakBackupStorage) Get(ctx context.Context, name string, _ *met
 		}
 
 		var sgBackup *appcatv1.SGBackupInfo
-		for _, back := range *sgBackups {
-			hashedName := hashString(back.GetName())
-			if name == hashedName {
-				sgBackup = &back
+		for _, backup := range *sgBackups {
+			if name == backup.GetName() {
+				sgBackup = &backup
 				break
 			}
 		}

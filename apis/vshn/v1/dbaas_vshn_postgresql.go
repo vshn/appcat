@@ -211,6 +211,9 @@ type VSHNPostgreSQLRestore struct {
 	// The claim has to be in the same namespace as this new instance.
 	ClaimName string `json:"claimName,omitempty"`
 
+	// ClaimType specifies the type of the instance you want to restore from.
+	ClaimType string `json:"claimType,omitempty"`
+
 	// BackupName is the name of the specific backup you want to restore.
 	BackupName string `json:"backupName,omitempty"`
 
@@ -384,7 +387,6 @@ func (v *XVSHNPostgreSQL) GetInstanceNamespace() string {
 }
 
 // GetBackupRetention returns the retention definition for this backup.
-// !!! This is just a placeholder to satisfy InfoGetter interface
 func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
 	return K8upRetentionPolicy{}
 }

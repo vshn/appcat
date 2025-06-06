@@ -58,7 +58,7 @@ func backupToTableRow(backup *appcatv1.VSHNKeycloakBackup) metav1.TableRow {
 	)
 
 	if backup.Status.DatabaseBackupStatus.BackupInformation != nil {
-		id = trimStringLength(backup.ObjectMeta.Name)
+		id = backup.GetName()
 		instance = backup.Status.DatabaseBackupStatus.DatabaseInstance
 		started = backup.GetCreationTimestamp().Format(time.RFC3339)
 		finished = backup.GetCreationTimestamp().Format(time.RFC3339)

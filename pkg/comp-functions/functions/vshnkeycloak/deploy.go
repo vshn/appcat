@@ -42,6 +42,8 @@ const (
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"
 	cdCertsSuffix                 = "-keycloakx-http-server-cert"
+	customMountTypeSecret         = "secret"
+	customMountTypeConfigMap      = "configMap"
 )
 
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
@@ -97,27 +99,6 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 		return runtime.NewFatalResult(err)
 	} else if !ready {
 		return runtime.NewWarningResult("postgresql instance not yet ready")
-	}
-
-	if len(comp.Spec.Parameters.Service.CustomMounts) > 0 {
-		for _, m := range comp.Spec.Parameters.Service.CustomMounts {
-			switch m.Type {
-			case "secret":
-				obj := &corev1.Secret{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return runtime.NewWarningResult(fmt.Sprintf("cannot copy secret %q: %s", m.Name, err))
-				}
-			case "configMap":
-				obj := &corev1.ConfigMap{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return runtime.NewWarningResult(fmt.Sprintf("cannot copy configMap %q: %s", m.Name, err))
-				}
-			default:
-				return runtime.NewWarningResult(fmt.Sprintf("invalid customMount type %q for %q", m.Type, m.Name))
-			}
-		}
 	}
 
 	svc.Log.Info("Adding release")
@@ -285,7 +266,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
-		if mount.Type == "secret" {
+		if mount.Type == customMountTypeSecret {
 			extraVolumesMap = append(extraVolumesMap, map[string]any{
 				"name": "custom-secret-" + mount.Name,
 				"secret": map[string]any{
@@ -293,7 +274,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"defaultMode": 420,
 				},
 			})
-		} else if mount.Type == "configMap" {
+		} else if mount.Type == customMountTypeConfigMap {
 			extraVolumesMap = append(extraVolumesMap, map[string]any{
 				"name": "custom-configmap-" + mount.Name,
 				"configMap": map[string]any{
@@ -347,13 +328,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
-		if mount.Type == "secret" {
+		if mount.Type == customMountTypeSecret {
 			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
 				"name":      "custom-secret-" + mount.Name,
 				"mountPath": "/custom/secrets/" + mount.Name,
 				"readOnly":  true,
 			})
-		} else if mount.Type == "configMap" {
+		} else if mount.Type == customMountTypeConfigMap {
 			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
 				"name":      "custom-configmap-" + mount.Name,
 				"mountPath": "/custom/configs/" + mount.Name,
@@ -479,6 +460,27 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		_, err := svc.CopyKubeResource(ctx, secretObj, comp.GetName()+"-env-secret", *comp.Spec.Parameters.Service.CustomEnvVariablesRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 		if err != nil {
 			return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
+		}
+	}
+
+	if len(comp.Spec.Parameters.Service.CustomMounts) > 0 {
+		for _, m := range comp.Spec.Parameters.Service.CustomMounts {
+			switch m.Type {
+			case customMountTypeSecret:
+				obj := &corev1.Secret{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy secret %q: %s", m.Name, err)
+				}
+			case customMountTypeConfigMap:
+				obj := &corev1.ConfigMap{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy configMap %q: %s", m.Name, err)
+				}
+			default:
+				return nil, fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
+			}
 		}
 	}
 

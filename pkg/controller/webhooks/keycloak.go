@@ -1,10 +1,16 @@
 package webhooks
 
 import (
+	"context"
+	"fmt"
+	"strings"
+
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 //+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnkeycloak,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnkeycloaks,versions=v1,name=vshnkeycloak.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
@@ -18,6 +24,17 @@ var (
 )
 
 var _ webhook.CustomValidator = &KeycloakWebhookHandler{}
+
+// Folders that may not be replaced by the custom files init container
+// https://www.keycloak.org/server/directory-structure#_directory_structure
+var keycloakRootFolders = []string{
+	"providers",
+	"themes",
+	"lib",
+	"data",
+	"conf",
+	"bin",
+}
 
 type KeycloakWebhookHandler struct {
 	DefaultWebhookHandler
@@ -39,4 +56,60 @@ func SetupKeycloakWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) er
 			),
 		}).
 		Complete()
+}
+
+// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
+func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
+	if warning != nil || err != nil {
+		return warning, err
+	}
+
+	keycloak, ok := obj.(*vshnv1.VSHNKeycloak)
+	if !ok {
+		return nil, fmt.Errorf("provided manifest is not a valid VSHNKeycloak object")
+	}
+	if err := validateCustomFilePaths(keycloak.Spec.Parameters.Service.CustomFiles); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
+func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	_, ok := oldObj.(*vshnv1.VSHNKeycloak)
+	if !ok {
+		return nil, fmt.Errorf("not a valid VSHNKeycloak object")
+	}
+	newKeycloak, ok := newObj.(*vshnv1.VSHNKeycloak)
+	if !ok {
+		return nil, fmt.Errorf("not a valid VSHNKeycloak object")
+	}
+
+	if err := validateCustomFilePaths(newKeycloak.Spec.Parameters.Service.CustomFiles); err != nil {
+		return nil, err
+	}
+
+	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+}
+
+func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error {
+	for _, customFile := range customFiles {
+		if customFile.Source == "" {
+			return fmt.Errorf("custom file source must not be empty")
+		}
+		if customFile.Destination == "" {
+			return fmt.Errorf("custom file destination must not be empty")
+		}
+
+		// Check if customFile.Destination starts with a valid keycloak root folder
+		for _, folder := range keycloakRootFolders {
+			if strings.HasPrefix(strings.TrimPrefix(customFile.Destination, "/"), folder) {
+				return fmt.Errorf("custom file destination %q may not be a keycloak root folder", customFile.Destination)
+			}
+		}
+	}
+
+	return nil
 }

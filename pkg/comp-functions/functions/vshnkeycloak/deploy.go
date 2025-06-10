@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"text/template"
 	"time"
 
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -245,6 +247,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"emptyDir": nil,
 		},
 		{
+			"name":     "custom-files",
+			"emtpyDir": nil,
+		},
+		{
 			"name": "keycloak-dist",
 		},
 		{
@@ -303,6 +309,29 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"name":      "keycloak-configs",
 			"mountPath": "/opt/keycloak/setup/project",
 		})
+	}
+
+	// Custom file volumes and mounts
+	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
+		for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
+			if customFile.Source == "" || customFile.Destination == "" {
+				svc.Log.Error(nil, "Custom file source or destination is empty", "source", customFile.Source, "destination", customFile.Destination)
+				continue
+			}
+
+			destination := strings.TrimPrefix(customFile.Destination, "/")
+			baseFolder := strings.Split(destination, "/")[0]
+
+			volumeName := "custom-file-" + baseFolder
+			extraVolumesMap = append(extraVolumesMap, map[string]any{
+				"name":     volumeName,
+				"emptyDir": nil,
+			})
+			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
+				"name":      volumeName,
+				"mountPath": "/opt/keycloak/" + baseFolder,
+			})
+		}
 	}
 
 	extraVolumeMounts, err := toYAML(extraVolumeMountsMap)
@@ -575,6 +604,11 @@ ls -lh /custom-providers`,
 		return err
 	}
 
+	extraInitContainersMap, err = addCustomFileCopyInitContainer(comp, extraInitContainersMap)
+	if err != nil {
+		return fmt.Errorf("cannot add custom file copy init container: %w", err)
+	}
+
 	extraInitContainers, err := toYAML(extraInitContainersMap)
 	if err != nil {
 		return err
@@ -616,6 +650,48 @@ exit 0`,
 		}
 		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
 	}
+	return extraInitContainersMap, nil
+}
+
+func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContainersMap []map[string]any) ([]map[string]any, error) {
+	if len(comp.Spec.Parameters.Service.CustomFiles) < 1 {
+		return nil, nil
+	}
+
+	const copyCommandTemplate = `
+echo "Copying custom files..."
+{{- range $val := . }}
+cp -Rv /{{ $val }}  /custom-file-{{ $val }}
+{{- end }}
+exit 0
+`
+
+	destinations := []string{}
+	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
+		finalDestination := strings.TrimPrefix(customFile.Destination, "/")
+		destinations = append(destinations, strings.Split(finalDestination, "/")[0])
+	}
+
+	var copyCommand strings.Builder
+	t := template.Must(template.New("tmpl").Parse(copyCommandTemplate))
+	err := t.Execute(&copyCommand, destinations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	extraInitContainerCustomFileCopyMap := map[string]any{
+		"name":            "copy-custom-files",
+		"image":           comp.Spec.Parameters.Service.CustomizationImage.Image,
+		"imagePullPolicy": "Always",
+		"command": []string{
+			"sh",
+		},
+		"args": []string{
+			"-c",
+		},
+		"volumeMounts": []map[string]any{},
+	}
+	extraInitContainersMap = append(extraInitContainersMap, extraInitContainerCustomFileCopyMap)
 	return extraInitContainersMap, nil
 }
 

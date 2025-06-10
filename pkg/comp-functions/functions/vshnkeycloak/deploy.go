@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"text/template"
 	"time"
 
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -489,6 +491,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"emptyDir": nil,
 		},
 		{
+			"name":     "custom-files",
+			"emtpyDir": nil,
+		},
+		{
 			"name": "keycloak-dist",
 		},
 		{
@@ -549,6 +555,39 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"name":      "keycloak-certs",
 			"mountPath": "/certs/keycloak",
 		},
+	}
+
+	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
+		extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
+			"name":      "keycloak-configs",
+			"mountPath": "/opt/keycloak/setup/project",
+		})
+	}
+
+	// Custom file volumes and mounts
+	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
+		for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
+			if customFile.Source == "" || customFile.Destination == "" {
+				svc.Log.Error(nil, "Custom file source or destination is empty", "source", customFile.Source, "destination", customFile.Destination)
+				continue
+			}
+
+			baseFolder := strings.Split(customFile.Destination, "/")[0]
+			if baseFolder == "providers" || baseFolder == "themes" {
+				svc.Log.Error(nil, "Custom file destination is already copied automatically", "destination", customFile.Destination)
+				continue
+			}
+
+			volumeName := "custom-file-" + baseFolder
+			extraVolumesMap = append(extraVolumesMap, map[string]any{
+				"name":     volumeName,
+				"emptyDir": nil,
+			})
+			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
+				"name":      volumeName,
+				"mountPath": "/opt/keycloak/" + baseFolder,
+			})
+		}
 	}
 
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
@@ -811,6 +850,11 @@ ls -lh /custom-providers`,
 		return err
 	}
 
+	extraInitContainersMap, err = addCustomFileCopyInitContainer(comp, extraInitContainersMap)
+	if err != nil {
+		return fmt.Errorf("cannot add custom file copy init container: %w", err)
+	}
+
 	extraInitContainers, err := toYAML(extraInitContainersMap)
 	if err != nil {
 		return err
@@ -853,6 +897,121 @@ exit 0`,
 		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
 	}
 	return extraInitContainersMap, nil
+}
+
+func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContainersMap []map[string]any) ([]map[string]any, error) {
+	if len(comp.Spec.Parameters.Service.CustomFiles) < 1 {
+		return nil, fmt.Errorf("no custom files defined but tried to add init container nonetheless")
+	}
+
+	const copyCommandTemplate = `
+echo "Copying custom files..."
+{{range $val := .}}
+cp -Rv /{{$val}}  /custom-file-{{$val}}
+{{end}}
+exit 0
+`
+
+	destinations := []string{}
+	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
+		destinations = append(destinations, strings.Split(customFile.Destination, "/")[0])
+	}
+
+	t := template.Must(template.New("tmpl").Parse(copyCommandTemplate))
+	var copyCommand strings.Builder
+	err := t.Execute(&copyCommand, destinations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	extraInitContainerCustomFileCopyMap := map[string]any{
+		"name":            "copy-custom-files",
+		"image":           comp.Spec.Parameters.Service.CustomizationImage.Image,
+		"imagePullPolicy": "Always",
+		"command": []string{
+			"sh",
+		},
+		"args": []string{
+			"-c",
+		},
+		"volumeMounts": []map[string]any{},
+	}
+	extraInitContainersMap = append(extraInitContainersMap, extraInitContainerCustomFileCopyMap)
+	return extraInitContainersMap, nil
+}
+
+func copyConfigMap(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) (*corev1.ConfigMap, error) {
+
+	cmObjectName := comp.GetName() + "-config-claim-observer"
+
+	cmClaimObserver := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      *comp.Spec.Parameters.Service.CustomConfigurationRef,
+			Namespace: comp.GetClaimNamespace(),
+		},
+	}
+	err := svc.SetDesiredKubeObject(cmClaimObserver, cmObjectName, runtime.KubeOptionObserve)
+
+	if err != nil {
+		svc.Log.Info("Can't observe Keycloak config Configmap")
+		svc.AddResult(runtime.NewFatalResult(fmt.Errorf("cannot get configMap: %w", err)))
+	}
+
+	configMapClaim := &corev1.ConfigMap{}
+	err = svc.GetObservedKubeObject(configMapClaim, cmObjectName)
+	if err != nil {
+		svc.Log.Info("cannot get observed Keycloak config map")
+		svc.AddResult(runtime.NewWarningResult("cannot get observed Keycloak config map"))
+	}
+
+	configMapInstance := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        *comp.Spec.Parameters.Service.CustomConfigurationRef,
+			Namespace:   comp.GetInstanceNamespace(),
+			Labels:      configMapClaim.Labels,
+			Annotations: configMapClaim.Annotations,
+		},
+		Data: configMapClaim.Data,
+	}
+
+	return configMapInstance, svc.SetDesiredKubeObject(configMapInstance, comp.GetName()+"-config-map")
+}
+
+func copySecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+
+	secretObjectName := comp.GetName() + "-env-secret-claim-observer"
+
+	secretClaimObserver := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+			Namespace: comp.GetClaimNamespace(),
+		},
+	}
+	err := svc.SetDesiredKubeObject(secretClaimObserver, secretObjectName, runtime.KubeOptionObserve)
+
+	if err != nil {
+		svc.Log.Info("Can't observe Keycloak env variable secret")
+		svc.AddResult(runtime.NewFatalResult(fmt.Errorf("cannot get secret: %w", err)))
+	}
+
+	secretClaim := &corev1.Secret{}
+	err = svc.GetObservedKubeObject(secretClaim, secretObjectName)
+	if err != nil {
+		svc.Log.Info("cannot get observed Keycloak env variable secret")
+		svc.AddResult(runtime.NewWarningResult("cannot get observed Keycloak env variable secret"))
+	}
+
+	secretInstance := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+			Namespace:   comp.GetInstanceNamespace(),
+			Labels:      secretClaim.Labels,
+			Annotations: secretClaim.Annotations,
+		},
+		Data: secretClaim.Data,
+	}
+
+	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-env-secret")
 }
 
 func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {

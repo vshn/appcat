@@ -245,6 +245,10 @@ func (v *VSHNMinio) GetMonitoring() VSHNMonitoring {
 }
 
 func (v *VSHNMinio) GetInstances() int {
+	// mode supersedes the instances field
+	if v.Spec.Parameters.Service.Mode == "standalone" {
+		return 1
+	}
 	return v.Spec.Parameters.Instances
 }
 

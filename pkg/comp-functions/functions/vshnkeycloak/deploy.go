@@ -572,11 +572,8 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				continue
 			}
 
-			baseFolder := strings.Split(customFile.Destination, "/")[0]
-			if baseFolder == "providers" || baseFolder == "themes" {
-				svc.Log.Error(nil, "Custom file destination is already copied automatically", "destination", customFile.Destination)
-				continue
-			}
+			destination := strings.TrimPrefix(customFile.Destination, "/")
+			baseFolder := strings.Split(destination, "/")[0]
 
 			volumeName := "custom-file-" + baseFolder
 			extraVolumesMap = append(extraVolumesMap, map[string]any{
@@ -906,19 +903,20 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 
 	const copyCommandTemplate = `
 echo "Copying custom files..."
-{{range $val := .}}
-cp -Rv /{{$val}}  /custom-file-{{$val}}
-{{end}}
+{{- range $val := . }}
+cp -Rv /{{ $val }}  /custom-file-{{ $val }}
+{{- end }}
 exit 0
 `
 
 	destinations := []string{}
 	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
-		destinations = append(destinations, strings.Split(customFile.Destination, "/")[0])
+		finalDestination := strings.TrimPrefix(customFile.Destination, "/")
+		destinations = append(destinations, strings.Split(finalDestination, "/")[0])
 	}
 
-	t := template.Must(template.New("tmpl").Parse(copyCommandTemplate))
 	var copyCommand strings.Builder
+	t := template.Must(template.New("tmpl").Parse(copyCommandTemplate))
 	err := t.Execute(&copyCommand, destinations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute template: %w", err)

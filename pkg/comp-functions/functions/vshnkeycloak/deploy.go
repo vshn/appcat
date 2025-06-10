@@ -901,7 +901,7 @@ exit 0`,
 
 func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContainersMap []map[string]any) ([]map[string]any, error) {
 	if len(comp.Spec.Parameters.Service.CustomFiles) < 1 {
-		return nil, fmt.Errorf("no custom files defined but tried to add init container nonetheless")
+		return nil, nil
 	}
 
 	const copyCommandTemplate = `

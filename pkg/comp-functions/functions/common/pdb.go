@@ -13,7 +13,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-func AddPDBSettings[T client.Object](ctx context.Context, obj T, svc *runtime.ServiceRuntime) *fnproto.Result {
+func AddPDBSettings[T client.Object](_ context.Context, obj T, svc *runtime.ServiceRuntime) *fnproto.Result {
 
 	log := svc.Log
 

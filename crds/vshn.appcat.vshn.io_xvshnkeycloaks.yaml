@@ -5349,6 +5349,22 @@ spec:
                           can for example be used in the custom JSON configuration provided in the `Configuration`
                           field with `$(env:<ENV_VAR_NAME>:-<some_default_value>)`
                         type: string
+                      customFiles:
+                        description: |-
+                          CustomFiles can be used to load custom files or folders into the keycloak instance.
+                          The source path will be copied into keycloak using 'cp -R'.
+                        items:
+                          properties:
+                            destination:
+                              description: |-
+                                Destination file in the keycloak instance.
+                                The path is relative to /opt/keycloak/.
+                              type: string
+                            source:
+                              description: Source file from the customization image
+                              type: string
+                          type: object
+                        type: array
                       customMounts:
                         description: |-
                           CustomMounts is a list of Secrets/ConfigMaps that get observed and copied into the Keycloak instance namespace.
@@ -5375,9 +5391,9 @@ spec:
                         type: array
                       customizationImage:
                         description: |-
-                          CustomizationImage can be used to provide an image with custom themes and providers.
-                          The themes need to be be placed in the `/themes` directory of the custom image.
-                          the providers need to be placed in the `/providers` directory of the custom image.
+                          CustomizationImage can be used to provide an image with custom themes, providers and other files.
+                          Themes and providers are automatically copied and need to be placed in '/themes' and '/providers' respectively.
+                          Other custom data will be copied according to the `customFiles` field.
                         properties:
                           image:
                             description: Path to a valid image

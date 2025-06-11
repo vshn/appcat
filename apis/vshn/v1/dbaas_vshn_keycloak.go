@@ -74,7 +74,7 @@ type VSHNKeycloakParameters struct {
 	Backup K8upBackupSpec `json:"backup,omitempty"`
 
 	// Restore contains settings to control the restore of an instance.
-	Restore K8upRestoreSpec `json:"restore,omitempty"`
+	Restore *VSHNPostgreSQLRestore `json:"restore,omitempty"`
 
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`

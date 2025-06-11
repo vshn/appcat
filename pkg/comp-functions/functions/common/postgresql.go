@@ -25,6 +25,7 @@ type PostgreSQLDependencyBuilder struct {
 	pgBouncerConfig      map[string]string
 	pgSettings           map[string]string
 	timeOfDayMaintenance vshnv1.TimeOfDay
+	restore              *vshnv1.VSHNPostgreSQLRestore
 }
 
 func NewPostgreSQLDependencyBuilder(svc *runtime.ServiceRuntime, comp InfoGetter) *PostgreSQLDependencyBuilder {
@@ -59,6 +60,14 @@ func (a *PostgreSQLDependencyBuilder) AddPGSettings(pgSettings map[string]string
 
 func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(timeOfDayMaintenance vshnv1.TimeOfDay) *PostgreSQLDependencyBuilder {
 	a.timeOfDayMaintenance = timeOfDayMaintenance
+	return a
+}
+
+func (a *PostgreSQLDependencyBuilder) AddRestore(restore *vshnv1.VSHNPostgreSQLRestore, kind string) *PostgreSQLDependencyBuilder {
+	if restore != nil {
+		a.restore = restore
+		a.restore.ClaimType = kind
+	}
 	return a
 }
 
@@ -105,6 +114,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 			DeletionRetention:  7,
 			Schedule:           a.comp.GetBackupSchedule(),
 		},
+		Restore: a.restore,
 		Service: vshnv1.VSHNPostgreSQLServiceSpec{
 			PgBouncerSettings: &sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni{
 				Pgbouncer: pgBouncerRaw,

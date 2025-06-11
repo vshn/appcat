@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/vshn/appcat-cookiecutter",
-  "commit": "fd921fc3c5b3cdf677d7e4988bf3cff4d2c8b3ff",
+  "commit": "d8863b582b39dcaeaeb6ee12d5c7e83753288669",
   "checkout": "master",
   "context": {
     "cookiecutter": {
@@ -14,7 +14,7 @@
         ".github/changelog-configuration.json"
       ],
       "_template": "https://github.com/vshn/appcat-cookiecutter",
-      "_commit": "fd921fc3c5b3cdf677d7e4988bf3cff4d2c8b3ff"
+      "_commit": "d8863b582b39dcaeaeb6ee12d5c7e83753288669"
     }
   },
   "directory": null

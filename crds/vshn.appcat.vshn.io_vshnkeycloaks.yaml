@@ -9623,6 +9623,12 @@ spec:
                 instanceNamespace:
                   description: InstanceNamespace contains the name of the namespace where the instance resides
                   type: string
+                lastConfigHash:
+                  description: LastConfigHash is the hash of last applied customConfigurationRef.
+                  type: string
+                lastEnvHash:
+                  description: LastEnvHash is the hash of last applied customEnvVariablesRef.
+                  type: string
                 observedGeneration:
                   description: |-
                     ObservedGeneration is the latest metadata.generation

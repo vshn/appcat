@@ -1,7 +1,7 @@
 {
   "template": "https://github.com/vshn/appcat-cookiecutter",
-  "commit": "128d270ba199a581122ff74c2f82b8e3019490f0",
-  "checkout": null,
+  "commit": "88e437a0121a329e06fbbad8d39ca00d6e8ad08c",
+  "checkout": "master",
   "context": {
     "cookiecutter": {
       "app_name": "appcat",
@@ -13,7 +13,8 @@
         ".github/workflows/cruft-update.yml",
         ".github/changelog-configuration.json"
       ],
-      "_template": "https://github.com/vshn/appcat-cookiecutter"
+      "_template": "https://github.com/vshn/appcat-cookiecutter",
+      "_commit": "88e437a0121a329e06fbbad8d39ca00d6e8ad08c"
     }
   },
   "directory": null

@@ -24,7 +24,7 @@ jobs:
       - name: Get current labels
         uses: snnaplab/get-labels-action@v1
       - name: Check if merge is allowed
-        if: github.base_ref == 'master' &&  github.head_ref != 'develop'
+        if: github.base_ref == 'master' && github.head_ref != 'develop'
         run: |
           ${{ contains(fromJSON(env.LABELS), 'hotfix') }} && exit 0
           echo "ERROR: You can only merge to master from develop or hotfixes."
@@ -95,6 +95,7 @@ jobs:
 
   open-or-update-pr-component:
     runs-on: ubuntu-latest
+    if: github.base_ref == 'master'
     steps:
       - name: Get current labels
         uses: snnaplab/get-labels-action@v1

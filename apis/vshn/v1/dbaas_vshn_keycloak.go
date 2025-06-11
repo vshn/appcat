@@ -207,6 +207,10 @@ type VSHNKeycloakStatus struct {
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
+	// LastConfigHash is the hash of last applied customConfigurationRef.
+	LastConfigHash string `json:"lastConfigHash,omitempty"`
+	// LastEnvHash is the hash of last applied customEnvVariablesRef.
+	LastEnvHash string `json:"lastEnvHash,omitempty"`
 }
 
 func (v *VSHNKeycloak) GetClaimNamespace() string {
@@ -227,6 +231,22 @@ func (v *XVSHNKeycloak) GetInstanceNamespace() string {
 
 func (v *VSHNKeycloak) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
+func (v *VSHNKeycloak) GetLastConfigHash() string {
+	return v.Status.LastConfigHash
+}
+
+func (v *VSHNKeycloak) GetLastEnvHash() string {
+	return v.Status.LastEnvHash
+}
+
+func (v *VSHNKeycloak) SetLastConfigHash(hash string) {
+	v.Status.LastConfigHash = hash
+}
+
+func (v *VSHNKeycloak) SetLastEnvHash(hash string) {
+	v.Status.LastEnvHash = hash
 }
 
 // +kubebuilder:object:generate=true

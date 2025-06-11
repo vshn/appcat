@@ -13,19 +13,15 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	err := svc.GetObservedComposite(comp)
-	if err != nil {
+	if err := svc.GetDesiredComposite(comp); err != nil {
 		err = fmt.Errorf("cannot get observed composite: %w", err)
 		return runtime.NewFatalResult(err)
 	}
 
 	common.SetRandomSchedules(comp, comp)
 
-	err = svc.SetDesiredCompositeStatus(comp)
-	if err != nil {
-		err = fmt.Errorf("cannot set desired composite status: %w", err)
-		return runtime.NewFatalResult(err)
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+		svc.Log.Error(err, "cannot set schedules in the composite status")
 	}
 
 	instanceNamespace := getInstanceNamespace(comp)

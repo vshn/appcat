@@ -16,6 +16,19 @@ env:
   PUSH_IMAGE: "True"
 
 jobs:
+  check-allow-merge:
+    runs-on: ubuntu-latest
+    steps:
+      # Labels in the context don't get updated so they are stuck at what's set during creation
+      # We need this action to get current labels
+      - name: Get current labels
+        uses: snnaplab/get-labels-action@v1
+      - name: Check if merge is allowed
+        if: github.base_ref == 'master' && github.head_ref != 'develop'
+        run: |
+          ${{ contains(fromJSON(env.LABELS), 'hotfix') }} && exit 0
+          echo "ERROR: You can only merge to master from develop or hotfixes."
+          exit 1
   check-labels:
     # Act doesn't set a pull request number by default, so we skip if it's 0
     if: github.event.pull_request.number != 0
@@ -80,10 +93,13 @@ jobs:
         if: env.PUSH_UPBOUND == 'true' && env.PUSH_PACKAGE == 'true'
         run: make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}" -e IMG_REPO=xpkg.upbound.io
 
-  open-pr-component:
-    if: github.event.action == 'opened'
+  open-or-update-pr-component:
     runs-on: ubuntu-latest
+    if: github.base_ref == 'master'
     steps:
+      - name: Get current labels
+        uses: snnaplab/get-labels-action@v1
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -105,19 +121,35 @@ jobs:
       - name: Generate new golden
         # Act uses the host's docker to run containers, but then
         # they can't access the files that were previously cloned.
-        if: github.event.pull_request.number != 0
+        if: github.event.pull_request.number != 0 && github.event.action == 'opened'
         run: |
           make gen-golden-all
 
+      - name: Check if it's a hotfix
+        id: hotfix_check
+        run: |
+          ${{ contains(fromJSON(env.LABELS), 'hotfix') }} && echo "base=master" >> $GITHUB_OUTPUT || echo "base=develop" >> $GITHUB_OUTPUT
+
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
+        id: cpr
         with:
           token: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
-          title: 'PR for ${{ env.APP_NAME }} on ${{ steps.extract_branch.outputs.branch }}'
+          title: ${{ github.event.pull_request.title }}
           body: "${{ github.event.pull_request.body}}\nLink: ${{ github.event.pull_request.html_url }}"
           branch: "${{ env.APP_NAME }}/${{ github.event.pull_request.number }}/${{ steps.extract_branch.outputs.branch }}"
-          base: master
+          base: ${{ steps.hotfix_check.outputs.base }}
           draft: false
+
+      - name: Add link to component PR
+        uses: tzkhan/pr-update-action@v2
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          head-branch-regex: "${{ steps.extract_branch.outputs.branch }}"
+          body-template: |
+            Component PR: ${{ steps.cpr.outputs.pull-request-url }}
+          body-update-action: 'suffix'
+          body-uppercase-base-match: false
   create-release:
     if: github.event.pull_request.merged
     runs-on: ubuntu-latest

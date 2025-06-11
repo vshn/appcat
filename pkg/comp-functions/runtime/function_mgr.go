@@ -1474,3 +1474,40 @@ func (s *ServiceRuntime) SetDesiredResourceReadiness(name string, ready Resource
 		s.desiredResources[resource.Name(name)] = res
 	}
 }
+
+// CopyKubeResource clones a Kubernetes object from one namespace into another.
+// It first creates an observer to fetch the current manifest, then strips out read-only metadata
+// (ResourceVersion, UID, SelfLink, Generation, CreationTimestamp) before declaring a new object
+// in the target namespace.
+func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object, resourceName, name, fromNS, toNS string) (client.Object, error) {
+	observerName := resourceName + "-claim-observer"
+
+	observerObj := obj.DeepCopyObject().(client.Object)
+	observerObj.SetName(name)
+	observerObj.SetNamespace(fromNS)
+
+	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve); err != nil {
+		return nil, err
+	}
+
+	if err := s.GetObservedKubeObject(obj, observerName); err != nil {
+		return nil, err
+	}
+
+	instObj := obj.DeepCopyObject().(client.Object)
+	instObj.SetNamespace(toNS)
+	instObj.SetResourceVersion("")
+	instObj.SetUID("")
+	instObj.SetSelfLink("")
+	instObj.SetGeneration(0)
+
+	if metaObj, ok := instObj.(metav1.Object); ok {
+		metaObj.SetCreationTimestamp(metav1.Time{})
+	}
+
+	if err := s.SetDesiredKubeObject(instObj, resourceName); err != nil {
+		return nil, err
+	}
+
+	return instObj, nil
+}

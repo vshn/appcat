@@ -5339,6 +5339,30 @@ spec:
                           can for example be used in the custom JSON configuration provided in the `Configuration`
                           field with `$(env:<ENV_VAR_NAME>:-<some_default_value>)`
                         type: string
+                      customMounts:
+                        description: |-
+                          CustomMounts is a list of Secrets/ConfigMaps that get observed and copied into the Keycloak instance namespace.
+                          Once copied, they will be mounted under /custom/secrets/<name> or /custom/configs/<name>.
+                        items:
+                          description: VSHNCustomMount defines a Secret or ConfigMap
+                            that will be copied into the Keycloak namespace and mounted
+                            into the Keycloak pod.
+                          properties:
+                            name:
+                              description: Name is the exact name of the Secret or
+                                ConfigMap in the claim namespace.
+                              type: string
+                            type:
+                              description: Type must be either "secret" or "configMap".
+                              enum:
+                              - secret
+                              - configMap
+                              type: string
+                          required:
+                          - name
+                          - type
+                          type: object
+                        type: array
                       customizationImage:
                         description: |-
                           CustomizationImage can be used to provide an image with custom themes and providers.

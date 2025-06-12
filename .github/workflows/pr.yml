@@ -95,7 +95,6 @@ jobs:
 
   open-or-update-pr-component:
     runs-on: ubuntu-latest
-    if: github.base_ref == 'master'
     steps:
       - name: Get current labels
         uses: snnaplab/get-labels-action@v1

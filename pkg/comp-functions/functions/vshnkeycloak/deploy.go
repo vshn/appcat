@@ -196,9 +196,9 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	envChanged := hashEnv != "" && hashEnv != comp.GetLastEnvHash()
 
 	if cfgChanged || envChanged {
-		svc.Log.Info("Custom config changed, creating config-apply Job", "hashConfig", hashConfig, "hashEnv", hashEnv)
+		svc.Log.Info("Custom config changed, creating config-apply Job", "cfgChanged", cfgChanged, "envChanged", envChanged)
 
-		job := buildConfigApplyJob(comp, svc, adminSecret)
+		job := buildConfigApplyJob(comp, adminSecret)
 		if err := svc.SetDesiredKubeObject(job, comp.GetName()+"-apply-config"); err != nil {
 			return fmt.Errorf("cannot create config apply Job: %w", err)
 		}
@@ -244,7 +244,7 @@ func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	return nil
 }
 
-func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, adminSecret string) *batchv1.Job {
+func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret string) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-apply-config",
@@ -252,12 +252,11 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime,
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            ptr.To(int32(10)),
-			TTLSecondsAfterFinished: ptr.To(int32(300)),
+			TTLSecondsAfterFinished: ptr.To(int32(0)),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					ServiceAccountName: pullsecretName,
-					RestartPolicy:      corev1.RestartPolicyOnFailure,
-					ImagePullSecrets:   []corev1.LocalObjectReference{{Name: pullsecretName}},
+					RestartPolicy:    corev1.RestartPolicyOnFailure,
+					ImagePullSecrets: []corev1.LocalObjectReference{{Name: pullsecretName}},
 					Volumes: []corev1.Volume{
 						{
 							Name: "keycloak-configs",
@@ -304,7 +303,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime,
 								},
 								{
 									Name:  "KEYCLOAK_API_URL",
-									Value: svc.Config.Data["KEYCLOAK_API_URL"],
+									Value: fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace()),
 								},
 							},
 							Command: []string{"sh", "-c", "/opt/keycloak/bin/keycloak-setup.sh"},

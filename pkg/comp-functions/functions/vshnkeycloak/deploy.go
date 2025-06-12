@@ -566,9 +566,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
-	jsonned, _ := json.Marshal(values)
-	fmt.Println(string(jsonned))
-
 	if busyBoxImage := svc.Config.Data["busybox_image"]; busyBoxImage != "" {
 		err := common.SetNestedObjectValue(values, []string{"dbchecker", "image"}, map[string]any{
 			"repository": busyBoxImage,

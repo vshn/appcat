@@ -210,7 +210,13 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		if envChanged {
 			comp.SetLastEnvHash(hashEnv)
 		}
+
+		svc.Log.Info("Updating composite status")
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			return fmt.Errorf("cannot set keycloak composite status: %w", err)
+		}
 	}
+
 	return nil
 }
 

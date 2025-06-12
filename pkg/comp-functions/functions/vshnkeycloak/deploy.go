@@ -131,6 +131,14 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 	svc.SetConnectionDetail(adminConnectionDetailsField, []byte("admin"))
 	svc.SetConnectionDetail(hostConnectionDetailsField, []byte(fmt.Sprintf("%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())))
 
+	if err := handleCustomConfig(ctx, comp, svc, adminSecret); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot handle custom config: %s", err))
+	}
+
+	if err := handleCustomMounts(ctx, comp, svc); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot handle custom mounts: %s", err))
+	}
+
 	err = addRelease(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create release: %s", err))
@@ -152,6 +160,160 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 	}
 
 	return nil
+}
+
+func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, adminSecret string) error {
+	customConfigurationRef := comp.Spec.Parameters.Service.CustomConfigurationRef
+	customEnvVariablesRef := comp.Spec.Parameters.Service.CustomEnvVariablesRef
+
+	if customConfigurationRef == nil && customEnvVariablesRef == nil {
+		return nil
+	}
+
+	var hashConfig, hashEnv string
+
+	if customConfigurationRef != nil {
+		cm := &corev1.ConfigMap{}
+		obj, err := svc.CopyKubeResource(ctx, cm, comp.GetName()+"-config-map", *customConfigurationRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		if err != nil {
+			return fmt.Errorf("cannot copy ConfigMap: %w", err)
+		}
+		copied := obj.(*corev1.ConfigMap)
+		hashConfig = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", copied.Data))))
+	}
+
+	if customEnvVariablesRef != nil {
+		sec := &corev1.Secret{}
+		obj, err := svc.CopyKubeResource(ctx, sec, comp.GetName()+"-env-secret", *customEnvVariablesRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		if err != nil {
+			return fmt.Errorf("cannot copy Secret: %w", err)
+		}
+		copied := obj.(*corev1.Secret)
+		hashEnv = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", copied.Data))))
+	}
+
+	cfgChanged := hashConfig != "" && hashConfig != comp.GetLastConfigHash()
+	envChanged := hashEnv != "" && hashEnv != comp.GetLastEnvHash()
+
+	if cfgChanged || envChanged {
+		svc.Log.Info("Custom config changed, creating config-apply Job", "hashConfig", hashConfig, "hashEnv", hashEnv)
+
+		job := buildConfigApplyJob(comp, svc, adminSecret)
+		if err := svc.SetDesiredKubeObject(job, comp.GetName()+"-apply-config"); err != nil {
+			return fmt.Errorf("cannot create config apply Job: %w", err)
+		}
+
+		if cfgChanged {
+			comp.SetLastConfigHash(hashConfig)
+		}
+
+		if envChanged {
+			comp.SetLastEnvHash(hashEnv)
+		}
+	}
+	return nil
+}
+
+func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	if len(comp.Spec.Parameters.Service.CustomMounts) > 0 {
+		for _, m := range comp.Spec.Parameters.Service.CustomMounts {
+			switch m.Type {
+			case customMountTypeSecret:
+				obj := &corev1.Secret{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return fmt.Errorf("cannot copy secret %q: %s", m.Name, err)
+				}
+			case customMountTypeConfigMap:
+				obj := &corev1.ConfigMap{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return fmt.Errorf("cannot copy configMap %q: %s", m.Name, err)
+				}
+			default:
+				return fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
+			}
+		}
+	}
+	return nil
+}
+
+func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, adminSecret string) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-apply-config",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit:            ptr.To(int32(10)),
+			TTLSecondsAfterFinished: ptr.To(int32(300)),
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					ServiceAccountName: pullsecretName,
+					RestartPolicy:      corev1.RestartPolicyOnFailure,
+					ImagePullSecrets:   []corev1.LocalObjectReference{{Name: pullsecretName}},
+					Volumes: []corev1.Volume{
+						{
+							Name: "keycloak-configs",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: *comp.Spec.Parameters.Service.CustomConfigurationRef,
+									},
+								},
+							},
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:            "apply-config",
+							Image:           fmt.Sprintf("%s:%s", registryURL, comp.Spec.Parameters.Service.Version),
+							ImagePullPolicy: corev1.PullAlways,
+							EnvFrom: []corev1.EnvFromSource{
+								{
+									SecretRef: &corev1.SecretEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+										},
+									},
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "KEYCLOAK_ADMIN",
+									Value: "internaladmin",
+								},
+								{
+									Name: "KEYCLOAK_ADMIN_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{Name: adminSecret},
+											Key:                  internalAdminPWSecretField,
+										},
+									},
+								},
+								{
+									Name:  "KC_HTTP_RELATIVE_PATH",
+									Value: comp.Spec.Parameters.Service.RelativePath,
+								},
+								{
+									Name:  "KEYCLOAK_API_URL",
+									Value: svc.Config.Data["KEYCLOAK_API_URL"],
+								},
+							},
+							Command: []string{"sh", "-c", "/opt/keycloak/bin/keycloak-setup.sh"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "keycloak-configs",
+									MountPath: "/opt/keycloak/setup/project",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func addRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) error {
@@ -181,7 +343,7 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 	return res, nil
 }
 
-func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, hashedCustomConfig, pgSecret string) (map[string]any, error) {
+func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (map[string]any, error) {
 	values := map[string]any{}
 
 	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + common.PgInstanceNameSuffix)
@@ -299,17 +461,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
-	podAnnotations := map[string]any{}
-	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
-		extraVolumesMap = append(extraVolumesMap, map[string]any{
-			"name": "keycloak-configs",
-			"configMap": map[string]any{
-				"name": comp.Spec.Parameters.Service.CustomConfigurationRef,
-			},
-		})
-		podAnnotations["checksum/keycloak-config"] = hashedCustomConfig
-	}
-
 	extraVolumes, err := toYAML(extraVolumesMap)
 	if err != nil {
 		return nil, err
@@ -334,13 +485,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
-	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
-		extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
-			"name":      "keycloak-configs",
-			"mountPath": "/opt/keycloak/setup/project",
-		})
-	}
-
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
 		if mount.Type == customMountTypeSecret {
 			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
@@ -361,16 +505,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	if err != nil {
 		return nil, err
 	}
-
-	envFrom := ""
-	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		envFrom = "[secretRef: {name: " + *comp.Spec.Parameters.Service.CustomEnvVariablesRef + "}]"
-	}
-
 	values = map[string]any{
 		"replicas":          comp.Spec.Parameters.Instances,
 		"extraEnv":          extraEnv,
-		"extraEnvFrom":      envFrom,
 		"extraVolumes":      extraVolumes,
 		"extraVolumeMounts": extraVolumeMounts,
 
@@ -434,7 +571,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
 		},
 		"podSecurityContext": nil,
-		"podAnnotations":     podAnnotations,
 	}
 
 	if svc.Config.Data["imageRegistry"] != "" {
@@ -459,46 +595,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
-	var hashedCustomConfig string
-	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
-		cmObj := &corev1.ConfigMap{}
-		instObj, err := svc.CopyKubeResource(ctx, cmObj, comp.GetName()+"-config-map", *comp.Spec.Parameters.Service.CustomConfigurationRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-		if err != nil {
-			return nil, fmt.Errorf("cannot copy keycloak config ConfigMap to instance namespace: %w", err)
-		}
-		copiedCM := instObj.(*corev1.ConfigMap)
-		hashedCustomConfig = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", copiedCM.Data))))
-	}
-	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		secretObj := &corev1.Secret{}
-		_, err := svc.CopyKubeResource(ctx, secretObj, comp.GetName()+"-env-secret", *comp.Spec.Parameters.Service.CustomEnvVariablesRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-		if err != nil {
-			return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
-		}
-	}
-
-	if len(comp.Spec.Parameters.Service.CustomMounts) > 0 {
-		for _, m := range comp.Spec.Parameters.Service.CustomMounts {
-			switch m.Type {
-			case customMountTypeSecret:
-				obj := &corev1.Secret{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("cannot copy secret %q: %s", m.Name, err)
-				}
-			case customMountTypeConfigMap:
-				obj := &corev1.ConfigMap{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("cannot copy configMap %q: %s", m.Name, err)
-				}
-			default:
-				return nil, fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
-			}
-		}
-	}
-
-	values, err := newValues(ctx, svc, comp, adminSecret, hashedCustomConfig, pgSecret)
+	values, err := newValues(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return nil, err
 	}

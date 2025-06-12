@@ -8,6 +8,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -124,6 +125,17 @@ func (r *DefaultWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.
 	comp, ok := obj.(common.Composite)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+	}
+
+	// get details of namespace
+	namespace := corev1.Namespace{}
+	err := r.client.Get(ctx, client.ObjectKey{Name: comp.GetNamespace()}, &namespace)
+	if err != nil {
+		return nil, apierrors.NewInternalError(fmt.Errorf("Error getting namespace: " + err.Error()))
+	}
+
+	if namespace.DeletionTimestamp != nil {
+		return nil, nil
 	}
 
 	allErrs = GetClaimDeletionProtection(comp.GetSecurity(), allErrs)

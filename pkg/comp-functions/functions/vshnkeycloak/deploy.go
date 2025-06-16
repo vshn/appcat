@@ -170,51 +170,98 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		return nil
 	}
 
-	var hashConfig, hashEnv string
+	configMapName := comp.GetName() + "-config-map"
+	envSecretName := comp.GetName() + "-env-secret"
+
+	var currentConfigHash, currentEnvHash string
 
 	if customConfigurationRef != nil {
 		cm := &corev1.ConfigMap{}
-		obj, err := svc.CopyKubeResource(ctx, cm, comp.GetName()+"-config-map", *customConfigurationRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		obj, err := svc.CopyKubeResource(ctx, cm, configMapName, *customConfigurationRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 		if err != nil {
 			return fmt.Errorf("cannot copy ConfigMap: %w", err)
 		}
 		copied := obj.(*corev1.ConfigMap)
-		hashConfig = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", copied.Data))))
+
+		dataBytes, err := json.Marshal(copied.Data)
+		if err != nil {
+			return fmt.Errorf("cannot marshal ConfigMap data for hashing: %w", err)
+		}
+		currentConfigHash = fmt.Sprintf("%x", md5.Sum(dataBytes))
 	}
 
 	if customEnvVariablesRef != nil {
 		sec := &corev1.Secret{}
-		obj, err := svc.CopyKubeResource(ctx, sec, comp.GetName()+"-env-secret", *customEnvVariablesRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		obj, err := svc.CopyKubeResource(ctx, sec, envSecretName, *customEnvVariablesRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 		if err != nil {
 			return fmt.Errorf("cannot copy Secret: %w", err)
 		}
 		copied := obj.(*corev1.Secret)
-		hashEnv = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", copied.Data))))
+
+		dataBytes, err := json.Marshal(copied.Data)
+		if err != nil {
+			return fmt.Errorf("cannot marshal Secret data for hashing: %w", err)
+		}
+		currentEnvHash = fmt.Sprintf("%x", md5.Sum(dataBytes))
 	}
 
-	cfgChanged := hashConfig != "" && hashConfig != comp.GetLastConfigHash()
-	envChanged := hashEnv != "" && hashEnv != comp.GetLastEnvHash()
+	lastConfigHash := comp.GetLastConfigHash()
+	lastEnvHash := comp.GetLastEnvHash()
 
-	if cfgChanged || envChanged {
-		svc.Log.Info("Custom config changed, creating config-apply Job", "cfgChanged", cfgChanged, "envChanged", envChanged)
+	configChanged := currentConfigHash != "" && currentConfigHash != lastConfigHash
+	envChanged := currentEnvHash != "" && currentEnvHash != lastEnvHash
+	isChanged := configChanged || envChanged
 
-		job := buildConfigApplyJob(comp, adminSecret)
-		if err := svc.SetDesiredKubeObject(job, comp.GetName()+"-apply-config"); err != nil {
+	currentCombinedHash := fmt.Sprintf("%x", md5.Sum([]byte(currentConfigHash+currentEnvHash)))
+	shortHash := currentCombinedHash[:8]
+	jobName := fmt.Sprintf("%s-apply-cfg-%s", comp.GetName(), shortHash)
+
+	if len(jobName) > 63 {
+		maxLen := 63 - len(shortHash) - len("-apply-cfg-") - 1
+		jobName = fmt.Sprintf("%s-apply-cfg-%s", comp.GetName()[:maxLen], shortHash)
+	}
+
+	job := &batchv1.Job{}
+	err := svc.GetObservedKubeObject(job, jobName)
+	if err != nil {
+		svc.Log.Info("Config change detected or job not found, creating new apply-config job", "jobName", jobName)
+
+		applyJob := buildConfigApplyJob(comp, adminSecret, jobName, currentCombinedHash)
+
+		if err := svc.SetDesiredKubeObject(applyJob, jobName, runtime.KubeOptionObserveCreateUpdate); err != nil {
 			return fmt.Errorf("cannot create config apply Job: %w", err)
 		}
+		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
+		return nil
+	}
 
-		if cfgChanged {
-			comp.SetLastConfigHash(hashConfig)
+	if job.Status.Succeeded > 0 {
+		svc.Log.Info("Config apply job succeeded", "jobName", jobName)
+
+		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceReady)
+		if customConfigurationRef != nil {
+			svc.SetDesiredResourceReadiness(configMapName, runtime.ResourceReady)
+		}
+		if customEnvVariablesRef != nil {
+			svc.SetDesiredResourceReadiness(envSecretName, runtime.ResourceReady)
 		}
 
-		if envChanged {
-			comp.SetLastEnvHash(hashEnv)
-		}
+		if isChanged {
+			svc.Log.Info("Persisting new configuration hashes to composite status")
 
-		svc.Log.Info("Updating composite status")
-		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
-			return fmt.Errorf("cannot set keycloak composite status: %w", err)
+			comp.SetLastConfigHash(currentConfigHash)
+			comp.SetLastEnvHash(currentEnvHash)
+
+			if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+				return fmt.Errorf("cannot set keycloak composite status after job completion: %w", err)
+			}
 		}
+	} else if job.Status.Failed > 0 {
+		svc.Log.Error(fmt.Errorf("config apply job has failed"), "", "jobName", jobName)
+		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
+	} else {
+		svc.Log.Info("Config apply job is still running", "jobName", jobName)
+		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
 	}
 
 	return nil
@@ -244,45 +291,54 @@ func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	return nil
 }
 
-func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret string) *batchv1.Job {
+func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName, configHash string) *batchv1.Job {
+	volumes := []corev1.Volume{}
+	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
+		volumes = append(volumes, corev1.Volume{
+			Name: "keycloak-configs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: *comp.Spec.Parameters.Service.CustomConfigurationRef,
+					},
+				},
+			},
+		})
+	}
+
+	envFrom := []corev1.EnvFromSource{}
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		envFrom = append(envFrom, corev1.EnvFromSource{
+			SecretRef: &corev1.SecretEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+				},
+			},
+		})
+	}
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + "-apply-config",
+			Name:      jobName,
 			Namespace: comp.GetInstanceNamespace(),
+			Annotations: map[string]string{
+				"vshn.keycloak/config-hash": configHash,
+			},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            ptr.To(int32(10)),
-			TTLSecondsAfterFinished: ptr.To(int32(0)),
+			TTLSecondsAfterFinished: ptr.To(int32(3600)),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy:    corev1.RestartPolicyOnFailure,
 					ImagePullSecrets: []corev1.LocalObjectReference{{Name: pullsecretName}},
-					Volumes: []corev1.Volume{
-						{
-							Name: "keycloak-configs",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: *comp.Spec.Parameters.Service.CustomConfigurationRef,
-									},
-								},
-							},
-						},
-					},
+					Volumes:          volumes,
 					Containers: []corev1.Container{
 						{
 							Name:            "apply-config",
 							Image:           fmt.Sprintf("%s:%s", registryURL, comp.Spec.Parameters.Service.Version),
 							ImagePullPolicy: corev1.PullAlways,
-							EnvFrom: []corev1.EnvFromSource{
-								{
-									SecretRef: &corev1.SecretEnvSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
-										},
-									},
-								},
-							},
+							EnvFrom:         envFrom,
 							Env: []corev1.EnvVar{
 								{
 									Name:  "KEYCLOAK_ADMIN",
@@ -292,8 +348,10 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret string) *batchv1
 									Name: "KEYCLOAK_ADMIN_PASSWORD",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: adminSecret},
-											Key:                  internalAdminPWSecretField,
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: adminSecret,
+											},
+											Key: internalAdminPWSecretField,
 										},
 									},
 								},
@@ -307,12 +365,16 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret string) *batchv1
 								},
 							},
 							Command: []string{"sh", "-c", "/opt/keycloak/bin/keycloak-setup.sh"},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "keycloak-configs",
-									MountPath: "/opt/keycloak/setup/project",
-								},
-							},
+							VolumeMounts: func() []corev1.VolumeMount {
+								mounts := []corev1.VolumeMount{}
+								if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
+									mounts = append(mounts, corev1.VolumeMount{
+										Name:      "keycloak-configs",
+										MountPath: "/opt/keycloak/setup/project",
+									})
+								}
+								return mounts
+							}(),
 						},
 					},
 				},

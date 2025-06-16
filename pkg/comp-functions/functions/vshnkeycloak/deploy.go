@@ -785,10 +785,17 @@ func addCustomFilesMounts(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 				"name":     volumeName,
 				"emptyDir": nil,
 			})
-			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
+
+			volumeMount := map[string]any{
 				"name":      volumeName,
 				"mountPath": "/opt/keycloak/" + destination,
-			})
+			}
+			if len(strings.Split(customFile.Destination, ".")) > 1 {
+				split := strings.Split(customFile.Destination, "/")
+				volumeMount["subPath"] = split[len(split)-1]
+			}
+
+			extraVolumeMountsMap = append(extraVolumeMountsMap, volumeMount)
 		}
 	}
 

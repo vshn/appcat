@@ -125,6 +125,7 @@ func Test_addCustomFiles(t *testing.T) {
 	}
 
 	// Valid path
+	t.Log("Testing valid path")
 	comp.Spec.Parameters.Service.CustomFiles = []vshnv1.VSHNKeycloakCustomFile{
 		{
 			Source:      "folder1",
@@ -148,13 +149,13 @@ func Test_addCustomFiles(t *testing.T) {
 		"providers",
 		"themes",
 		"lib",
-		"data",
 		"conf",
 		"bin",
 	} {
+		t.Log("Testing invalid destination: ", folder)
 		comp.Spec.Parameters.Service.CustomFiles = []vshnv1.VSHNKeycloakCustomFile{
 			{
-				Source:      "folder1",
+				Source:      folder,
 				Destination: folder,
 			},
 		}

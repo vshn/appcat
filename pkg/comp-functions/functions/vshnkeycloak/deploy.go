@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -773,25 +774,33 @@ func addCustomFilesMounts(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 			}
 
 			destination := strings.TrimPrefix(customFile.Destination, "/")
-			baseFolder := strings.Split(destination, "/")[0]
-			if IsKeycloakRootFolder(baseFolder) {
+			baseName := convertToRfc1123(destination)
+			if IsKeycloakRootFolder(baseName) {
 				svc.Log.Error(nil, "Custom file destination may not be a keycloak root folder", "destination", customFile.Destination)
 				continue
 			}
 
-			volumeName := "custom-file-" + baseFolder
+			volumeName := "custom-file-" + baseName
 			extraVolumesMap = append(extraVolumesMap, map[string]any{
 				"name":     volumeName,
 				"emptyDir": nil,
 			})
 			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
 				"name":      volumeName,
-				"mountPath": "/opt/keycloak/" + baseFolder,
+				"mountPath": "/opt/keycloak/" + baseName,
 			})
 		}
 	}
 
 	return extraVolumesMap, extraVolumeMountsMap
+}
+
+// Convert a string to a RFC 1123 compatible format
+func convertToRfc1123(s string) string {
+	split := strings.Split(s, "/")[0]
+	reg := regexp.MustCompile(`[^a-z0-9]+`)
+	sanitized := reg.ReplaceAllString(strings.ToLower(split), "-")
+	return strings.Trim(sanitized, "-")
 }
 
 func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
@@ -948,14 +957,14 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 			continue
 		}
 
-		destination := strings.Split(finalDestination, "/")[0]
+		sanitizedDest := convertToRfc1123(finalDestination)
 		files = append(files, map[string]string{
 			"source":      customFile.Source,
-			"destination": destination,
+			"destination": finalDestination,
 		})
 		volumeMounts = append(volumeMounts, map[string]any{
-			"name":      "custom-file-" + destination,
-			"mountPath": "/custom-file-" + destination,
+			"name":      "custom-file-" + sanitizedDest,
+			"mountPath": "/custom-file-" + sanitizedDest,
 		})
 	}
 

@@ -940,6 +940,22 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 		return nil, nil
 	}
 
+	destinations := []string{}
+	volumeMounts := []map[string]any{}
+	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
+		finalDestination := strings.TrimPrefix(customFile.Destination, "/")
+		if IsKeycloakRootFolder(finalDestination) {
+			continue
+		}
+
+		destination := strings.Split(finalDestination, "/")[0]
+		destinations = append(destinations, destination)
+		volumeMounts = append(volumeMounts, map[string]any{
+			"name":      "custom-file-" + destination,
+			"mountPath": "/custom-file-" + destination,
+		})
+	}
+
 	const copyCommandTemplate = `
 echo "Copying custom files..."
 {{- range $val := . }}
@@ -947,17 +963,6 @@ cp -Rv /{{ $val }}  /custom-file-{{ $val }}
 {{- end }}
 exit 0
 `
-
-	destinations := []string{}
-	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
-		finalDestination := strings.TrimPrefix(customFile.Destination, "/")
-		if IsKeycloakRootFolder(finalDestination) {
-			continue
-		}
-
-		destinations = append(destinations, strings.Split(finalDestination, "/")[0])
-	}
-
 	var copyCommand strings.Builder
 	t := template.Must(template.New("tmpl").Parse(copyCommandTemplate))
 	err := t.Execute(&copyCommand, destinations)
@@ -974,8 +979,9 @@ exit 0
 		},
 		"args": []string{
 			"-c",
+			copyCommandTemplate,
 		},
-		"volumeMounts": []map[string]any{},
+		"volumeMounts": volumeMounts,
 	}
 	extraInitContainersMap = append(extraInitContainersMap, extraInitContainerCustomFileCopyMap)
 	return extraInitContainersMap, nil

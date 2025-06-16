@@ -964,9 +964,11 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 		}
 
 		sanitizedDest := convertToRfc1123(finalDestination)
+		destSplit := strings.Split(finalDestination, "/")
 		files = append(files, map[string]string{
-			"source":      customFile.Source,
-			"destination": sanitizedDest,
+			"source":   customFile.Source,
+			"volume":   sanitizedDest,
+			"fileName": destSplit[len(destSplit)-1],
 		})
 		volumeMounts = append(volumeMounts, map[string]any{
 			"name":      "custom-file-" + sanitizedDest,
@@ -977,9 +979,9 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 	const copyCommandTemplate = `echo "Copying custom files..."
 {{- range $file := . }}
 if [ -d "/{{ $file.source }}" ]; then
-  cp -TRv "/{{ $file.source }}" "/custom-file-{{ $file.destination }}"
+  cp -TRv "/{{ $file.source }}" "/custom-file-{{ $file.volume }}"
 else
-  cp -Rv "/{{ $file.source }}" "/custom-file-{{ $file.destination }}"
+  cp -Rv "/{{ $file.source }}" "/custom-file-{{ $file.volume }}/{{ $file.fileName }}"
 fi
 {{ end }}
 exit 0

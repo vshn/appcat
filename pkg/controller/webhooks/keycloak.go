@@ -8,6 +8,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -95,18 +96,31 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 }
 
 func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error {
-	for _, customFile := range customFiles {
+	fieldPath := field.NewPath("spec", "parameters", "service", "customFiles")
+	for i, customFile := range customFiles {
 		if customFile.Source == "" {
-			return fmt.Errorf("custom file source must not be empty")
+			return field.Invalid(
+				fieldPath,
+				fmt.Sprintf("index %d", i),
+				"No source",
+			)
 		}
 		if customFile.Destination == "" {
-			return fmt.Errorf("custom file destination must not be empty")
+			return field.Invalid(
+				fieldPath,
+				fmt.Sprintf("index %d", i),
+				"No destination",
+			)
 		}
 
 		// Check if customFile.Destination starts with a valid keycloak root folder
 		for _, folder := range keycloakRootFolders {
 			if strings.HasPrefix(strings.TrimPrefix(customFile.Destination, "/"), folder) {
-				return fmt.Errorf("custom file destination %q may not be a keycloak root folder", customFile.Destination)
+				return field.Invalid(
+					fieldPath,
+					fmt.Sprintf("index %d", i),
+					fmt.Sprintf("Destination (%q) cannot be a keycloak root folder", customFile.Destination),
+				)
 			}
 		}
 	}

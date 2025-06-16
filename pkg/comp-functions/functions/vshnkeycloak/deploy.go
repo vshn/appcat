@@ -787,7 +787,7 @@ func addCustomFilesMounts(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 			})
 			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
 				"name":      volumeName,
-				"mountPath": "/opt/keycloak/" + baseName,
+				"mountPath": "/opt/keycloak/" + destination,
 			})
 		}
 	}
@@ -960,7 +960,7 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 		sanitizedDest := convertToRfc1123(finalDestination)
 		files = append(files, map[string]string{
 			"source":      customFile.Source,
-			"destination": finalDestination,
+			"destination": sanitizedDest,
 		})
 		volumeMounts = append(volumeMounts, map[string]any{
 			"name":      "custom-file-" + sanitizedDest,
@@ -975,7 +975,7 @@ if [ -d "/{{ $file.source }}" ]; then
 else
   cp -Rv "/{{ $file.source }}" "/custom-file-{{ $file.destination }}"
 fi
-{{- end }}
+{{ end }}
 exit 0
 `
 	var copyCommand strings.Builder

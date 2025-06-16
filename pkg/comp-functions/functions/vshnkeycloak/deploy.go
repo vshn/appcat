@@ -55,6 +55,26 @@ const (
 //go:embed scripts/copy-kc-creds.sh
 var keycloakCredentialsCopyJobScript string
 
+// Folders that may not be replaced by the custom files init container
+// https://www.keycloak.org/server/directory-structure#_directory_structure
+var keycloakRootFolders = []string{
+	"providers",
+	"themes",
+	"lib",
+	"data",
+	"conf",
+	"bin",
+}
+
+func IsKeycloakRootFolder(folder string) bool {
+	for _, rootFolder := range keycloakRootFolders {
+		if strings.EqualFold(folder, rootFolder) {
+			return true
+		}
+	}
+	return false
+}
+
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
 func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -565,27 +585,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	// Custom file volumes and mounts
-	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
-		for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
-			if customFile.Source == "" || customFile.Destination == "" {
-				svc.Log.Error(nil, "Custom file source or destination is empty", "source", customFile.Source, "destination", customFile.Destination)
-				continue
-			}
-
-			destination := strings.TrimPrefix(customFile.Destination, "/")
-			baseFolder := strings.Split(destination, "/")[0]
-
-			volumeName := "custom-file-" + baseFolder
-			extraVolumesMap = append(extraVolumesMap, map[string]any{
-				"name":     volumeName,
-				"emptyDir": nil,
-			})
-			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
-				"name":      volumeName,
-				"mountPath": "/opt/keycloak/" + baseFolder,
-			})
-		}
-	}
+	vols, volMounts := addCustomFilesMounts(comp, svc)
+	extraVolumesMap = append(extraVolumesMap, vols...)
+	extraVolumeMountsMap = append(extraVolumeMountsMap, volMounts...)
 
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
 		if mount.Type == customMountTypeSecret {
@@ -603,6 +605,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	extraVolumes, err := toYAML(extraVolumesMap)
+	if err != nil {
+		return nil, err
+	}
 	extraVolumeMounts, err := toYAML(extraVolumeMountsMap)
 	if err != nil {
 		return nil, err
@@ -753,6 +759,39 @@ func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRu
 	}
 
 	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-custom-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef))
+}
+
+// Generates volume and volume mount maps (in that order) for custom files from the customization image
+func addCustomFilesMounts(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) ([]map[string]any, []map[string]any) {
+	extraVolumesMap := []map[string]any{}
+	extraVolumeMountsMap := []map[string]any{}
+	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
+		for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
+			if customFile.Source == "" || customFile.Destination == "" {
+				svc.Log.Error(nil, "Custom file source or destination is empty", "source", customFile.Source, "destination", customFile.Destination)
+				continue
+			}
+
+			destination := strings.TrimPrefix(customFile.Destination, "/")
+			baseFolder := strings.Split(destination, "/")[0]
+			if IsKeycloakRootFolder(baseFolder) {
+				svc.Log.Error(nil, "Custom file destination may not be a keycloak root folder", "destination", customFile.Destination)
+				continue
+			}
+
+			volumeName := "custom-file-" + baseFolder
+			extraVolumesMap = append(extraVolumesMap, map[string]any{
+				"name":     volumeName,
+				"emptyDir": nil,
+			})
+			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
+				"name":      volumeName,
+				"mountPath": "/opt/keycloak/" + baseFolder,
+			})
+		}
+	}
+
+	return extraVolumesMap, extraVolumeMountsMap
 }
 
 func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
@@ -912,6 +951,10 @@ exit 0
 	destinations := []string{}
 	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
 		finalDestination := strings.TrimPrefix(customFile.Destination, "/")
+		if IsKeycloakRootFolder(finalDestination) {
+			continue
+		}
+
 		destinations = append(destinations, strings.Split(finalDestination, "/")[0])
 	}
 

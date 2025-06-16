@@ -104,7 +104,65 @@ func Test_addHARelease(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
+}
 
+func Test_addCustomFiles(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+
+	comp := &vshnv1.VSHNKeycloak{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycloak",
+			Namespace: "default",
+		},
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					Version:     "23",
+					CustomFiles: []vshnv1.VSHNKeycloakCustomFile{},
+				},
+			},
+		},
+	}
+
+	// Valid path
+	comp.Spec.Parameters.Service.CustomFiles = []vshnv1.VSHNKeycloakCustomFile{
+		{
+			Source:      "folder1",
+			Destination: "folder1",
+		},
+	}
+
+	extraVolumesMap, extraVolumeMountsMap := addCustomFilesMounts(comp, svc)
+	o1, _ := json.MarshalIndent(extraVolumesMap, "", "  ")
+	o2, _ := json.MarshalIndent(extraVolumeMountsMap, "", "  ")
+	t.Log("Extra Volumes: ", string(o1), "Extra Volume Mounts: ", string(o2))
+
+	const expectedName = "custom-file-folder1"
+	assert.Equal(t, 1, len(extraVolumesMap))
+	assert.Equal(t, expectedName, extraVolumesMap[0]["name"])
+	assert.Equal(t, expectedName, extraVolumeMountsMap[0]["name"])
+	assert.Equal(t, "/opt/keycloak/folder1", extraVolumeMountsMap[0]["mountPath"])
+
+	// Invalid paths
+	for _, folder := range []string{
+		"providers",
+		"themes",
+		"lib",
+		"data",
+		"conf",
+		"bin",
+	} {
+		comp.Spec.Parameters.Service.CustomFiles = []vshnv1.VSHNKeycloakCustomFile{
+			{
+				Source:      "folder1",
+				Destination: folder,
+			},
+		}
+
+		extraVolumesMap, extraVolumeMountsMap := addCustomFilesMounts(comp, svc)
+		assert.Equal(t, 0, len(extraVolumesMap))
+		assert.Equal(t, 0, len(extraVolumeMountsMap))
+	}
 }
 
 func Test_configOrEnvChanged(t *testing.T) {

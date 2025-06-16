@@ -940,7 +940,7 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 		return nil, nil
 	}
 
-	destinations := []string{}
+	files := []map[string]string{}
 	volumeMounts := []map[string]any{}
 	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
 		finalDestination := strings.TrimPrefix(customFile.Destination, "/")
@@ -949,23 +949,25 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 		}
 
 		destination := strings.Split(finalDestination, "/")[0]
-		destinations = append(destinations, destination)
+		files = append(files, map[string]string{
+			"source":      customFile.Source,
+			"destination": destination,
+		})
 		volumeMounts = append(volumeMounts, map[string]any{
 			"name":      "custom-file-" + destination,
 			"mountPath": "/custom-file-" + destination,
 		})
 	}
 
-	const copyCommandTemplate = `
-echo "Copying custom files..."
-{{- range $val := . }}
-cp -Rv /{{ $val }}  /custom-file-{{ $val }}
+	const copyCommandTemplate = `echo "Copying custom files..."
+{{- range $file := . }}
+cp -Rv /{{ $file.source }} /custom-file-{{ $file.destination }}
 {{- end }}
 exit 0
 `
 	var copyCommand strings.Builder
 	t := template.Must(template.New("tmpl").Parse(copyCommandTemplate))
-	err := t.Execute(&copyCommand, destinations)
+	err := t.Execute(&copyCommand, files)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute template: %w", err)
 	}
@@ -979,11 +981,12 @@ exit 0
 		},
 		"args": []string{
 			"-c",
-			copyCommandTemplate,
+			copyCommand.String(),
 		},
 		"volumeMounts": volumeMounts,
 	}
 	extraInitContainersMap = append(extraInitContainersMap, extraInitContainerCustomFileCopyMap)
+
 	return extraInitContainersMap, nil
 }
 

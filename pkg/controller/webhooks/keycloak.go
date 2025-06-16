@@ -32,7 +32,6 @@ var keycloakRootFolders = []string{
 	"providers",
 	"themes",
 	"lib",
-	"data",
 	"conf",
 	"bin",
 }

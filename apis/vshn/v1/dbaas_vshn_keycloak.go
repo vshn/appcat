@@ -165,6 +165,7 @@ type VSHNCustomMount struct {
 	Type string `json:"type"`
 }
 
+// VSHNKeycloakCustomFile defines a file that will be copied from the customization image into the Keycloak instance.
 type VSHNKeycloakCustomFile struct {
 	// Source file from the customization image
 	Source string `json:"source,omitempty"`

@@ -5354,6 +5354,9 @@ spec:
                           CustomFiles can be used to load custom files or folders into the keycloak instance.
                           The source path will be copied into keycloak using 'cp -R'.
                         items:
+                          description: VSHNKeycloakCustomFile defines a file that
+                            will be copied from the customization image into the Keycloak
+                            instance.
                           properties:
                             destination:
                               description: |-

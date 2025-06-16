@@ -100,26 +100,25 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error 
 	for i, customFile := range customFiles {
 		if customFile.Source == "" {
 			return field.Invalid(
-				fieldPath,
-				fmt.Sprintf("index %d", i),
-				"No source",
+				fieldPath.Index(i).Child("source"),
+				customFile.Source,
+				"No source specified",
 			)
 		}
 		if customFile.Destination == "" {
 			return field.Invalid(
-				fieldPath,
-				fmt.Sprintf("index %d", i),
-				"No destination",
+				fieldPath.Index(i).Child("destination"),
+				customFile.Destination,
+				"No destination specified",
 			)
 		}
 
-		// Check if customFile.Destination starts with a valid keycloak root folder
 		for _, folder := range keycloakRootFolders {
 			if strings.HasPrefix(strings.TrimPrefix(customFile.Destination, "/"), folder) {
 				return field.Invalid(
-					fieldPath,
-					fmt.Sprintf("index %d", i),
-					fmt.Sprintf("Destination (%q) cannot be a keycloak root folder", customFile.Destination),
+					fieldPath.Index(i).Child("destination"),
+					customFile.Destination,
+					"Destination cannot be a keycloak root folder",
 				)
 			}
 		}

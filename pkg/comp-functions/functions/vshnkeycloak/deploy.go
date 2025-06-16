@@ -795,7 +795,7 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 
 	const copyCommandTemplate = `echo "Copying custom files..."
 {{- range $file := . }}
-cp -Rv /{{ $file.source }} /custom-file-{{ $file.destination }}
+cp -Rv /{{ $file.source }}/* /custom-file-{{ $file.destination }}
 {{- end }}
 exit 0
 `

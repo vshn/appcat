@@ -16,7 +16,9 @@ desired:
           crossplane.io/composite: pgsql-gc9x4
         name: pgsql-gc9x4
       spec:
-        parameters: null
+        parameters:
+          backup:
+            retention: 6
         writeConnectionSecretToRef: {}
       status: {}
 observed:
@@ -37,7 +39,9 @@ observed:
           crossplane.io/composite: pgsql-gc9x4
         name: pgsql-gc9x4
       spec:
-        parameters: null
+        parameters:
+          backup:
+            retention: 6
         writeConnectionSecretToRef: {}
       status: {}
 

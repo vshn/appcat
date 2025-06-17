@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -44,7 +43,7 @@ const (
 	urlConnectionDetailsField     = "KEYCLOAK_URL"
 	serviceSuffix                 = "keycloakx-http"
 	pullsecretName                = "pullsecret"
-	registryURL                   = "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
+	registryURL                   = "keycloak/keycloak" //"docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
 	providerInitName              = "copy-original-providers"
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"
@@ -585,9 +584,27 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	// Custom file volumes and mounts
-	vols, volMounts := addCustomFilesMounts(comp, svc)
-	extraVolumesMap = append(extraVolumesMap, vols...)
-	extraVolumeMountsMap = append(extraVolumeMountsMap, volMounts...)
+	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
+		const extraVolumeName = "customization-image-files"
+		extraVolumesMap = append(extraVolumesMap, map[string]any{
+			"name":     extraVolumeName,
+			"emptyDir": nil,
+		})
+
+		for _, file := range comp.Spec.Parameters.Service.CustomFiles {
+			destination := strings.TrimPrefix(file.Destination, "/")
+			if IsKeycloakRootFolder(destination) {
+				svc.Log.Error(nil, "Custom file destination is a root folder", "destination", file.Destination)
+				continue
+			}
+
+			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
+				"name":      extraVolumeName,
+				"mountPath": "/opt/keycloak/" + destination,
+				"subPath":   destination,
+			})
+		}
+	}
 
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
 		if mount.Type == customMountTypeSecret {
@@ -761,54 +778,6 @@ func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRu
 	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-custom-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef))
 }
 
-// Generates volume and volume mount maps (in that order) for custom files from the customization image
-func addCustomFilesMounts(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) ([]map[string]any, []map[string]any) {
-	extraVolumesMap := []map[string]any{}
-	extraVolumeMountsMap := []map[string]any{}
-	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
-		for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
-			if customFile.Source == "" || customFile.Destination == "" {
-				svc.Log.Error(nil, "Custom file source or destination is empty", "source", customFile.Source, "destination", customFile.Destination)
-				continue
-			}
-
-			destination := strings.TrimPrefix(customFile.Destination, "/")
-			baseName := convertToRfc1123(destination)
-			if IsKeycloakRootFolder(baseName) {
-				svc.Log.Error(nil, "Custom file destination may not be a keycloak root folder", "destination", customFile.Destination)
-				continue
-			}
-
-			volumeName := "custom-file-" + baseName
-			extraVolumesMap = append(extraVolumesMap, map[string]any{
-				"name":     volumeName,
-				"emptyDir": nil,
-			})
-
-			volumeMount := map[string]any{
-				"name":      volumeName,
-				"mountPath": "/opt/keycloak/" + destination,
-			}
-			if len(strings.Split(customFile.Destination, ".")) > 1 {
-				split := strings.Split(customFile.Destination, "/")
-				volumeMount["subPath"] = split[len(split)-1]
-			}
-
-			extraVolumeMountsMap = append(extraVolumeMountsMap, volumeMount)
-		}
-	}
-
-	return extraVolumesMap, extraVolumeMountsMap
-}
-
-// Convert a string to a RFC 1123 compatible format
-func convertToRfc1123(s string) string {
-	split := strings.Split(s, "/")[0]
-	reg := regexp.MustCompile(`[^a-z0-9]+`)
-	sanitized := reg.ReplaceAllString(strings.ToLower(split), "-")
-	return strings.Trim(sanitized, "-")
-}
-
 func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
 
 	username := svc.Config.Data["registry_username"]
@@ -877,7 +846,7 @@ func addInitContainer(comp *vshnv1.VSHNKeycloak, values map[string]any, version 
 	extraInitContainersMap := []map[string]any{
 		{
 			"name":            providerInitName,
-			"image":           fmt.Sprintf("%s:%s", registryURL, version),
+			"image":           fmt.Sprintf("%s:%s", registryURL, "25.0"), //version),
 			"imagePullPolicy": "IfNotPresent",
 			"command": []string{
 				"sh",
@@ -956,39 +925,40 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 	}
 
 	files := []map[string]string{}
-	volumeMounts := []map[string]any{}
 	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
-		finalDestination := strings.TrimPrefix(customFile.Destination, "/")
-		if IsKeycloakRootFolder(finalDestination) {
-			continue
+		if strings.Contains(customFile.Destination, "..") {
+			return nil, fmt.Errorf("destination '%s' tries to go to a parent folder", customFile.Destination)
 		}
 
-		sanitizedDest := convertToRfc1123(finalDestination)
-		destSplit := strings.Split(finalDestination, "/")
+		finalDestination := strings.TrimPrefix(customFile.Destination, ".")
+		finalDestination = strings.TrimPrefix(finalDestination, "/")
+		if IsKeycloakRootFolder(finalDestination) {
+			return nil, fmt.Errorf("destination '%s' is (within) a keycloak root folder", finalDestination)
+		}
+
 		files = append(files, map[string]string{
-			"source":   customFile.Source,
-			"volume":   sanitizedDest,
-			"fileName": destSplit[len(destSplit)-1],
-		})
-		volumeMounts = append(volumeMounts, map[string]any{
-			"name":      "custom-file-" + sanitizedDest,
-			"mountPath": "/custom-file-" + sanitizedDest,
+			"source":      strings.TrimPrefix(customFile.Source, "/"),
+			"destination": finalDestination,
 		})
 	}
 
 	const copyCommandTemplate = `echo "Copying custom files..."
 {{- range $file := . }}
+mkdir -p "/custom/$(dirname '{{ $file.destination }}')"
 if [ -d "/{{ $file.source }}" ]; then
-  cp -TRv "/{{ $file.source }}" "/custom-file-{{ $file.volume }}"
+  cp -TRv "/{{ $file.source }}" "/custom/{{ $file.destination }}"
 else
-  cp -Rv "/{{ $file.source }}" "/custom-file-{{ $file.volume }}/{{ $file.fileName }}"
+  cp -Rv "/{{ $file.source }}" "/custom/{{ $file.destination }}"
 fi
 {{ end }}
 exit 0
 `
 	var copyCommand strings.Builder
-	t := template.Must(template.New("tmpl").Parse(copyCommandTemplate))
-	err := t.Execute(&copyCommand, files)
+	t, err := template.New("tmpl").Funcs(map[string]any{"contains": strings.Contains}).Parse(copyCommandTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse template: %w", err)
+	}
+	err = t.Execute(&copyCommand, files)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute template: %w", err)
 	}
@@ -1004,7 +974,10 @@ exit 0
 			"-c",
 			copyCommand.String(),
 		},
-		"volumeMounts": volumeMounts,
+		"volumeMounts": []map[string]string{{
+			"name":      "customization-image-files",
+			"mountPath": "/custom",
+		}},
 	}
 	extraInitContainersMap = append(extraInitContainersMap, extraInitContainerCustomFileCopyMap)
 

@@ -104,6 +104,7 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error 
 				"No source specified",
 			)
 		}
+
 		if customFile.Destination == "" {
 			return field.Invalid(
 				fieldPath.Index(i).Child("destination"),

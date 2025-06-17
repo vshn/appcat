@@ -112,6 +112,14 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error 
 			)
 		}
 
+		if strings.Contains(customFile.Destination, "..") {
+			return field.Invalid(
+				fieldPath.Index(i).Child("destination"),
+				customFile.Destination,
+				"May not navigate to a parent directory",
+			)
+		}
+
 		for _, folder := range keycloakRootFolders {
 			if strings.HasPrefix(strings.TrimPrefix(customFile.Destination, "/"), folder) {
 				return field.Invalid(

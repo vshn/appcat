@@ -101,7 +101,6 @@ jobs:
 
   open-or-update-pr-component:
     runs-on: ubuntu-latest
-    if: github.base_ref == 'master'
     steps:
       - name: Get current labels
         uses: snnaplab/get-labels-action@v1
@@ -156,6 +155,13 @@ jobs:
             Component PR: ${{ steps.cpr.outputs.pull-request-url }}
           body-update-action: 'suffix'
           body-uppercase-base-match: false
+
+      - name: Ignore from Changelog if merge to master
+        uses: actions-ecosystem/action-add-labels@v1
+        if: github.base_ref == 'master'
+        with:
+          labels: ignoreChangelog
+
   create-release:
     if: github.event.pull_request.merged && github.base_ref == 'master'
     runs-on: ubuntu-latest

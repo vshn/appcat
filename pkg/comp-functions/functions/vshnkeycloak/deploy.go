@@ -593,8 +593,8 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 		for _, file := range comp.Spec.Parameters.Service.CustomFiles {
 			destination := strings.TrimPrefix(file.Destination, "/")
-			if IsKeycloakRootFolder(destination) {
-				svc.Log.Error(nil, "Custom file destination is a root folder", "destination", file.Destination)
+			if !isCustomFileDestinationGood(destination) {
+				svc.Log.Error(nil, "Custom file destination seems bad, skipping", "destination", file.Destination)
 				continue
 			}
 
@@ -747,6 +747,13 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	release.Spec.ForProvider.Chart.Name = "keycloakx"
 
 	return release, err
+}
+
+// Checks if a customFile.destination is not within keycloak root folder or does path traversal
+func isCustomFileDestinationGood(destination string) bool {
+	d := strings.TrimPrefix(destination, "./")
+	d = strings.TrimPrefix(d, "/")
+	return IsKeycloakRootFolder(d) || strings.Contains(d, "..")
 }
 
 func toYAML(obj any) (string, error) {
@@ -926,14 +933,10 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 
 	files := []map[string]string{}
 	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
-		if strings.Contains(customFile.Destination, "..") {
-			return nil, fmt.Errorf("destination '%s' tries to go to a parent folder", customFile.Destination)
-		}
-
-		finalDestination := strings.TrimPrefix(customFile.Destination, ".")
+		finalDestination := strings.TrimPrefix(customFile.Destination, "./")
 		finalDestination = strings.TrimPrefix(finalDestination, "/")
-		if IsKeycloakRootFolder(finalDestination) {
-			return nil, fmt.Errorf("destination '%s' is (within) a keycloak root folder", finalDestination)
+		if !isCustomFileDestinationGood(finalDestination) {
+			return nil, fmt.Errorf("destination '%s' is bad", finalDestination)
 		}
 
 		files = append(files, map[string]string{

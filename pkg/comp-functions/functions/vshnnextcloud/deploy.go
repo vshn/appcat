@@ -75,8 +75,8 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed postgres settings: %s", err))
 	}
 
-	pgSecret := ""
-	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
+	pgSecret := comp.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret
+	if comp.Spec.Parameters.Service.UseExternalPostgreSQL && pgSecret == "" {
 		svc.Log.Info("Adding postgresql instance")
 
 		pgBuilder := common.NewPostgreSQLDependencyBuilder(svc, comp).

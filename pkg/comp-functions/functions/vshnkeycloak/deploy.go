@@ -585,6 +585,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	// Custom file volumes and mounts
 	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
+		if comp.Spec.Parameters.Service.CustomizationImage.Image == "" {
+			return nil, fmt.Errorf("custom files have been defined, but no customization image")
+		}
+
 		const extraVolumeName = "customization-image-files"
 		extraVolumesMap = append(extraVolumesMap, map[string]any{
 			"name":     extraVolumeName,

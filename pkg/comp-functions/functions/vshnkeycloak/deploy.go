@@ -753,7 +753,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 func isCustomFileDestinationGood(destination string) bool {
 	d := strings.TrimPrefix(destination, "./")
 	d = strings.TrimPrefix(d, "/")
-	return IsKeycloakRootFolder(d) || strings.Contains(d, "..")
+	return !IsKeycloakRootFolder(d) && !strings.Contains(d, "..")
 }
 
 func toYAML(obj any) (string, error) {

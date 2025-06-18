@@ -69,7 +69,7 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNKeycloak object")
 	}
-	if err := validateCustomFilePaths(keycloak.Spec.Parameters.Service.CustomFiles); err != nil {
+	if err := validateCustomFileObject(keycloak); err != nil {
 		return nil, err
 	}
 
@@ -87,11 +87,21 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, fmt.Errorf("not a valid VSHNKeycloak object")
 	}
 
-	if err := validateCustomFilePaths(newKeycloak.Spec.Parameters.Service.CustomFiles); err != nil {
+	if err := validateCustomFileObject(newKeycloak); err != nil {
 		return nil, err
 	}
 
 	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+}
+
+func validateCustomFileObject(keycloak *vshnv1.VSHNKeycloak) error {
+	if len(keycloak.Spec.Parameters.Service.CustomFiles) > 0 {
+		if keycloak.Spec.Parameters.Service.CustomizationImage.Image == "" {
+			return fmt.Errorf("custom files have been defined, but no customization image")
+		}
+	}
+
+	return validateCustomFilePaths(keycloak.Spec.Parameters.Service.CustomFiles)
 }
 
 func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error {
@@ -117,7 +127,7 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error 
 			return field.Invalid(
 				fieldPath.Index(i).Child("destination"),
 				customFile.Destination,
-				"May not navigate to a parent directory",
+				"May not perform path traversal",
 			)
 		}
 

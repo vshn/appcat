@@ -369,6 +369,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"--hostname-strict=false",
 			"--spi-events-listener-jboss-logging-success-level=info",
 			"--spi-events-listener-jboss-logging-error-level=warn",
+			"--metrics-enabled=true",
 		},
 		"database": map[string]any{
 			"hostname": string(cd[vshnpostgres.PostgresqlHost]),

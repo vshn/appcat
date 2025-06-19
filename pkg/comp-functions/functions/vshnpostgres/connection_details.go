@@ -71,7 +71,7 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 
 	host := fmt.Sprintf("%s.vshn-postgresql-%s.svc.cluster.local", comp.GetName(), comp.GetName())
 
-	url := getPostgresURL(cd, host, rootPw)
+	url := getPostgresURL(host, rootPw)
 
 	svc.SetConnectionDetail(PostgresqlURL, []byte(url))
 	svc.SetConnectionDetail(PostgresqlDb, []byte(defaultDB))
@@ -87,11 +87,11 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 	return nil
 }
 
-func getPostgresURL(s map[string][]byte, host, pw string) string {
-	return getPostgresURLCustomUser(s, host, defaultUser, pw, defaultDB)
+func getPostgresURL(host, pw string) string {
+	return getPostgresURLCustomUser(host, defaultUser, pw, defaultDB)
 }
 
-func getPostgresURLCustomUser(s map[string][]byte, host, userName, pw, db string) string {
+func getPostgresURLCustomUser(host, userName, pw, db string) string {
 	// The values are still missing, wait for the next reconciliation
 	if pw == "" {
 		return ""

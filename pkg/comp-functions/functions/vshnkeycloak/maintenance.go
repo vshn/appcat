@@ -14,26 +14,29 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	err := svc.GetObservedComposite(comp)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+	observedComp := &vshnv1.VSHNKeycloak{}
+	if err := svc.GetObservedComposite(observedComp); err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("can't get observed composite: %w", err))
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	desiredComp := comp
+	if err := svc.GetDesiredComposite(desiredComp); err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("can't get desired composite: %w", err))
+	}
 
-	instanceNamespace := comp.GetInstanceNamespace()
-	schedule := comp.GetFullMaintenanceSchedule()
+	common.SetRandomSchedules(desiredComp, desiredComp)
+
+	instanceNamespace := desiredComp.GetInstanceNamespace()
+	schedule := desiredComp.GetFullMaintenanceSchedule()
 
 	username := svc.Config.Data["registry_username"]
 	password := svc.Config.Data["registry_password"]
 
-	err = svc.SetDesiredCompositeStatus(comp)
-	if err != nil {
+	if err := svc.SetDesiredCompositeStatus(desiredComp); err != nil {
 		svc.Log.Error(err, "cannot set schedules in the composite status")
 	}
 
-	return maintenance.New(comp, svc, schedule, instanceNamespace, comp.GetServiceName()).
+	return maintenance.New(desiredComp, svc, schedule, instanceNamespace, desiredComp.GetServiceName()).
 		WithHelmBasedService().
 		WithExtraEnvs([]corev1.EnvVar{
 			{

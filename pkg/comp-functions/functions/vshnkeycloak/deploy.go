@@ -12,6 +12,7 @@ import (
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
+	prom "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -135,6 +136,11 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 	if err != nil {
 		svc.Log.Error(err, "cannot set connection details")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set connection details: %s", err)))
+	}
+
+	err = AddServiceMonitor(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add service monitor: %s", err))
 	}
 
 	return nil
@@ -379,12 +385,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
 		},
 		"metrics": map[string]any{
-			"enabled": true,
-		},
-		"extraServiceMonitor": map[string]any{
-			"enabled": true,
-		},
-		"serviceMonitor": map[string]any{
 			"enabled": true,
 		},
 		"resources": map[string]any{
@@ -680,4 +680,37 @@ exit 0`,
 		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
 	}
 	return extraInitContainersMap, nil
+}
+
+func AddServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+
+	serviceMonitor := prom.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-service-monitor",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: prom.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/component": "http",
+					"app.kubernetes.io/instance":  comp.GetName(),
+					"app.kubernetes.io/name":      "keycloakx",
+				},
+			},
+			Endpoints: []prom.Endpoint{
+				{
+					Port:     "http-internal",
+					Path:     "/metrics",
+					Interval: "15s",
+					Scheme:   "https",
+					TLSConfig: &prom.TLSConfig{
+						SafeTLSConfig: prom.SafeTLSConfig{
+							InsecureSkipVerify: true,
+						},
+					},
+				},
+			},
+		},
+	}
+	return svc.SetDesiredKubeObject(&serviceMonitor, comp.GetName()+"-service-monitor")
 }

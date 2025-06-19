@@ -148,7 +148,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 	// and would therefore override any value we set before the merge.
 	params.Instances = a.comp.GetInstances()
 
-	// We have to ignore the provideconfig on the composite itself.
+	// We have to ignore the providerconfig on the composite itself.
 	pg := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: a.comp.GetName() + PgInstanceNameSuffix,

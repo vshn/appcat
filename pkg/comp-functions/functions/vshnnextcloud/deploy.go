@@ -75,43 +75,60 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed postgres settings: %s", err))
 	}
 
-	pgSecret := comp.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret
-	if comp.Spec.Parameters.Service.UseExternalPostgreSQL && pgSecret == "" {
-		svc.Log.Info("Adding postgresql instance")
+	pgSecret := ""
+	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
+		existingCD := comp.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret
+		if existingCD != "" {
+			cNamespace := comp.GetClaimNamespace()
+			iNamespace := comp.GetInstanceNamespace()
+			existingSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      existingCD,
+					Namespace: cNamespace,
+				},
+			}
+			s, err := svc.CopyKubeResource(ctx, existingSecret, comp.GetName()+"-postgresql-connection-secret", existingCD, cNamespace, iNamespace)
+			if err != nil || len(s.(*corev1.Secret).Data) == 0 {
+				return runtime.NewWarningResult("existing postgres connection secret not ready")
+			}
+			pgSecret = s.GetName()
+		} else {
+			svc.Log.Info("Adding postgresql instance")
 
-		pgBuilder := common.NewPostgreSQLDependencyBuilder(svc, comp).
-			AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
-			AddPGBouncerConfig(pgBouncerConfig).
-			AddPGSettings(pgSettings).
-			SetCustomMaintenanceSchedule(pgTime)
+			pgBuilder := common.NewPostgreSQLDependencyBuilder(svc, comp).
+				AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
+				AddPGBouncerConfig(pgBouncerConfig).
+				AddPGSettings(pgSettings).
+				SetCustomMaintenanceSchedule(pgTime)
 
-		if pgDiskSize != "" {
-			pgBuilder.SetDiskSize(pgDiskSize)
-		}
+			if pgDiskSize != "" {
+				pgBuilder.SetDiskSize(pgDiskSize)
+			}
 
-		pgSecret, err = pgBuilder.CreateDependency()
-		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
-		}
+			pgSecret, err = pgBuilder.CreateDependency()
+			if err != nil {
+				return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
+			}
 
-		svc.Log.Info("Checking readiness of cluster")
+			svc.Log.Info("Checking readiness of cluster")
 
-		resourceCDMap := map[string][]string{
-			comp.GetName() + pgInstanceNameSuffix: {
-				vshnpostgres.PostgresqlHost,
-				vshnpostgres.PostgresqlPort,
-				vshnpostgres.PostgresqlDb,
-				vshnpostgres.PostgresqlUser,
-				vshnpostgres.PostgresqlPassword,
-			},
-		}
+			resourceCDMap := map[string][]string{
+				comp.GetName() + pgInstanceNameSuffix: {
+					vshnpostgres.PostgresqlHost,
+					vshnpostgres.PostgresqlPort,
+					vshnpostgres.PostgresqlDb,
+					vshnpostgres.PostgresqlUser,
+					vshnpostgres.PostgresqlPassword,
+				},
+			}
 
-		ready, err := svc.WaitForObservedDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
-		if err != nil {
-			// We're returning a fatal here, so in case something is wrong we won't delete anything by mistake.
-			return runtime.NewFatalResult(err)
-		} else if !ready {
-			return runtime.NewWarningResult("postgresql instance not yet ready")
+			ready, err := svc.WaitForObservedDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
+			if err != nil {
+				// We're returning a fatal here, so in case something is wrong we won't delete anything by mistake.
+				return runtime.NewFatalResult(err)
+			} else if !ready {
+				return runtime.NewWarningResult("postgresql instance not yet ready")
+			}
 		}
 	}
 
@@ -338,9 +355,19 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	extraInitContainers := []map[string]any{}
 
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
-		cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + pgInstanceNameSuffix)
-		if err != nil {
-			return nil, err
+		var cd map[string][]byte
+		if comp.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret != "" {
+			secret := &corev1.Secret{}
+			err := svc.GetObservedKubeObject(secret, comp.GetName()+"-postgresql-connection-secret-claim-observer")
+			if err != nil {
+				return nil, err
+			}
+			cd = secret.Data
+		} else {
+			cd, err = svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + pgInstanceNameSuffix)
+			if err != nil {
+				return nil, err
+			}
 		}
 		externalDb = map[string]any{
 			"enabled": true,

@@ -163,6 +163,7 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 }
 
 func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, adminSecret string) error {
+	l := svc.Log
 	customConfigurationRef := comp.Spec.Parameters.Service.CustomConfigurationRef
 	customEnvVariablesRef := comp.Spec.Parameters.Service.CustomEnvVariablesRef
 
@@ -181,9 +182,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		if err != nil {
 			return fmt.Errorf("cannot copy ConfigMap: %w", err)
 		}
-		copied := obj.(*corev1.ConfigMap)
-
-		dataBytes, err := json.Marshal(copied.Data)
+		dataBytes, err := json.Marshal(obj.(*corev1.ConfigMap).Data)
 		if err != nil {
 			return fmt.Errorf("cannot marshal ConfigMap data for hashing: %w", err)
 		}
@@ -196,9 +195,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		if err != nil {
 			return fmt.Errorf("cannot copy Secret: %w", err)
 		}
-		copied := obj.(*corev1.Secret)
-
-		dataBytes, err := json.Marshal(copied.Data)
+		dataBytes, err := json.Marshal(obj.(*corev1.Secret).Data)
 		if err != nil {
 			return fmt.Errorf("cannot marshal Secret data for hashing: %w", err)
 		}
@@ -208,20 +205,12 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	lastConfigHash := comp.GetLastConfigHash()
 	lastEnvHash := comp.GetLastEnvHash()
 
-	configChanged := currentConfigHash != "" && currentConfigHash != lastConfigHash
-	envChanged := currentEnvHash != "" && currentEnvHash != lastEnvHash
-	isChanged := configChanged || envChanged
-
-	if !isChanged {
-		svc.Log.Info("Config hashes match last applied hashes. System is stable.")
-		if customConfigurationRef != nil {
-			svc.SetDesiredResourceReadiness(configMapName, runtime.ResourceReady)
-		}
-		if customEnvVariablesRef != nil {
-			svc.SetDesiredResourceReadiness(envSecretName, runtime.ResourceReady)
-		}
+	if (currentConfigHash == "" || currentConfigHash == lastConfigHash) && (currentEnvHash == "" || currentEnvHash == lastEnvHash) {
+		l.Info("No configuration change detected")
 		return nil
 	}
+
+	l.Info("Detected configuration change, managing job lifecycle")
 
 	currentCombinedHash := fmt.Sprintf("%x", md5.Sum([]byte(currentConfigHash+currentEnvHash)))
 	shortHash := currentCombinedHash[:8]
@@ -234,49 +223,36 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 
 	observedJob := &batchv1.Job{}
 	err := svc.GetObservedKubeObject(observedJob, jobName)
+
 	if err != nil {
-		svc.Log.Info("Config change detected or job not found, creating new apply-config job", "jobName", jobName)
-
+		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
 		applyJob := buildConfigApplyJob(comp, adminSecret, jobName, currentCombinedHash)
-
-		if err := svc.SetDesiredKubeObject(applyJob, jobName, runtime.KubeOptionObserveCreateUpdate); err != nil {
+		if err := svc.SetDesiredKubeObject(applyJob, jobName); err != nil {
 			return fmt.Errorf("cannot create config apply Job: %w", err)
 		}
 		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
 		return nil
 	}
 
-	if err := svc.SetDesiredKubeObject(observedJob, jobName, runtime.KubeOptionObserveCreateUpdate); err != nil {
+	if err := svc.SetDesiredKubeObject(observedJob, jobName); err != nil {
 		return fmt.Errorf("cannot set desired kube object for existing job: %w", err)
 	}
 
 	if observedJob.Status.Succeeded > 0 {
-		svc.Log.Info("Config apply job succeeded", "jobName", jobName)
+		l.Info("Job has succeeded, updating composite status with new hashes", "jobName", jobName)
+		comp.SetLastConfigHash(currentConfigHash)
+		comp.SetLastEnvHash(currentEnvHash)
 
-		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceReady)
-		if customConfigurationRef != nil {
-			svc.SetDesiredResourceReadiness(configMapName, runtime.ResourceReady)
-		}
-		if customEnvVariablesRef != nil {
-			svc.SetDesiredResourceReadiness(envSecretName, runtime.ResourceReady)
-		}
-
-		if isChanged {
-			svc.Log.Info("Persisting new configuration hashes to composite status")
-
-			comp.SetLastConfigHash(currentConfigHash)
-			comp.SetLastEnvHash(currentEnvHash)
-		}
 	} else if observedJob.Status.Failed > 0 {
-		svc.Log.Error(fmt.Errorf("config apply job has failed"), "", "jobName", jobName)
+		l.Error(fmt.Errorf("job has failed"), "The configuration job failed and requires manual intervention", "jobName", jobName)
 		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
+
 	} else {
-		svc.Log.Info("Config apply job is still running", "jobName", jobName)
+		l.Info("Job is still running, waiting for next reconciliation", "jobName", jobName)
 		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
 	}
 
 	return svc.SetDesiredCompositeStatus(comp)
-
 }
 
 func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {

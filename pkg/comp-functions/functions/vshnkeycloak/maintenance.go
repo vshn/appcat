@@ -14,29 +14,23 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	observedComp := &vshnv1.VSHNKeycloak{}
-	if err := svc.GetObservedComposite(observedComp); err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("can't get observed composite: %w", err))
-	}
-
-	desiredComp := comp
-	if err := svc.GetDesiredComposite(desiredComp); err != nil {
+	if err := svc.GetDesiredComposite(comp); err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get desired composite: %w", err))
 	}
 
-	common.SetRandomSchedules(desiredComp, desiredComp)
+	common.SetRandomSchedules(comp, comp)
 
-	instanceNamespace := desiredComp.GetInstanceNamespace()
-	schedule := desiredComp.GetFullMaintenanceSchedule()
+	instanceNamespace := comp.GetInstanceNamespace()
+	schedule := comp.GetFullMaintenanceSchedule()
 
 	username := svc.Config.Data["registry_username"]
 	password := svc.Config.Data["registry_password"]
 
-	if err := svc.SetDesiredCompositeStatus(desiredComp); err != nil {
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 		svc.Log.Error(err, "cannot set schedules in the composite status")
 	}
 
-	return maintenance.New(desiredComp, svc, schedule, instanceNamespace, desiredComp.GetServiceName()).
+	return maintenance.New(comp, svc, schedule, instanceNamespace, comp.GetServiceName()).
 		WithHelmBasedService().
 		WithExtraEnvs([]corev1.EnvVar{
 			{

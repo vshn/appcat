@@ -226,7 +226,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 
 	if err != nil {
 		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
-		applyJob := buildConfigApplyJob(comp, adminSecret, jobName, currentCombinedHash)
+		applyJob := buildConfigApplyJob(comp, adminSecret, jobName)
 		if err := svc.SetDesiredKubeObject(applyJob, jobName); err != nil {
 			return fmt.Errorf("cannot create config apply Job: %w", err)
 		}
@@ -279,7 +279,7 @@ func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	return nil
 }
 
-func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName, configHash string) *batchv1.Job {
+func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string) *batchv1.Job {
 	volumes := []corev1.Volume{}
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
 		volumes = append(volumes, corev1.Volume{
@@ -309,9 +309,6 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName, config
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: comp.GetInstanceNamespace(),
-			//Annotations: map[string]string{
-			//	"vshn.keycloak/config-hash": configHash,
-			//},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            ptr.To(int32(10)),

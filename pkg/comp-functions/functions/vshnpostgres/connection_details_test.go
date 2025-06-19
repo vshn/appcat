@@ -79,7 +79,39 @@ func TestGetPostgresURL(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 
 			// When
-			url := getPostgresURL(tc.secret, "localhost", tc.password)
+			url := getPostgresURL("localhost", tc.password)
+
+			// Then
+			assert.Equal(t, tc.expectURL, url)
+		})
+	}
+}
+
+func TestGetPostgresURLCustomUser(t *testing.T) {
+	tests := map[string]struct {
+		db        string
+		user      string
+		password  string
+		expectURL string
+	}{
+		"WhenMissingPasswordThenReturnNoUrlInSecret": {
+			db:        "db-test",
+			user:      "user",
+			password:  "",
+			expectURL: "",
+		},
+		"WhenDataThenReturnSecretWithUrl": {
+			db:        "db-test",
+			user:      "user",
+			password:  "test",
+			expectURL: "postgres://user:test@localhost:5432/db-test",
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+
+			// When
+			url := getPostgresURLCustomUser("localhost", tc.user, tc.password, tc.db)
 
 			// Then
 			assert.Equal(t, tc.expectURL, url)

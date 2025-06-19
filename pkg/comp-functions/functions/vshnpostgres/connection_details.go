@@ -88,16 +88,16 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 }
 
 func getPostgresURL(s map[string][]byte, host, pw string) string {
-	return getPostgresURLCustomUser(s, host, defaultUser, pw)
+	return getPostgresURLCustomUser(s, host, defaultUser, pw, defaultDB)
 }
 
-func getPostgresURLCustomUser(s map[string][]byte, host, userName, pw string) string {
+func getPostgresURLCustomUser(s map[string][]byte, host, userName, pw, db string) string {
 	// The values are still missing, wait for the next reconciliation
 	if pw == "" {
 		return ""
 	}
 
-	return "postgres://" + userName + ":" + pw + "@" + host + ":" + defaultPort + "/" + defaultDB
+	return "postgres://" + userName + ":" + pw + "@" + host + ":" + defaultPort + "/" + db
 }
 
 func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {

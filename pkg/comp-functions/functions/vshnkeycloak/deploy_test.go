@@ -117,7 +117,10 @@ func Test_addCustomFiles(t *testing.T) {
 		Spec: vshnv1.VSHNKeycloakSpec{
 			Parameters: vshnv1.VSHNKeycloakParameters{
 				Service: vshnv1.VSHNKeycloakServiceSpec{
-					Version:     "23",
+					Version: "23",
+					CustomizationImage: vshnv1.VSHNKeycloakCustomizationImage{
+						Image: "dummy-image:latest",
+					},
 					CustomFiles: []vshnv1.VSHNKeycloakCustomFile{},
 				},
 			},

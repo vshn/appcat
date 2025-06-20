@@ -841,7 +841,7 @@ func NewNormalResult(message string) *xfnproto.Result {
 }
 
 // AddObservedConnectionDetails will add all of the observed connection details of the given
-// resouce to the composite's connection details.
+// resource to the composite's connection details.
 func (s *ServiceRuntime) AddObservedConnectionDetails(name string) error {
 	cd, err := s.GetObservedComposedResourceConnectionDetails(name)
 	if err != nil && err != ErrNotFound {

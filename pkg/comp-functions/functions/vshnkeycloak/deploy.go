@@ -597,7 +597,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 		for _, file := range comp.Spec.Parameters.Service.CustomFiles {
 			destination := strings.TrimPrefix(file.Destination, "/")
-			if !isCustomFileDestinationGood(destination) {
+			if !isCustomFileDestinationValid(destination) {
 				svc.Log.Error(nil, "Custom file destination seems bad, skipping", "destination", file.Destination)
 				continue
 			}
@@ -754,7 +754,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 }
 
 // Checks if a customFile.destination is not within keycloak root folder or does path traversal
-func isCustomFileDestinationGood(destination string) bool {
+func isCustomFileDestinationValid(destination string) bool {
 	d := strings.TrimPrefix(destination, "./")
 	d = strings.TrimPrefix(d, "/")
 	return !IsKeycloakRootFolder(d) && !strings.Contains(d, "..")
@@ -857,7 +857,7 @@ func addInitContainer(comp *vshnv1.VSHNKeycloak, values map[string]any, version 
 	extraInitContainersMap := []map[string]any{
 		{
 			"name":            providerInitName,
-			"image":           fmt.Sprintf("%s:%s", registryURL, "25.0"), //version),
+			"image":           fmt.Sprintf("%s:%s", registryURL, version),
 			"imagePullPolicy": "IfNotPresent",
 			"command": []string{
 				"sh",
@@ -939,7 +939,7 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
 		finalDestination := strings.TrimPrefix(customFile.Destination, "./")
 		finalDestination = strings.TrimPrefix(finalDestination, "/")
-		if !isCustomFileDestinationGood(finalDestination) {
+		if !isCustomFileDestinationValid(finalDestination) {
 			return nil, fmt.Errorf("destination '%s' is bad", finalDestination)
 		}
 

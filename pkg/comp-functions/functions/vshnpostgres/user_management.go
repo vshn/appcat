@@ -305,6 +305,7 @@ func addGrants(comp common.Composite, svc *runtime.ServiceRuntime, username, dbn
 				Privileges: privs,
 				Role:       &username,
 				Database:   &dbname,
+				Schema:     ptr.To("public"),
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{

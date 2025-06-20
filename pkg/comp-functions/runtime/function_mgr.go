@@ -1447,9 +1447,6 @@ func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 
 		compName := s.desiredResources[i].Resource.GetName()
 
-		// prefix the name in the connetiondetailsref
-		// and set to crossplane namespace
-		cdRef.Name = compName + "-" + cdRef.Name
 		cdRef.Namespace = s.GetCrossplaneNamespace()
 
 		s.desiredResources[i].Resource.SetWriteConnectionSecretToReference(cdRef)

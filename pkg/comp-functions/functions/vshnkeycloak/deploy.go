@@ -43,7 +43,7 @@ const (
 	urlConnectionDetailsField     = "KEYCLOAK_URL"
 	serviceSuffix                 = "keycloakx-http"
 	pullsecretName                = "pullsecret"
-	registryURL                   = "keycloak/keycloak" //"docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
+	registryURL                   = "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
 	providerInitName              = "copy-original-providers"
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"

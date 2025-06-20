@@ -19,7 +19,7 @@ import (
 var nextcloudBackupScript string
 
 func AddBackup(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	err := svc.GetDesiredComposite(comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}

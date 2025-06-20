@@ -13,9 +13,7 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	err := svc.GetObservedComposite(comp)
-	if err != nil {
+	if err := svc.GetDesiredComposite(comp); err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
@@ -23,6 +21,10 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime
 
 	instanceNamespace := getInstanceNamespace(comp)
 	schedule := comp.GetFullMaintenanceSchedule()
+
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+		svc.Log.Error(err, "cannot set schedules in the composite status")
+	}
 
 	return maintenance.New(comp, svc, schedule, instanceNamespace, comp.GetServiceName()).
 		WithHelmBasedService().

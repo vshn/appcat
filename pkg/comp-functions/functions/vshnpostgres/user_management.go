@@ -128,6 +128,12 @@ func addConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntim
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot get userpassword from secret: %s", err)))
 	}
 
+	// Userpass is not yet ready, so we'll check again in 30 seconds
+	if len(userpassCD) == 0 {
+		svc.SetDesiredResourceReadiness(secretName, runtime.ResourceUnReady)
+		return nil
+	}
+
 	compositeCD := svc.GetConnectionDetails()
 
 	url := getPostgresURLCustomUser(compositeCD, string(compositeCD["POSTGRESQL_HOST"]), username, string(userpassCD["userpass"]))

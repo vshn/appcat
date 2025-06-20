@@ -630,6 +630,11 @@ func (s *ServiceRuntime) AddLabels(obj client.Object, labels map[string]string) 
 // putIntoObject adds or updates the desired resource into its kube object
 // It will inject the same labels as any managed resource gets.
 func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string, refs ...xkube.Reference) (*xkube.Object, error) {
+	o.SetResourceVersion("")
+	o.SetUID("")
+	o.SetSelfLink("")
+	o.SetGeneration(0)
+	o.SetOwnerReferences(nil)
 
 	s.addOwnerReferenceAnnotation(o, false)
 
@@ -1496,14 +1501,6 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 
 	instObj := obj.DeepCopyObject().(client.Object)
 	instObj.SetNamespace(toNS)
-	instObj.SetResourceVersion("")
-	instObj.SetUID("")
-	instObj.SetSelfLink("")
-	instObj.SetGeneration(0)
-
-	if metaObj, ok := instObj.(metav1.Object); ok {
-		metaObj.SetCreationTimestamp(metav1.Time{})
-	}
 
 	if err := s.SetDesiredKubeObject(instObj, resourceName); err != nil {
 		return nil, err

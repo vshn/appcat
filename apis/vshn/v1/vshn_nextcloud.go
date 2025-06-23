@@ -117,10 +117,10 @@ type VSHNNextcloudServiceSpec struct {
 	// +kubebuilder:default="/"
 	RelativePath string `json:"relativePath,omitempty"`
 
-	// +kubebuilder:default="29"
+	// +kubebuilder:default="30"
 
 	// Version contains supported version of nextcloud.
-	// Multiple versions are supported. The latest version 29 is the default version.
+	// Multiple versions are supported. The latest version 30 is the default version.
 	Version string `json:"version,omitempty"`
 
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"

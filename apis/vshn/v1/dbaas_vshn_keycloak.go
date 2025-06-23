@@ -140,7 +140,7 @@ type VSHNKeycloakServiceSpec struct {
 	// provided secret for the keycloak instance. The environment variables provided
 	// can for example be used in the custom JSON configuration provided in the `Configuration`
 	// field with `$(env:<ENV_VAR_NAME>:-<some_default_value>)`
-	CustomEnvVariablesRef *string `json:"customEnvVariablesRef,omitempty"`
+	CustomEnvVariablesRef *[]corev1.EnvFromSource `json:"customEnvVariablesRef,omitempty"`
 
 	// CustomMounts is a list of Secrets/ConfigMaps that get observed and copied into the Keycloak instance namespace.
 	// Once copied, they will be mounted under /custom/secrets/<name> or /custom/configs/<name>.

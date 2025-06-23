@@ -411,13 +411,17 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 	initialData := &sgv1.SGClusterSpecInitialData{}
 	backupRef := xkubev1.Reference{}
 	if comp.Spec.Parameters.Restore != nil && comp.Spec.Parameters.Restore.BackupName != "" {
+		var pitr *sgv1.SGClusterSpecInitialDataRestoreFromBackupPointInTimeRecovery
+		if comp.Spec.Parameters.Restore.RecoveryTimeStamp != nil {
+			pitr = &sgv1.SGClusterSpecInitialDataRestoreFromBackupPointInTimeRecovery{
+				RestoreToTimestamp: comp.Spec.Parameters.Restore.RecoveryTimeStamp,
+			}
+		}
 		initialData = &sgv1.SGClusterSpecInitialData{
 			Restore: &sgv1.SGClusterSpecInitialDataRestore{
 				FromBackup: &sgv1.SGClusterSpecInitialDataRestoreFromBackup{
-					Name: &comp.Spec.Parameters.Restore.BackupName,
-					PointInTimeRecovery: &sgv1.SGClusterSpecInitialDataRestoreFromBackupPointInTimeRecovery{
-						RestoreToTimestamp: &comp.Spec.Parameters.Restore.RecoveryTimeStamp,
-					},
+					Name:                &comp.Spec.Parameters.Restore.BackupName,
+					PointInTimeRecovery: pitr,
 				},
 			},
 		}

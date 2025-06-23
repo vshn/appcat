@@ -137,7 +137,7 @@ func TestPostgreSqlDeployWithRestore(t *testing.T) {
 	cluster := &sgv1.SGCluster{}
 	assert.NoError(t, svc.GetDesiredKubeObject(cluster, "cluster"))
 	assert.Equal(t, comp.Spec.Parameters.Restore.BackupName, *cluster.Spec.InitialData.Restore.FromBackup.Name)
-	assert.Equal(t, comp.Spec.Parameters.Restore.RecoveryTimeStamp, *cluster.Spec.InitialData.Restore.FromBackup.PointInTimeRecovery.RestoreToTimestamp)
+	assert.Equal(t, *comp.Spec.Parameters.Restore.RecoveryTimeStamp, *cluster.Spec.InitialData.Restore.FromBackup.PointInTimeRecovery.RestoreToTimestamp)
 
 	copyJob := &batchv1.Job{}
 	assert.NoError(t, svc.GetDesiredKubeObject(copyJob, "copy-job"))

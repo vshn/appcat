@@ -79,6 +79,7 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
 		existingCD := comp.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret
 		if existingCD != "" {
+			svc.Log.Info("Connecting to existing postgresql instance")
 			cNamespace := comp.GetClaimNamespace()
 			iNamespace := comp.GetInstanceNamespace()
 			existingSecret := &corev1.Secret{
@@ -89,7 +90,15 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 			}
 			s, err := svc.CopyKubeResource(ctx, existingSecret, comp.GetName()+"-postgresql-connection-secret", existingCD, cNamespace, iNamespace)
 			if err != nil || len(s.(*corev1.Secret).Data) == 0 {
-				return runtime.NewWarningResult("existing postgres connection secret not ready")
+				return runtime.NewWarningResult(fmt.Sprintf("existing postgres connection secret not ready: %s", err))
+			}
+			pgInstanceNamespace, err := getPgInstanceNamespace(string(s.(*corev1.Secret).Data[vshnpostgres.PostgresqlHost]))
+			if err != nil {
+				return runtime.NewWarningResult(fmt.Sprintf("cannot get pgInstanceNamespace: %s", err))
+			}
+			err = common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pgInstanceNamespace, "allow-from-"+comp.GetInstanceNamespace(), comp.GetName()+"-netpol-allow-to-pg", false, svc)
+			if err != nil {
+				return runtime.NewWarningResult(fmt.Sprintf("cannot configure network policy resource in Postgres service: %s", err))
 			}
 			pgSecret = s.GetName()
 		} else {
@@ -178,6 +187,14 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	}
 
 	return nil
+}
+
+func getPgInstanceNamespace(host string) (string, error) {
+	parts := strings.Split(host, ".")
+	if len(parts) < 2 {
+		return "", fmt.Errorf("invalid host format: %s", host)
+	}
+	return parts[1], nil
 }
 
 func getObservedPostgresSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) (map[string]string, map[string]string, string, error) {

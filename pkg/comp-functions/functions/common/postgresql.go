@@ -172,7 +172,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		pg.Labels[runtime.ProviderConfigLabel] = v
 	}
 
-	err := CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), false, a.svc)
+	err := CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), "", false, a.svc)
 	if err != nil {
 		return "", err
 	}

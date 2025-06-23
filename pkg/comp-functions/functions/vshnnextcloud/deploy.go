@@ -447,6 +447,22 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":  "SKIP_MAINTENANCE",
 					"value": strconv.FormatBool(comp.Spec.Parameters.Backup.SkipMaintenance),
 				},
+				{
+					"name":  "PGSSLROOTCERT",
+					"value": "/opt/pg-certs/ca.crt",
+				},
+				{
+					"name":  "PGSSLCERT",
+					"value": "/opt/pg-certs/tls.crt",
+				},
+				{
+					"name":  "PGSSLKEY",
+					"value": "/opt/pg-certs/tls.key",
+				},
+				{
+					"name":  "PGSSLMODE",
+					"value": "require",
+				},
 			},
 			"extraInitContainers": extraInitContainers,
 			"containerPort":       8080,
@@ -470,6 +486,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"configMap": map[string]any{
 						"name":        "collabora-install-script",
 						"defaultMode": 0755,
+					},
+				},
+				{
+					"name": "pg-cert",
+					"secret": map[string]any{
+						"secretName":  pgSecret,
+						"defaultMode": 0600,
 					},
 				},
 			},
@@ -498,6 +521,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":      "collabora-install-script",
 					"mountPath": "/install-collabora.sh",
 					"subPath":   "install-collabora.sh",
+				},
+				{
+					"name":      "pg-cert",
+					"mountPath": "/opt/pg-certs",
+					"readOnly":  true,
 				},
 			},
 		},

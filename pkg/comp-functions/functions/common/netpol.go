@@ -10,12 +10,12 @@ import (
 
 // CreateNetworkPolicy creates network policy in the instance namespace to allow other namespaces access to the service
 func CreateNetworkPolicy(comp Composite, svc *runtime.ServiceRuntime) error {
-	return CustomCreateNetworkPolicy(comp.GetAllowedNamespaces(), comp.GetInstanceNamespace(), comp.GetName(), comp.GetAllowAllNamespaces(), svc)
+	return CustomCreateNetworkPolicy(comp.GetAllowedNamespaces(), comp.GetInstanceNamespace(), comp.GetName(), "", comp.GetAllowAllNamespaces(), svc)
 }
 
 // CustomCreateNetworkPolicy creates a more flexible network policy
 // Use this method when, for instance, a service needs a sub-service with more refined network policy access
-func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name string, allowAll bool, svc *runtime.ServiceRuntime) error {
+func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name, kubeName string, allowAll bool, svc *runtime.ServiceRuntime) error {
 	netPolPeer := []netv1.NetworkPolicyPeer{}
 	if !allowAll {
 		for _, ns := range sourceNS {
@@ -71,7 +71,11 @@ func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name string, allow
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(&netPol, name+"-netpol")
+	if kubeName == "" {
+		kubeName = name + "-netpol"
+	}
+
+	err := svc.SetDesiredKubeObject(&netPol, kubeName)
 	if err != nil {
 		err = fmt.Errorf("cannot create networkPolicy object: %w", err)
 		return err

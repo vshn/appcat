@@ -750,14 +750,20 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		for i, ref := range *comp.Spec.Parameters.Service.CustomEnvVariablesRef {
-			if ref.SecretRef != nil {
-				secretObj := &corev1.Secret{}
-				_, err := svc.CopyKubeResource(ctx, secretObj, fmt.Sprintf("%s-env-secret-%d", comp.GetName(), i), ref.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		for _, r := range *comp.Spec.Parameters.Service.CustomEnvVariablesRef {
+			if r.SecretRef != nil {
+				obj := &corev1.Secret{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+r.SecretRef.Name, r.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 				if err != nil {
 					return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
 				}
-
+			}
+			if r.ConfigMapRef != nil {
+				obj := &corev1.ConfigMap{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-cm-"+r.ConfigMapRef.Name, r.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
+				}
 			}
 		}
 	}

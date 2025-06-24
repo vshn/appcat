@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -159,7 +160,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 			Parameters: *params,
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      PgSecretName,
+					Name:      a.getPGSecretName(),
 					Namespace: a.comp.GetInstanceNamespace(),
 				},
 			},
@@ -181,5 +182,9 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		return "", err
 	}
 
-	return PgSecretName, a.svc.SetDesiredComposedResource(pg)
+	return a.getPGSecretName(), a.svc.SetDesiredComposedResource(pg)
+}
+
+func (a *PostgreSQLDependencyBuilder) getPGSecretName() string {
+	return fmt.Sprintf("%s-%s", PgSecretName, a.comp.GetName())
 }

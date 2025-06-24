@@ -70,7 +70,7 @@ func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtim
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Namespace: svc.GetCrossplaneNamespace(),
-					Name:      credentialSecretName,
+					Name:      credentialSecretName + "-" + comp.GetName(),
 				},
 			},
 		},

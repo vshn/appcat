@@ -284,22 +284,24 @@ NOTE: `crank render` has a 60s timeout, so you might run into it, if your debugg
 
 # Run API Server locally
 To run the API server on your local machine you need to register the IDE running instance with kind cluster.
-This can be achieved with the following guide.
+This can be achieved with the following guide. Make sure the kindev cluster is already running.
 
 The `externalName` needs to be changed to your specific host IP.
 When running kind on Linux you can find it with `docker inspect`.
 On some docker distributions the host IP is accessible via `host.docker.internal`.
 For Lima distribution the host IP is accessible via `host.lima.internal`.
 
-```bash
-# Run this command in kindev -> https://github.com/vshn/kindev
-make appcat-apiserver
+Disable ArgoCD before proceeding.
 
+```bash
 HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks.kind.Gateway')
 # HOSTIP=host.docker.internal # On some docker distributions
 # HOSTIP=host.lima.internal # On lima distributions
 
-kind get kubeconfig --name kindev  > ~/.kube/config
+kind get kubeconfig --name kindev  > ~/.kind/.kind/kube-config
+
+kubectl delete apiservice v1.api.appcat.vshn.io
+kubectl -n syn-appcat delete svc appcat 
 
 cat <<EOF | sed -e "s/172.21.0.1/$HOSTIP/g" | kubectl apply -f -
 apiVersion: apiregistration.k8s.io/v1
@@ -316,7 +318,7 @@ spec:
   groupPriorityMinimum: 2000
   service:
     name: appcat
-    namespace: default
+    namespace: syn-appcat
     port: 9443
   versionPriority: 10
 ---
@@ -324,7 +326,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: appcat
-  namespace: default
+  namespace: syn-appcat
 spec:
   ports:
   - port: 9443

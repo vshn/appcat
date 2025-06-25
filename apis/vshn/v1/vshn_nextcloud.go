@@ -139,7 +139,7 @@ type VSHNNextcloudServiceSpec struct {
 	// It is recommended to use a custom user with a separate database from vshnpostgresql.spec.service.access.
 	// This parameter will take precedence over PostgreSQLParameters
 	// Changing databases for an existing Nextcloud instance can corrupt the service.
-	ExistingVSHNPostgreSQLConnectionSecret string `json:"existingVSHNPostgreSQLConnectionSecret,omitempty"`
+	ExistingPGConnectionSecret string `json:"existingPGConnectionSecret,omitempty"`
 
 	// PostgreSQLParameters can be used to set any supported setting in the
 	// underlying PostgreSQL instance.

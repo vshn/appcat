@@ -59,6 +59,7 @@ func backupToTableRow(backup *appcatv1.VSHNNextcloudBackup) metav1.TableRow {
 		backup.Status.NextcloudFileBackup.Date.Format(time.RFC3339),
 		backup.Status.FileBackupAvailable,
 		backup.Status.DatabaseBackupAvailable,
+		backup.Status.DBType,
 		backup,
 	)
 }
@@ -68,6 +69,7 @@ func getNextcloudTableDefinition() []metav1.TableColumnDefinition {
 	return []metav1.TableColumnDefinition{
 		{Name: "Backup ID", Type: "string", Format: "name", Description: desc["name"]},
 		{Name: "Database Instance", Type: "string", Description: "The database instance"},
+		{Name: "Database Type", Type: "string", Description: "Whether the database is shared (internal or external)"},
 		{Name: "Started", Type: "string", Description: "The backup start time"},
 		{Name: "Finished", Type: "string", Description: "The data is available up to this time"},
 		{Name: "FileBackup", Type: "bool", Description: "If the backup contains the Nextcloud files"},
@@ -77,9 +79,9 @@ func getNextcloudTableDefinition() []metav1.TableColumnDefinition {
 	}
 }
 
-func getNextcloudBackupTable(id, instance, status, age, started, finished string, files, db bool, backup runtime.Object) metav1.TableRow {
+func getNextcloudBackupTable(id, instance, status, age, started, finished string, files, db bool, dbType appcatv1.DatabaseType, backup runtime.Object) metav1.TableRow {
 	return metav1.TableRow{
-		Cells:  []interface{}{id, instance, started, finished, files, db, status, age}, // Snapshots are created only when the backup successfully finished
+		Cells:  []interface{}{id, instance, string(dbType), started, finished, files, db, status, age}, // Snapshots are created only when the backup successfully finished
 		Object: runtime.RawExtension{Object: backup},
 	}
 }

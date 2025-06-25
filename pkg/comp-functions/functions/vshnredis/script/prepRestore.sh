@@ -6,8 +6,10 @@ source_namespace=$(kubectl -n "${CLAIM_NAMESPACE}" get vshnredis "${SOURCE_CLAIM
 
 echo "copy secret"
 
-access_key=$(kubectl -n "${source_namespace}" get secret backup-bucket-credentials -o template='{{ .data.AWS_ACCESS_KEY_ID | base64decode }}')
-secret_key=$(kubectl -n "${source_namespace}" get secret backup-bucket-credentials -o template='{{ .data.AWS_SECRET_ACCESS_KEY | base64decode }}')
+secret_name=$(kubectl -n "${source_namespace}" get secret -oname | grep backup-bucket-credentials | cut -d"/" -f2 )
+
+access_key=$(kubectl -n "${source_namespace}" get secret "${secret_name}" -o template='{{ .data.AWS_ACCESS_KEY_ID | base64decode }}')
+secret_key=$(kubectl -n "${source_namespace}" get secret "${secret_name}" -o template='{{ .data.AWS_SECRET_ACCESS_KEY | base64decode }}')
 restic_password=$(kubectl -n "${source_namespace}" get secret k8up-repository-password -o template='{{ .data.password | base64decode }}')
 restic_repository=$(kubectl -n "${source_namespace}" get snapshots.k8up.io "${BACKUP_NAME}" -o jsonpath='{.spec.repository}')
 backup_path=$(kubectl -n "${source_namespace}" get snapshots.k8up.io "${BACKUP_NAME}" -o jsonpath='{.spec.paths[0]}')
@@ -22,4 +24,4 @@ do
   sleep 1
 done
 
-kubectl -n "${TARGET_NAMESPACE}" scale statefulset redis-master --replicas 0 
+kubectl -n "${TARGET_NAMESPACE}" scale statefulset redis-master --replicas 0

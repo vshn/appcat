@@ -11,6 +11,13 @@ import (
 var _ resource.Object = &VSHNNextcloudBackup{}
 var _ resource.ObjectList = &VSHNNextcloudBackupList{}
 
+type DatabaseType string
+
+const (
+	Shared    DatabaseType = "shared"
+	Dedicated DatabaseType = "dedicated"
+)
+
 // +kubebuilder:object:root=true
 // +k8s:openapi-gen=true
 type VSHNNextcloudBackup struct {
@@ -28,8 +35,11 @@ type VSHNNextcloudBackupStatus struct {
 	// DatabaseBackupAvailable indicates if this backup contains a database backup for Nextcloud.
 	// Not every file backup might have a database backup associated, because the retention is not enforced at the same time.
 	DatabaseBackupAvailable bool
-	NextcloudFileBackup     VSHNNextcloudFileBackupStatus `json:"nextcloudFileBackup,omitempty"`
-	DatabaseBackupStatus    VSHNPostgresBackupStatus      `json:"databaseBackupStatus,omitempty"`
+	// DBType indicates whether this Nextcloud instance is using an external(shared) or internal(dedicated) VSHNPostgreSQL.
+	// Shared PostgreSQL instances do not show their backups in Nextcloud. They are managed separately.
+	DBType               DatabaseType                  `json:"databaseType,omitempty"`
+	NextcloudFileBackup  VSHNNextcloudFileBackupStatus `json:"nextcloudFileBackup,omitempty"`
+	DatabaseBackupStatus VSHNPostgresBackupStatus      `json:"databaseBackupStatus,omitempty"`
 }
 
 // +k8s:openapi-gen=true

@@ -5356,7 +5356,7 @@ spec:
                         - enabled
                         - fqdn
                         type: object
-                      existingVSHNPostgreSQLConnectionSecret:
+                      existingPGConnectionSecret:
                         description: |-
                           ExistingVSHNPostgreSQLConnectionSecret uses a connection secret from an existing VSHNPostgreSQL instance.
                           It is recommended to use a custom user with a separate database from vshnpostgresql.spec.service.access.

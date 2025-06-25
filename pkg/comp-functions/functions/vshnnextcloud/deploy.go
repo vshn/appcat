@@ -77,7 +77,7 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 
 	pgSecret := ""
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
-		existingCD := comp.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret
+		existingCD := comp.Spec.Parameters.Service.ExistingPGConnectionSecret
 		if existingCD != "" {
 			svc.Log.Info("Connecting to existing postgresql instance")
 			cNamespace := comp.GetClaimNamespace()
@@ -373,7 +373,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
 		var cd map[string][]byte
-		if comp.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret != "" {
+		if comp.Spec.Parameters.Service.ExistingPGConnectionSecret != "" {
 			secret := &corev1.Secret{}
 			err := svc.GetObservedKubeObject(secret, comp.GetName()+"-postgresql-connection-secret-claim-observer")
 			if err != nil {

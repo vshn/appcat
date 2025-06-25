@@ -575,6 +575,13 @@ func schema_v4_apis_apiserver_v1_VSHNNextcloudBackupStatus(ref common.ReferenceC
 							Format:      "",
 						},
 					},
+					"databaseType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DBType indicates whether this Nextcloud instance is using an external(shared) or internal(dedicated) VSHNPostgreSQL. Shared PostgreSQL instances do not show their backups in Nextcloud. They are managed separately.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"nextcloudFileBackup": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},

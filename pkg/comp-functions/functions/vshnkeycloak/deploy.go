@@ -368,15 +368,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, err
 	}
 
-	envFrom := ""
-	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		envFrom = "[secretRef: {name: " + *comp.Spec.Parameters.Service.CustomEnvVariablesRef + "}]"
-	}
-
 	values = map[string]any{
 		"replicas":          comp.Spec.Parameters.Instances,
 		"extraEnv":          extraEnv,
-		"extraEnvFrom":      envFrom,
 		"extraVolumes":      extraVolumes,
 		"extraVolumeMounts": extraVolumeMounts,
 
@@ -443,6 +437,15 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"podAnnotations":     podAnnotations,
 	}
 
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		envFrom, err := toYAML(comp.Spec.Parameters.Service.CustomEnvVariablesRef)
+		if err != nil {
+			return nil, err
+		}
+
+		values["extraEnvFrom"] = envFrom
+	}
+
 	if svc.Config.Data["imageRegistry"] != "" {
 		values["image"] = map[string]interface{}{
 			"repository": svc.Config.Data["imageRegistry"],
@@ -475,11 +478,17 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		copiedCM := instObj.(*corev1.ConfigMap)
 		hashedCustomConfig = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", copiedCM.Data))))
 	}
+
 	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		secretObj := &corev1.Secret{}
-		_, err := svc.CopyKubeResource(ctx, secretObj, comp.GetName()+"-env-secret", *comp.Spec.Parameters.Service.CustomEnvVariablesRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-		if err != nil {
-			return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
+		for i, ref := range *comp.Spec.Parameters.Service.CustomEnvVariablesRef {
+			if ref.SecretRef != nil {
+				secretObj := &corev1.Secret{}
+				_, err := svc.CopyKubeResource(ctx, secretObj, fmt.Sprintf("%s-env-secret-%d", comp.GetName(), i), ref.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
+				}
+
+			}
 		}
 	}
 

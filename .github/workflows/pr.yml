@@ -35,6 +35,12 @@ jobs:
     name: Check labels
     runs-on: ubuntu-latest
     steps:
+      - name: Ignore from Changelog if merge to master
+        uses: actions-ecosystem/action-add-labels@v1
+        if: github.base_ref == 'master'
+        with:
+          labels: ignoreChangelog
+
       - uses: docker://agilepathway/pull-request-label-checker:v1.6.51
         with:
           one_of: major,minor,patch,documentation,dependency
@@ -93,9 +99,9 @@ jobs:
         if: env.PUSH_UPBOUND == 'true' && env.PUSH_PACKAGE == 'true'
         run: make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}" -e IMG_REPO=xpkg.upbound.io
 
-  open-or-update-pr-component:
+  open-pr-component:
     runs-on: ubuntu-latest
-    if: github.base_ref == 'master'
+    if: github.event.pull_request.number != 0 && github.event.action == 'opened'
     steps:
       - name: Get current labels
         uses: snnaplab/get-labels-action@v1
@@ -150,6 +156,13 @@ jobs:
             Component PR: ${{ steps.cpr.outputs.pull-request-url }}
           body-update-action: 'suffix'
           body-uppercase-base-match: false
+
+      - name: Ignore from Changelog if merge to master
+        uses: actions-ecosystem/action-add-labels@v1
+        if: github.base_ref == 'master'
+        with:
+          labels: ignoreChangelog
+
   create-release:
     if: github.event.pull_request.merged && github.base_ref == 'master'
     runs-on: ubuntu-latest

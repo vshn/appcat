@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"text/template"
 	"time"
 
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -52,6 +54,25 @@ const (
 
 //go:embed scripts/copy-kc-creds.sh
 var keycloakCredentialsCopyJobScript string
+
+// Folders that may not be replaced by the custom files init container
+// https://www.keycloak.org/server/directory-structure#_directory_structure
+var keycloakRootFolders = []string{
+	"providers",
+	"themes",
+	"lib",
+	"conf",
+	"bin",
+}
+
+func IsKeycloakRootFolder(folder string) bool {
+	for _, rootFolder := range keycloakRootFolders {
+		if strings.EqualFold(folder, rootFolder) {
+			return true
+		}
+	}
+	return false
+}
 
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
 func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
@@ -267,6 +288,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"emptyDir": nil,
 		},
 		{
+			"name":     "custom-files",
+			"emtpyDir": nil,
+		},
+		{
 			"name": "keycloak-dist",
 		},
 		{
@@ -316,11 +341,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		podAnnotations["checksum/keycloak-config"] = hashedCustomConfig
 	}
 
-	extraVolumes, err := toYAML(extraVolumesMap)
-	if err != nil {
-		return nil, err
-	}
-
 	extraVolumeMountsMap := []map[string]any{
 		{
 			"name":      "custom-providers",
@@ -347,6 +367,33 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		})
 	}
 
+	// Custom file volumes and mounts
+	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
+		if comp.Spec.Parameters.Service.CustomizationImage.Image == "" {
+			return nil, fmt.Errorf("custom files have been defined, but no customization image")
+		}
+
+		const extraVolumeName = "customization-image-files"
+		extraVolumesMap = append(extraVolumesMap, map[string]any{
+			"name":     extraVolumeName,
+			"emptyDir": nil,
+		})
+
+		for _, file := range comp.Spec.Parameters.Service.CustomFiles {
+			destination := strings.TrimPrefix(file.Destination, "/")
+			if !isCustomFileDestinationValid(destination) {
+				svc.Log.Error(nil, "Custom file destination seems bad, skipping", "destination", file.Destination)
+				continue
+			}
+
+			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
+				"name":      extraVolumeName,
+				"mountPath": "/opt/keycloak/" + destination,
+				"subPath":   destination,
+			})
+		}
+	}
+
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
 		if mount.Type == customMountTypeSecret {
 			extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
@@ -363,6 +410,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	extraVolumes, err := toYAML(extraVolumesMap)
+	if err != nil {
+		return nil, err
+	}
 	extraVolumeMounts, err := toYAML(extraVolumeMountsMap)
 	if err != nil {
 		return nil, err
@@ -536,6 +587,13 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	return release, err
 }
 
+// Checks if a customFile.destination is not within keycloak root folder or does path traversal
+func isCustomFileDestinationValid(destination string) bool {
+	d := strings.TrimPrefix(destination, "./")
+	d = strings.TrimPrefix(d, "/")
+	return !IsKeycloakRootFolder(d) && !strings.Contains(d, "..")
+}
+
 func toYAML(obj any) (string, error) {
 	yamlBytes, err := yaml.Marshal(obj)
 	return string(yamlBytes), err
@@ -657,6 +715,11 @@ ls -lh /custom-providers`,
 		return err
 	}
 
+	extraInitContainersMap, err = addCustomFileCopyInitContainer(comp, extraInitContainersMap)
+	if err != nil {
+		return fmt.Errorf("cannot add custom file copy init container: %w", err)
+	}
+
 	extraInitContainers, err := toYAML(extraInitContainersMap)
 	if err != nil {
 		return err
@@ -698,6 +761,67 @@ exit 0`,
 		}
 		extraInitContainersMap = append(extraInitContainersMap, extraInitContainersThemeProvidersMap)
 	}
+	return extraInitContainersMap, nil
+}
+
+func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContainersMap []map[string]any) ([]map[string]any, error) {
+	if len(comp.Spec.Parameters.Service.CustomFiles) < 1 {
+		return nil, nil
+	}
+
+	files := []map[string]string{}
+	for _, customFile := range comp.Spec.Parameters.Service.CustomFiles {
+		finalDestination := strings.TrimPrefix(customFile.Destination, "./")
+		finalDestination = strings.TrimPrefix(finalDestination, "/")
+		if !isCustomFileDestinationValid(finalDestination) {
+			return nil, fmt.Errorf("destination '%s' is bad", finalDestination)
+		}
+
+		files = append(files, map[string]string{
+			"source":      strings.TrimPrefix(customFile.Source, "/"),
+			"destination": finalDestination,
+		})
+	}
+
+	const copyCommandTemplate = `echo "Copying custom files..."
+{{- range $file := . }}
+mkdir -p "/custom/$(dirname '{{ $file.destination }}')"
+if [ -d "/{{ $file.source }}" ]; then
+  cp -TRv "/{{ $file.source }}" "/custom/{{ $file.destination }}"
+else
+  cp -Rv "/{{ $file.source }}" "/custom/{{ $file.destination }}"
+fi
+{{ end }}
+exit 0
+`
+	var copyCommand strings.Builder
+	t, err := template.New("tmpl").Funcs(map[string]any{"contains": strings.Contains}).Parse(copyCommandTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse template: %w", err)
+	}
+	err = t.Execute(&copyCommand, files)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	extraInitContainerCustomFileCopyMap := map[string]any{
+		"name":            "copy-custom-files",
+		"image":           comp.Spec.Parameters.Service.CustomizationImage.Image,
+		"imagePullPolicy": "Always",
+		"command": []string{
+			"sh",
+		},
+		"args": []string{
+			"-c",
+			copyCommand.String(),
+		},
+		"volumeMounts": []map[string]string{{
+			"name":      "customization-image-files",
+			"mountPath": "/custom",
+		}},
+	}
+	extraInitContainersMap = append(extraInitContainersMap, extraInitContainerCustomFileCopyMap)
+
 	return extraInitContainersMap, nil
 }
 

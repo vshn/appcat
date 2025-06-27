@@ -106,3 +106,74 @@ func Test_addHARelease(t *testing.T) {
 	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
 
 }
+
+func Test_configOrEnvChanged(t *testing.T) {
+	configHash1 := "0bee89b07a248e27c83fc3d5951213c1"
+	configHash2 := "b6273b589df2dfdbd8fe35b1011e3183"
+	envHash1 := "614dd0e977becb4c6f7fa99e64549b12"
+	envHash2 := "eadcf91a0d9dd70ad5da26a885f4c10c"
+
+	tests := []struct {
+		name              string
+		currentConfigHash string
+		lastConfigHash    string
+		currentEnvHash    string
+		lastEnvHash       string
+		want              bool
+	}{
+		{
+			name:              "no change",
+			currentConfigHash: configHash1,
+			lastConfigHash:    configHash1,
+			currentEnvHash:    envHash1,
+			lastEnvHash:       envHash1,
+			want:              false,
+		},
+		{
+			name:              "config changed",
+			currentConfigHash: configHash1,
+			lastConfigHash:    configHash2,
+			currentEnvHash:    envHash1,
+			lastEnvHash:       envHash1,
+			want:              true,
+		},
+		{
+			name:              "env changed",
+			currentConfigHash: configHash1,
+			lastConfigHash:    configHash1,
+			currentEnvHash:    envHash1,
+			lastEnvHash:       envHash2,
+			want:              true,
+		},
+		{
+			name:              "both changed",
+			currentConfigHash: configHash1,
+			lastConfigHash:    configHash2,
+			currentEnvHash:    envHash1,
+			lastEnvHash:       envHash2,
+			want:              true,
+		},
+		{
+			name:              "empty config hash",
+			currentConfigHash: "",
+			lastConfigHash:    configHash2,
+			currentEnvHash:    envHash1,
+			lastEnvHash:       envHash1,
+			want:              false,
+		},
+		{
+			name:              "empty env hash",
+			currentConfigHash: configHash1,
+			lastConfigHash:    configHash1,
+			currentEnvHash:    "",
+			lastEnvHash:       envHash2,
+			want:              false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := configOrEnvChanged(tt.currentConfigHash, tt.lastConfigHash, tt.currentEnvHash, tt.lastEnvHash)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

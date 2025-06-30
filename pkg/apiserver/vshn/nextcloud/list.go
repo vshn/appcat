@@ -60,7 +60,7 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 		}
 
 		isSharedDB := instance.Spec.Parameters.Service.UseExternalPostgreSQL &&
-			instance.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret != ""
+			instance.Spec.Parameters.Service.ExistingPGConnectionSecret != ""
 
 		for _, snap := range snapshots.Items {
 			backupMeta := snap.ObjectMeta

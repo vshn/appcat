@@ -15,6 +15,11 @@ func CreateNetworkPolicy(comp Composite, svc *runtime.ServiceRuntime) error {
 
 // CustomCreateNetworkPolicy creates a more flexible network policy
 // Use this method when, for instance, a service needs a sub-service with more refined network policy access
+// `sourceNS` - are the namespaces from where the access is allowed
+// `instanceNs` - is the namespace where the network policy is created and to where the `sourceNS` will have access
+// `name` - the name of the network policy
+// `kubeName` -the kube name that this network policy should be encapsulated. If not given "<composite.name>-netpol" is used
+// `allowAll` - will override the `sourceNS` parameter and will allow all namespace to access `instanceNs` service
 func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name, kubeName string, allowAll bool, svc *runtime.ServiceRuntime) error {
 	netPolPeer := []netv1.NetworkPolicyPeer{}
 	if !allowAll {

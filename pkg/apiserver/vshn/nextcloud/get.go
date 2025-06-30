@@ -55,7 +55,7 @@ func (v *vshnNextcloudBackupStorage) Get(ctx context.Context, name string, _ *me
 		}
 
 		isSharedPG := instance.Spec.Parameters.Service.UseExternalPostgreSQL &&
-			instance.Spec.Parameters.Service.ExistingVSHNPostgreSQLConnectionSecret != ""
+			instance.Spec.Parameters.Service.ExistingPGConnectionSecret != ""
 
 		if isSharedPG {
 			status.DBType = appcatv1.Shared

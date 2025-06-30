@@ -634,6 +634,11 @@ func (in *VSHNKeycloakServiceSpec) DeepCopyInto(out *VSHNKeycloakServiceSpec) {
 	}
 	if in.CustomEnvVariablesRef != nil {
 		in, out := &in.CustomEnvVariablesRef, &out.CustomEnvVariablesRef
+		*out = new(string)
+		**out = **in
+	}
+	if in.EnvFrom != nil {
+		in, out := &in.EnvFrom, &out.EnvFrom
 		*out = new([]corev1.EnvFromSource)
 		if **in != nil {
 			in, out := *in, *out

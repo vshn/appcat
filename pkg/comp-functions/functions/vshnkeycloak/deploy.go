@@ -710,8 +710,24 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		values["extraEnvFrom"] = envFrom
 	}
 
+	var envFromMap []v1.EnvFromSource
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		envFromMap = *comp.Spec.Parameters.Service.EnvFrom
+	}
+
+	// Deprecated field, the logic below is kept for backwards compatibility
 	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		envFrom, err := toYAML(comp.Spec.Parameters.Service.CustomEnvVariablesRef)
+		envFromMap = append(envFromMap, v1.EnvFromSource{
+			SecretRef: &v1.SecretEnvSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+				},
+			},
+		})
+	}
+
+	if envFromMap != nil {
+		envFrom, err := toYAML(envFromMap)
 		if err != nil {
 			return nil, err
 		}
@@ -749,8 +765,8 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		hashedCustomConfig = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", copiedCM.Data))))
 	}
 
-	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		for _, r := range *comp.Spec.Parameters.Service.CustomEnvVariablesRef {
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		for _, r := range *comp.Spec.Parameters.Service.EnvFrom {
 			if r.SecretRef != nil {
 				obj := &corev1.Secret{}
 				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+r.SecretRef.Name, r.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
@@ -765,6 +781,17 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
 				}
 			}
+		}
+	}
+	// Deprecated field, the logic below is kept for backwards compatibility
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		svc.Log.Info("customEnvVariablesRef is deprecated but still in use")
+
+		thisSecret := comp.Spec.Parameters.Service.CustomEnvVariablesRef
+		obj := &corev1.Secret{}
+		_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+*thisSecret, *thisSecret, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		if err != nil {
+			return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
 		}
 	}
 

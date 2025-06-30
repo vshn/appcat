@@ -1,0 +1,280 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.1
+  name: awsrds.aws.appcat.vshn.io
+spec:
+  group: aws.appcat.vshn.io
+  names:
+    kind: AwsRds
+    listKind: AwsRdsList
+    plural: awsrds
+    singular: awsrds
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.parameters.size.plan
+          name: Plan
+          type: string
+        - jsonPath: .spec.parameters.service.region
+          name: Region
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: AwsRds is the API for creating RDS instances on AWS.
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec defines the desired state of a AwsRds.
+              properties:
+                parameters:
+                  description: Parameters are the configurable fields of a AwsRds.
+                  properties:
+                    backup:
+                      description: Backup contains settings to control the backups of an instance.
+                      properties:
+                        backupWindow:
+                          default: 21:30-22:00
+                          description: 'BackupWindow for doing daily backups, in UTC. Format: "hh:mm:ss".'
+                          pattern: ^([0-1]?[0-9]|2[0-3]):([0-5][0-9])-([0-1]?[0-9]|2[0-3]):([0-5][0-9])$
+                          type: string
+                        retentionPeriod:
+                          default: 7
+                          description: RetentionPeriod is the number of days to retain backups for.
+                          type: integer
+                      type: object
+                      default: {}
+                    maintenance:
+                      description: Maintenance contains settings to control the maintenance of an instance.
+                      properties:
+                        maintenanceWindow:
+                          default: Wed:00:00-Wed:03:00
+                          description: 'The window to perform maintenance in. Syntax: "ddd:hh24:mi-ddd:hh24:mi". Eg: "Mon:00:00-Mon:03:00". See RDS Maintenance Window docs for more information.'
+                          type: string
+                      type: object
+                      default: {}
+                    service:
+                      description: Service contains AWS RDS DBaaS specific properties
+                      properties:
+                        adminUser:
+                          default: adminUser
+                          description: AdminUser contains the username for the admin user.
+                          type: string
+                        dbName:
+                          description: DBName contains the name of the database to create.
+                          type: string
+                        engine:
+                          default: mysql
+                          description: Engine contains the type of the DB instance class.
+                          enum:
+                            - aurora-mysql
+                            - aurora-postgresql
+                            - custom-oracle-ee
+                            - custom-oracle-ee-cdb
+                            - custom-sqlserver-ee
+                            - custom-sqlserver-se
+                            - custom-sqlserver-web
+                            - mariadb
+                            - mysql
+                            - oracle-ee
+                            - oracle-ee-cdb
+                            - oracle-se2
+                            - oracle-se2-cdb
+                            - postgres
+                            - sqlserver-ee
+                            - sqlserver-se
+                            - sqlserver-ex
+                            - sqlserver-web
+                          type: string
+                        majorVersion:
+                          default: "8.0"
+                          description: MajorVersion contains the major version for the instance. Depends on the chosen engine.
+                          type: string
+                        rdsOptions:
+                          description: RdsOptions contains additional options for the RDS instance.
+                          items:
+                            properties:
+                              optionName:
+                                description: The Name of the Option (e.g., MEMCACHED).
+                                type: string
+                              optionSettings:
+                                description: A list of option settings to apply.
+                                items:
+                                  properties:
+                                    name:
+                                      description: The name of the option group. Must be lowercase, to match as it is stored in AWS.
+                                      type: string
+                                    value:
+                                      description: The Value of the setting.
+                                      type: string
+                                  type: object
+                                type: array
+                              port:
+                                description: The Port number when connecting to the Option (e.g., 11211).
+                                type: integer
+                              version:
+                                description: The version of the option (e.g., 13.1.0.0).
+                                type: string
+                            type: object
+                          type: array
+                        rdsSettings:
+                          description: RdsSettings contains additional settings for the RDS instance.
+                          items:
+                            properties:
+                              applyMethod:
+                                description: '"immediate" (default), or "pending-reboot". Some engines can''t apply some parameters without a reboot, and you will need to specify "pending-reboot" here.'
+                                type: string
+                              name:
+                                description: The name of the DB parameter group.
+                                type: string
+                              value:
+                                description: The value of the DB parameter.
+                                type: string
+                            type: object
+                          type: array
+                        region:
+                          default: eu-central-1
+                          description: Region is the datacenter identifier in which the instance runs in.
+                          enum:
+                            - us-east-2
+                            - us-east-1
+                            - us-west-1
+                            - us-west-2
+                            - af-south-1
+                            - ap-east-1
+                            - ap-south-2
+                            - ap-southeast-3
+                            - ap-southeast-4
+                            - ap-south-1
+                            - ap-northeast-3
+                            - ap-northeast-2
+                            - ap-southeast-1
+                            - ap-southeast-2
+                            - ap-northeast-1
+                            - ca-central-1
+                            - eu-central-1
+                            - eu-west-1
+                            - eu-west-2
+                            - eu-south-1
+                            - eu-west-3
+                            - eu-south-2
+                            - eu-north-1
+                            - eu-central-2
+                            - il-central-1
+                            - me-south-1
+                            - me-central-1
+                            - sa-east-us-east-2
+                            - us-east-1
+                            - us-west-1
+                            - us-west-2
+                            - af-south-1
+                            - ap-east-1
+                            - ap-south-2
+                            - ap-southeast-3
+                            - ap-southeast-4
+                            - ap-south-1
+                            - ap-northeast-3
+                            - ap-northeast-2
+                            - ap-southeast-1
+                            - ap-southeast-2
+                            - ap-northeast-1
+                            - ca-central-1
+                            - eu-central-1
+                            - eu-west-1
+                            - eu-west-2
+                            - eu-south-1
+                            - eu-west-3
+                            - eu-south-2
+                            - eu-north-1
+                            - eu-central-2
+                            - il-central-1
+                            - me-south-1
+                            - me-central-1
+                            - sa-east-11
+                          type: string
+                      type: object
+                      default: {}
+                    size:
+                      description: Size contains settings to control the sizing of a service.
+                      properties:
+                        plan:
+                          default: db.t3.micro
+                          description: Plan is the name of the resource plan that defines the compute resources.
+                          type: string
+                        storageSize:
+                          default: 10
+                          description: StorageSize is the size of the storage in GB.
+                          type: integer
+                        storageType:
+                          default: gp2
+                          description: StorageType is the storage type to use.
+                          type: string
+                      type: object
+                      default: {}
+                  type: object
+                  default: {}
+                writeConnectionSecretToRef:
+                  description: WriteConnectionSecretToRef references a secret to which the connection details will be written.
+                  properties:
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+                  x-kubernetes-map-type: atomic
+              type: object
+            status:
+              description: Status reflects the observed state of a AwsRds.
+              properties:
+                rdsConditions:
+                  description: RdsConditions contains the status conditions of the backing object.
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        description: LastTransitionTime is the last time the condition transitioned from one status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: Message is a human-readable message indicating details about the transition.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: ObservedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: Reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        maxLength: 1024
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        description: Type of condition.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    type: object
+                  type: array
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources: {}

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"context"
+	"fmt"
+
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,6 +42,8 @@ var keycloakRootFolders = []string{
 type KeycloakWebhookHandler struct {
 	DefaultWebhookHandler
 }
+
+var _ webhook.CustomValidator = &KeycloakWebhookHandler{}
 
 // SetupKeycloakWebhookHandlerWithManager registers the validation webhook with the manager.
 func SetupKeycloakWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
@@ -143,4 +148,33 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error 
 	}
 
 	return nil
+}
+
+func (k *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	if kc, ok := obj.(*vshnv1.VSHNKeycloak); ok {
+		return isDeprecatedFieldInUse(kc)
+
+	}
+
+	return nil, nil
+}
+
+func (k *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	if kc, ok := newObj.(*vshnv1.VSHNKeycloak); ok {
+		return isDeprecatedFieldInUse(kc)
+	}
+
+	return nil, nil
+}
+
+func isDeprecatedFieldInUse(comp *vshnv1.VSHNKeycloak) (admission.Warnings, error) {
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		return admission.Warnings{
+			fmt.Sprintf("Field 'customEnvVariablesRef' in %s has been deprecated, please use 'envFrom' instead.",
+				field.NewPath("spec", "parameters", "service").String(),
+			),
+		}, nil
+	}
+
+	return nil, nil
 }

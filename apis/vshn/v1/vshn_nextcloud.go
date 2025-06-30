@@ -135,6 +135,12 @@ type VSHNNextcloudServiceSpec struct {
 	// the build-in SQLite database is being used.
 	UseExternalPostgreSQL bool `json:"useExternalPostgreSQL,omitempty"`
 
+	// ExistingPGConnectionSecret uses a connection secret from an existing VSHNPostgreSQL instance.
+	// It is recommended to use a custom user with a separate database from vshnpostgresql.spec.service.access.
+	// This parameter will take precedence over PostgreSQLParameters
+	// Changing databases for an existing Nextcloud instance can corrupt the service.
+	ExistingPGConnectionSecret string `json:"existingPGConnectionSecret,omitempty"`
+
 	// PostgreSQLParameters can be used to set any supported setting in the
 	// underlying PostgreSQL instance.
 	PostgreSQLParameters *VSHNPostgreSQLParameters `json:"postgreSQLParameters,omitempty"`

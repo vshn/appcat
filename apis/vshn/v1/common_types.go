@@ -196,7 +196,7 @@ type Security struct {
 
 	// DeletionProtection blocks the deletion of the instance if it is enabled (enabled by default)
 	// +kubebuilder:default=true
-	DeletionProtection bool `json:"deletionProtection,omitempty"`
+	DeletionProtection bool `json:"deletionProtection"`
 
 	// AllowedGroups defines a list of Groups that have limited access to the instance namespace
 	AllowedGroups []string `json:"allowedGroups,omitempty"`

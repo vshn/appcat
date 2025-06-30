@@ -145,7 +145,7 @@ func Test_addCustomFiles(t *testing.T) {
 
 	// Are values good?
 	t.Log("Checking values")
-	values, err := newValues(context.TODO(), svc, comp, "a", "b", "c")
+	values, err := newValues(context.TODO(), svc, comp, "a", "b")
 	assert.NoError(t, err)
 
 	volumeMounts := []map[string]any{}

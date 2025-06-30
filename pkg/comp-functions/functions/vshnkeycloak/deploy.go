@@ -55,6 +55,9 @@ const (
 //go:embed scripts/copy-kc-creds.sh
 var keycloakCredentialsCopyJobScript string
 
+//go:embed templates/copy-custom-files.tmpl
+var keycloakCustomFilesCopyCommandTemplate string
+
 // Folders that may not be replaced by the custom files init container
 // https://www.keycloak.org/server/directory-structure#_directory_structure
 var keycloakRootFolders = []string{
@@ -552,11 +555,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
-	extraVolumes, err := toYAML(extraVolumesMap)
-	if err != nil {
-		return nil, err
-	}
-
 	extraVolumeMountsMap := []map[string]any{
 		{
 			"name":      "custom-providers",
@@ -949,19 +947,8 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 		})
 	}
 
-	const copyCommandTemplate = `echo "Copying custom files..."
-{{- range $file := . }}
-mkdir -p "/custom/$(dirname '{{ $file.destination }}')"
-if [ -d "/{{ $file.source }}" ]; then
-  cp -TRv "/{{ $file.source }}" "/custom/{{ $file.destination }}"
-else
-  cp -Rv "/{{ $file.source }}" "/custom/{{ $file.destination }}"
-fi
-{{ end }}
-exit 0
-`
 	var copyCommand strings.Builder
-	t, err := template.New("tmpl").Funcs(map[string]any{"contains": strings.Contains}).Parse(copyCommandTemplate)
+	t, err := template.New("tmpl").Funcs(map[string]any{"contains": strings.Contains}).Parse(keycloakCustomFilesCopyCommandTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}

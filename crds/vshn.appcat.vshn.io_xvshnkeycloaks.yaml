@@ -5347,6 +5347,25 @@ spec:
                           CustomEnvVariablesRef can be used to provide custom environment variables from a Secret
                           for the keycloak instance. This field is deprecated, use 'envFrom' instead.
                         type: string
+                      customFiles:
+                        description: |-
+                          CustomFiles can be used to load custom files or folders into the keycloak instance.
+                          The source path will be copied into keycloak using 'cp -R'.
+                        items:
+                          description: VSHNKeycloakCustomFile defines a file that
+                            will be copied from the customization image into the Keycloak
+                            instance.
+                          properties:
+                            destination:
+                              description: |-
+                                Destination file in the keycloak instance.
+                                The path is relative to /opt/keycloak/.
+                              type: string
+                            source:
+                              description: Source file from the customization image
+                              type: string
+                          type: object
+                        type: array
                       customMounts:
                         description: |-
                           CustomMounts is a list of Secrets/ConfigMaps that get observed and copied into the Keycloak instance namespace.
@@ -5373,9 +5392,9 @@ spec:
                         type: array
                       customizationImage:
                         description: |-
-                          CustomizationImage can be used to provide an image with custom themes and providers.
-                          The themes need to be be placed in the `/themes` directory of the custom image.
-                          the providers need to be placed in the `/providers` directory of the custom image.
+                          CustomizationImage can be used to provide an image with custom themes, providers and other files.
+                          Themes and providers are automatically copied and need to be placed in '/themes' and '/providers' respectively.
+                          Other custom data will be copied according to the `customFiles` field.
                         properties:
                           image:
                             description: Path to a valid image
@@ -5446,72 +5465,6 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         type: array
-                      customFiles:
-                        description: |-
-                          CustomFiles can be used to load custom files or folders into the keycloak instance.
-                          The source path will be copied into keycloak using 'cp -R'.
-                        items:
-                          description: VSHNKeycloakCustomFile defines a file that
-                            will be copied from the customization image into the Keycloak
-                            instance.
-                          properties:
-                            destination:
-                              description: |-
-                                Destination file in the keycloak instance.
-                                The path is relative to /opt/keycloak/.
-                              type: string
-                            source:
-                              description: Source file from the customization image
-                              type: string
-                          type: object
-                        type: array
-                      customMounts:
-                        description: |-
-                          CustomMounts is a list of Secrets/ConfigMaps that get observed and copied into the Keycloak instance namespace.
-                          Once copied, they will be mounted under /custom/secrets/<name> or /custom/configs/<name>.
-                        items:
-                          description: VSHNCustomMount defines a Secret or ConfigMap
-                            that will be copied into the Keycloak namespace and mounted
-                            into the Keycloak pod.
-                          properties:
-                            name:
-                              description: Name is the exact name of the Secret or
-                                ConfigMap in the claim namespace.
-                              type: string
-                            type:
-                              description: Type must be either "secret" or "configMap".
-                              enum:
-                              - secret
-                              - configMap
-                              type: string
-                          required:
-                          - name
-                          - type
-                          type: object
-                        type: array
-                      customizationImage:
-                        description: |-
-                          CustomizationImage can be used to provide an image with custom themes, providers and other files.
-                          Themes and providers are automatically copied and need to be placed in '/themes' and '/providers' respectively.
-                          Other custom data will be copied according to the `customFiles` field.
-                        properties:
-                          image:
-                            description: Path to a valid image
-                            type: string
-                          imagePullSecretRef:
-                            description: Reference to an imagePullSecret
-                            properties:
-                              name:
-                                description: name is unique within a namespace to
-                                  reference a secret resource.
-                                type: string
-                              namespace:
-                                description: namespace defines the space within which
-                                  the secret name must be unique.
-                                type: string
-                            type: object
-                            x-kubernetes-map-type: atomic
-                        type: object
                       fqdn:
                         description: |-
                           FQDN contains the FQDN which will be used for the ingress.

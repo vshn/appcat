@@ -68,6 +68,13 @@ spec:
                           type: string
                       type: object
                       default: {}
+                    instances:
+                      default: 1
+                      description: Instances configures the number of Redis instances for the cluster.
+                      enum:
+                        - 1
+                        - 3
+                      type: integer
                     maintenance:
                       description: Maintenance contains settings to control the maintenance of an instance.
                       properties:

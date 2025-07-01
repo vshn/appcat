@@ -122,10 +122,14 @@ type VSHNKeycloakServiceSpec struct {
 	// underlying PostgreSQL instance.
 	PostgreSQLParameters *VSHNPostgreSQLParameters `json:"postgreSQLParameters,omitempty"`
 
-	// CustomizationImage can be used to provide an image with custom themes and providers.
-	// The themes need to be be placed in the `/themes` directory of the custom image.
-	// the providers need to be placed in the `/providers` directory of the custom image.
+	// CustomizationImage can be used to provide an image with custom themes, providers and other files.
+	// Themes and providers are automatically copied and need to be placed in '/themes' and '/providers' respectively.
+	// Other custom data will be copied according to the `customFiles` field.
 	CustomizationImage VSHNKeycloakCustomizationImage `json:"customizationImage,omitempty"`
+
+	// CustomFiles can be used to load custom files or folders into the keycloak instance.
+	// The source path will be copied into keycloak using 'cp -R'.
+	CustomFiles []VSHNKeycloakCustomFile `json:"customFiles,omitempty"`
 
 	// CustomConfigurationRef can be used to provide a configmap containing configurations for the
 	// keycloak instance. The config is a JSON file based on the keycloak export files.
@@ -159,6 +163,16 @@ type VSHNCustomMount struct {
 	// Type must be either "secret" or "configMap".
 	// +kubebuilder:validation:Enum="secret";"configMap"
 	Type string `json:"type"`
+}
+
+// VSHNKeycloakCustomFile defines a file that will be copied from the customization image into the Keycloak instance.
+type VSHNKeycloakCustomFile struct {
+	// Source file from the customization image
+	Source string `json:"source,omitempty"`
+
+	// Destination file in the keycloak instance.
+	// The path is relative to /opt/keycloak/.
+	Destination string `json:"destination,omitempty"`
 }
 
 // VSHNKeycloakSettings contains Keycloak specific settings.

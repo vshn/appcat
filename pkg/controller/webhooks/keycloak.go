@@ -78,6 +78,10 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 		return nil, err
 	}
 
+	if warn, err := isDeprecatedFieldInUse(keycloak); warn != nil {
+		return warn, err
+	}
+
 	return nil, nil
 }
 
@@ -94,6 +98,10 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 
 	if err := validateCustomFileObject(newKeycloak); err != nil {
 		return nil, err
+	}
+
+	if warn, err := isDeprecatedFieldInUse(newKeycloak); warn != nil {
+		return warn, err
 	}
 
 	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
@@ -148,23 +156,6 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error 
 	}
 
 	return nil
-}
-
-func (k *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	if kc, ok := obj.(*vshnv1.VSHNKeycloak); ok {
-		return isDeprecatedFieldInUse(kc)
-
-	}
-
-	return nil, nil
-}
-
-func (k *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	if kc, ok := newObj.(*vshnv1.VSHNKeycloak); ok {
-		return isDeprecatedFieldInUse(kc)
-	}
-
-	return nil, nil
 }
 
 func isDeprecatedFieldInUse(comp *vshnv1.VSHNKeycloak) (admission.Warnings, error) {

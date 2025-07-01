@@ -754,17 +754,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
-	var hashedCustomConfig string
-	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
-		cmObj := &corev1.ConfigMap{}
-		instObj, err := svc.CopyKubeResource(ctx, cmObj, comp.GetName()+"-config-map", *comp.Spec.Parameters.Service.CustomConfigurationRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-		if err != nil {
-			return nil, fmt.Errorf("cannot copy keycloak config ConfigMap to instance namespace: %w", err)
-		}
-		copiedCM := instObj.(*corev1.ConfigMap)
-		hashedCustomConfig = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v", copiedCM.Data))))
-	}
-
 	if comp.Spec.Parameters.Service.EnvFrom != nil {
 		for _, r := range *comp.Spec.Parameters.Service.EnvFrom {
 			if r.SecretRef != nil {
@@ -816,7 +805,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	values, err := newValues(ctx, svc, comp, adminSecret, hashedCustomConfig, pgSecret)
+	values, err := newValues(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return nil, err
 	}

@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"context"
-	"fmt"
-
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

@@ -701,15 +701,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"podSecurityContext": nil,
 	}
 
-	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		envFrom, err := toYAML(comp.Spec.Parameters.Service.CustomEnvVariablesRef)
-		if err != nil {
-			return nil, err
-		}
-
-		values["extraEnvFrom"] = envFrom
-	}
-
 	var envFromMap []v1.EnvFromSource
 	if comp.Spec.Parameters.Service.EnvFrom != nil {
 		envFromMap = *comp.Spec.Parameters.Service.EnvFrom

@@ -10,6 +10,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
@@ -104,7 +105,104 @@ func Test_addHARelease(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
+}
 
+func Test_addCustomFiles(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+	comp := &vshnv1.VSHNKeycloak{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycloak",
+			Namespace: "default",
+		},
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					Version: "23",
+					CustomizationImage: vshnv1.VSHNKeycloakCustomizationImage{
+						Image: "dummy-image:latest",
+					},
+					CustomFiles: []vshnv1.VSHNKeycloakCustomFile{},
+				},
+			},
+		},
+	}
+
+	// Valid path
+	t.Log("Testing valid path")
+	comp.Spec.Parameters.Service.CustomFiles = []vshnv1.VSHNKeycloakCustomFile{
+		{
+			Source:      "folder1",
+			Destination: "folder1",
+		},
+		{
+			Source:      "blacklist.txt",
+			Destination: "data/password-blacklists/list.txt",
+		},
+	}
+
+	_, err := addCustomFileCopyInitContainer(comp, []map[string]any{})
+	assert.NoError(t, err)
+
+	// Are values good?
+	t.Log("Checking values")
+	values, err := newValues(context.TODO(), svc, comp, "a", "b")
+	assert.NoError(t, err)
+
+	volumeMounts := []map[string]any{}
+	err = yaml.Unmarshal([]byte(values["extraVolumeMounts"].(string)), &volumeMounts)
+	assert.NoError(t, err)
+
+	foundCustomFileMount := false
+	for _, volumeMount := range volumeMounts {
+		if volumeMount["name"] == "customization-image-files" {
+			foundCustomFileMount = true
+
+			p := volumeMount["mountPath"]
+			s := volumeMount["subPath"]
+			assert.True(t, p == "/opt/keycloak/folder1" || p == "/opt/keycloak/data/password-blacklists/list.txt")
+			assert.True(t, s == "folder1" || s == "data/password-blacklists/list.txt")
+		}
+	}
+
+	assert.True(t, foundCustomFileMount)
+
+	// Invalid paths
+	for _, folder := range []string{
+		"providers",
+		"themes",
+		"lib",
+		"conf",
+		"bin",
+	} {
+		t.Log("Testing invalid destination: ", folder)
+		comp.Spec.Parameters.Service.CustomFiles = []vshnv1.VSHNKeycloakCustomFile{
+			{
+				Source:      folder,
+				Destination: folder,
+			},
+		}
+
+		_, err := addCustomFileCopyInitContainer(comp, []map[string]any{})
+		assert.Error(t, err)
+	}
+
+	for _, destination := range []string{
+		"../../etc/passwd",
+		"./../../etc/passwd",
+		"data/../../../etc/passwd",
+		"./data/../../../etc/passwd",
+		"/data/../../../etc/passwd",
+	} {
+		t.Log("Testing path traversal: ", destination)
+		comp.Spec.Parameters.Service.CustomFiles = []vshnv1.VSHNKeycloakCustomFile{
+			{
+				Source:      "file.txt",
+				Destination: destination,
+			},
+		}
+		_, err = addCustomFileCopyInitContainer(comp, []map[string]any{})
+		assert.Error(t, err)
+	}
 }
 
 func Test_configOrEnvChanged(t *testing.T) {

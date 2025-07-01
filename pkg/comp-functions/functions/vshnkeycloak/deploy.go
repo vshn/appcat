@@ -930,7 +930,7 @@ exit 0`,
 
 func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContainersMap []map[string]any) ([]map[string]any, error) {
 	if len(comp.Spec.Parameters.Service.CustomFiles) < 1 {
-		return nil, nil
+		return extraInitContainersMap, nil
 	}
 
 	files := []map[string]string{}

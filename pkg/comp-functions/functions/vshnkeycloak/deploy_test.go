@@ -203,6 +203,20 @@ func Test_addCustomFiles(t *testing.T) {
 		_, err = addCustomFileCopyInitContainer(comp, []map[string]any{})
 		assert.Error(t, err)
 	}
+
+	// No custom files added
+	t.Log("Testing no custom files")
+	comp.Spec.Parameters.Service.CustomFiles = []vshnv1.VSHNKeycloakCustomFile{}
+	comp.Spec.Parameters.Service.CustomizationImage = vshnv1.VSHNKeycloakCustomizationImage{}
+	assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret", "mysecret"))
+	release := &xhelmv1.Release{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release"))
+	values = map[string]any{}
+	assert.NoError(t, json.Unmarshal(release.Spec.ForProvider.Values.Raw, &values))
+
+	v, exists := values["extraInitContainers"].(string)
+	assert.True(t, exists, "extraInitContainers should exist in values")
+	assert.NotEqual(t, "null\n", v, "extraInitContainers should not be 'null\\n' when no custom files are added")
 }
 
 func Test_configOrEnvChanged(t *testing.T) {

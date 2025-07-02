@@ -14,10 +14,8 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
-	err := svc.GetObservedComposite(comp)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+	if err := svc.GetDesiredComposite(comp); err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("can't get desired composite: %w", err))
 	}
 
 	common.SetRandomSchedules(comp, comp)
@@ -28,8 +26,7 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runt
 	username := svc.Config.Data["registry_username"]
 	password := svc.Config.Data["registry_password"]
 
-	err = svc.SetDesiredCompositeStatus(comp)
-	if err != nil {
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 		svc.Log.Error(err, "cannot set schedules in the composite status")
 	}
 

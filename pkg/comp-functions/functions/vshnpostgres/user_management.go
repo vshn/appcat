@@ -128,9 +128,15 @@ func addConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntim
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot get userpassword from secret: %s", err)))
 	}
 
+	// Userpass is not yet ready, so we'll check again in 30 seconds
+	if len(userpassCD) == 0 {
+		svc.SetDesiredResourceReadiness(secretName, runtime.ResourceUnReady)
+		return nil
+	}
+
 	compositeCD := svc.GetConnectionDetails()
 
-	url := getPostgresURLCustomUser(compositeCD, string(compositeCD["POSTGRESQL_HOST"]), username, string(userpassCD["userpass"]))
+	url := getPostgresURLCustomUser(string(compositeCD["POSTGRESQL_HOST"]), username, string(userpassCD["userpass"]), dbname)
 
 	om := metav1.ObjectMeta{
 		Name:      comp.GetLabels()["crossplane.io/claim-name"] + "-" + username,
@@ -265,7 +271,9 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 			},
 		},
 		Spec: pgv1alpha1.DatabaseSpec{
-			ForProvider: pgv1alpha1.DatabaseParameters{},
+			ForProvider: pgv1alpha1.DatabaseParameters{
+				Owner: &name,
+			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
@@ -305,6 +313,7 @@ func addGrants(comp common.Composite, svc *runtime.ServiceRuntime, username, dbn
 				Privileges: privs,
 				Role:       &username,
 				Database:   &dbname,
+				Schema:     ptr.To("public"),
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{

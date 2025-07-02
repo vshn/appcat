@@ -67,52 +67,9 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 		return runtime.NewWarningResult(fmt.Sprintf("cannot bootstrap instance namespace: %s", err))
 	}
 
-	var pgTime vshnv1.TimeOfDay
-	pgTime.SetTime(comp.GetMaintenanceTimeOfDay().GetTime().Add(20 * time.Minute))
-
-	pgBouncerConfig, pgSettings, pgDiskSize, err := getObservedPostgresSettings(svc, comp)
+	pgSecret, err := configureDatabase(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get observed postgres settings: %s", err))
-	}
-
-	pgSecret := ""
-	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
-		svc.Log.Info("Adding postgresql instance")
-
-		pgBuilder := common.NewPostgreSQLDependencyBuilder(svc, comp).
-			AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
-			AddPGBouncerConfig(pgBouncerConfig).
-			AddPGSettings(pgSettings).
-			SetCustomMaintenanceSchedule(pgTime)
-
-		if pgDiskSize != "" {
-			pgBuilder.SetDiskSize(pgDiskSize)
-		}
-
-		pgSecret, err = pgBuilder.CreateDependency()
-		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
-		}
-
-		svc.Log.Info("Checking readiness of cluster")
-
-		resourceCDMap := map[string][]string{
-			comp.GetName() + pgInstanceNameSuffix: {
-				vshnpostgres.PostgresqlHost,
-				vshnpostgres.PostgresqlPort,
-				vshnpostgres.PostgresqlDb,
-				vshnpostgres.PostgresqlUser,
-				vshnpostgres.PostgresqlPassword,
-			},
-		}
-
-		ready, err := svc.WaitForObservedDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
-		if err != nil {
-			// We're returning a fatal here, so in case something is wrong we won't delete anything by mistake.
-			return runtime.NewFatalResult(err)
-		} else if !ready {
-			return runtime.NewWarningResult("postgresql instance not yet ready")
-		}
+		runtime.NewWarningResult(fmt.Sprintf("cannot configure database: %s", err))
 	}
 
 	svc.Log.Info("Adding release")
@@ -161,6 +118,100 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	}
 
 	return nil
+}
+
+func configureDatabase(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) (pgSecret string, err error) {
+	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
+		if comp.Spec.Parameters.Service.ExistingPGConnectionSecret != "" {
+			return establishConnectionToExistingPG(ctx, comp, svc)
+		} else {
+			return createNewPGService(comp, svc)
+		}
+	}
+	return "", nil
+}
+
+func createNewPGService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) (pgSecret string, err error) {
+	var pgTime vshnv1.TimeOfDay
+	pgTime.SetTime(comp.GetMaintenanceTimeOfDay().GetTime().Add(20 * time.Minute))
+
+	pgBouncerConfig, pgSettings, pgDiskSize, err := getObservedPostgresSettings(svc, comp)
+	if err != nil {
+		return "", fmt.Errorf("cannot get observed postgres settings: %s", err)
+	}
+
+	svc.Log.Info("Adding postgresql instance")
+
+	pgBuilder := common.NewPostgreSQLDependencyBuilder(svc, comp).
+		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
+		AddPGBouncerConfig(pgBouncerConfig).
+		AddPGSettings(pgSettings).
+		SetCustomMaintenanceSchedule(pgTime)
+
+	if pgDiskSize != "" {
+		pgBuilder.SetDiskSize(pgDiskSize)
+	}
+
+	pgSecret, err = pgBuilder.CreateDependency()
+	if err != nil {
+		return "", fmt.Errorf("cannot create postgresql instance: %s", err)
+	}
+
+	svc.Log.Info("Checking readiness of cluster")
+
+	resourceCDMap := map[string][]string{
+		comp.GetName() + pgInstanceNameSuffix: {
+			vshnpostgres.PostgresqlHost,
+			vshnpostgres.PostgresqlPort,
+			vshnpostgres.PostgresqlDb,
+			vshnpostgres.PostgresqlUser,
+			vshnpostgres.PostgresqlPassword,
+		},
+	}
+
+	ready, err := svc.WaitForObservedDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
+	if err != nil {
+		return "", fmt.Errorf("cannot wait for observed dependendies: %s", err)
+	} else if !ready {
+		return "", fmt.Errorf("postgresql instance not yet ready")
+	}
+	return pgSecret, nil
+}
+
+func establishConnectionToExistingPG(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) (pgSecret string, err error) {
+	svc.Log.Info("Connecting to existing postgresql instance")
+
+	existingCD := comp.Spec.Parameters.Service.ExistingPGConnectionSecret
+	cNamespace := comp.GetClaimNamespace()
+	iNamespace := comp.GetInstanceNamespace()
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      existingCD,
+			Namespace: cNamespace,
+		},
+	}
+	s, err := svc.CopyKubeResource(ctx, existingSecret, comp.GetName()+"-postgresql-connection-secret", existingCD, cNamespace, iNamespace)
+	if err != nil || len(s.(*corev1.Secret).Data) == 0 {
+		return "", fmt.Errorf("existing postgres connection secret not ready: %s", err)
+	}
+	pgInstanceNamespace, err := getPgInstanceNamespace(string(s.(*corev1.Secret).Data[vshnpostgres.PostgresqlHost]))
+	if err != nil {
+		return "", fmt.Errorf("cannot get pgInstanceNamespace: %s", err)
+	}
+	err = common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pgInstanceNamespace, "allow-from-"+comp.GetInstanceNamespace(), comp.GetName()+"-netpol-allow-to-pg", false, svc)
+	if err != nil {
+		return "", fmt.Errorf("cannot configure network policy resource in Postgres service: %s", err)
+	}
+	pgSecret = s.GetName()
+	return pgSecret, nil
+}
+
+func getPgInstanceNamespace(host string) (string, error) {
+	parts := strings.Split(host, ".")
+	if len(parts) < 2 {
+		return "", fmt.Errorf("invalid host format: %s", host)
+	}
+	return parts[1], nil
 }
 
 func getObservedPostgresSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) (map[string]string, map[string]string, string, error) {
@@ -338,9 +389,19 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	extraInitContainers := []map[string]any{}
 
 	if comp.Spec.Parameters.Service.UseExternalPostgreSQL {
-		cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + pgInstanceNameSuffix)
-		if err != nil {
-			return nil, err
+		var cd map[string][]byte
+		if comp.Spec.Parameters.Service.ExistingPGConnectionSecret != "" {
+			secret := &corev1.Secret{}
+			err := svc.GetObservedKubeObject(secret, comp.GetName()+"-postgresql-connection-secret-claim-observer")
+			if err != nil {
+				return nil, err
+			}
+			cd = secret.Data
+		} else {
+			cd, err = svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + pgInstanceNameSuffix)
+			if err != nil {
+				return nil, err
+			}
 		}
 		externalDb = map[string]any{
 			"enabled": true,
@@ -420,6 +481,22 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":  "SKIP_MAINTENANCE",
 					"value": strconv.FormatBool(comp.Spec.Parameters.Backup.SkipMaintenance),
 				},
+				{
+					"name":  "PGSSLROOTCERT",
+					"value": "/opt/pg-certs/ca.crt",
+				},
+				{
+					"name":  "PGSSLCERT",
+					"value": "/opt/pg-certs/tls.crt",
+				},
+				{
+					"name":  "PGSSLKEY",
+					"value": "/opt/pg-certs/tls.key",
+				},
+				{
+					"name":  "PGSSLMODE",
+					"value": "require",
+				},
 			},
 			"extraInitContainers": extraInitContainers,
 			"containerPort":       8080,
@@ -443,6 +520,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"configMap": map[string]any{
 						"name":        "collabora-install-script",
 						"defaultMode": 0755,
+					},
+				},
+				{
+					"name": "pg-cert",
+					"secret": map[string]any{
+						"secretName":  pgSecret,
+						"defaultMode": 0600,
 					},
 				},
 			},
@@ -471,6 +555,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name":      "collabora-install-script",
 					"mountPath": "/install-collabora.sh",
 					"subPath":   "install-collabora.sh",
+				},
+				{
+					"name":      "pg-cert",
+					"mountPath": "/opt/pg-certs",
+					"readOnly":  true,
 				},
 			},
 		},

@@ -117,10 +117,10 @@ type VSHNNextcloudServiceSpec struct {
 	// +kubebuilder:default="/"
 	RelativePath string `json:"relativePath,omitempty"`
 
-	// +kubebuilder:default="29"
+	// +kubebuilder:default="30"
 
 	// Version contains supported version of nextcloud.
-	// Multiple versions are supported. The latest version 29 is the default version.
+	// Multiple versions are supported. The latest version 30 is the default version.
 	Version string `json:"version,omitempty"`
 
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
@@ -134,6 +134,12 @@ type VSHNNextcloudServiceSpec struct {
 	// UseExternalPostgreSQL defines if the VSHNPostgreSQL database backend should be used. Defaults to true. If set to false,
 	// the build-in SQLite database is being used.
 	UseExternalPostgreSQL bool `json:"useExternalPostgreSQL,omitempty"`
+
+	// ExistingPGConnectionSecret uses a connection secret from an existing VSHNPostgreSQL instance.
+	// It is recommended to use a custom user with a separate database from vshnpostgresql.spec.service.access.
+	// This parameter will take precedence over PostgreSQLParameters
+	// Changing databases for an existing Nextcloud instance can corrupt the service.
+	ExistingPGConnectionSecret string `json:"existingPGConnectionSecret,omitempty"`
 
 	// PostgreSQLParameters can be used to set any supported setting in the
 	// underlying PostgreSQL instance.

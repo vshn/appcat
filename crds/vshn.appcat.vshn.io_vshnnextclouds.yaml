@@ -4627,6 +4627,13 @@ spec:
                             - enabled
                             - fqdn
                           type: object
+                        existingPGConnectionSecret:
+                          description: |-
+                            ExistingPGConnectionSecret uses a connection secret from an existing VSHNPostgreSQL instance.
+                            It is recommended to use a custom user with a separate database from vshnpostgresql.spec.service.access.
+                            This parameter will take precedence over PostgreSQLParameters
+                            Changing databases for an existing Nextcloud instance can corrupt the service.
+                          type: string
                         fqdn:
                           description: |-
                             FQDN contains the FQDNs array, which will be used for the ingress.
@@ -9220,6 +9227,9 @@ spec:
                                     ClaimName specifies the name of the instance you want to restore from.
                                     The claim has to be in the same namespace as this new instance.
                                   type: string
+                                claimType:
+                                  description: ClaimType specifies the type of the instance you want to restore from.
+                                  type: string
                                 recoveryTimeStamp:
                                   description: |-
                                     RecoveryTimeStamp an ISO 8601 date, that holds UTC date indicating at which point-in-time the database has to be restored.
@@ -9454,10 +9464,10 @@ spec:
                             the build-in SQLite database is being used.
                           type: boolean
                         version:
-                          default: "29"
+                          default: "30"
                           description: |-
                             Version contains supported version of nextcloud.
-                            Multiple versions are supported. The latest version 29 is the default version.
+                            Multiple versions are supported. The latest version 30 is the default version.
                           type: string
                       required:
                         - fqdn

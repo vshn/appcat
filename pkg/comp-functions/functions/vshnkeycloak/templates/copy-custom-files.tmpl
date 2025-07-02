@@ -1,0 +1,10 @@
+echo "Copying custom files..."
+{{- range $file := . }}
+mkdir -p "/custom/$(dirname '{{ $file.destination }}')"
+if [ -d "/{{ $file.source }}" ]; then
+  cp -TRv "/{{ $file.source }}" "/custom/{{ $file.destination }}"
+else
+  cp -Rv "/{{ $file.source }}" "/custom/{{ $file.destination }}"
+fi
+{{ end }}
+exit 0

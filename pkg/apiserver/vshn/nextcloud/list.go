@@ -21,48 +21,48 @@ import (
 var _ rest.Lister = &vshnNextcloudBackupStorage{}
 
 func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
-
 	namespace, ok := request.NamespaceFrom(ctx)
 	if !ok {
-		return nil, fmt.Errorf("cannot get namespace from resource")
+		return nil, fmt.Errorf("cannot get namespace from context")
 	}
 
 	instances, err := v.vshnNextcloud.ListVSHNnextcloud(ctx, namespace)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot list VSHNNextcloud instances: %w", err)
 	}
 
-	nextcloudSnapshots := &appcatv1.VSHNNextcloudBackupList{
-		Items: []appcatv1.VSHNNextcloudBackup{},
-	}
+	nextcloudSnapshots := &appcatv1.VSHNNextcloudBackupList{}
 
 	for _, instance := range instances.Items {
 		client, err := v.vshnNextcloud.GetKubeClient(ctx, &instance)
 		if err != nil {
-			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig: %w", err)
+			return nil, fmt.Errorf("cannot get kube client from ProviderConfig: %w", err)
 		}
+
 		snapshots, err := v.snapshothandler.List(ctx, instance.Status.InstanceNamespace, client)
 		if err != nil && !apierrors.IsNotFound(err) {
-			return nil, err
+			return nil, fmt.Errorf("error listing file backups: %w", err)
 		}
 
 		pgNamespace, pgCompName := v.getPostgreSQLNamespaceAndName(ctx, &instance)
 
-		sgBackups := []appcatv1.SGBackupInfo{}
+		var sgBackups []appcatv1.SGBackupInfo
 		if pgNamespace != "" {
 			dynClient, err := v.vshnNextcloud.GetDynKubeClient(ctx, &instance)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("cannot get dynamic kube client: %w", err)
 			}
-			sg, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, dynClient, options)
+			sgBackupsList, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, dynClient, options)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("error listing SGBackups: %w", err)
 			}
-			sgBackups = *sg
+			sgBackups = *sgBackupsList
 		}
 
-		for _, snap := range snapshots.Items {
+		isSharedDB := instance.Spec.Parameters.Service.UseExternalPostgreSQL &&
+			instance.Spec.Parameters.Service.ExistingPGConnectionSecret != ""
 
+		for _, snap := range snapshots.Items {
 			backupMeta := snap.ObjectMeta
 			backupMeta.Namespace = instance.GetNamespace()
 
@@ -75,14 +75,20 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 				},
 			}
 
-			sgBackup, remaining := v.getClosestPGBackup(sgBackups, *snap.Spec.Date)
-			sgBackups = remaining
-
-			if sgBackup != nil {
-				status.DatabaseBackupStatus.BackupInformation = &sgBackup.BackupInformation
-				status.DatabaseBackupStatus.Process = &sgBackup.Process
-				status.DatabaseBackupStatus.DatabaseInstance = pgCompName
-				status.DatabaseBackupAvailable = true
+			if isSharedDB {
+				status.DBType = appcatv1.Shared
+				status.DatabaseBackupAvailable = false
+			} else {
+				status.DBType = appcatv1.Dedicated
+				if sgBackup, remaining := v.getClosestPGBackup(sgBackups, *snap.Spec.Date); sgBackup != nil {
+					status.DatabaseBackupAvailable = true
+					status.DatabaseBackupStatus = appcatv1.VSHNPostgresBackupStatus{
+						BackupInformation: &sgBackup.BackupInformation,
+						Process:           &sgBackup.Process,
+						DatabaseInstance:  pgCompName,
+					}
+					sgBackups = remaining
+				}
 			}
 
 			nextcloudSnapshots.Items = append(nextcloudSnapshots.Items, appcatv1.VSHNNextcloudBackup{
@@ -91,7 +97,12 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 			})
 		}
 
-		// Let's also list all sgdbbackups without filebackups
+		// For external PostgreSQL we skip listing remaining SG backups
+		if isSharedDB {
+			continue
+		}
+
+		// Include remaining SGBackups that had no matching file backup
 		for _, sgBackup := range sgBackups {
 			backupMeta := sgBackup.ObjectMeta
 
@@ -112,7 +123,6 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 				},
 			})
 		}
-
 	}
 
 	return nextcloudSnapshots, nil

@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -25,6 +26,7 @@ type PostgreSQLDependencyBuilder struct {
 	pgBouncerConfig      map[string]string
 	pgSettings           map[string]string
 	timeOfDayMaintenance vshnv1.TimeOfDay
+	restore              *vshnv1.VSHNPostgreSQLRestore
 }
 
 func NewPostgreSQLDependencyBuilder(svc *runtime.ServiceRuntime, comp InfoGetter) *PostgreSQLDependencyBuilder {
@@ -59,6 +61,14 @@ func (a *PostgreSQLDependencyBuilder) AddPGSettings(pgSettings map[string]string
 
 func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(timeOfDayMaintenance vshnv1.TimeOfDay) *PostgreSQLDependencyBuilder {
 	a.timeOfDayMaintenance = timeOfDayMaintenance
+	return a
+}
+
+func (a *PostgreSQLDependencyBuilder) AddRestore(restore *vshnv1.VSHNPostgreSQLRestore, kind string) *PostgreSQLDependencyBuilder {
+	if restore != nil {
+		a.restore = restore
+		a.restore.ClaimType = kind
+	}
 	return a
 }
 
@@ -105,6 +115,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 			DeletionRetention:  7,
 			Schedule:           a.comp.GetBackupSchedule(),
 		},
+		Restore: a.restore,
 		Service: vshnv1.VSHNPostgreSQLServiceSpec{
 			PgBouncerSettings: &sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni{
 				Pgbouncer: pgBouncerRaw,
@@ -137,7 +148,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 	// and would therefore override any value we set before the merge.
 	params.Instances = a.comp.GetInstances()
 
-	// We have to ignore the provideconfig on the composite itself.
+	// We have to ignore the providerconfig on the composite itself.
 	pg := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: a.comp.GetName() + PgInstanceNameSuffix,
@@ -149,7 +160,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 			Parameters: *params,
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      PgSecretName,
+					Name:      a.getPGSecretName(),
 					Namespace: a.comp.GetInstanceNamespace(),
 				},
 			},
@@ -161,7 +172,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		pg.Labels[runtime.ProviderConfigLabel] = v
 	}
 
-	err := CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), false, a.svc)
+	err := CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), "", false, a.svc)
 	if err != nil {
 		return "", err
 	}
@@ -171,5 +182,9 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		return "", err
 	}
 
-	return PgSecretName, a.svc.SetDesiredComposedResource(pg)
+	return a.getPGSecretName(), a.svc.SetDesiredComposedResource(pg)
+}
+
+func (a *PostgreSQLDependencyBuilder) getPGSecretName() string {
+	return fmt.Sprintf("%s-%s", PgSecretName, a.comp.GetName())
 }

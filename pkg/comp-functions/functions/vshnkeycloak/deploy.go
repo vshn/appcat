@@ -625,6 +625,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	if err != nil {
 		return nil, err
 	}
+
 	values = map[string]any{
 		"replicas":          comp.Spec.Parameters.Instances,
 		"extraEnv":          extraEnv,
@@ -693,6 +694,31 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"podSecurityContext": nil,
 	}
 
+	var envFromMap []v1.EnvFromSource
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		envFromMap = *comp.Spec.Parameters.Service.EnvFrom
+	}
+
+	// Deprecated field, the logic below is kept for backwards compatibility
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		envFromMap = append(envFromMap, v1.EnvFromSource{
+			SecretRef: &v1.SecretEnvSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+				},
+			},
+		})
+	}
+
+	if envFromMap != nil {
+		envFrom, err := toYAML(envFromMap)
+		if err != nil {
+			return nil, err
+		}
+
+		values["extraEnvFrom"] = envFrom
+	}
+
 	if svc.Config.Data["imageRegistry"] != "" {
 		values["image"] = map[string]interface{}{
 			"repository": svc.Config.Data["imageRegistry"],
@@ -712,6 +738,57 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		for _, r := range *comp.Spec.Parameters.Service.EnvFrom {
+			if r.SecretRef != nil {
+				obj := &corev1.Secret{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+r.SecretRef.Name, r.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
+				}
+			}
+			if r.ConfigMapRef != nil {
+				obj := &corev1.ConfigMap{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-cm-"+r.ConfigMapRef.Name, r.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
+				}
+			}
+		}
+	}
+	// Deprecated field, the logic below is kept for backwards compatibility
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		svc.Log.Info("customEnvVariablesRef is deprecated but still in use")
+
+		thisSecret := comp.Spec.Parameters.Service.CustomEnvVariablesRef
+		obj := &corev1.Secret{}
+		_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+*thisSecret, *thisSecret, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		if err != nil {
+			return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
+		}
+	}
+
+	if len(comp.Spec.Parameters.Service.CustomMounts) > 0 {
+		for _, m := range comp.Spec.Parameters.Service.CustomMounts {
+			switch m.Type {
+			case customMountTypeSecret:
+				obj := &corev1.Secret{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy secret %q: %s", m.Name, err)
+				}
+			case customMountTypeConfigMap:
+				obj := &corev1.ConfigMap{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy configMap %q: %s", m.Name, err)
+				}
+			default:
+				return nil, fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
+			}
+		}
+	}
+
 	values, err := newValues(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return nil, err

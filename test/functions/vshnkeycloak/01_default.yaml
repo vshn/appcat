@@ -20,3 +20,43 @@ observed:
     mycloak-pg:
       connection_details:
         foo: YmFyCg==
+    # necessary for keycloak custom env variables
+    mycloak-env-cm-my-configmap-claim-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: unit-test
+    mycloak-env-secret-my-secret-1-claim-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: unit-test
+    mycloak-env-secret-my-secret-2-claim-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: unit-test

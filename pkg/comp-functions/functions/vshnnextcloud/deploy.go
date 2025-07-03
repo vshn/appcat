@@ -526,7 +526,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"name": "pg-cert",
 					"secret": map[string]any{
 						"secretName":  pgSecret,
-						"defaultMode": 0644,
+						"defaultMode": 0640,
 					},
 				},
 			},

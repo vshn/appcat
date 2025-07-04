@@ -232,7 +232,7 @@ func AddBackupCMToValues(values map[string]any, volumePath []string, mountPath [
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: backupScriptCMName,
 					},
-					DefaultMode: ptr.To(int32(0774)),
+					DefaultMode: ptr.To(int32(4774)),
 				},
 			},
 		},

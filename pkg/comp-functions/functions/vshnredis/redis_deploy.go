@@ -2,7 +2,9 @@ package vshnredis
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
+	"strconv"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
@@ -11,7 +13,10 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -27,6 +32,12 @@ const (
 
 	redisRelease = "release"
 )
+
+//go:embed script/scaling.sh
+var redisScalingScript string
+
+//go:embed script/migration.sh
+var redisMigrationScript string
 
 // DeployRedis will deploy the objects to provision redis instance
 func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
@@ -87,6 +98,12 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *r
 		return err
 	}
 
+	err = migrateRedis(ctx, svc, comp, observedValues["architecture"])
+
+	if err != nil {
+		return fmt.Errorf("cannot migrate redis instance to new replication architecture")
+	}
+
 	if err := svc.SetDesiredComposedResourceWithName(rel, redisRelease); err != nil {
 		return err
 	}
@@ -125,8 +142,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	values := map[string]any{
 		"fullnameOverride": "redis",
-		"architecture":     "standalone",
-
+		"architecture":     "replication",
+		"sentinel": map[string]any{
+			"enabled": true,
+		},
+		"replica": map[string]any{
+			"replicaCount": comp.GetInstances(),
+		},
 		"global": map[string]any{
 			"security": map[string]any{
 				"allowInsecureImages": true,
@@ -201,7 +223,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 			"nodeSelector": nodeSelector,
 		},
-
 		"commonConfiguration": commonConfig,
 
 		"networkPolicy": map[string]any{
@@ -298,4 +319,169 @@ func getRedisRootPassword(secretName string, svc *runtime.ServiceRuntime) ([]byt
 		return nil, err
 	}
 	return secret.Data[passwordKey], nil
+}
+
+func migrateRedis(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis, redisMode interface{}) error {
+
+	rules := []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"apps"},
+			Resources: []string{"statefulsets"},
+			Verbs:     []string{"get"},
+		},
+		{
+			APIGroups: []string{"apps"},
+			Resources: []string{"statefulsets/scale"},
+			Verbs:     []string{"patch"},
+		},
+		{
+			APIGroups: []string{"batch"},
+			Resources: []string{"jobs"},
+			Verbs:     []string{"get"},
+		},
+	}
+
+	err := common.AddSaWithRole(ctx, svc, rules, comp.GetName(), comp.GetInstanceNamespace(), "pvc-migration", true)
+	if err != nil {
+		return fmt.Errorf("Failed to add PVC-Migration SA with Role: " + err.Error())
+	}
+
+	scalingJob := &batchv1.Job{}
+	err = svc.GetObservedKubeObject(scalingJob, comp.GetName()+"-scalingjob")
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			if redisMode == "standalone" {
+				scalingJob = &batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      comp.GetName() + "-scalingjob",
+						Namespace: comp.GetInstanceNamespace(),
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								RestartPolicy: "OnFailure",
+								Containers: []corev1.Container{
+									{
+										Name:    "scalingjob",
+										Image:   "bitnami/kubectl:latest",
+										Command: []string{"sh", "-c"},
+										Args:    []string{redisScalingScript},
+										Env: []corev1.EnvVar{
+											{
+												Name:  "INSTANCE_NAMESPACE",
+												Value: comp.GetInstanceNamespace(),
+											},
+											{
+												Name:  "MIGRATION_JOB",
+												Value: comp.GetName() + "-migrationjob",
+											},
+										},
+									},
+								},
+								ServiceAccountName: "sa-pvc-migration",
+							},
+						},
+					},
+				}
+
+				err = svc.SetDesiredKubeObject(scalingJob, comp.GetName()+"-scalingjob")
+				if err != nil {
+					err = fmt.Errorf("cannot create scalingJob: %w", err)
+					return err
+				}
+			}
+		} else {
+			return fmt.Errorf("can't get scaling job: %w", err)
+		}
+	} else {
+		err = svc.SetDesiredKubeObject(scalingJob, comp.GetName()+"-scalingjob")
+		if err != nil {
+			err = fmt.Errorf("cannot create scalingJob: %w", err)
+			return err
+		}
+	}
+
+	if scalingJob.Status.Active == 1 {
+		migrationJob := &batchv1.Job{}
+		err = svc.GetObservedKubeObject(migrationJob, comp.GetName()+"-migrationjob")
+		if err != nil {
+			if err == runtime.ErrNotFound {
+				migrationJob = &batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      comp.GetName() + "-migrationjob",
+						Namespace: comp.GetInstanceNamespace(),
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								RestartPolicy: "OnFailure",
+								Containers: []corev1.Container{
+									{
+										Name:    "migrationjob",
+										Image:   "instrumentisto/rsync-ssh:latest",
+										Command: []string{"sh", "-c"},
+										Args:    []string{redisMigrationScript},
+										Env: []corev1.EnvVar{
+											{
+												Name:  "INSTANCE_NAMESPACE",
+												Value: comp.GetInstanceNamespace(),
+											},
+											{
+												Name:  "REPLICAS",
+												Value: strconv.Itoa(comp.GetInstances()),
+											},
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "redis-master",
+												MountPath: "/src",
+											},
+											{
+												Name:      "redis-node",
+												MountPath: "/dst",
+											},
+										},
+									},
+								},
+								ServiceAccountName: "sa-pvc-migration",
+								Volumes: []corev1.Volume{
+									{
+										Name: "redis-master",
+										VolumeSource: corev1.VolumeSource{
+											PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+												ClaimName: "redis-data-redis-master-0",
+												ReadOnly:  true,
+											},
+										},
+									},
+									{
+										Name: "redis-node",
+										VolumeSource: corev1.VolumeSource{
+											PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+												ClaimName: "redis-data-redis-node-0",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err = svc.SetDesiredKubeObject(migrationJob, comp.GetName()+"-migrationjob")
+				if err != nil {
+					err = fmt.Errorf("cannot create migrationJob: %w", err)
+					return err
+				}
+			} else {
+				return fmt.Errorf("can't get migration job: %w", err)
+			}
+		} else {
+			err = svc.SetDesiredKubeObject(migrationJob, comp.GetName()+"-migrationjob")
+			if err != nil {
+				err = fmt.Errorf("cannot create migrationJob: %w", err)
+				return err
+			}
+		}
+	}
+	return nil
 }

@@ -55,6 +55,9 @@ const (
 //go:embed scripts/copy-kc-creds.sh
 var keycloakCredentialsCopyJobScript string
 
+//go:embed scripts/wait-kc-ready.sh
+var keycloakWaitReadyScript string
+
 //go:embed templates/copy-custom-files.tmpl
 var keycloakCustomFilesCopyCommandTemplate string
 
@@ -271,6 +274,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		l.Info("Job has succeeded, updating composite status with new hashes", "jobName", jobName)
 		comp.SetLastConfigHash(currentConfigHash)
 		comp.SetLastEnvHash(currentEnvHash)
+		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceReady)
 
 	} else if observedJob.Status.Failed > 0 {
 		l.Error(fmt.Errorf("job has failed"), "The configuration job failed and requires manual intervention", "jobName", jobName)
@@ -343,6 +347,12 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 		})
 	}
 
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		envFrom = append(envFrom, *comp.Spec.Parameters.Service.EnvFrom...)
+	}
+
+	KeycloakApiUrl := fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -356,6 +366,26 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 					RestartPolicy:    corev1.RestartPolicyOnFailure,
 					ImagePullSecrets: []corev1.LocalObjectReference{{Name: pullsecretName}},
 					Volumes:          volumes,
+					// We need this init container as the apply-config container could otherwise start a parallel keycloak setup
+					// On a fresh instance, this would lead to a race condition where the setup will abort because it found duplicate datayy
+					InitContainers: []corev1.Container{
+						{
+							Name:            "check-keycloak-ready",
+							Image:           "quay.io/curl/curl:latest",
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command:         []string{"sh", "-c", keycloakWaitReadyScript},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "KEYCLOAK_API_URL",
+									Value: strings.Replace(KeycloakApiUrl, "http", "https", 1),
+								},
+								{
+									Name:  "STALL_SECONDS",
+									Value: "30",
+								},
+							},
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "apply-config",
@@ -384,7 +414,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 								},
 								{
 									Name:  "KEYCLOAK_API_URL",
-									Value: fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace()),
+									Value: KeycloakApiUrl,
 								},
 							},
 							Command: []string{"sh", "-c", "/opt/keycloak/bin/keycloak-setup.sh"},
@@ -761,17 +791,6 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
 				}
 			}
-		}
-	}
-	// Deprecated field, the logic below is kept for backwards compatibility
-	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		svc.Log.Info("customEnvVariablesRef is deprecated but still in use")
-
-		thisSecret := comp.Spec.Parameters.Service.CustomEnvVariablesRef
-		obj := &corev1.Secret{}
-		_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+*thisSecret, *thisSecret, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-		if err != nil {
-			return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
 		}
 	}
 

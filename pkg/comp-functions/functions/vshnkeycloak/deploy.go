@@ -270,16 +270,25 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		return fmt.Errorf("cannot set desired kube object for existing job: %w", err)
 	}
 
-	if observedJob.Status.Succeeded > 0 {
-		l.Info("Job has succeeded, updating composite status with new hashes", "jobName", jobName)
-		comp.SetLastConfigHash(currentConfigHash)
-		comp.SetLastEnvHash(currentEnvHash)
-		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceReady)
-
-	} else if observedJob.Status.Failed > 0 {
-		l.Error(fmt.Errorf("job has failed"), "The configuration job failed and requires manual intervention", "jobName", jobName)
-		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
-
+	if observedJob.Status.Conditions != nil {
+		for _, condition := range observedJob.Status.Conditions {
+			isTrue := condition.Status == corev1.ConditionTrue
+			if condition.Type == batchv1.JobComplete && isTrue {
+				l.Info("Job has completed", "jobName", jobName)
+				comp.SetLastConfigHash(currentConfigHash)
+				comp.SetLastEnvHash(currentEnvHash)
+				svc.SetDesiredResourceReadiness(jobName, runtime.ResourceReady)
+				break
+			} else if condition.Type == batchv1.JobFailed && isTrue {
+				l.Error(
+					fmt.Errorf("job has failed"),
+					"The configuration job failed and requires manual intervention",
+					"jobName", jobName, "reason", condition.Message,
+				)
+				svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
+				break
+			}
+		}
 	} else {
 		l.Info("Job is still running, waiting for next reconciliation", "jobName", jobName)
 		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)

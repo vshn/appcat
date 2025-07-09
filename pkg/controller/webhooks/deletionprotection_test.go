@@ -32,10 +32,10 @@ func Test_checkManagedObject(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "leaf",
 			Labels: map[string]string{
-				runtime.OwnerKindAnnotation:    kind,
-				runtime.OwnerGroupAnnotation:   vshnv1.GroupVersion.Group,
-				runtime.OwnerVersionAnnotation: vshnv1.GroupVersion.Version,
-				"crossplane.io/composite":      "redis",
+				runtime.OwnerKindAnnotation:      kind,
+				runtime.OwnerGroupAnnotation:     vshnv1.GroupVersion.Group,
+				runtime.OwnerVersionAnnotation:   vshnv1.GroupVersion.Version,
+				runtime.OwnerCompositeAnnotation: "redis",
 			},
 		},
 	}
@@ -105,10 +105,10 @@ func Test_checkManagedObject(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 			Labels: map[string]string{
-				runtime.OwnerKindAnnotation:    kind,
-				runtime.OwnerGroupAnnotation:   vshnv1.GroupVersion.Group,
-				runtime.OwnerVersionAnnotation: vshnv1.GroupVersion.Version,
-				"crossplane.io/composite":      "redis",
+				runtime.OwnerKindAnnotation:      kind,
+				runtime.OwnerGroupAnnotation:     vshnv1.GroupVersion.Group,
+				runtime.OwnerVersionAnnotation:   vshnv1.GroupVersion.Version,
+				runtime.OwnerCompositeAnnotation: "redis",
 			},
 		},
 	}

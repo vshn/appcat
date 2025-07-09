@@ -31,6 +31,7 @@ var (
 type compositeInfo struct {
 	Exists bool
 	Name   string
+	Reason string
 }
 
 // DeletionProtectionInfo provides information about the composite's deletion
@@ -48,28 +49,31 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 		cpClient = c
 	}
 
+	// Unfortunately we can't rely on Crossplane's own annotation anymore, as they
+	// remove it prior to the deletion call.
+	// Ref https://github.com/crossplane/crossplane/blob/de90305317da944eb88031bd7e615584b5dfe1dd/internal/controller/apiextensions/composite/composition_functions.go#L875
+	ownerName, ok := obj.GetLabels()[runtime.OwnerCompositeAnnotation]
+	if !ok || ownerName == "" {
+		l.Info(runtime.OwnerCompositeAnnotation + " label not found, blocking deletion")
+		return compositeInfo{Exists: isDeletionProtected(obj), Name: "unknown", Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionAnnotation)}, nil
+	}
+
 	ownerKind, ok := obj.GetLabels()[runtime.OwnerKindAnnotation]
 	if !ok || ownerKind == "" {
-		l.Info(runtime.OwnerKindAnnotation + " label not set, skipping evaluation")
-		return compositeInfo{Exists: false}, nil
+		l.Info(runtime.OwnerKindAnnotation + " label not set, blocking deletion")
+		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerKindAnnotation)}, nil
 	}
 
 	ownerVersion, ok := obj.GetLabels()[runtime.OwnerVersionAnnotation]
 	if !ok || ownerVersion == "" {
-		l.Info(runtime.OwnerVersionAnnotation + " label not found, skipping evaluation")
-		return compositeInfo{Exists: false}, nil
+		l.Info(runtime.OwnerVersionAnnotation + " label not found, blocking deletion")
+		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionAnnotation)}, nil
 	}
 
 	onwerGroup, ok := obj.GetLabels()[runtime.OwnerGroupAnnotation]
 	if !ok || onwerGroup == "" {
-		l.Info(runtime.OwnerGroupAnnotation + " label not found, skipping evaluation")
-		return compositeInfo{Exists: false}, nil
-	}
-
-	ownerName, ok := obj.GetLabels()["crossplane.io/composite"]
-	if !ok || ownerName == "" {
-		l.Info("crossplane.io/composite label not found, skipping evaluation")
-		return compositeInfo{Exists: false}, nil
+		l.Info(runtime.OwnerGroupAnnotation + " label not found, blocking deletion")
+		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionAnnotation)}, nil
 	}
 
 	gvk := schema.GroupVersionKind{

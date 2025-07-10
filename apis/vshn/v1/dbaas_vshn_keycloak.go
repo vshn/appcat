@@ -229,6 +229,8 @@ type VSHNKeycloakStatus struct {
 	LastConfigHash string `json:"lastConfigHash,omitempty"`
 	// LastEnvHash is the hash of last applied customEnvVariablesRef.
 	LastEnvHash string `json:"lastEnvHash,omitempty"`
+	// ReconcileTimestamp is the timestamp of the last reconciliation.
+	ReconcileTimestamp string `json:"reconcileTimestamp,omitempty"`
 }
 
 func (v *VSHNKeycloak) GetClaimNamespace() string {

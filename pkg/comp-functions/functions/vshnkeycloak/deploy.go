@@ -239,6 +239,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	lastEnvHash := comp.GetLastEnvHash()
 
 	if !configOrEnvChanged(currentConfigHash, lastConfigHash, currentEnvHash, lastEnvHash) {
+		l.Info("No configuration or environment change detected, skipping job management")
 		return nil
 	}
 
@@ -270,10 +271,28 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		return fmt.Errorf("cannot set desired kube object for existing job: %w", err)
 	}
 
+	l.Info("Job stats",
+		"failed", observedJob.Status.Failed,
+		"succeeded", observedJob.Status.Succeeded,
+		"active", observedJob.Status.Active,
+		"conditions", observedJob.Status.Conditions,
+		"conditionsLen", len(observedJob.Status.Conditions),
+	)
+
+	if observedJob.Status.Conditions == nil {
+		l.Info("DEBUG: No conditions yet, updating reconcile timestamp")
+		err := updateReconcileTimestamp(svc, comp)
+		if err != nil {
+			err := fmt.Errorf("cannot update reconcile timestamp: %w", err)
+			l.Error(err, "Failure")
+			return err
+		}
+	}
+
 	if observedJob.Status.Conditions != nil {
 		for _, condition := range observedJob.Status.Conditions {
 			isTrue := condition.Status == corev1.ConditionTrue
-			if condition.Type == batchv1.JobComplete && isTrue {
+			if (condition.Type == batchv1.JobComplete && isTrue) || observedJob.Status.Succeeded > 0 {
 				l.Info("Job has completed", "jobName", jobName)
 				comp.SetLastConfigHash(currentConfigHash)
 				comp.SetLastEnvHash(currentEnvHash)
@@ -470,6 +489,17 @@ func getResources(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 	}
 
 	return res, nil
+}
+
+// DEBUG
+// updateReconcileTimestamp will update a field in the status called `reconcileTimeStamp`.
+// This will instantly trigger a new reconcile.
+// Making the switch from TLS to non-TLS much faster on SPK. Because SPKS has a
+// default reconcile period of 10 minutes.
+func updateReconcileTimestamp(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) error {
+	comp.Status.ReconcileTimestamp = time.Now().Format(time.RFC3339Nano)
+	time.Sleep(time.Millisecond * 500)
+	return svc.SetDesiredCompositeStatus(comp)
 }
 
 func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (map[string]any, error) {

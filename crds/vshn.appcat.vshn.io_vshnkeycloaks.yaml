@@ -9699,9 +9699,6 @@ spec:
                     it can not recover from without human intervention.
                   format: int64
                   type: integer
-                reconcileTimestamp:
-                  description: ReconcileTimestamp is the timestamp of the last reconciliation.
-                  type: string
                 schedules:
                   description: |-
                     Schedules keeps track of random generated schedules, is overwriten by

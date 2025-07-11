@@ -50,6 +50,7 @@ const (
 	OwnerKindAnnotation               = "appcat.vshn.io/ownerkind"
 	OwnerVersionAnnotation            = "appcat.vshn.io/ownerapiversion"
 	OwnerGroupAnnotation              = "appcat.vshn.io/ownergroup"
+	OwnerCompositeAnnotation          = "appcat.vshn.io/ownercomposite"
 	ProtectedByAnnotation             = "appcat.vshn.io/protectedby"
 	ProtectsAnnotation                = "appcat.vshn.io/protects"
 	EventForwardAnnotation            = "appcat.vshn.io/forward-events-to"
@@ -1151,10 +1152,7 @@ func (s *ServiceRuntime) addOwnerReferenceAnnotation(obj client.Object, composed
 	labels[OwnerKindAnnotation] = s.Config.Data["ownerKind"]
 	labels[OwnerVersionAnnotation] = s.Config.Data["ownerVersion"]
 	labels[OwnerGroupAnnotation] = s.Config.Data["ownerGroup"]
-
-	if !composedResource {
-		labels["crossplane.io/composite"] = s.observedComposite.GetLabels()["crossplane.io/composite"]
-	}
+	labels[OwnerCompositeAnnotation] = s.observedComposite.GetName()
 
 	obj.SetLabels(labels)
 }

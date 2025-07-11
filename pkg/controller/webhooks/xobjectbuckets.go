@@ -76,7 +76,11 @@ func (p *XObjectbucketDeletionProtectionHandler) ValidateDelete(ctx context.Cont
 
 	if compInfo.Exists {
 		l.Info("Blocking deletion of XObjectBucket", "parent", compInfo.Name)
-		return nil, fmt.Errorf(protectedMessage, "XObjectBucket", compInfo.Name)
+		message := protectedMessage
+		if compInfo.Reason != "" {
+			message = compInfo.Reason
+		}
+		return nil, fmt.Errorf(message, "XObjectBucket", compInfo.Name)
 	}
 
 	l.Info("Allowing deletion of XObjectBucket", "parent", compInfo.Name, "age", age.String())

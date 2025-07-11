@@ -8,9 +8,11 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/crossplane/function-sdk-go/resource"
 	"github.com/crossplane/function-sdk-go/resource/composed"
+	"github.com/crossplane/function-sdk-go/resource/composite"
 	"github.com/stretchr/testify/assert"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	"google.golang.org/protobuf/types/known/structpb"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -110,9 +112,21 @@ func TestServiceRuntime_unwrapUsage(t *testing.T) {
 				req.Observed.Resources[obj.GetName()] = &xfnproto.Resource{Resource: protoRes}
 			}
 
+			// We just use something to stand in as a composite...
+			// because the runtime reads the name of the composite at one point
+			fakeComp := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mycomp",
+				},
+			}
+
+			compRes, err := composed.From(fakeComp)
+			assert.NoError(t, err)
+
 			s := &ServiceRuntime{
-				req:              req,
-				desiredResources: map[resource.Name]*resource.DesiredComposed{},
+				req:               req,
+				desiredResources:  map[resource.Name]*resource.DesiredComposed{},
+				observedComposite: &composite.Unstructured{Unstructured: compRes.Unstructured},
 			}
 
 			res, err := s.unwrapUsage(tt.resName)

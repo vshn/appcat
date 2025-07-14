@@ -10,13 +10,14 @@ on:
 
 env:
   APP_NAME: appcat
-  COMPONENT_REPO: vshn/component-appcat
+  COMPONENT_REPO: zugao/component-appcat
   PUSH_UPBOUND: "False"
-  PUSH_PACKAGE: "True"
-  PUSH_IMAGE: "True"
+  PUSH_PACKAGE: "False"
+  PUSH_IMAGE: "False"
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  check-allow-merge:
+  check-allow-merge-labels:
     runs-on: ubuntu-latest
     steps:
       # Labels in the context don't get updated so they are stuck at what's set during creation
@@ -29,6 +30,65 @@ jobs:
           ${{ contains(fromJSON(env.LABELS), 'hotfix') }} && exit 0
           echo "ERROR: You can only merge to master from develop or hotfixes."
           exit 1
+
+  check-allow-merge-component:
+    runs-on: ubuntu-latest
+    needs: open-pr-component
+    if: always()
+    steps:
+      - name: Find PR for branch in Component
+        id: find_pr
+        run: |
+          REQUIRED_BRANCH="${{ env.APP_NAME }}/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.ref }}"
+          echo "🔍 Looking for open PR in $COMPONENT_REPO from branch '$REQUIRED_BRANCH'..."
+
+          PR_JSON=$(gh pr list \
+            --repo "$COMPONENT_REPO" \
+            --head "$REQUIRED_BRANCH" \
+            --state open \
+            --json number,title \
+            -q '.[0]')
+
+          if [ -z "$PR_JSON" ] || [ "$PR_JSON" = "null" ]; then
+            echo "No open PR found from '$REQUIRED_BRANCH' in $COMPONENT_REPO"
+            echo "found=no" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          PR_NUMBER=$(echo "$PR_JSON" | jq -r '.number')
+          echo "✅ Found PR #$PR_NUMBER"
+          echo "found=yes" >> "$GITHUB_OUTPUT"
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Fail if no open PR found
+        if: steps.find_pr.outputs.found == 'no'
+        run: |
+          echo "❌ Blocking merge: Required PR in $COMPONENT_REPO from $REQUIRED_BRANCH not found."
+          exit 1
+
+      - name: Check if PR is approved
+        id: check_approval
+        run: |
+          PR_NUMBER=${{ steps.find_pr.outputs.number }}
+          echo "🔍 Checking approvals on PR #$PR_NUMBER..."
+
+          APPROVED=$(gh pr view "$PR_NUMBER" \
+            --repo "$COMPONENT_REPO" \
+            --json reviews \
+            -q '.reviews | map(select(.state == "APPROVED")) | length')
+
+          echo "approved=$APPROVED" >> "$GITHUB_OUTPUT"
+
+      - name: Block merge if not approved
+        if: steps.check_approval.outputs.approved == '0'
+        run: |
+          echo "❌ Blocking merge: PR in $COMPONENT_REPO has not been approved."
+          exit 1
+
+      - name: All checks passed
+        if: steps.check_approval.outputs.approved != '0'
+        run: echo "✅ Dependency PR $COMPONENT_REPO is approved by at least one engineer. Merge allowed."
+
   check-labels:
     # Act doesn't set a pull request number by default, so we skip if it's 0
     if: github.event.pull_request.number != 0
@@ -162,6 +222,43 @@ jobs:
         if: github.base_ref == 'master'
         with:
           labels: ignoreChangelog
+
+  merge-repo-b:
+    if: github.event.pull_request.merged && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract info
+        id: info
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          TARGET_BRANCH="appcat/$PR_NUM/$BRANCH_NAME"
+          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Setup GitHub CLI
+        run: |
+          gh auth login --with-token <<< "${{ secrets.COMPONENT_ACCESS_TOKEN }}"
+
+      - name: Merge corresponding PR in Component
+        run: |
+          gh pr list \
+            --repo "$COMPONENT_REPO" \
+            --head "${{ steps.info.outputs.target_branch }}" \
+            --state open \
+            --json number -q '.[0].number' > pr_number.txt
+
+          if [ ! -s pr_number.txt ]; then
+            echo "No matching PR found in Component for branch ${{ steps.info.outputs.target_branch }}"
+            exit 0
+          fi
+
+          PR_NUMBER=$(cat pr_number.txt)
+          echo "Merging PR #$PR_NUMBER in Component"
+
+          gh pr merge $PR_NUMBER \
+            --repo "$COMPONENT_REPO" \
+            --merge \
+            --admin
 
   create-release:
     if: github.event.pull_request.merged && github.base_ref == 'master'

@@ -1,0 +1,105 @@
+name: PR Smart Merge Trigger
+
+on:
+  issue_comment:
+    types: [created]
+
+env:
+  COMPONENT_REPO: vshn/component-appcat
+
+jobs:
+  smart-merge:
+    if: |
+      github.event.issue.pull_request &&
+      github.event.comment.body == '/merge'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}  # Token with access to appcat & component
+
+    steps:
+      - name: Get PR metadata
+        id: get-pr
+        run: |
+          echo "branch=${{ github.event.issue.pull_request.url }}" >> $GITHUB_OUTPUT
+          echo "id=${{ github.event.issue.pull_request.url }}" >> $GITHUB_OUTPUT
+
+      - name: Check approvals on appcat PR
+        run: |
+          APPROVED=$(gh pr reviews ${{ github.event.issue.pull_request.url }} --json state -q '[.[] | select(.state=="APPROVED")] | length')
+          if [ "$APPROVED" -eq 0 ]; then
+            echo "❌ PR in appcat is not approved"
+            exit 1
+          fi
+
+      - name: Check required status checks on appcat PR
+        run: |
+          PR_SHA=$(gh pr view ${{ github.event.issue.pull_request.url }} --json headCommit -q '.headCommit.oid')
+          REPO="${{ github.repository }}"
+          OWNER=$(echo "$REPO" | cut -d'/' -f1)
+          REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+
+          STATUS=$(gh api repos/$OWNER/$REPO_NAME/commits/$PR_SHA/status --jq '.state')
+
+          if [ "$STATUS" != "success" ]; then
+            echo "❌ Required status checks did not pass (state: $STATUS)"
+            exit 1
+          fi
+
+      - name: Find PR in component repo
+        id: find-pr
+        run: |
+          COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
+          PR_JSON=$(gh pr list -R "$COMPONENT_REPO" -H "$COMPONENT_BRANCH" --state open --json number,headRefName,mergeable,url)
+          PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
+          PR_URL=$(echo "$PR_JSON" | jq -r '.[0].url')
+          MERGEABLE=$(echo "$PR_JSON" | jq -r '.[0].mergeable')
+
+          if [ "$PR_NUMBER" == "null" ]; then
+            echo "❌ No matching PR in component repo for branch $COMPONENT_BRANCH"
+            exit 1
+          fi
+
+          if [ "$MERGEABLE" != "MERGEABLE" ]; then
+            echo "❌ PR in component is not mergeable: $PR_URL"
+            exit 1
+          fi
+
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "branch=$COMPONENT_BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Check if component PR is approved
+        run: |
+          APPROVED=$(gh pr reviews -R "$COMPONENT_REPO" ${{ steps.find-pr.outputs.number }} --json state -q '[.[] | select(.state=="APPROVED")] | length')
+          if [ "$APPROVED" -eq 0 ]; then
+            echo "❌ Component PR not approved: ${{ steps.find-pr.outputs.url }}"
+            exit 1
+          fi
+
+      - name: Clone and patch component repo
+        run: |
+          git config --global user.name "merge-bot"
+          git config --global user.email "merge-bot@example.com"
+          git clone https://x-access-token:${{ secrets.COMPONENT_REPO_TOKEN }}@github.com/"$COMPONENT_REPO".git
+          cd component
+          git checkout ${{ steps.find-pr.outputs.branch }}
+
+          # Install yq if needed
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+
+          yq -i '.parameters.appcat.appcat.tag = "develop"' class/defaults.yml
+
+          make gen-golden-all
+
+          git add .
+          git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}"
+          git push origin ${{ steps.find-pr.outputs.branch }}
+
+      - name: Merge PR in component repo
+        run: |
+          gh pr merge -R "$COMPONENT_REPO" ${{ steps.find-pr.outputs.number }} --merge --delete-branch
+
+      - name: Merge PR in appcat repo
+        run: |
+          gh pr merge ${{ github.event.issue.pull_request.url }} --merge --delete-branch

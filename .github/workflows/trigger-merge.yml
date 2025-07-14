@@ -2,7 +2,8 @@ name: PR Smart Merge Trigger
 
 on:
   issue_comment:
-    types: [created]
+    types:
+      - created
 
 env:
   COMPONENT_REPO: zugao/component-appcat
@@ -21,12 +22,13 @@ jobs:
       - name: Get PR metadata
         id: get-pr
         run: |
-          echo "branch=${{ github.event.issue.pull_request.url }}" >> $GITHUB_OUTPUT
-          echo "id=${{ github.event.issue.pull_request.url }}" >> $GITHUB_OUTPUT
+          echo "branch=${{ github.event.issue.pull_request.head.ref }}" >> $GITHUB_OUTPUT
+          echo "id=${{ github.event.issue.pull_request.number }}" >> $GITHUB_OUTPUT
 
       - name: Check approvals on appcat PR
         run: |
-          APPROVED=$(gh pr view "${{ github.event.pull_request.number }}" --repo "$APPCAT_REPO" --json reviews -q '.reviews | map(select(.state == "APPROVED")) | length')
+          PR_NUM="${{ github.event.pull_request.number }}"
+          APPROVED=$(gh pr view "$PR_NUM" --repo "$APPCAT_REPO" --json reviews -q '.reviews | map(select(.state == "APPROVED")) | length')
           if [ "$APPROVED" -eq 0 ]; then
             echo "❌ PR in appcat is not approved"
             exit 1

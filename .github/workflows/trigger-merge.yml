@@ -6,6 +6,7 @@ on:
 
 env:
   COMPONENT_REPO: vshn/component-appcat
+  APPCAT_REPO: vshn/appcat
 
 jobs:
   smart-merge:
@@ -25,7 +26,7 @@ jobs:
 
       - name: Check approvals on appcat PR
         run: |
-          APPROVED=$(gh pr reviews ${{ github.event.issue.pull_request.url }} --json state -q '[.[] | select(.state=="APPROVED")] | length')
+          APPROVED=$(gh pr reviews "$APPCAT_REPO" --json state -q '[.[] | select(.state=="APPROVED")] | length')
           if [ "$APPROVED" -eq 0 ]; then
             echo "❌ PR in appcat is not approved"
             exit 1
@@ -33,7 +34,7 @@ jobs:
 
       - name: Check required status checks on appcat PR
         run: |
-          PR_SHA=$(gh pr view ${{ github.event.issue.pull_request.url }} --json headCommit -q '.headCommit.oid')
+          PR_SHA=$(gh pr view "$APPCAT_REPO" --json headCommit -q '.headCommit.oid')
           REPO="${{ github.repository }}"
           OWNER=$(echo "$REPO" | cut -d'/' -f1)
           REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)

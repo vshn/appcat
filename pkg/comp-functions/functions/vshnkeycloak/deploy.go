@@ -256,14 +256,14 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	if err != nil {
 		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
 		applyJob := buildConfigApplyJob(comp, adminSecret, jobName)
-		if err := svc.SetDesiredKubeObject(applyJob, jobName); err != nil {
+		if err := svc.SetDesiredKubeObject(applyJob, jobName, runtime.KubeOptionAllowDeletion); err != nil {
 			return fmt.Errorf("cannot create config apply Job: %w", err)
 		}
 		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
 		return nil
 	}
 
-	if err := svc.SetDesiredKubeObject(observedJob, jobName); err != nil {
+	if err := svc.SetDesiredKubeObject(observedJob, jobName, runtime.KubeOptionAllowDeletion); err != nil {
 		return fmt.Errorf("cannot set desired kube object for existing job: %w", err)
 	}
 

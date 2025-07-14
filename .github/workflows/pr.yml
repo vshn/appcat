@@ -161,7 +161,7 @@ jobs:
 
   open-pr-component:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.number != 0
+    if: github.event.pull_request.number != 0 && github.event.action == 'opened'
     steps:
       - name: Get current labels
         uses: snnaplab/get-labels-action@v1

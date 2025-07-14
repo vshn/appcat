@@ -603,13 +603,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
-	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
-		extraVolumeMountsMap = append(extraVolumeMountsMap, map[string]any{
-			"name":      "keycloak-configs",
-			"mountPath": "/opt/keycloak/setup/project",
-		})
-	}
-
 	// Custom file volumes and mounts
 	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
 		if comp.Spec.Parameters.Service.CustomizationImage.Image == "" {

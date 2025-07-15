@@ -77,12 +77,6 @@ type VSHNRedisParameters struct {
 
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
-
-	// +kubebuilder:default=1
-	// +kubebuilder:validation:Enum=1;3;
-
-	// Instances configures the number of Redis instances for the cluster.
-	Instances int `json:"instances,omitempty"`
 }
 
 // VSHNRedisServiceSpec contains Redis DBaaS specific properties
@@ -303,7 +297,7 @@ func (v *VSHNRedis) GetMonitoring() VSHNMonitoring {
 }
 
 func (v *VSHNRedis) GetInstances() int {
-	return v.Spec.Parameters.Instances
+	return 1
 }
 
 func (v *VSHNRedis) GetPDBLabels() map[string]string {

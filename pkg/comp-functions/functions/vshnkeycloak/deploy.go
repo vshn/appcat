@@ -236,6 +236,23 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	lastConfigHash := comp.GetLastConfigHash()
 	lastEnvHash := comp.GetLastEnvHash()
 
+	// If we just created the instance, then the last hashes will be empty and thus trigger configOrEnvChanged().
+	// This will result in a race condition where two keycloak setups could run in parallel and clash with each other.
+	// Therefore, we'll check if those hashes are empty and set them to the current hashes.
+	if (lastConfigHash == "" && currentConfigHash != "") || (lastEnvHash == "" && currentEnvHash != "") {
+		if lastConfigHash == "" && currentConfigHash != "" {
+			comp.SetLastConfigHash(currentConfigHash)
+		}
+		if lastEnvHash == "" && currentEnvHash != "" {
+			comp.SetLastEnvHash(currentEnvHash)
+		}
+		l.Info("Setting initial configuration hashes")
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			return fmt.Errorf("cannot set composite status with new hashes: %w", err)
+		}
+		return nil
+	}
+
 	if !configOrEnvChanged(currentConfigHash, lastConfigHash, currentEnvHash, lastEnvHash) {
 		return nil
 	}
@@ -243,7 +260,6 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	l.Info("Detected configuration change, managing job lifecycle")
 
 	// Only create job if/once STS is healthy.
-	// This allows us to to circumvent a race condition where multiple Keycloak setups could run in pararallel, causing collisions.
 	err := addStsObserver(comp, svc)
 	if err != nil {
 		return fmt.Errorf("could not set up STS observer: %w", err)

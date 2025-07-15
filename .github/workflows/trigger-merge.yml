@@ -104,7 +104,7 @@ jobs:
           
           git clone https://x-access-token:$COMPONENT_REPO_TOKEN@github.com/"$COMPONENT_REPO".git
           cd "$COMPONENT_REPO"
-          git checkout "$COMPONENT_BRANCH"
+          git checkout component-appcat
 
           # Install yq if needed
           # sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq

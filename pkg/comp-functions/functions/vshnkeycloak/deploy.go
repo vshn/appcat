@@ -246,6 +246,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		if lastEnvHash == "" && currentEnvHash != "" {
 			comp.SetLastEnvHash(currentEnvHash)
 		}
+
 		l.Info("Setting initial configuration hashes")
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 			return fmt.Errorf("cannot set composite status with new hashes: %w", err)
@@ -268,12 +269,12 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	stsObserved := appsv1.StatefulSet{}
 	err = svc.GetObservedKubeObject(&stsObserved, comp.GetName()+"-sts-observer")
 	if err != nil {
-		l.Error(fmt.Errorf("could not get STS observer: %w", err), "could not get STS observer, skipping configuration job")
+		l.Info("could not get STS observer, skipping config job", "error", err.Error())
 		return nil
 	}
 
 	if stsObserved.Status.ReadyReplicas == 0 {
-		l.Info("Observed STS is reporting 0 ready replicas, skipping configuration job")
+		l.Info("Observed STS is reporting 0 ready replicas, will not yet create config job")
 		return nil
 	}
 
@@ -393,7 +394,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 		envFrom = append(envFrom, *comp.Spec.Parameters.Service.EnvFrom...)
 	}
 
-	KeycloakApiUrl := fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())
+	keycloakApiUrl := fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -436,7 +437,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 								},
 								{
 									Name:  "KEYCLOAK_API_URL",
-									Value: KeycloakApiUrl,
+									Value: keycloakApiUrl,
 								},
 							},
 							Command: []string{"sh", "-c", "/opt/keycloak/bin/keycloak-setup.sh"},
@@ -805,27 +806,6 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				if err != nil {
 					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
 				}
-			}
-		}
-	}
-
-	if len(comp.Spec.Parameters.Service.CustomMounts) > 0 {
-		for _, m := range comp.Spec.Parameters.Service.CustomMounts {
-			switch m.Type {
-			case customMountTypeSecret:
-				obj := &corev1.Secret{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("cannot copy secret %q: %s", m.Name, err)
-				}
-			case customMountTypeConfigMap:
-				obj := &corev1.ConfigMap{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("cannot copy configMap %q: %s", m.Name, err)
-				}
-			default:
-				return nil, fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
 			}
 		}
 	}

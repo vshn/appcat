@@ -22,13 +22,13 @@ jobs:
       - name: Get PR metadata
         id: get-pr
         run: |
-          echo "branch=${{ github.event.issue.pull_request.head.ref }}" >> $GITHUB_OUTPUT
-          echo "id=${{ github.event.issue.pull_request.number }}" >> $GITHUB_OUTPUT
+          BRANCH=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json headRefName -q .headRefName)
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "id=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
 
       - name: Check approvals on appcat PR
         run: |
-          PR_NUM="${{ github.event.pull_request.number }}"
-          APPROVED=$(gh pr view "$PR_NUM" --repo "$APPCAT_REPO" --json reviews -q '.reviews | map(select(.state == "APPROVED")) | length')
+          APPROVED=$(gh pr view "${{ github.event.issue.number }}" --repo "$APPCAT_REPO" --json reviews -q '.reviews | map(select(.state == "APPROVED")) | length')
           if [ "$APPROVED" -eq 0 ]; then
             echo "❌ PR in appcat is not approved"
             exit 1
@@ -36,23 +36,40 @@ jobs:
 
       - name: Check required status checks on appcat PR
         run: |
-          PR_SHA=$(gh pr view "$APPCAT_REPO" --json headRefOid -q '.headRefOid')
+          PR_SHA=$(gh pr view  "${{ github.event.issue.number }}" --repo "$APPCAT_REPO" --json headRefOid -q '.headRefOid')
           REPO="${{ github.repository }}"
           OWNER=$(echo "$REPO" | cut -d'/' -f1)
           REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
 
-          STATUS=$(gh api repos/$OWNER/$REPO_NAME/commits/$PR_SHA/status --jq '.state')
+          PASSED=$(gh api repos/$OWNER/$REPO_NAME/commits/$PR_SHA/check-runs -H "Accept: application/vnd.github.v3+json" --jq '[.check_runs[].conclusion] | all(. == "success" or . == "skipped")')
 
-          if [ "$STATUS" != "success" ]; then
-            echo "❌ Required status checks did not pass (state: $STATUS)"
+          if [ "$PASSED" != "true" ]; then
+            echo "❌ Required status checks did not pass"
             exit 1
           fi
 
+      - name: Check for merge conflicts on appcat PR
+        id: check-conflicts
+        run: |
+          PR_SHA=$(gh pr view  "${{ github.event.issue.number }}" --repo "$APPCAT_REPO" --json headRefOid -q '.headRefOid')
+          REPO="${{ github.repository }}"
+          OWNER=$(echo "$REPO" | cut -d'/' -f1)
+          REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+
+          MERGEABLE=$(gh api repos/$OWNER/$REPO_NAME/pulls/${{ github.event.issue.number }} --jq '.mergeable')
+          
+          if [ "$MERGEABLE" != "true" ]; then
+            echo "❌ Pull request has merge conflicts!"
+            exit 1
+          fi
+          
+          echo "✅ Pull request is mergeable"
+
       - name: Find PR in component repo
-        id: find-pr
+        id: find-component-pr
         run: |
           COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
-          PR_JSON=$(gh pr list -R "$COMPONENT_REPO" -H "$COMPONENT_BRANCH" --state open --json number,headRefName,mergeable,url)
+          PR_JSON=$(gh pr list --repo "$COMPONENT_REPO" -H "$COMPONENT_BRANCH" --state open --json number,headRefName,mergeable,url)
           PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
           PR_URL=$(echo "$PR_JSON" | jq -r '.[0].url')
           MERGEABLE=$(echo "$PR_JSON" | jq -r '.[0].mergeable')
@@ -73,35 +90,40 @@ jobs:
 
       - name: Check if component PR is approved
         run: |
-          APPROVED=$(gh pr reviews -R "$COMPONENT_REPO" ${{ steps.find-pr.outputs.number }} --json state -q '[.[] | select(.state=="APPROVED")] | length')
+          APPROVED=$(gh pr view ${{ steps.find-component-pr.outputs.number }} --repo "$COMPONENT_REPO" --json reviews -q '.reviews | map(select(.state == "APPROVED")) | length')
           if [ "$APPROVED" -eq 0 ]; then
-            echo "❌ Component PR not approved: ${{ steps.find-pr.outputs.url }}"
+            echo "❌ Component PR not approved: ${{ steps.find-component-pr.outputs.url }}"
             exit 1
           fi
 
       - name: Clone and patch component repo
         run: |
-          git config --global user.name "merge-bot"
-          git config --global user.email "merge-bot@example.com"
+          COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
+          REPO="${{ github.repository }}"
+          OWNER=$(echo "$REPO" | cut -d'/' -f1)
+          REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+          
+          APPCAT_FR_COMMIT_SHA=$(gh api repos/<OWNER>/<REPO>/commits/<BRANCH> --jq .sha)
+          
           git clone https://x-access-token:${{ secrets.COMPONENT_REPO_TOKEN }}@github.com/"$COMPONENT_REPO".git
-          cd component
-          git checkout ${{ steps.find-pr.outputs.branch }}
+          cd "$COMPONENT_REPO"
+          git checkout "$COMPONENT_BRANCH"
 
           # Install yq if needed
-          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
-          sudo chmod +x /usr/bin/yq
+          # sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          # sudo chmod +x /usr/bin/yq
 
-          yq -i '.parameters.appcat.appcat.tag = "develop"' class/defaults.yml
+          yq -i '.parameters.appcat.appcat.tag = "$APPCAT_FR_COMMIT_SHA"' class/defaults.yml
 
           make gen-golden-all
 
           git add .
           git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}"
-          git push origin ${{ steps.find-pr.outputs.branch }}
+          git push origin "$COMPONENT_BRANCH"
 
       - name: Merge PR in component repo
         run: |
-          gh pr merge -R "$COMPONENT_REPO" ${{ steps.find-pr.outputs.number }} --merge --delete-branch
+          gh pr merge -R "$COMPONENT_REPO" ${{ steps.find-component-pr.outputs.number }} --merge --delete-branch
 
       - name: Merge PR in appcat repo
         run: |

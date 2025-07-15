@@ -7,6 +7,7 @@ on:
 
 env:
   COMPONENT_REPO: zugao/component-appcat
+  COMPONENT_REPO_TOKEN: ${{ secrets.COMPONENT_REPO_TOKEN }}
   APPCAT_REPO: zugao/appcat
 
 jobs:
@@ -105,7 +106,7 @@ jobs:
           
           APPCAT_FR_COMMIT_SHA=$(gh api repos/$OWNER/$REPO_NAME//commits/$COMPONENT_BRANCH --jq .sha)
           
-          git clone https://x-access-token:${{ secrets.COMPONENT_REPO_TOKEN }}@github.com/"$COMPONENT_REPO".git
+          git clone https://x-access-token:$COMPONENT_REPO_TOKEN@github.com/"$COMPONENT_REPO".git
           cd "$COMPONENT_REPO"
           git checkout "$COMPONENT_BRANCH"
 

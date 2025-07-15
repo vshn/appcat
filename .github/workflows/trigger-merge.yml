@@ -106,7 +106,7 @@ jobs:
           cd component-appcat
           git checkout "$COMPONENT_BRANCH"
 
-          Install yq if needed
+          # Install yq if needed
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
 

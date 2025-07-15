@@ -103,7 +103,7 @@ jobs:
           OWNER=$(echo "$REPO" | cut -d'/' -f1)
           REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
           
-          APPCAT_FR_COMMIT_SHA=$(gh api repos/<OWNER>/<REPO>/commits/<BRANCH> --jq .sha)
+          APPCAT_FR_COMMIT_SHA=$(gh api repos/$OWNER/$REPO_NAME//commits/$COMPONENT_BRANCH --jq .sha)
           
           git clone https://x-access-token:${{ secrets.COMPONENT_REPO_TOKEN }}@github.com/"$COMPONENT_REPO".git
           cd "$COMPONENT_REPO"

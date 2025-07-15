@@ -106,9 +106,9 @@ jobs:
           cd component-appcat
           git checkout "$COMPONENT_BRANCH"
 
-          # Install yq if needed
-          # sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
-          # sudo chmod +x /usr/bin/yq
+          Install yq if needed
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
 
           yq -i '.parameters.appcat.appcat.tag = "$APPCAT_FR_COMMIT_SHA"' class/defaults.yml
 

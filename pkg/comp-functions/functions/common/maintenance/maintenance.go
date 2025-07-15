@@ -284,7 +284,7 @@ func (m *Maintenance) createMaintenanceJob(_ context.Context, cronSchedule strin
 		},
 	}
 
-	return m.svc.SetDesiredKubeObject(job, m.resource.GetName()+"-maintenancejob")
+	return m.svc.SetDesiredKubeObject(job, m.resource.GetName()+"-maintenancejob", runtime.KubeOptionAllowDeletion)
 }
 func (m *Maintenance) createMaintenanceClusterRoleBinding(_ context.Context) error {
 	name := m.svc.Config.Data["additionalMaintenanceClusterRole"]

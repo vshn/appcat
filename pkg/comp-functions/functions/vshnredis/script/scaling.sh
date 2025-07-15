@@ -36,7 +36,7 @@ kubectl apply -f - <<EOF
             - -avhWHAX
             - --no-compress
             - --progress
-            - /src/
+            - /src/dump.rdb
             - /dst/
           volumeMounts:
             - mountPath: "/src"

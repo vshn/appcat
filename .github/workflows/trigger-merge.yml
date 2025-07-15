@@ -103,8 +103,8 @@ jobs:
           APPCAT_FR_COMMIT_SHA=$(gh api repos/${{ github.repository }}/commits/${{ steps.get-pr.outputs.branch }} --jq .sha)
           
           git clone https://x-access-token:$COMPONENT_REPO_TOKEN@github.com/"$COMPONENT_REPO".git
-          cd "$COMPONENT_REPO"
-          git checkout component-appcat
+          cd component
+          git checkout "$COMPONENT_BRANCH"
 
           # Install yq if needed
           # sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq

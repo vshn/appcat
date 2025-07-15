@@ -23,6 +23,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -54,9 +55,6 @@ const (
 
 //go:embed scripts/copy-kc-creds.sh
 var keycloakCredentialsCopyJobScript string
-
-//go:embed scripts/wait-kc-ready.sh
-var keycloakWaitReadyScript string
 
 //go:embed templates/copy-custom-files.tmpl
 var keycloakCustomFilesCopyCommandTemplate string
@@ -244,6 +242,25 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 
 	l.Info("Detected configuration change, managing job lifecycle")
 
+	// Only create job if/once STS is healthy.
+	// This allows us to to circumvent a race condition where multiple Keycloak setups could run in pararallel, causing collisions.
+	err := addStsObserver(comp, svc)
+	if err != nil {
+		return fmt.Errorf("could not set up STS observer: %w", err)
+	}
+
+	stsObserved := appsv1.StatefulSet{}
+	err = svc.GetObservedKubeObject(&stsObserved, comp.GetName()+"-sts-observer")
+	if err != nil {
+		l.Error(fmt.Errorf("could not get STS observer: %w", err), "could not get STS observer, skipping configuration job")
+		return nil
+	}
+
+	if stsObserved.Status.ReadyReplicas == 0 {
+		l.Info("Observed STS is reporting 0 ready replicas, skipping configuration job")
+		return nil
+	}
+
 	currentCombinedHash := fmt.Sprintf("%x", md5.Sum([]byte(currentConfigHash+currentEnvHash)))
 	shortHash := currentCombinedHash[:8]
 	jobName := fmt.Sprintf("%s-apply-cfg-%s", comp.GetName(), shortHash)
@@ -254,7 +271,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	}
 
 	observedJob := &batchv1.Job{}
-	err := svc.GetObservedKubeObject(observedJob, jobName)
+	err = svc.GetObservedKubeObject(observedJob, jobName)
 
 	if err != nil {
 		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
@@ -320,6 +337,16 @@ func configOrEnvChanged(currentConfigHash, lastConfigHash, currentEnvHash, lastE
 	return true
 }
 
+func addStsObserver(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-keycloakx",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+	}
+	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve)
+}
+
 func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string) *batchv1.Job {
 	volumes := []corev1.Volume{}
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
@@ -365,26 +392,6 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 					RestartPolicy:    corev1.RestartPolicyOnFailure,
 					ImagePullSecrets: []corev1.LocalObjectReference{{Name: pullsecretName}},
 					Volumes:          volumes,
-					// We need this init container as the apply-config container could otherwise start a parallel keycloak setup
-					// On a fresh instance, this would lead to a race condition where the setup will abort because it found duplicate datayy
-					InitContainers: []corev1.Container{
-						{
-							Name:            "check-keycloak-ready",
-							Image:           "quay.io/curl/curl:latest",
-							ImagePullPolicy: corev1.PullIfNotPresent,
-							Command:         []string{"sh", "-c", keycloakWaitReadyScript},
-							Env: []corev1.EnvVar{
-								{
-									Name:  "KEYCLOAK_API_URL",
-									Value: strings.Replace(KeycloakApiUrl, "http", "https", 1),
-								},
-								{
-									Name:  "STALL_SECONDS",
-									Value: "30",
-								},
-							},
-						},
-					},
 					Containers: []corev1.Container{
 						{
 							Name:            "apply-config",

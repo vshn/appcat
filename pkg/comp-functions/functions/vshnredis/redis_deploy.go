@@ -152,9 +152,34 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"architecture":     "replication",
 		"sentinel": map[string]any{
 			"enabled": true,
+			"resources": map[string]any{
+				"limits": map[string]any{
+					"ephemeral-storage": "100Mi",
+				},
+			},
 		},
 		"replica": map[string]any{
 			"replicaCount": comp.GetInstances(),
+			"persistence": map[string]any{
+				"size": res.Disk,
+			},
+			"podSecurityContext": map[string]any{
+				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
+			},
+			"containerSecurityContext": map[string]any{
+				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
+			},
+			"resources": map[string]any{
+				"requests": map[string]any{
+					"memory": res.ReqMem,
+					"cpu":    res.ReqCPU,
+				},
+				"limits": map[string]any{
+					"memory": res.Mem,
+					"cpu":    res.CPU,
+				},
+			},
+			"nodeSelector": nodeSelector,
 		},
 		"global": map[string]any{
 			"security": map[string]any{

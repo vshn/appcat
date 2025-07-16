@@ -22,7 +22,7 @@ jobs:
       - name: Get base branch of PR
         id: get-base
         run: |
-          PR_BASE=$(gh pr view ${{ github.event.issue.number }} --json baseRefName -q .baseRefName)
+          PR_BASE=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json baseRefName -q .baseRefName)
           echo "base=$PR_BASE" >> "$GITHUB_OUTPUT"
 
       - name: Exit if base is not develop

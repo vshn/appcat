@@ -111,11 +111,7 @@ jobs:
       - name: Clone and patch component repo
         run: |
           COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
-          REPO="${{ github.repository }}"
-          OWNER=$(echo "$REPO" | cut -d'/' -f1)
-          REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
-          
-          APPCAT_FR_COMMIT_SHA=$(gh api repos/<OWNER>/<REPO>/commits/<BRANCH> --jq .sha)
+          APPCAT_FR_COMMIT_SHA=$(gh api repos/${{ github.repository }}/commits/${{ steps.get-pr.outputs.branch }} --jq .sha)
           
           git clone https://x-access-token:${{ secrets.COMPONENT_REPO_TOKEN }}@github.com/"$COMPONENT_REPO".git
           cd "$COMPONENT_REPO"

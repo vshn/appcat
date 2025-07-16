@@ -146,5 +146,4 @@ jobs:
 
       - name: Merge PR in appcat repo
         run: |
-          gh pr merge -R $APPCAT_REPO ${{ github.event.issue.number }} --merge --delete-branch
-
+          gh pr merge -R "$APPCAT_REPO" ${{ github.event.issue.number }} --merge --delete-branch

@@ -124,8 +124,7 @@ jobs:
           cd component-appcat
           git checkout "$COMPONENT_BRANCH"
 
-          echo "$APPCAT_FR_COMMIT_SHA"
-          yq -i '.parameters.appcat.appcat.tag = env.APPCAT_FR_COMMIT_SHA' class/defaults.yml
+          yq e ".parameters.appcat.images.appcat.tag = \"$APPCAT_FR_COMMIT_SHA\"" class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml -
 
           make gen-golden-all
 

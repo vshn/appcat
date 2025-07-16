@@ -15,9 +15,6 @@ jobs:
       github.event.issue.pull_request &&
       github.event.comment.body == '/merge'
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}  # Token with access to appcat & component
-
     steps:
       - name: Comment with workflow run link
         run: |
@@ -120,7 +117,7 @@ jobs:
           COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
           APPCAT_FR_COMMIT_SHA=$(gh api repos/${{ github.repository }}/commits/${{ steps.get-pr.outputs.branch }} --jq .sha)
           
-          git clone https://x-access-token:${{ secrets.COMPONENT_REPO_TOKEN }}@github.com/"$COMPONENT_REPO".git
+          git clone https://x-access-token:${{ secrets.COMPONENT_ACCESS_TOKEN }}@github.com/"$COMPONENT_REPO".git
           cd component-appcat
           git checkout "$COMPONENT_BRANCH"
 

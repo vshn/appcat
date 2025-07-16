@@ -81,13 +81,23 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get latest commit SHA of branch
+        id: get_branch_sha
+        run: |
+          SHA=$(gh api repos/${{ github.repository }}/commits/${{ steps.extract_branch.outputs.branch }} --jq .sha)
+          echo "branch_sha=$SHA" >> $GITHUB_ENV
+
       - name: Build branch and push image
         if: env.PUSH_IMAGE == 'true'
-        run: make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+        run: |
+          make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+          make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch_sha }}"
 
       - name: Build branch and push package
         if: env.PUSH_PACKAGE == 'True'
-        run: make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+        run: |
+          make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+          make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch_sha }}"
 
       - name: Login to Upbound
         if: env.PUSH_UPBOUND == 'true'

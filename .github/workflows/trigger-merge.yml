@@ -130,8 +130,12 @@ jobs:
           git config --global user.email "githubbot@vshn.ch"
           git config --global user.name "GitHubBot"
           git add .
-          git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}, dependency $APPCAT_FR_COMMIT_SHA"
-          git push origin "$COMPONENT_BRANCH"
+          if git diff --cached --quiet; then
+            echo "✅ No changes to commit"
+          else
+            git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}, dependency $APPCAT_FR_COMMIT_SHA"
+            git push origin "$COMPONENT_BRANCH"
+          fi
           
           # wait for GitHub to recalculate merge status
           sleep 5

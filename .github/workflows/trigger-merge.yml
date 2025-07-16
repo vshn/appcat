@@ -7,7 +7,6 @@ on:
 
 env:
   COMPONENT_REPO: zugao/component-appcat
-  COMPONENT_REPO_TOKEN: ${{ secrets.COMPONENT_REPO_TOKEN }}
   APPCAT_REPO: zugao/appcat
 
 jobs:
@@ -20,6 +19,11 @@ jobs:
       GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}  # Token with access to appcat & component
 
     steps:
+      - name: Check out the appcat PR base branch
+        if: github.event.pull_request.base.ref != 'develop'
+        run: |
+          echo "This PR is not targeting 'develop'. Skipping job."
+          exit 0
       - name: Get PR metadata
         id: get-pr
         run: |
@@ -100,18 +104,24 @@ jobs:
       - name: Clone and patch component repo
         run: |
           COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
-          APPCAT_FR_COMMIT_SHA=$(gh api repos/${{ github.repository }}/commits/${{ steps.get-pr.outputs.branch }} --jq .sha)
+          REPO="${{ github.repository }}"
+          OWNER=$(echo "$REPO" | cut -d'/' -f1)
+          REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
           
-          git clone https://x-access-token:$COMPONENT_REPO_TOKEN@github.com/"$COMPONENT_REPO".git
-          cd component-appcat
+          APPCAT_FR_COMMIT_SHA=$(gh api repos/<OWNER>/<REPO>/commits/<BRANCH> --jq .sha)
+          
+          git clone https://x-access-token:${{ secrets.COMPONENT_REPO_TOKEN }}@github.com/"$COMPONENT_REPO".git
+          cd "$COMPONENT_REPO"
           git checkout "$COMPONENT_BRANCH"
 
-          yq e ".parameters.appcat.images.appcat.tag = \"$APPCAT_FR_COMMIT_SHA\"" class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml - 
+          yq -i '.parameters.appcat.appcat.tag = "$APPCAT_FR_COMMIT_SHA"' class/defaults.yml
 
           make gen-golden-all
 
+          git config --global user.email "githubbot@vshn.ch"
+          git config --global user.name "GitHubBot"
           git add .
-          git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}"
+          git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}, dependency $APPCAT_FR_COMMIT_SHA"
           git push origin "$COMPONENT_BRANCH"
 
       - name: Merge PR in component repo
@@ -121,3 +131,4 @@ jobs:
       - name: Merge PR in appcat repo
         run: |
           gh pr merge ${{ github.event.issue.pull_request.url }} --merge --delete-branch
+

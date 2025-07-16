@@ -16,7 +16,9 @@ jobs:
       github.event.comment.body == '/merge'
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}  # Token with access to appcat & component
+      GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+      REPO_OWNER: ${{ github.repository_owner }}
+      REPO_NAME: ${{ github.event.repository.name }}
     steps:
       - name: Comment with workflow run link
         run: |
@@ -41,7 +43,9 @@ jobs:
         id: get-pr
         run: |
           BRANCH=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json headRefName -q .headRefName)
+          SHA=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json headRefOid -q .headRefOid)
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
           echo "id=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
 
       - name: Check approvals on appcat PR
@@ -54,12 +58,9 @@ jobs:
 
       - name: Check required status checks on appcat PR
         run: |
-          PR_SHA=$(gh pr view  "${{ github.event.issue.number }}" --repo "$APPCAT_REPO" --json headRefOid -q '.headRefOid')
-          REPO="${{ github.repository }}"
-          OWNER=$(echo "$REPO" | cut -d'/' -f1)
-          REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
-
-          PASSED=$(gh api repos/$OWNER/$REPO_NAME/commits/$PR_SHA/check-runs -H "Accept: application/vnd.github.v3+json" --jq '[.check_runs[].conclusion] | all(. == "success" or . == "skipped")')
+          PASSED=$(gh api repos/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/commits/${{ steps.get-pr.outputs.sha }}/check-runs \
+            -H "Accept: application/vnd.github.v3+json" \
+            --jq '[.check_runs[].conclusion] | all(. == "success" or . == "skipped")')
 
           if [ "$PASSED" != "true" ]; then
             echo "❌ Required status checks did not pass"
@@ -69,30 +70,23 @@ jobs:
       - name: Check for merge conflicts on appcat PR
         id: check-conflicts
         run: |
-          PR_SHA=$(gh pr view  "${{ github.event.issue.number }}" --repo "$APPCAT_REPO" --json headRefOid -q '.headRefOid')
-          REPO="${{ github.repository }}"
-          OWNER=$(echo "$REPO" | cut -d'/' -f1)
-          REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
-
-          MERGEABLE=$(gh api repos/$OWNER/$REPO_NAME/pulls/${{ github.event.issue.number }} --jq '.mergeable')
-          
+          MERGEABLE=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json mergeable -q .mergeable)
           if [ "$MERGEABLE" != "true" ]; then
             echo "❌ Pull request has merge conflicts!"
             exit 1
           fi
-          
           echo "✅ Pull request is mergeable"
 
       - name: Find PR in component repo
         id: find-component-pr
         run: |
           COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
-          PR_JSON=$(gh pr list --repo "$COMPONENT_REPO" -H "$COMPONENT_BRANCH" --state open --json number,headRefName,mergeable,url)
+          PR_JSON=$(gh pr list --repo "$COMPONENT_REPO" --head "$COMPONENT_BRANCH" --state open --json number,headRefName,mergeable,url)
           PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
           PR_URL=$(echo "$PR_JSON" | jq -r '.[0].url')
           MERGEABLE=$(echo "$PR_JSON" | jq -r '.[0].mergeable')
 
-          if [ "$PR_NUMBER" == "null" ]; then
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" == "null" ]; then
             echo "❌ No matching PR in component repo for branch $COMPONENT_BRANCH"
             exit 1
           fi
@@ -116,19 +110,25 @@ jobs:
 
       - name: Clone and patch component repo
         run: |
-          COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
-          APPCAT_FR_COMMIT_SHA=$(gh api repos/${{ github.repository }}/commits/${{ steps.get-pr.outputs.branch }} --jq .sha)
-          
+          COMPONENT_BRANCH="${{ steps.find-component-pr.outputs.branch }}"
+          APPCAT_FR_COMMIT_SHA="${{ steps.get-pr.outputs.sha }}"
+          echo "🔧 Using commit: $APPCAT_FR_COMMIT_SHA"
+          echo "🔧 Cloning branch: $COMPONENT_BRANCH"
+
           git clone https://x-access-token:$GH_TOKEN@github.com/"$COMPONENT_REPO".git
           cd component-appcat
           git checkout "$COMPONENT_BRANCH"
 
-          yq e ".parameters.appcat.images.appcat.tag = \"$APPCAT_FR_COMMIT_SHA\"" class/defaults.yml | diff -B class/defaults.yml - | patch class/defaults.yml -
+          echo "🔧 Patching class/defaults.yml..."
+          yq e ".parameters.appcat.images.appcat.tag = \"$APPCAT_FR_COMMIT_SHA\"" class/defaults.yml \
+            | diff -B class/defaults.yml - \
+            | patch class/defaults.yml - || echo "✅ No patch needed"
 
           make gen-golden-all
 
           git config --global user.email "githubbot@vshn.ch"
           git config --global user.name "GitHubBot"
+
           git add .
           if git diff --cached --quiet; then
             echo "✅ No changes to commit"
@@ -136,14 +136,25 @@ jobs:
             git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}, dependency $APPCAT_FR_COMMIT_SHA"
             git push origin "$COMPONENT_BRANCH"
           fi
-          
-          # wait for GitHub to recalculate merge status
-          sleep 5
+
+      - name: Retry mergeable check (GitHub race fix)
+        run: |
+          for i in {1..5}; do
+            MERGEABLE=$(gh pr view ${{ steps.find-component-pr.outputs.number }} --repo "$COMPONENT_REPO" --json mergeable -q .mergeable)
+            echo "Mergeable state: $MERGEABLE"
+            if [ "$MERGEABLE" == "MERGEABLE" ]; then
+              break
+            fi
+            echo "🔁 Waiting for GitHub to refresh mergeability..."
+            sleep 3
+          done
 
       - name: Merge PR in component repo
         run: |
+          echo "✅ Merging component PR: ${{ steps.find-component-pr.outputs.url }}"
           gh pr merge -R "$COMPONENT_REPO" ${{ steps.find-component-pr.outputs.number }} --merge --delete-branch
 
       - name: Merge PR in appcat repo
         run: |
+          echo "✅ Merging appcat PR: https://github.com/$APPCAT_REPO/pull/${{ github.event.issue.number }}"
           gh pr merge -R "$APPCAT_REPO" ${{ github.event.issue.number }} --merge --delete-branch

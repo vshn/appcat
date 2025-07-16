@@ -132,6 +132,9 @@ jobs:
           git add .
           git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}, dependency $APPCAT_FR_COMMIT_SHA"
           git push origin "$COMPONENT_BRANCH"
+          
+          # wait for GitHub to recalculate merge status
+          sleep 5
 
       - name: Merge PR in component repo
         run: |

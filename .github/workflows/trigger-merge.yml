@@ -121,7 +121,7 @@ jobs:
           APPCAT_FR_COMMIT_SHA=$(gh api repos/${{ github.repository }}/commits/${{ steps.get-pr.outputs.branch }} --jq .sha)
           
           git clone https://x-access-token:${{ secrets.COMPONENT_REPO_TOKEN }}@github.com/"$COMPONENT_REPO".git
-          cd "$COMPONENT_REPO"
+          cd component-appcat
           git checkout "$COMPONENT_BRANCH"
 
           yq -i '.parameters.appcat.appcat.tag = "$APPCAT_FR_COMMIT_SHA"' class/defaults.yml

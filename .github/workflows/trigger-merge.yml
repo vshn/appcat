@@ -19,6 +19,13 @@ jobs:
       GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}  # Token with access to appcat & component
 
     steps:
+      - name: Comment with workflow run link
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="🔗 [Workflow run triggered by this comment](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Get base branch of PR
         id: get-base
         run: |

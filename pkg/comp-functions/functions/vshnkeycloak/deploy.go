@@ -23,6 +23,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -235,11 +236,47 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	lastConfigHash := comp.GetLastConfigHash()
 	lastEnvHash := comp.GetLastEnvHash()
 
+	// If we just created the instance, then the last hashes will be empty and thus trigger configOrEnvChanged().
+	// This will result in a race condition where two keycloak setups could run in parallel and clash with each other.
+	// Therefore, we'll check if those hashes are empty and set them to the current hashes.
+	if (lastConfigHash == "" && currentConfigHash != "") || (lastEnvHash == "" && currentEnvHash != "") {
+		if lastConfigHash == "" && currentConfigHash != "" {
+			comp.SetLastConfigHash(currentConfigHash)
+		}
+		if lastEnvHash == "" && currentEnvHash != "" {
+			comp.SetLastEnvHash(currentEnvHash)
+		}
+
+		l.Info("Setting initial configuration hashes")
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			return fmt.Errorf("cannot set composite status with new hashes: %w", err)
+		}
+		return nil
+	}
+
 	if !configOrEnvChanged(currentConfigHash, lastConfigHash, currentEnvHash, lastEnvHash) {
 		return nil
 	}
 
 	l.Info("Detected configuration change, managing job lifecycle")
+
+	// Only create job if/once STS is healthy.
+	err := addStsObserver(comp, svc)
+	if err != nil {
+		return fmt.Errorf("could not set up STS observer: %w", err)
+	}
+
+	stsObserved := appsv1.StatefulSet{}
+	err = svc.GetObservedKubeObject(&stsObserved, comp.GetName()+"-sts-observer")
+	if err != nil {
+		l.Info("could not get STS observer, skipping config job", "error", err.Error())
+		return nil
+	}
+
+	if stsObserved.Status.ReadyReplicas == 0 {
+		l.Info("Observed STS is reporting 0 ready replicas, will not yet create config job")
+		return nil
+	}
 
 	currentCombinedHash := fmt.Sprintf("%x", md5.Sum([]byte(currentConfigHash+currentEnvHash)))
 	shortHash := currentCombinedHash[:8]
@@ -251,7 +288,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	}
 
 	observedJob := &batchv1.Job{}
-	err := svc.GetObservedKubeObject(observedJob, jobName)
+	err = svc.GetObservedKubeObject(observedJob, jobName)
 
 	if err != nil {
 		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
@@ -317,6 +354,16 @@ func configOrEnvChanged(currentConfigHash, lastConfigHash, currentEnvHash, lastE
 	return true
 }
 
+func addStsObserver(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-keycloakx",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+	}
+	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve)
+}
+
 func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string) *batchv1.Job {
 	volumes := []corev1.Volume{}
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
@@ -342,6 +389,12 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 			},
 		})
 	}
+
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		envFrom = append(envFrom, *comp.Spec.Parameters.Service.EnvFrom...)
+	}
+
+	keycloakApiUrl := fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -384,7 +437,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 								},
 								{
 									Name:  "KEYCLOAK_API_URL",
-									Value: fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace()),
+									Value: keycloakApiUrl,
 								},
 							},
 							Command: []string{"sh", "-c", "/opt/keycloak/bin/keycloak-setup.sh"},
@@ -625,6 +678,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	if err != nil {
 		return nil, err
 	}
+
 	values = map[string]any{
 		"replicas":          comp.Spec.Parameters.Instances,
 		"extraEnv":          extraEnv,
@@ -693,6 +747,31 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"podSecurityContext": nil,
 	}
 
+	var envFromMap []v1.EnvFromSource
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		envFromMap = *comp.Spec.Parameters.Service.EnvFrom
+	}
+
+	// Deprecated field, the logic below is kept for backwards compatibility
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		envFromMap = append(envFromMap, v1.EnvFromSource{
+			SecretRef: &v1.SecretEnvSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+				},
+			},
+		})
+	}
+
+	if envFromMap != nil {
+		envFrom, err := toYAML(envFromMap)
+		if err != nil {
+			return nil, err
+		}
+
+		values["extraEnvFrom"] = envFrom
+	}
+
 	if svc.Config.Data["imageRegistry"] != "" {
 		values["image"] = map[string]interface{}{
 			"repository": svc.Config.Data["imageRegistry"],
@@ -712,6 +791,25 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		for _, r := range *comp.Spec.Parameters.Service.EnvFrom {
+			if r.SecretRef != nil {
+				obj := &corev1.Secret{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+r.SecretRef.Name, r.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
+				}
+			}
+			if r.ConfigMapRef != nil {
+				obj := &corev1.ConfigMap{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-cm-"+r.ConfigMapRef.Name, r.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
+				}
+			}
+		}
+	}
+
 	values, err := newValues(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return nil, err

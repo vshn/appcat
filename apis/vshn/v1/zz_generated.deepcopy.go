@@ -8,6 +8,7 @@ import (
 	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -635,6 +636,17 @@ func (in *VSHNKeycloakServiceSpec) DeepCopyInto(out *VSHNKeycloakServiceSpec) {
 		in, out := &in.CustomEnvVariablesRef, &out.CustomEnvVariablesRef
 		*out = new(string)
 		**out = **in
+	}
+	if in.EnvFrom != nil {
+		in, out := &in.EnvFrom, &out.EnvFrom
+		*out = new([]corev1.EnvFromSource)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make([]corev1.EnvFromSource, len(*in))
+			for i := range *in {
+				(*in)[i].DeepCopyInto(&(*out)[i])
+			}
+		}
 	}
 	if in.CustomMounts != nil {
 		in, out := &in.CustomMounts, &out.CustomMounts

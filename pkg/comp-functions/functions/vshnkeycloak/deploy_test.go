@@ -11,6 +11,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
@@ -105,6 +106,61 @@ func Test_addHARelease(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
 	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
+}
+
+func Test_addCustomEnvSecrets(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+
+	comp := &vshnv1.VSHNKeycloak{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mycloak",
+		},
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Instances: 2,
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					Version:               "23",
+					CustomEnvVariablesRef: ptr.To("my-secret-1"), // This is a deprecated field, but still needs to work for backwards compatibility
+					EnvFrom: &[]corev1.EnvFromSource{
+						{
+							ConfigMapRef: &corev1.ConfigMapEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "my-configmap",
+								},
+							},
+						},
+						{
+							SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "my-secret-2",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret", "mysecret"))
+	release := &xhelmv1.Release{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release"))
+
+	values := map[string]any{}
+	assert.NoError(t, json.Unmarshal(release.Spec.ForProvider.Values.Raw, &values))
+
+	var envFrom []corev1.EnvFromSource
+	rawYaml := values["extraEnvFrom"].(string)
+	assert.NoError(t, yaml.Unmarshal([]byte(rawYaml), &envFrom))
+
+	assert.Equal(t, 3, len(envFrom))
+	for _, env := range envFrom {
+		if env.ConfigMapRef != nil {
+			assert.Equal(t, "my-configmap", env.ConfigMapRef.Name)
+		} else if env.SecretRef != nil {
+			assert.True(t, env.SecretRef.Name == "my-secret-1" || env.SecretRef.Name == "my-secret-2")
+		}
+	}
 }
 
 func Test_addCustomFiles(t *testing.T) {

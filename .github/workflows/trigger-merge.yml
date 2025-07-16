@@ -19,11 +19,18 @@ jobs:
       GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}  # Token with access to appcat & component
 
     steps:
-      - name: Check out the appcat PR base branch
-        if: github.event.pull_request.base.ref != 'develop'
+      - name: Get base branch of PR
+        id: get-base
         run: |
-          echo "This PR is not targeting 'develop'. Skipping job."
+          PR_BASE=$(gh pr view ${{ github.event.issue.number }} --json baseRefName -q .baseRefName)
+          echo "base=$PR_BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Exit if base is not develop
+        if: steps.get-base.outputs.base != 'develop'
+        run: |
+          echo "Base branch is '${{ steps.get-base.outputs.base }}', not 'develop'. Skipping job."
           exit 0
+
       - name: Get PR metadata
         id: get-pr
         run: |

@@ -71,7 +71,7 @@ jobs:
         id: check-conflicts
         run: |
           MERGEABLE=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json mergeable -q .mergeable)
-          if [ "$MERGEABLE" != "true" ]; then
+          if [ "$MERGEABLE" != "MERGEABLE" ]; then
             echo "❌ Pull request has merge conflicts!"
             exit 1
           fi

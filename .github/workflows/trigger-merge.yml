@@ -52,7 +52,7 @@ jobs:
           BRANCH=$(echo "$PR_DATA" | jq -r '.headRefName')
           SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
           MERGEABLE=$(echo "$PR_DATA" | jq -r '.mergeable')
-          APPROVED=$(echo "$PR_DATA" | jq -r '.reviews | map(select(.state == "APPROVED")) | length')
+          APPROVED=$(echo "$PR_DATA" | jq -r '.reviews // [] | map(select(.state == "APPROVED")) | length')
 
           # Check for hotfix in title or labels
           if echo "$TITLE" | grep -i 'hotfix' > /dev/null || echo "$LABELS" | grep -i 'hotfix' > /dev/null; then
@@ -107,7 +107,7 @@ jobs:
           PR_URL=$(echo "$PR_DATA" | jq -r '.[0].url')
           SHA=$(echo "$PR_DATA" | jq -r '.[0].headRefOid')
           MERGEABLE=$(echo "$PR_DATA" | jq -r '.[0].mergeable')
-          APPROVED=$(echo "$PR_DATA" | jq -r '.[0].reviews | map(select(.state == "APPROVED")) | length')
+          APPROVED=$(echo "$PR_DATA" | jq -r '.[0].reviews // [] | map(select(.state == "APPROVED")) | length')
 
           echo "pr-number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "url=$PR_URL" >> $GITHUB_OUTPUT
@@ -224,6 +224,7 @@ jobs:
           gh pr merge -R "$APPCAT_REPO" ${{ needs.check-conditions.outputs.pr-number }} --merge --delete-branch
 
       - name: Auto-increment patch version and tag master
+        id: tag
         run: |
           git config --global user.email "githubbot@vshn.ch"
           git config --global user.name "GitHubBot"
@@ -251,3 +252,71 @@ jobs:
           git tag "$NEW_TAG"
           git push origin "$NEW_TAG"
           echo "✅ Created and pushed tag: $NEW_TAG"
+          echo "appcat-tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Clone and patch component repo
+        run: |
+          COMPONENT_BRANCH="${{ needs.check-conditions.outputs.comp-feature-branch }}"
+          APPCAT_NEW_TAG="${{ steps.tag.outputs.appcat-tag }}"
+          echo "🔧 Using tag: $APPCAT_NEW_TAG"
+          echo "🔧 Cloning branch: $COMPONENT_BRANCH"
+
+          git clone https://x-access-token:$COMPONENT_GH_TOKEN@github.com/"$COMPONENT_REPO".git
+          cd component-appcat
+          git checkout "$COMPONENT_BRANCH"
+
+          echo "🔧 Patching class/defaults.yml..."
+          yq e ".parameters.appcat.images.appcat.tag = \"$APPCAT_NEW_TAG\"" class/defaults.yml \
+            | diff -B class/defaults.yml - \
+            | patch class/defaults.yml - || echo "✅ No patch needed"
+
+          make gen-golden-all
+
+          git config --global user.email "githubbot@vshn.ch"
+          git config --global user.name "GitHubBot"
+
+          git add .
+          if git diff --cached --quiet; then
+            echo "✅ No changes to commit"
+          else
+            git commit -m "Auto update from appcat PR #${{ needs.check-conditions.outputs.pr-number }}, dependency $APPCAT_NEW_TAG"
+            git push origin "$COMPONENT_BRANCH"
+          fi
+
+      - name: Merge PR in component repo
+        run: |
+          echo "✅ Merging component PR: ${{ needs.check-conditions.outputs.comp-url }}"
+          gh pr merge -R "$COMPONENT_REPO" ${{ needs.check-conditions.outputs.comp-pr-number }} --merge --delete-branch
+
+      - name: Create PR from master to develop in appcat
+        run: |
+          git config --global user.email "githubbot@vshn.ch"
+          git config --global user.name "GitHubBot"
+          
+          git clone https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
+          cd appcat
+          
+          git checkout master
+          git pull origin master
+          
+          git checkout develop
+          git pull origin develop
+          
+          # Create a temporary merge branch
+          MERGE_BRANCH="merge-master-to-develop-$(date +%s)"
+          git checkout -b "$MERGE_BRANCH"
+          
+          # Merge master into develop
+          git merge --no-ff master -m "Merge hotfixes from master into develop"
+          
+          # Push the merge branch
+          git push origin "$MERGE_BRANCH"
+          
+          # Create PR via gh CLI
+          gh pr create \
+            --base develop \
+            --head "$MERGE_BRANCH" \
+            --title "🔀 Merge master into develop" \
+            --body "This PR merges changes from \`master\` into \`develop\` after a hotfix."
+        env:
+          GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}

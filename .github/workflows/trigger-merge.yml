@@ -55,6 +55,7 @@ jobs:
 
 
   merge-feature:
+    needs: check-conditions
     if: needs.check-conditions.outputs.base-branch == 'develop' && needs.check-conditions.outputs.is-hotfix == 'false'
     runs-on: ubuntu-latest
     env:

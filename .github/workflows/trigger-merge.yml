@@ -46,7 +46,7 @@ jobs:
         id: appcat
         run: |
           PR_NUMBER=${{ github.event.issue.number }}
-          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title,labels,baseRefName,headRefName,headRefOid,mergeable)
+          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title,labels,baseRefName,headRefName,headRefOid,mergeable,reviews)
 
           TITLE=$(echo "$PR_DATA" | jq -r '.title')
           LABELS=$(echo "$PR_DATA" | jq -r '[.labels[].name]')

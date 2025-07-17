@@ -2,7 +2,9 @@ package vshnredis
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
@@ -24,9 +26,13 @@ const (
 	redisUsernameConnectionDetailsField = "REDIS_USERNAME"
 	redisPasswordConnectionDetailsField = "REDIS_PASSWORD"
 	redisURLConnectionDetailsField      = "REDIS_URL"
+	sentinelHostsConnectionDetailsField = "SENTINEL_HOSTS"
 
 	redisRelease = "release"
 )
+
+//go:embed script/scaling.sh
+var redisScalingScript string
 
 // DeployRedis will deploy the objects to provision redis instance
 func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
@@ -43,11 +49,19 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 		return runtime.NewWarningResult(fmt.Errorf("cannot create credentials secret: %w", err).Error())
 	}
 
+	additionalSans := []string{
+		fmt.Sprintf("redis-headless.vshn-redis-%s.svc.cluster.local", comp.GetName()),
+		fmt.Sprintf("redis-headless.vshn-redis-%s.svc", comp.GetName()),
+	}
+	if comp.GetInstances() > 1 {
+		for i := range comp.GetInstances() - 1 {
+			additionalSans = append(additionalSans, fmt.Sprintf("redis-node-%d.redis-headless.vshn-redis-%s.svc.cluster.local", i, comp.GetName()))
+			additionalSans = append(additionalSans, fmt.Sprintf("redis-node-%d.redis-headless.vshn-redis-%s.svc", i, comp.GetName()))
+		}
+	}
+
 	tlsOpts := &common.TLSOptions{
-		AdditionalSans: []string{
-			fmt.Sprintf("redis-headless.vshn-redis-%s.svc.cluster.local", comp.GetName()),
-			fmt.Sprintf("redis-headless.vshn-redis-%s.svc", comp.GetName()),
-		},
+		AdditionalSans: additionalSans,
 	}
 
 	_, _, err = createMTLSCerts(comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts)
@@ -125,8 +139,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	values := map[string]any{
 		"fullnameOverride": "redis",
-		"architecture":     "standalone",
-
+		"architecture":     "replication",
+		"sentinel": map[string]any{
+			"enabled": true,
+		},
+		"replica": map[string]any{
+			"replicaCount": comp.GetInstances(),
+		},
 		"global": map[string]any{
 			"security": map[string]any{
 				"allowInsecureImages": true,
@@ -201,7 +220,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 			"nodeSelector": nodeSelector,
 		},
-
 		"commonConfiguration": commonConfig,
 
 		"networkPolicy": map[string]any{
@@ -282,6 +300,14 @@ func getConnectionDetails(comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime, s
 	svc.SetConnectionDetail(redisUsernameConnectionDetailsField, []byte(redisUser))
 	svc.SetConnectionDetail(redisPasswordConnectionDetailsField, redisPassword)
 	svc.SetConnectionDetail(redisURLConnectionDetailsField, []byte(url))
+
+	if comp.GetInstances() > 1 {
+		sentinel_hosts := []string{}
+		for i := 0; i < comp.GetInstances(); i++ {
+			sentinel_hosts = append(sentinel_hosts, fmt.Sprintf("redis-node-%d.redis-headless.vshn-redis-%s.svc.cluster.local", i, comp.GetName()))
+		}
+		svc.SetConnectionDetail(sentinelHostsConnectionDetailsField, []byte(strings.Join(sentinel_hosts, ",")))
+	}
 
 	return nil
 }

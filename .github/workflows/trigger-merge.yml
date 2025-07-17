@@ -1,24 +1,22 @@
-name: PR Smart Merge Trigger
+name: Smart Merge Dispatcher
 
 on:
   issue_comment:
-    types:
-      - created
+    types: [created]
+
 
 env:
   COMPONENT_REPO: zugao/component-appcat
   APPCAT_REPO: zugao/appcat
 
 jobs:
-  smart-merge:
-    if: |
-      github.event.issue.pull_request &&
-      github.event.comment.body == '/merge'
+  check-conditions:
+    if: github.event.issue.pull_request && github.event.comment.body == '/merge'
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
-      REPO_OWNER: ${{ github.repository_owner }}
-      REPO_NAME: ${{ github.event.repository.name }}
+    outputs:
+      is-hotfix: ${{ steps.check.outputs.is-hotfix }}
+      base-branch: ${{ steps.check.outputs.base }}
+      pr-number: ${{ steps.check.outputs.number }}
     steps:
       - name: Comment with workflow run link
         run: |
@@ -27,19 +25,36 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get base branch of PR
-        id: get-base
+      - name: Get PR metadata
+        id: check
         run: |
-          PR_BASE=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json baseRefName -q .baseRefName)
-          echo '${{ toJson(github.event) }}'
-          echo "base=$PR_BASE" >> "$GITHUB_OUTPUT"
+          PR_NUMBER=${{ github.event.issue.number }}
+          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title,labels,baseRefName)
 
-      - name: Exit if base is not develop
-        if: steps.get-base.outputs.base != 'develop'
-        run: |
-          echo "Base branch is '${{ steps.get-base.outputs.base }}', not 'develop'. Skipping job."
-          exit 1
+          TITLE=$(echo "$PR_DATA" | jq -r '.title')
+          LABELS=$(echo "$PR_DATA" | jq -r '[.labels[].name]')
+          BASE=$(echo "$PR_DATA" | jq -r '.baseRefName')
 
+          # Check for hotfix in title or labels
+          if echo "$TITLE" | grep -i 'hotfix' > /dev/null || echo "$LABELS" | grep -i 'hotfix' > /dev/null; then
+            echo "is-hotfix=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-hotfix=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  merge-feature:
+    if: needs.check-conditions.outputs.base-branch == 'develop' && needs.check-conditions.outputs.is-hotfix == 'false'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+      REPO_OWNER: ${{ github.repository_owner }}
+      REPO_NAME: ${{ github.event.repository.name }}
+    steps:
       - name: Get PR metadata
         id: get-pr
         run: |

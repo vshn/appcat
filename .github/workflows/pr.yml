@@ -10,10 +10,11 @@ on:
 
 env:
   APP_NAME: appcat
-  COMPONENT_REPO: vshn/component-appcat
+  COMPONENT_REPO: zugao/component-appcat
   PUSH_UPBOUND: "False"
-  PUSH_PACKAGE: "True"
-  PUSH_IMAGE: "True"
+  PUSH_PACKAGE: "False"
+  PUSH_IMAGE: "False"
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   check-allow-merge:
@@ -29,6 +30,7 @@ jobs:
           ${{ contains(fromJSON(env.LABELS), 'hotfix') }} && exit 0
           echo "ERROR: You can only merge to master from develop or hotfixes."
           exit 1
+
   check-labels:
     # Act doesn't set a pull request number by default, so we skip if it's 0
     if: github.event.pull_request.number != 0
@@ -45,6 +47,7 @@ jobs:
         with:
           one_of: major,minor,patch,documentation,dependency
           repo_token: ${{ secrets.GITHUB_TOKEN }}
+
   publish-branch-images:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
@@ -79,13 +82,23 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get latest commit SHA of branch
+        id: get_branch_sha
+        run: |
+          SHA=$(gh api repos/${{ github.repository }}/commits/${{ steps.extract_branch.outputs.branch }} --jq .sha)
+          echo "branch_sha=$SHA" >> $GITHUB_ENV
+
       - name: Build branch and push image
         if: env.PUSH_IMAGE == 'true'
-        run: make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+        run: |
+          make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+          make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch_sha }}"
 
       - name: Build branch and push package
         if: env.PUSH_PACKAGE == 'True'
-        run: make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+        run: |
+          make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+          make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch_sha }}"
 
       - name: Login to Upbound
         if: env.PUSH_UPBOUND == 'true'
@@ -162,6 +175,43 @@ jobs:
         if: github.base_ref == 'master'
         with:
           labels: ignoreChangelog
+
+  merge-repo-b:
+    if: github.event.pull_request.merged && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract info
+        id: info
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          TARGET_BRANCH="appcat/$PR_NUM/$BRANCH_NAME"
+          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Setup GitHub CLI
+        run: |
+          gh auth login --with-token <<< "${{ secrets.COMPONENT_ACCESS_TOKEN }}"
+
+      - name: Merge corresponding PR in Component
+        run: |
+          gh pr list \
+            --repo "$COMPONENT_REPO" \
+            --head "${{ steps.info.outputs.target_branch }}" \
+            --state open \
+            --json number -q '.[0].number' > pr_number.txt
+
+          if [ ! -s pr_number.txt ]; then
+            echo "No matching PR found in Component for branch ${{ steps.info.outputs.target_branch }}"
+            exit 0
+          fi
+
+          PR_NUMBER=$(cat pr_number.txt)
+          echo "Merging PR #$PR_NUMBER in Component"
+
+          gh pr merge $PR_NUMBER \
+            --repo "$COMPONENT_REPO" \
+            --merge \
+            --admin
 
   create-release:
     if: github.event.pull_request.merged && github.base_ref == 'master'

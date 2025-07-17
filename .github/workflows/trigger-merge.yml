@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
-      #REPO_OWNER: ${{ github.repository_owner }}
-      #REPO_NAME: ${{ github.event.repository.name }}
     outputs:
       #appcat branch vars
       is-hotfix: ${{ steps.appcat.outputs.is-hotfix }}
@@ -104,12 +102,12 @@ jobs:
         id: component
         run: |
           COMPONENT_BRANCH="appcat/${{ steps.appcat.outputs.pr-number }}/${{ steps.appcat.outputs.feature-branch }}"
-          PR_JSON=$(gh pr list --repo "$COMPONENT_REPO" --head "$COMPONENT_BRANCH" --state open --json number,headRefName,mergeable,url,reviews,headRefOid)
-          PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
-          PR_URL=$(echo "$PR_JSON" | jq -r '.[0].url')
+          PR_DATA=$(gh pr list --repo "$COMPONENT_REPO" --head "$COMPONENT_BRANCH" --state open --json number,headRefName,mergeable,url,reviews,headRefOid)
+          PR_NUMBER=$(echo "$PR_DATA" | jq -r '.[0].number')
+          PR_URL=$(echo "$PR_DATA" | jq -r '.[0].url')
           SHA=$(echo "$PR_DATA" | jq -r '.[0].headRefOid')
-          MERGEABLE=$(echo "$PR_JSON" | jq -r '.[0].mergeable')
-          APPROVED=$(echo "$PR_JSON" | jq -r '.[0].reviews | map(select(.state == "APPROVED")) | length')
+          MERGEABLE=$(echo "$PR_DATA" | jq -r '.[0].mergeable')
+          APPROVED=$(echo "$PR_DATA" | jq -r '.[0].reviews | map(select(.state == "APPROVED")) | length')
 
           echo "pr-number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "url=$PR_URL" >> $GITHUB_OUTPUT
@@ -160,8 +158,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
-      REPO_OWNER: ${{ github.repository_owner }}
-      REPO_NAME: ${{ github.event.repository.name }}
     steps:
       - name: Clone and patch component repo
         run: |
@@ -213,3 +209,45 @@ jobs:
         run: |
           echo "✅ Merging appcat PR: https://github.com/$APPCAT_REPO/pull/${{ needs.check-conditions.outputs.pr-number }}"
           gh pr merge -R "$APPCAT_REPO" ${{ needs.check-conditions.outputs.pr-number }} --merge --delete-branch
+
+  merge-hotfix:
+    needs: check-conditions
+    if: needs.check-conditions.outputs.base-branch == 'master' && needs.check-conditions.outputs.is-hotfix == 'true'
+    runs-on: ubuntu-latest
+    env:
+      APPCAT_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      COMPONENT_GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+    steps:
+      - name: Merge PR in appcat repo
+        run: |
+          echo "✅ Merging appcat PR: https://github.com/$APPCAT_REPO/pull/${{ needs.check-conditions.outputs.pr-number }}"
+          gh pr merge -R "$APPCAT_REPO" ${{ needs.check-conditions.outputs.pr-number }} --merge --delete-branch
+
+      - name: Auto-increment patch version and tag master
+        run: |
+          git config --global user.email "githubbot@vshn.ch"
+          git config --global user.name "GitHubBot"
+      
+          git clone --quiet https://x-access-token:$APPCAT_GH_TOKEN@github.com/$APPCAT_REPO.git
+          cd appcat
+          git fetch --tags
+      
+          # Get the latest tag (assumes tags are in 'vX.Y.Z' format)
+          LATEST_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
+      
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No tags found."
+            exit 1
+          else
+            echo "Latest tag: $LATEST_TAG"
+            MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1 | sed 's/v//')
+            MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
+            PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
+            PATCH=$((PATCH + 1))
+            NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+          fi
+      
+          git checkout master
+          git tag "$NEW_TAG"
+          git push origin "$NEW_TAG"
+          echo "✅ Created and pushed tag: $NEW_TAG"

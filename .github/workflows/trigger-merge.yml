@@ -120,7 +120,7 @@ jobs:
 
       - name: Check if component PR found
         run: |
-          $PR_NUMBER="${{ steps.component.outputs.pr-number }}"
+          PR_NUMBER="${{ steps.component.outputs.pr-number }}"
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" == "null" ]; then
             echo "❌ No matching PR in component repo for branch $COMPONENT_BRANCH"
             exit 1
@@ -138,7 +138,7 @@ jobs:
 
       - name: Check for merge conflicts on component PR
         run: |
-          $MERGEABLE="${{ steps.component.outputs.mergeable }}"
+          MERGEABLE="${{ steps.component.outputs.mergeable }}"
           if [ "$MERGEABLE" != "MERGEABLE" ]; then
             echo "❌ PR in component is not mergeable: ${{ steps.component.outputs.url }}"
             exit 1

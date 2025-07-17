@@ -47,6 +47,7 @@ jobs:
         with:
           one_of: major,minor,patch,documentation,dependency
           repo_token: ${{ secrets.GITHUB_TOKEN }}
+
   publish-branch-images:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest

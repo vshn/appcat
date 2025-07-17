@@ -62,7 +62,7 @@ jobs:
           fi
 
           echo "base-branch=$BASE" >> "$GITHUB_OUTPUT"
-          echo "feture-branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "feature-branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "last-sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "pr-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "mergeable=$MERGEABLE" >> "$GITHUB_OUTPUT"

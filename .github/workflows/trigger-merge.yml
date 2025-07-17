@@ -16,6 +16,8 @@ jobs:
     outputs:
       is-hotfix: ${{ steps.check.outputs.is-hotfix }}
       base-branch: ${{ steps.check.outputs.base }}
+      feature-branch: ${{ steps.check.outputs.branch }}
+      last-sha: ${{ steps.check.outputs.sha }}
       pr-number: ${{ steps.check.outputs.number }}
     steps:
       - name: Comment with workflow run link
@@ -29,11 +31,13 @@ jobs:
         id: check
         run: |
           PR_NUMBER=${{ github.event.issue.number }}
-          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title,labels,baseRefName)
+          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title,labels,baseRefName,headRefName,headRefOid)
 
           TITLE=$(echo "$PR_DATA" | jq -r '.title')
           LABELS=$(echo "$PR_DATA" | jq -r '[.labels[].name]')
           BASE=$(echo "$PR_DATA" | jq -r '.baseRefName')
+          BRANCH=$(echo "$PR_DATA" | jq -r '.headRefName')
+          SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
 
           # Check for hotfix in title or labels
           if echo "$TITLE" | grep -i 'hotfix' > /dev/null || echo "$LABELS" | grep -i 'hotfix' > /dev/null; then
@@ -43,9 +47,12 @@ jobs:
           fi
 
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
   merge-feature:
     if: needs.check-conditions.outputs.base-branch == 'develop' && needs.check-conditions.outputs.is-hotfix == 'false'
@@ -55,15 +62,6 @@ jobs:
       REPO_OWNER: ${{ github.repository_owner }}
       REPO_NAME: ${{ github.event.repository.name }}
     steps:
-      - name: Get PR metadata
-        id: get-pr
-        run: |
-          BRANCH=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json headRefName -q .headRefName)
-          SHA=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json headRefOid -q .headRefOid)
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          echo "sha=$SHA" >> $GITHUB_OUTPUT
-          echo "id=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-
       - name: Check approvals on appcat PR
         run: |
           APPROVED=$(gh pr view "${{ github.event.issue.number }}" --repo "$APPCAT_REPO" --json reviews -q '.reviews | map(select(.state == "APPROVED")) | length')
@@ -74,7 +72,7 @@ jobs:
 
       - name: Check required status checks on appcat PR
         run: |
-          PASSED=$(gh api repos/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/commits/${{ steps.get-pr.outputs.sha }}/check-runs \
+          PASSED=$(gh api repos/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/commits/${{ needs.check-conditions.outputs.last-sha }}/check-runs \
             -H "Accept: application/vnd.github.v3+json" \
             --jq '[.check_runs[].conclusion] | all(. == "success" or . == "skipped")')
 
@@ -96,7 +94,7 @@ jobs:
       - name: Find PR in component repo
         id: find-component-pr
         run: |
-          COMPONENT_BRANCH="appcat/${{ steps.get-pr.outputs.id }}/${{ steps.get-pr.outputs.branch }}"
+          COMPONENT_BRANCH="appcat/${{ needs.check-conditions.outputs.pr-number }}/${{ needs.check-conditions.outputs.feature-branch }}"
           PR_JSON=$(gh pr list --repo "$COMPONENT_REPO" --head "$COMPONENT_BRANCH" --state open --json number,headRefName,mergeable,url)
           PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
           PR_URL=$(echo "$PR_JSON" | jq -r '.[0].url')
@@ -127,7 +125,7 @@ jobs:
       - name: Clone and patch component repo
         run: |
           COMPONENT_BRANCH="${{ steps.find-component-pr.outputs.branch }}"
-          APPCAT_FR_COMMIT_SHA="${{ steps.get-pr.outputs.sha }}"
+          APPCAT_FR_COMMIT_SHA="${{ needs.check-conditions.outputs.last-sha }}"
           echo "🔧 Using commit: $APPCAT_FR_COMMIT_SHA"
           echo "🔧 Cloning branch: $COMPONENT_BRANCH"
 
@@ -149,7 +147,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "✅ No changes to commit"
           else
-            git commit -m "Auto update from appcat PR #${{ steps.get-pr.outputs.id }}, dependency $APPCAT_FR_COMMIT_SHA"
+            git commit -m "Auto update from appcat PR #${{ needs.check-conditions.outputs.pr-number }}, dependency $APPCAT_FR_COMMIT_SHA"
             git push origin "$COMPONENT_BRANCH"
           fi
 

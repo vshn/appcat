@@ -31,7 +31,7 @@ jobs:
         id: get-base
         run: |
           PR_BASE=$(gh pr view ${{ github.event.issue.number }} --repo "$APPCAT_REPO" --json baseRefName -q .baseRefName)
-          echo '${{ toJson(github) }}'
+          echo '${{ toJson(github.event) }}'
           echo "base=$PR_BASE" >> "$GITHUB_OUTPUT"
 
       - name: Exit if base is not develop

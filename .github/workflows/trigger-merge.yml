@@ -24,6 +24,7 @@ jobs:
       pr-number: ${{ steps.appcat.outputs.pr-number }}
       mergeable: ${{ steps.appcat.outputs.mergeable }}
       approved: ${{ steps.appcat.outputs.approved }}
+      author: ${{ steps.appcat.outputs.author }}
 
       #component branch vars
       comp-pr-number: ${{ steps.component.outputs.pr-number }}
@@ -44,7 +45,7 @@ jobs:
         id: appcat
         run: |
           PR_NUMBER=${{ github.event.issue.number }}
-          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title,labels,baseRefName,headRefName,headRefOid,mergeable,reviews)
+          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title,labels,baseRefName,headRefName,headRefOid,mergeable,reviews,author)
 
           TITLE=$(echo "$PR_DATA" | jq -r '.title')
           LABELS=$(echo "$PR_DATA" | jq -r '[.labels[].name]')
@@ -53,6 +54,7 @@ jobs:
           SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
           MERGEABLE=$(echo "$PR_DATA" | jq -r '.mergeable')
           APPROVED=$(echo "$PR_DATA" | jq -r '.reviews // [] | map(select(.state == "APPROVED")) | length')
+          AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login')
 
           # Check for hotfix in title or labels
           if echo "$TITLE" | grep -i 'hotfix' > /dev/null || echo "$LABELS" | grep -i 'hotfix' > /dev/null; then
@@ -67,6 +69,7 @@ jobs:
           echo "pr-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "mergeable=$MERGEABLE" >> "$GITHUB_OUTPUT"
           echo "approved=$APPROVED" >> "$GITHUB_OUTPUT"
+          echo "author=$AUTHOR" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -228,14 +231,14 @@ jobs:
         run: |
           git config --global user.email "githubbot@vshn.ch"
           git config --global user.name "GitHubBot"
-      
+          
           git clone --quiet https://x-access-token:$APPCAT_GH_TOKEN@github.com/$APPCAT_REPO.git
           cd appcat
           git fetch --tags
-      
+          
           # Get the latest tag (assumes tags are in 'vX.Y.Z' format)
           LATEST_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
-      
+          
           if [ -z "$LATEST_TAG" ]; then
             echo "No tags found."
             exit 1
@@ -247,7 +250,7 @@ jobs:
             PATCH=$((PATCH + 1))
             NEW_TAG="v$MAJOR.$MINOR.$PATCH"
           fi
-      
+          
           git checkout master
           git tag "$NEW_TAG"
           git push origin "$NEW_TAG"
@@ -288,35 +291,24 @@ jobs:
           echo "✅ Merging component PR: ${{ needs.check-conditions.outputs.comp-url }}"
           gh pr merge -R "$COMPONENT_REPO" ${{ needs.check-conditions.outputs.comp-pr-number }} --merge --delete-branch
 
-      - name: Create PR from master to develop in appcat
+      - name: Create PR to merge master into develop
         run: |
-          git config --global user.email "githubbot@vshn.ch"
-          git config --global user.name "GitHubBot"
-          
-          git clone https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
-          cd appcat
-          
-          git checkout master
-          git pull origin master
-          
-          git checkout develop
-          git pull origin develop
-          
-          # Create a temporary merge branch
-          MERGE_BRANCH="merge-master-to-develop-$(date +%s)"
-          git checkout -b "$MERGE_BRANCH"
-          
-          # Merge master into develop
-          git merge --no-ff master -m "Merge hotfixes from master into develop"
-          
-          # Push the merge branch
-          git push origin "$MERGE_BRANCH"
-          
-          # Create PR via gh CLI
           gh pr create \
+            --repo "$APPCAT_REPO" \
             --base develop \
-            --head "$MERGE_BRANCH" \
-            --title "🔀 Merge master into develop" \
-            --body "This PR merges changes from \`master\` into \`develop\` after a hotfix."
-        env:
-          GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
+            --head master \
+            --title "🔀 Merge master into develop (sync hotfixes)" \
+            --body "This PR synchronizes the hotfixes from master back into develop."
+
+      - name: Create PR to merge master into develop
+        run: |
+          gh pr create \
+            --repo "$APPCAT_REPO" \
+            --base develop \
+            --head master \
+            --reviewer ${{ needs.check-conditions.outputs.author }} \
+            --title "🔀 Merge master into develop (sync hotfixes)" \
+            --body "This PR synchronizes the hotfixes from master back into develop."
+      - name: Create image
+        run: |
+          echo "image"

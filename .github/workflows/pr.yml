@@ -12,8 +12,8 @@ env:
   APP_NAME: appcat
   COMPONENT_REPO: zugao/component-appcat
   PUSH_UPBOUND: "False"
-  PUSH_PACKAGE: "False"
-  PUSH_IMAGE: "False"
+  PUSH_PACKAGE: "True"
+  PUSH_IMAGE: "True"
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -90,14 +90,14 @@ jobs:
       - name: Build branch and push image
         if: env.PUSH_IMAGE == 'true'
         run: |
-          make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
-          make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch_sha }}"
+          make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}
+          make docker-push-branchtag -e IMG_TAG=${{ steps.get_branch_sha.outputs.branch_sha }}"
 
       - name: Build branch and push package
         if: env.PUSH_PACKAGE == 'True'
         run: |
-          make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
-          make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch_sha }}"
+          make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}
+          make package-push-branchtag -e IMG_TAG=${{ steps.get_branch_sha.outputs.branch_sha }}"
 
       - name: Login to Upbound
         if: env.PUSH_UPBOUND == 'true'

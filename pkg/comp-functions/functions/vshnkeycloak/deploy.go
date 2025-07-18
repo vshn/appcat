@@ -211,11 +211,16 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		cm := &corev1.ConfigMap{}
 		obj, err := svc.CopyKubeResource(ctx, cm, configMapName, *customConfigurationRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 		if err != nil {
-			return fmt.Errorf("cannot copy ConfigMap: %w", err)
+			l.Error(err, "cannot copy ConfigMap")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy ConfigMap: %s", err)))
+			return nil
 		}
 		dataBytes, err := json.Marshal(obj.(*corev1.ConfigMap).Data)
 		if err != nil {
-			return fmt.Errorf("cannot marshal ConfigMap data for hashing: %w", err)
+			l.Error(err, "cannot marshal ConfigMap data for hashing")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot marshal ConfigMap data for hashing: %s", err)))
+
+			return nil
 		}
 		currentConfigHash = fmt.Sprintf("%x", md5.Sum(dataBytes))
 	}
@@ -224,35 +229,21 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		sec := &corev1.Secret{}
 		obj, err := svc.CopyKubeResource(ctx, sec, envSecretName, *customEnvVariablesRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 		if err != nil {
-			return fmt.Errorf("cannot copy Secret: %w", err)
+			l.Error(err, "cannot copy Secret")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy Secret: %s", err)))
+			return nil
 		}
 		dataBytes, err := json.Marshal(obj.(*corev1.Secret).Data)
 		if err != nil {
-			return fmt.Errorf("cannot marshal Secret data for hashing: %w", err)
+			l.Error(err, "cannot marshal Secret data for hashing")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot marshal Secret data for hashing: %s", err)))
+			return nil
 		}
 		currentEnvHash = fmt.Sprintf("%x", md5.Sum(dataBytes))
 	}
 
 	lastConfigHash := comp.GetLastConfigHash()
 	lastEnvHash := comp.GetLastEnvHash()
-
-	// If we just created the instance, then the last hashes will be empty and thus trigger configOrEnvChanged().
-	// This will result in a race condition where two keycloak setups could run in parallel and clash with each other.
-	// Therefore, we'll check if those hashes are empty and set them to the current hashes.
-	if (lastConfigHash == "" && currentConfigHash != "") || (lastEnvHash == "" && currentEnvHash != "") {
-		if lastConfigHash == "" && currentConfigHash != "" {
-			comp.SetLastConfigHash(currentConfigHash)
-		}
-		if lastEnvHash == "" && currentEnvHash != "" {
-			comp.SetLastEnvHash(currentEnvHash)
-		}
-
-		l.Info("Setting initial configuration hashes")
-		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
-			return fmt.Errorf("cannot set composite status with new hashes: %w", err)
-		}
-		return nil
-	}
 
 	if !configOrEnvChanged(currentConfigHash, lastConfigHash, currentEnvHash, lastEnvHash) {
 		return nil
@@ -263,7 +254,9 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	// Only create job if/once STS is healthy.
 	err := addStsObserver(comp, svc)
 	if err != nil {
-		return fmt.Errorf("could not set up STS observer: %w", err)
+		l.Error(err, "could not set up STS observer")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("could not set up STS observer: %s", err)))
+		return nil
 	}
 
 	stsObserved := appsv1.StatefulSet{}
@@ -275,6 +268,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 
 	if stsObserved.Status.ReadyReplicas == 0 {
 		l.Info("Observed STS is reporting 0 ready replicas, will not yet create config job")
+		svc.SetDesiredResourceReadiness(comp.GetName()+"-sts-observer", runtime.ResourceUnReady)
 		return nil
 	}
 
@@ -294,14 +288,18 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
 		applyJob := buildConfigApplyJob(comp, adminSecret, jobName)
 		if err := svc.SetDesiredKubeObject(applyJob, jobName, runtime.KubeOptionAllowDeletion); err != nil {
-			return fmt.Errorf("cannot create config apply Job: %w", err)
+			l.Error(err, "cannot create config apply Job")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot create config apply Job: %s", err)))
+			return nil
 		}
 		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
 		return nil
 	}
 
 	if err := svc.SetDesiredKubeObject(observedJob, jobName, runtime.KubeOptionAllowDeletion); err != nil {
-		return fmt.Errorf("cannot set desired kube object for existing job: %w", err)
+		l.Error(err, "cannot set desired kube object for existing job")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set desired kube object for existing job: %s", err)))
+		return nil
 	}
 
 	if observedJob.Status.Succeeded > 0 {
@@ -322,6 +320,8 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 }
 
 func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	l := svc.Log
+
 	if len(comp.Spec.Parameters.Service.CustomMounts) > 0 {
 		for _, m := range comp.Spec.Parameters.Service.CustomMounts {
 			switch m.Type {
@@ -329,16 +329,23 @@ func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 				obj := &corev1.Secret{}
 				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 				if err != nil {
-					return fmt.Errorf("cannot copy secret %q: %s", m.Name, err)
+					l.Error(err, "cannot copy Secret", "name", m.Name)
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy Secret %q: %s", m.Name, err)))
+					return nil
 				}
 			case customMountTypeConfigMap:
 				obj := &corev1.ConfigMap{}
 				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 				if err != nil {
-					return fmt.Errorf("cannot copy configMap %q: %s", m.Name, err)
+					l.Error(err, "cannot copy ConfigMap", "name", m.Name)
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy ConfigMap %q: %s", m.Name, err)))
+					return nil
 				}
 			default:
-				return fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
+				err := fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
+				l.Error(err, "invalid customMount", "name", m.Name, "type", m.Type)
+				svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("invalid customMount type %q for %q", m.Type, m.Name)))
+				return nil
 			}
 		}
 	}
@@ -361,7 +368,7 @@ func addStsObserver(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) erro
 			Namespace: comp.GetInstanceNamespace(),
 		},
 	}
-	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve)
+	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion)
 }
 
 func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string) *batchv1.Job {

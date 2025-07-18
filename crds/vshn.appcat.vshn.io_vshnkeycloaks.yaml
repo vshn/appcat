@@ -4620,10 +4620,8 @@ spec:
                           type: string
                         customEnvVariablesRef:
                           description: |-
-                            CustomEnvVariablesRef can be used to provide custom environment variables from a
-                            provided secret for the keycloak instance. The environment variables provided
-                            can for example be used in the custom JSON configuration provided in the `Configuration`
-                            field with `$(env:<ENV_VAR_NAME>:-<some_default_value>)`
+                            CustomEnvVariablesRef can be used to provide custom environment variables from a Secret
+                            for the keycloak instance. This field is deprecated, use 'envFrom' instead.
                           type: string
                         customFiles:
                           description: |-
@@ -4684,6 +4682,54 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                           type: object
+                        envFrom:
+                          description: |-
+                            EnvFrom can be used to provide custom environment variables from either
+                            a ConfigMap or a Secret for the keycloak instance. The environment variables provided
+                            can for example be used in the custom JSON configuration provided in the `Configuration`
+                            field with `$(env:<ENV_VAR_NAME>:-<some_default_value>)`
+                          items:
+                            description: EnvFromSource represents the source of a set of ConfigMaps
+                            properties:
+                              configMapRef:
+                                description: The ConfigMap to select from
+                                properties:
+                                  name:
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    type: string
+                                  optional:
+                                    description: Specify whether the ConfigMap must be defined
+                                    type: boolean
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              prefix:
+                                description: An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+                                type: string
+                              secretRef:
+                                description: The Secret to select from
+                                properties:
+                                  name:
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    type: string
+                                  optional:
+                                    description: Specify whether the Secret must be defined
+                                    type: boolean
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            type: object
+                          type: array
                         fqdn:
                           description: |-
                             FQDN contains the FQDN which will be used for the ingress.

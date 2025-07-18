@@ -40,6 +40,8 @@ type KeycloakWebhookHandler struct {
 	DefaultWebhookHandler
 }
 
+var _ webhook.CustomValidator = &KeycloakWebhookHandler{}
+
 // SetupKeycloakWebhookHandlerWithManager registers the validation webhook with the manager.
 func SetupKeycloakWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
 	return ctrl.NewWebhookManagedBy(mgr).
@@ -73,6 +75,10 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 		return nil, err
 	}
 
+	if warn, err := isDeprecatedFieldInUse(keycloak); warn != nil {
+		return warn, err
+	}
+
 	return nil, nil
 }
 
@@ -89,6 +95,10 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 
 	if err := validateCustomFileObject(newKeycloak); err != nil {
 		return nil, err
+	}
+
+	if warn, err := isDeprecatedFieldInUse(newKeycloak); warn != nil {
+		return warn, err
 	}
 
 	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
@@ -143,4 +153,16 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error 
 	}
 
 	return nil
+}
+
+func isDeprecatedFieldInUse(comp *vshnv1.VSHNKeycloak) (admission.Warnings, error) {
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		return admission.Warnings{
+			fmt.Sprintf("Field 'customEnvVariablesRef' in %s has been deprecated, please use 'envFrom' instead.",
+				field.NewPath("spec", "parameters", "service").String(),
+			),
+		}, nil
+	}
+
+	return nil, nil
 }

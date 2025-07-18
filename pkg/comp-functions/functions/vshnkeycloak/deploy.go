@@ -23,6 +23,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -210,11 +211,16 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		cm := &corev1.ConfigMap{}
 		obj, err := svc.CopyKubeResource(ctx, cm, configMapName, *customConfigurationRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 		if err != nil {
-			return fmt.Errorf("cannot copy ConfigMap: %w", err)
+			l.Error(err, "cannot copy ConfigMap")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy ConfigMap: %s", err)))
+			return nil
 		}
 		dataBytes, err := json.Marshal(obj.(*corev1.ConfigMap).Data)
 		if err != nil {
-			return fmt.Errorf("cannot marshal ConfigMap data for hashing: %w", err)
+			l.Error(err, "cannot marshal ConfigMap data for hashing")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot marshal ConfigMap data for hashing: %s", err)))
+
+			return nil
 		}
 		currentConfigHash = fmt.Sprintf("%x", md5.Sum(dataBytes))
 	}
@@ -223,11 +229,15 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		sec := &corev1.Secret{}
 		obj, err := svc.CopyKubeResource(ctx, sec, envSecretName, *customEnvVariablesRef, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 		if err != nil {
-			return fmt.Errorf("cannot copy Secret: %w", err)
+			l.Error(err, "cannot copy Secret")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy Secret: %s", err)))
+			return nil
 		}
 		dataBytes, err := json.Marshal(obj.(*corev1.Secret).Data)
 		if err != nil {
-			return fmt.Errorf("cannot marshal Secret data for hashing: %w", err)
+			l.Error(err, "cannot marshal Secret data for hashing")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot marshal Secret data for hashing: %s", err)))
+			return nil
 		}
 		currentEnvHash = fmt.Sprintf("%x", md5.Sum(dataBytes))
 	}
@@ -241,6 +251,27 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 
 	l.Info("Detected configuration change, managing job lifecycle")
 
+	// Only create job if/once STS is healthy.
+	err := addStsObserver(comp, svc)
+	if err != nil {
+		l.Error(err, "could not set up STS observer")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("could not set up STS observer: %s", err)))
+		return nil
+	}
+
+	stsObserved := appsv1.StatefulSet{}
+	err = svc.GetObservedKubeObject(&stsObserved, comp.GetName()+"-sts-observer")
+	if err != nil {
+		l.Info("could not get STS observer, skipping config job", "error", err.Error())
+		return nil
+	}
+
+	if stsObserved.Status.ReadyReplicas == 0 {
+		l.Info("Observed STS is reporting 0 ready replicas, will not yet create config job")
+		svc.SetDesiredResourceReadiness(comp.GetName()+"-sts-observer", runtime.ResourceUnReady)
+		return nil
+	}
+
 	currentCombinedHash := fmt.Sprintf("%x", md5.Sum([]byte(currentConfigHash+currentEnvHash)))
 	shortHash := currentCombinedHash[:8]
 	jobName := fmt.Sprintf("%s-apply-cfg-%s", comp.GetName(), shortHash)
@@ -251,20 +282,24 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	}
 
 	observedJob := &batchv1.Job{}
-	err := svc.GetObservedKubeObject(observedJob, jobName)
+	err = svc.GetObservedKubeObject(observedJob, jobName)
 
 	if err != nil {
 		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
 		applyJob := buildConfigApplyJob(comp, adminSecret, jobName)
 		if err := svc.SetDesiredKubeObject(applyJob, jobName, runtime.KubeOptionAllowDeletion); err != nil {
-			return fmt.Errorf("cannot create config apply Job: %w", err)
+			l.Error(err, "cannot create config apply Job")
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot create config apply Job: %s", err)))
+			return nil
 		}
 		svc.SetDesiredResourceReadiness(jobName, runtime.ResourceUnReady)
 		return nil
 	}
 
 	if err := svc.SetDesiredKubeObject(observedJob, jobName, runtime.KubeOptionAllowDeletion); err != nil {
-		return fmt.Errorf("cannot set desired kube object for existing job: %w", err)
+		l.Error(err, "cannot set desired kube object for existing job")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set desired kube object for existing job: %s", err)))
+		return nil
 	}
 
 	if observedJob.Status.Succeeded > 0 {
@@ -285,6 +320,8 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 }
 
 func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	l := svc.Log
+
 	if len(comp.Spec.Parameters.Service.CustomMounts) > 0 {
 		for _, m := range comp.Spec.Parameters.Service.CustomMounts {
 			switch m.Type {
@@ -292,16 +329,23 @@ func handleCustomMounts(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 				obj := &corev1.Secret{}
 				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 				if err != nil {
-					return fmt.Errorf("cannot copy secret %q: %s", m.Name, err)
+					l.Error(err, "cannot copy Secret", "name", m.Name)
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy Secret %q: %s", m.Name, err)))
+					return nil
 				}
 			case customMountTypeConfigMap:
 				obj := &corev1.ConfigMap{}
 				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-"+m.Name, m.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 				if err != nil {
-					return fmt.Errorf("cannot copy configMap %q: %s", m.Name, err)
+					l.Error(err, "cannot copy ConfigMap", "name", m.Name)
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy ConfigMap %q: %s", m.Name, err)))
+					return nil
 				}
 			default:
-				return fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
+				err := fmt.Errorf("invalid customMount type %q for %q", m.Type, m.Name)
+				l.Error(err, "invalid customMount", "name", m.Name, "type", m.Type)
+				svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("invalid customMount type %q for %q", m.Type, m.Name)))
+				return nil
 			}
 		}
 	}
@@ -315,6 +359,16 @@ func configOrEnvChanged(currentConfigHash, lastConfigHash, currentEnvHash, lastE
 		return false
 	}
 	return true
+}
+
+func addStsObserver(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-keycloakx",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+	}
+	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion)
 }
 
 func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string) *batchv1.Job {
@@ -342,6 +396,12 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 			},
 		})
 	}
+
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		envFrom = append(envFrom, *comp.Spec.Parameters.Service.EnvFrom...)
+	}
+
+	keycloakApiUrl := fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -384,7 +444,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 								},
 								{
 									Name:  "KEYCLOAK_API_URL",
-									Value: fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace()),
+									Value: keycloakApiUrl,
 								},
 							},
 							Command: []string{"sh", "-c", "/opt/keycloak/bin/keycloak-setup.sh"},
@@ -625,6 +685,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	if err != nil {
 		return nil, err
 	}
+
 	values = map[string]any{
 		"replicas":          comp.Spec.Parameters.Instances,
 		"extraEnv":          extraEnv,
@@ -693,6 +754,31 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"podSecurityContext": nil,
 	}
 
+	var envFromMap []v1.EnvFromSource
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		envFromMap = *comp.Spec.Parameters.Service.EnvFrom
+	}
+
+	// Deprecated field, the logic below is kept for backwards compatibility
+	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
+		envFromMap = append(envFromMap, v1.EnvFromSource{
+			SecretRef: &v1.SecretEnvSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: *comp.Spec.Parameters.Service.CustomEnvVariablesRef,
+				},
+			},
+		})
+	}
+
+	if envFromMap != nil {
+		envFrom, err := toYAML(envFromMap)
+		if err != nil {
+			return nil, err
+		}
+
+		values["extraEnvFrom"] = envFrom
+	}
+
 	if svc.Config.Data["imageRegistry"] != "" {
 		values["image"] = map[string]interface{}{
 			"repository": svc.Config.Data["imageRegistry"],
@@ -712,6 +798,25 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
+	if comp.Spec.Parameters.Service.EnvFrom != nil {
+		for _, r := range *comp.Spec.Parameters.Service.EnvFrom {
+			if r.SecretRef != nil {
+				obj := &corev1.Secret{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+r.SecretRef.Name, r.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
+				}
+			}
+			if r.ConfigMapRef != nil {
+				obj := &corev1.ConfigMap{}
+				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-cm-"+r.ConfigMapRef.Name, r.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
+				}
+			}
+		}
+	}
+
 	values, err := newValues(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return nil, err

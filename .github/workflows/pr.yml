@@ -159,7 +159,7 @@ jobs:
 
       - name: Ignore from Changelog if merge to master
         uses: actions-ecosystem/action-add-labels@v1
-        if: github.base_ref == 'master'
+        if: github.base_ref == 'master' && github.event.action == 'opened'
         with:
           labels: ignoreChangelog
 

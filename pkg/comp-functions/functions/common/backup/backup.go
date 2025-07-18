@@ -282,5 +282,11 @@ func getBucketName(svc *runtime.ServiceRuntime, currentBucket *appcatv1.XObjectB
 		return currentBucket.Spec.Parameters.BucketName
 	}
 
+	// If the found bucket has an empty name, we still return the desired bucketName
+	// This avoids race conditions during the provisioning, especially for non-converged setups
+	if bucket.Spec.Parameters.BucketName == "" {
+		return currentBucket.Spec.Parameters.BucketName
+	}
+
 	return bucket.Spec.Parameters.BucketName
 }

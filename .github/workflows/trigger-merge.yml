@@ -311,4 +311,4 @@ jobs:
             --body "This PR synchronizes the hotfixes from master back into develop."
       - name: Create image
         run: |
-          echo "image"
+          echo "image2"

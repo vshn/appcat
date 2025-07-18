@@ -27,7 +27,7 @@ func TestRedisDeploy(t *testing.T) {
 	assert.Nil(t, DeployRedis(ctx, comp, svc))
 
 	ns := &corev1.Namespace{}
-	assert.NoError(t, svc.GetDesiredKubeObject(ns, "namespace-permissions"))
+	assert.NoError(t, svc.GetDesiredKubeObject(ns, "namespace-conditions"))
 
 	roleBinding := &rbacv1.RoleBinding{}
 	assert.NoError(t, svc.GetDesiredKubeObject(roleBinding, "namespace-permissions"))

@@ -153,6 +153,7 @@ input:
     redisChartVersion: 21.0.3
     controlNamespace: appcat-control
     plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true, "memory": "1Gi"}}}'
+    sideCars: '{"sentinel": {"requests": {"cpu": "10m", "memory": "50Mi"}, "limits": {"cpu": "100m", "memory": "100Mi"}}, "metrics": {"requests": {"cpu": "100m", "memory": "128Mi"}, "limits": {"cpu": "150m", "memory": "192Mi"}}, "kubectl": {"requests":  {"cpu": "10m", "memory": "50Mi"}, "limits": {"cpu": "100m", "memory": "100Mi"}}}'
     providerEnabled: "true"
   kind: ConfigMap
   metadata:

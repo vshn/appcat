@@ -2,7 +2,9 @@ package vshnredis
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
@@ -11,7 +13,10 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -24,9 +29,13 @@ const (
 	redisUsernameConnectionDetailsField = "REDIS_USERNAME"
 	redisPasswordConnectionDetailsField = "REDIS_PASSWORD"
 	redisURLConnectionDetailsField      = "REDIS_URL"
+	sentinelHostsConnectionDetailsField = "SENTINEL_HOSTS"
 
 	redisRelease = "release"
 )
+
+//go:embed script/scaling.sh
+var redisScalingScript string
 
 // DeployRedis will deploy the objects to provision redis instance
 func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
@@ -43,11 +52,21 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 		return runtime.NewWarningResult(fmt.Errorf("cannot create credentials secret: %w", err).Error())
 	}
 
+	additionalSans := []string{
+		fmt.Sprintf("redis-headless.vshn-redis-%s.svc.cluster.local", comp.GetName()),
+		fmt.Sprintf("redis-headless.vshn-redis-%s.svc", comp.GetName()),
+	}
+	if comp.GetInstances() > 1 {
+		additionalSans = append(additionalSans, fmt.Sprintf("redis-master.vshn-redis-%s.svc.cluster.local", comp.GetName()))
+		additionalSans = append(additionalSans, fmt.Sprintf("redis-master.vshn-redis-%s.svc", comp.GetName()))
+		for i := range comp.GetInstances() {
+			additionalSans = append(additionalSans, fmt.Sprintf("redis-node-%d.redis-headless.vshn-redis-%s.svc.cluster.local", i, comp.GetName()))
+			additionalSans = append(additionalSans, fmt.Sprintf("redis-node-%d.redis-headless.vshn-redis-%s.svc", i, comp.GetName()))
+		}
+	}
+
 	tlsOpts := &common.TLSOptions{
-		AdditionalSans: []string{
-			fmt.Sprintf("redis-headless.vshn-redis-%s.svc.cluster.local", comp.GetName()),
-			fmt.Sprintf("redis-headless.vshn-redis-%s.svc", comp.GetName()),
-		},
+		AdditionalSans: additionalSans,
 	}
 
 	_, _, err = createMTLSCerts(comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts)
@@ -87,6 +106,12 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *r
 		return err
 	}
 
+	err = migrateRedis(ctx, svc, comp)
+	if err != nil {
+		svc.Log.Error(err, "cannot create migration job")
+		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot create migration job: %s", err)))
+	}
+
 	if err := svc.SetDesiredComposedResourceWithName(rel, redisRelease); err != nil {
 		return err
 	}
@@ -123,16 +148,76 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		commonConfig = comp.Spec.Parameters.Service.RedisSettings
 	}
 
+	automountServiceAccountToken := false
+	masterService := false
+	rbacCreate := false
+	if comp.GetInstances() > 1 {
+		automountServiceAccountToken = true
+		masterService = true
+		rbacCreate = true
+	}
+
+	sidecars, err := utils.FetchSidecarsFromConfig(ctx, svc)
+
+	if err != nil {
+		err = fmt.Errorf("cannot get sideCars from config: %w", err)
+		return nil, err
+	}
+
 	values := map[string]any{
 		"fullnameOverride": "redis",
-		"architecture":     "standalone",
-
+		"architecture":     "replication",
+		"sentinel": map[string]any{
+			"enabled": true,
+			"resources": map[string]any{
+				"limits": map[string]any{
+					"ephemeral-storage": "50Mi",
+				},
+			},
+			"masterService": map[string]any{
+				"enabled": masterService,
+			},
+		},
+		"replica": map[string]any{
+			"replicaCount":                 comp.GetInstances(),
+			"automountServiceAccountToken": automountServiceAccountToken,
+			"persistence": map[string]any{
+				"size": res.Disk,
+			},
+			"podSecurityContext": map[string]any{
+				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
+			},
+			"containerSecurityContext": map[string]any{
+				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
+			},
+			"resources": map[string]any{
+				"requests": map[string]any{
+					"memory": res.ReqMem,
+					"cpu":    res.ReqCPU,
+				},
+				"limits": map[string]any{
+					"memory": res.Mem,
+					"cpu":    res.CPU,
+				},
+			},
+			"nodeSelector": nodeSelector,
+		},
+		"kubectl": map[string]any{
+			"podSecurityContext": map[string]any{
+				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
+			},
+			"containerSecurityContext": map[string]any{
+				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
+			},
+		},
 		"global": map[string]any{
 			"security": map[string]any{
 				"allowInsecureImages": true,
 			},
 		},
-
+		"rbac": map[string]any{
+			"create": rbacCreate,
+		},
 		"image": map[string]any{
 			"tag": comp.Spec.Parameters.Service.Version,
 		},
@@ -175,39 +260,15 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"containerSecurityContext": map[string]any{
 				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
 			},
-
-			"resources": common.GetBitnamiNano(),
 		},
-
-		"master": map[string]any{
-			"persistence": map[string]any{
-				"size": res.Disk,
-			},
-			"podSecurityContext": map[string]any{
-				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
-			},
-			"containerSecurityContext": map[string]any{
-				"enabled": !svc.GetBoolFromCompositionConfig("isOpenshift"),
-			},
-			"resources": map[string]any{
-				"requests": map[string]any{
-					"memory": res.ReqMem,
-					"cpu":    res.ReqCPU,
-				},
-				"limits": map[string]any{
-					"memory": res.Mem,
-					"cpu":    res.CPU,
-				},
-			},
-			"nodeSelector": nodeSelector,
-		},
-
 		"commonConfiguration": commonConfig,
 
 		"networkPolicy": map[string]any{
 			"enabled": false,
 		},
 	}
+
+	common.MergeSidecarsIntoValues(values, sidecars)
 
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
 		_ = common.SetNestedObjectValue(values, []string{"global", "imageRegistry"}, registry)
@@ -275,6 +336,15 @@ func getConnectionDetails(comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime, s
 	}
 
 	host := fmt.Sprintf("redis-headless.vshn-redis-%s.svc.cluster.local", comp.GetName())
+	if comp.GetInstances() > 1 {
+		host = fmt.Sprintf("redis-master.vshn-redis-%s.svc.cluster.local", comp.GetName())
+
+		sentinel_hosts := []string{}
+		for i := 0; i < comp.GetInstances(); i++ {
+			sentinel_hosts = append(sentinel_hosts, fmt.Sprintf("redis-node-%d.redis-headless.vshn-redis-%s.svc.cluster.local", i, comp.GetName()))
+		}
+		svc.SetConnectionDetail(sentinelHostsConnectionDetailsField, []byte(strings.Join(sentinel_hosts, ",")))
+	}
 	url := fmt.Sprintf("rediss://%s:%s@%s:%s", redisUser, string(redisPassword), host, redisPort)
 
 	svc.SetConnectionDetail(redisHostConnectionDetailsField, []byte(host))
@@ -298,4 +368,76 @@ func getRedisRootPassword(secretName string, svc *runtime.ServiceRuntime) ([]byt
 		return nil, err
 	}
 	return secret.Data[passwordKey], nil
+}
+
+func migrateRedis(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
+
+	rules := []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"apps"},
+			Resources: []string{"statefulsets"},
+			Verbs:     []string{"get", "watch", "list"},
+		},
+		{
+			APIGroups: []string{"apps"},
+			Resources: []string{"statefulsets/scale"},
+			Verbs:     []string{"patch"},
+		},
+		{
+			APIGroups: []string{"batch"},
+			Resources: []string{"jobs"},
+			Verbs:     []string{"get", "create", "watch", "list"},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"persistentvolumeclaims"},
+			Verbs:     []string{"get", "list"},
+		},
+	}
+
+	err := common.AddSaWithRole(ctx, svc, rules, comp.GetName(), comp.GetInstanceNamespace(), "pvc-migration", true)
+	if err != nil {
+		return fmt.Errorf("failed to add PVC-Migration SA with Role: %w", err)
+	}
+
+	migrationJobDesired := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      comp.GetName() + "-migrationjob",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					RestartPolicy: "OnFailure",
+					Containers: []corev1.Container{
+						{
+							Name:    "migrationjob",
+							Image:   "bitnami/kubectl:latest",
+							Command: []string{"sh", "-c"},
+							Args:    []string{redisScalingScript},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "INSTANCE_NAMESPACE",
+									Value: comp.GetInstanceNamespace(),
+								},
+								{
+									Name:  "INSTANCE_NAME",
+									Value: comp.GetName(),
+								},
+							},
+						},
+					},
+					ServiceAccountName: "sa-pvc-migration",
+				},
+			},
+		},
+	}
+
+	err = svc.SetDesiredKubeObject(migrationJobDesired, comp.GetName()+"-scalingjob")
+	if err != nil {
+		err = fmt.Errorf("cannot create scalingJob: %w", err)
+		return err
+	}
+
+	return nil
 }

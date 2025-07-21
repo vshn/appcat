@@ -13,7 +13,7 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	if err := svc.GetDesiredComposite(comp); err != nil {
+	if err := svc.GetObservedComposite(comp); err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 

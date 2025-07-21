@@ -17,7 +17,7 @@ import (
 
 func UserManagement(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	err := svc.GetDesiredComposite(comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
 	}

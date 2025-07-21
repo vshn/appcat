@@ -701,12 +701,7 @@ func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string
 
 // GetObservedComposite returns the observed composite and unmarshals it into the given object.
 func (s *ServiceRuntime) GetObservedComposite(obj client.Object) error {
-	comp, err := request.GetObservedCompositeResource(s.req)
-	if err != nil {
-		return err
-	}
-
-	jsonBytes, err := comp.Resource.MarshalJSON()
+	jsonBytes, err := s.observedComposite.MarshalJSON()
 	if err != nil {
 		return err
 	}
@@ -1456,7 +1451,7 @@ func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 
 		// We need to concatenate the name of the resource with the name of its immediate parent composite to avoid clashes
 		// in the desired map
-		err = s.SetDesiredKubeObject(secret, compName+"-"+s.desiredComposite.GetName())
+		err = s.SetDesiredKubeObject(secret, compName+"-"+s.observedComposite.GetName())
 		if err != nil {
 			return err
 		}

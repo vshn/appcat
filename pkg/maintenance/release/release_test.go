@@ -43,10 +43,10 @@ func TestGetLatestRevision_NoRevisions(t *testing.T) {
 		Version:        "v1",
 		ServiceID:      "service-123",
 	}
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
+	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient)
 
 	// Then
 	assert.Error(t, err)
@@ -111,10 +111,10 @@ func TestLatestVersion_UpdateClaim(t *testing.T) {
 		Version:        "v1",
 		ServiceID:      "service-123",
 	}
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
+	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient)
 
 	// Then
 	require.NoError(t, err)
@@ -189,10 +189,10 @@ func TestLatestVersion_UpdateComposite(t *testing.T) {
 		Version:   "v1",
 		ServiceID: "service-123",
 	}
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
+	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient)
 
 	// Then
 	require.NoError(t, err)
@@ -244,10 +244,10 @@ func TestLatestVersion_MissingRevisionLabel(t *testing.T) {
 		Version:        "v1",
 		ServiceID:      "service-123",
 	}
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
+	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient)
 
 	// Then: No error, but log message should indicate missing label
 	require.Error(t, err)
@@ -309,10 +309,10 @@ func TestDisableReleaseManagment(t *testing.T) {
 		Version:   "v1",
 		ServiceID: "service-123",
 	}
-	vh := release.NewDefaultVersionHandler(fakeClient, logger, opts)
+	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), false)
+	err := vh.ReleaseLatest(context.Background(), false, fakeClient)
 
 	// Then
 	require.NoError(t, err)

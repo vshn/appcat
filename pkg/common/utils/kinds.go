@@ -6,7 +6,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// IsKindAvailable will check if the given type is available
+// IsKindAvailable will check if the given kind is available
 func IsKindAvailable(gv schema.GroupVersion, kind string, config *rest.Config) bool {
 	d, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {

@@ -315,7 +315,7 @@ func (m *Maintenance) createMaintenanceClusterRoleBinding(_ context.Context) err
 		},
 	}
 
-	return m.svc.SetDesiredKubeObject(clusterRoleBinding, m.resource.GetName()+"-maintenance-clusterrolebinding")
+	return m.svc.SetDesiredKubeObject(clusterRoleBinding, m.resource.GetName()+"-maintenance-clusterrolebinding", m.extraKubeOptions...)
 }
 
 func (m *Maintenance) createMaintenanceRoleBinding(_ context.Context) error {

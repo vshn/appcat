@@ -50,7 +50,7 @@ type proxySQLUsers struct {
 // This service is necessary to seamlessly scale up and down without changing the IP address.
 func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	err := svc.GetDesiredComposite(comp)
+	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get mariadb composite: %s", err))
 	}

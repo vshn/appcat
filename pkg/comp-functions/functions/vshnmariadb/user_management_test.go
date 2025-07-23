@@ -2,14 +2,19 @@ package vshnmariadb
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
+	"unsafe"
 
+	"github.com/crossplane/function-sdk-go/resource/composite"
 	"github.com/stretchr/testify/assert"
 	my1alpha1 "github.com/vshn/appcat/v4/apis/sql/mysql/v1alpha1"
 	pgv1alpha1 "github.com/vshn/appcat/v4/apis/sql/postgresql/v1alpha1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 )
@@ -101,6 +106,8 @@ func TestUserManagement(t *testing.T) {
 		},
 	}
 
+	assert.NoError(t, setObservedComposition(svc, comp))
+
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
 	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNMariaDB{}, svc))
 
@@ -113,6 +120,8 @@ func TestUserManagement(t *testing.T) {
 		User:     ptr.To("another"),
 		Database: ptr.To("prod"),
 	})
+
+	assert.NoError(t, setObservedComposition(svc, comp))
 
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
 	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNMariaDB{}, svc))
@@ -129,7 +138,32 @@ func TestUserManagement(t *testing.T) {
 		},
 	}
 
+	assert.NoError(t, setObservedComposition(svc, comp))
+
 	// then expect database
 	db = &my1alpha1.Database{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
+}
+
+func setObservedComposition(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) error {
+	v := reflect.ValueOf(svc).Elem()
+	val := v.FieldByName("observedComposite")
+	val = reflect.NewAt(val.Type(), unsafe.Pointer(val.UnsafeAddr())).Elem()
+
+	ccomp := composite.New()
+
+	jcomp, err := json.Marshal(comp)
+	if err != nil {
+		return err
+	}
+
+	err = ccomp.Unstructured.UnmarshalJSON(jcomp)
+	if err != nil {
+		return err
+	}
+
+	compV := reflect.ValueOf(ccomp)
+	val.Set(compV)
+
+	return nil
 }

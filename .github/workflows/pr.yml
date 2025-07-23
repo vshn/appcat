@@ -17,6 +17,7 @@ env:
 
 jobs:
   check-allow-merge:
+    if: github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master'
     runs-on: ubuntu-latest
     steps:
       # Labels in the context don't get updated so they are stuck at what's set during creation
@@ -29,9 +30,10 @@ jobs:
           ${{ contains(fromJSON(env.LABELS), 'hotfix') }} && exit 0
           echo "ERROR: You can only merge to master from develop or hotfixes."
           exit 1
+
   check-labels:
     # Act doesn't set a pull request number by default, so we skip if it's 0
-    if: github.event.pull_request.number != 0
+    if: github.event.pull_request.number != 0 && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master')
     name: Check labels
     runs-on: ubuntu-latest
     steps:
@@ -46,7 +48,7 @@ jobs:
           one_of: major,minor,patch,documentation,dependency
           repo_token: ${{ secrets.GITHUB_TOKEN }}
   publish-branch-images:
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,11 +83,15 @@ jobs:
 
       - name: Build branch and push image
         if: env.PUSH_IMAGE == 'true'
-        run: make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+        run: |
+          make docker-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+          make docker-push-branchtag -e IMG_TAG="${{ github.event.pull_request.head.sha }}"
 
       - name: Build branch and push package
         if: env.PUSH_PACKAGE == 'True'
-        run: make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+        run: |
+          make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}"
+          make package-push-branchtag -e IMG_TAG="${{ github.event.pull_request.head.sha }}"
 
       - name: Login to Upbound
         if: env.PUSH_UPBOUND == 'true'
@@ -101,7 +107,7 @@ jobs:
 
   open-pr-component:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.number != 0 && github.event.action == 'opened'
+    if: github.event.pull_request.number != 0 && github.event.action == 'opened' && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master')
     steps:
       - name: Get current labels
         uses: snnaplab/get-labels-action@v1

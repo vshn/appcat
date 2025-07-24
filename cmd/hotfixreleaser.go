@@ -148,7 +148,6 @@ func (h *hotfixer) handleComposite(ctx context.Context, comp unstructured.Unstru
 	}
 
 	r := release.NewDefaultVersionHandler(
-		kubeClient,
 		log,
 		opts,
 	)
@@ -158,7 +157,7 @@ func (h *hotfixer) handleComposite(ctx context.Context, comp unstructured.Unstru
 		return fmt.Errorf("cannot determine if release management is enabled: %w", err)
 	}
 
-	return r.ReleaseLatest(ctx, enabled)
+	return r.ReleaseLatest(ctx, enabled, kubeClient)
 }
 
 func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, log logr.Logger, kubeClient client.Client, labels map[string]string, compName string) error {
@@ -179,7 +178,6 @@ func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, lo
 	}
 
 	r := release.NewDefaultVersionHandler(
-		kubeClient,
 		log,
 		opts,
 	)
@@ -189,5 +187,5 @@ func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, lo
 		return fmt.Errorf("cannot determine if release management is enabled: %w", err)
 	}
 
-	return r.ReleaseLatest(ctx, enabled)
+	return r.ReleaseLatest(ctx, enabled, kubeClient)
 }

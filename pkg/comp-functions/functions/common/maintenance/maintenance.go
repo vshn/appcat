@@ -44,6 +44,8 @@ type Maintenance struct {
 	extraEnvs []corev1.EnvVar
 	// extraResources are extra resources to be added to the default list of resources created by this maintenance
 	extraResources []ExtraResource
+	// extraKubeOptions are extra options that will get passed to the `SetDesiredKubeObject` function
+	extraKubeOptions []runtime.KubeObjectOption
 }
 
 // ExtraResource is an extra resource to be added to the desired state of a Crossplane Function IO
@@ -74,6 +76,7 @@ func New(r client.Object, svc *runtime.ServiceRuntime, schedule vshnv1.VSHNDBaaS
 		resource:          r,
 		svc:               svc,
 		schedule:          schedule,
+		extraKubeOptions:  []runtime.KubeObjectOption{},
 	}
 }
 
@@ -86,6 +89,7 @@ func (m *Maintenance) WithPolicyRules(policyRules []rbacv1.PolicyRule) *Maintena
 // WithHelmBasedService adds extra environment variables to the cron job
 func (m *Maintenance) WithHelmBasedService() *Maintenance {
 	m.helmBasedService = true
+	m.extraKubeOptions = append(m.extraKubeOptions, runtime.KubeOptionDeployOnControlPlane)
 	return m
 }
 
@@ -284,7 +288,9 @@ func (m *Maintenance) createMaintenanceJob(_ context.Context, cronSchedule strin
 		},
 	}
 
-	return m.svc.SetDesiredKubeObject(job, m.resource.GetName()+"-maintenancejob", runtime.KubeOptionAllowDeletion)
+	kubeOpts := append([]runtime.KubeObjectOption{runtime.KubeOptionAllowDeletion}, m.extraKubeOptions...)
+
+	return m.svc.SetDesiredKubeObject(job, m.resource.GetName()+"-maintenancejob", kubeOpts...)
 }
 func (m *Maintenance) createMaintenanceClusterRoleBinding(_ context.Context) error {
 	name := m.svc.Config.Data["additionalMaintenanceClusterRole"]
@@ -309,7 +315,7 @@ func (m *Maintenance) createMaintenanceClusterRoleBinding(_ context.Context) err
 		},
 	}
 
-	return m.svc.SetDesiredKubeObject(clusterRoleBinding, m.resource.GetName()+"-maintenance-clusterrolebinding")
+	return m.svc.SetDesiredKubeObject(clusterRoleBinding, m.resource.GetName()+"-maintenance-clusterrolebinding", m.extraKubeOptions...)
 }
 
 func (m *Maintenance) createMaintenanceRoleBinding(_ context.Context) error {
@@ -331,7 +337,7 @@ func (m *Maintenance) createMaintenanceRoleBinding(_ context.Context) error {
 		},
 	}
 
-	return m.svc.SetDesiredKubeObject(roleBinding, m.resource.GetName()+"-maintenance-rolebinding")
+	return m.svc.SetDesiredKubeObject(roleBinding, m.resource.GetName()+"-maintenance-rolebinding", m.extraKubeOptions...)
 }
 
 func (m *Maintenance) createMaintenanceRole(_ context.Context) error {
@@ -343,7 +349,7 @@ func (m *Maintenance) createMaintenanceRole(_ context.Context) error {
 		Rules: m.policyRules,
 	}
 
-	return m.svc.SetDesiredKubeObject(role, m.resource.GetName()+"-maintenance-role")
+	return m.svc.SetDesiredKubeObject(role, m.resource.GetName()+"-maintenance-role", m.extraKubeOptions...)
 }
 
 func (m *Maintenance) createMaintenanceServiceAccount(_ context.Context) error {
@@ -354,7 +360,7 @@ func (m *Maintenance) createMaintenanceServiceAccount(_ context.Context) error {
 		},
 	}
 
-	return m.svc.SetDesiredKubeObject(sa, m.resource.GetName()+"-maintenance-serviceaccount")
+	return m.svc.SetDesiredKubeObject(sa, m.resource.GetName()+"-maintenance-serviceaccount", m.extraKubeOptions...)
 }
 
 func (m *Maintenance) parseCron() (string, error) {

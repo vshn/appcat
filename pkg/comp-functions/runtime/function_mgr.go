@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -58,6 +59,7 @@ const (
 	ProviderConfigIgnoreLabel         = "appcat.vshn.io/ignore-provider-config"
 	WebhookAllowDeletionLabel         = "appcat.vshn.io/webhook-allowdeletion"
 	IgnoreConnectionDetailsAnnotation = "appcat.vshn.io/ignore-connection-details"
+	LastReconcileAnnotation           = "appcat.vshn.io/reconciled-on"
 
 	ResourceReady   ResourceReadiness = ResourceReadiness(resource.ReadyTrue)
 	ResourceUnReady ResourceReadiness = ResourceReadiness(resource.ReadyFalse)
@@ -681,6 +683,9 @@ func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string
 	ko := &xkube.Object{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: kon,
+			Annotations: map[string]string{
+				LastReconcileAnnotation: time.Now().Format(time.RFC3339),
+			},
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       xkube.ObjectKind,
@@ -1118,16 +1123,19 @@ func (s *ServiceRuntime) WaitForObservedDependenciesWithConnectionDetails(mainRe
 	for dep, cds := range objectCDMap {
 		ready := s.WaitForObservedDependencies(mainResource, dep)
 		if !ready {
+			s.SetDesiredResourceReadiness(mainResource, ResourceUnReady)
 			return false, nil
 		}
 
 		cd, err := s.GetObservedComposedResourceConnectionDetails(dep)
 		if err != nil {
+			s.SetDesiredResourceReadiness(mainResource, ResourceUnReady)
 			return false, err
 		}
 
 		for _, field := range cds {
 			if val, ok := cd[field]; !ok || len(val) == 0 {
+				s.SetDesiredResourceReadiness(mainResource, ResourceUnReady)
 				return false, nil
 			}
 		}

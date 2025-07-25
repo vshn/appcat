@@ -97,6 +97,21 @@ observed:
                 name: unit-test
                 labels:
                   appuio.io/organization: vshn
+    nextcloud-gc9x4-ns-conf-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: tbd
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                labels:
+                name: dummy
+              data: {}
     nextcloud-gc9x4-credentials-secret:
       connection_details:
         admin: czNjcjN0UGFzcwo=
@@ -183,5 +198,3 @@ observed:
             reason: ReconcileSuccess
             status: "True"
             type: Synced
-
-

@@ -7,6 +7,7 @@
 
 - [ ] Update tests.
 - [ ] Link this PR to related issues.
+- [ ] Merge with `/merge` comment.
 
 <!--
 Remove items that do not apply. For completed items, change [ ] to [x].

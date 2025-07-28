@@ -8,16 +8,20 @@ import (
 	"strconv"
 	"time"
 
+	xpapi "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/go-logr/logr"
-	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
-	"github.com/vshn/appcat/v4/pkg/maintenance/release"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/thediveo/enumflag/v2"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/auth"
+	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/maintenance"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -48,7 +52,7 @@ var (
 
 type Maintenance interface {
 	DoMaintenance(ctx context.Context) error
-	ReleaseLatest(ctx context.Context, enabled bool) error
+	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client) error
 }
 
 type service enumflag.Flag
@@ -107,6 +111,11 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to initialize kube client: %w", err)
 	}
 
+	maintClient, err := getMaintClient(ctx, kubeClient)
+	if err != nil {
+		return fmt.Errorf("cannot initialize control plane client: %w", err)
+	}
+
 	if err = validateMandatoryEnvs(serviceName); err != nil {
 		return fmt.Errorf("missing required environment variables: %w", err)
 	}
@@ -160,7 +169,7 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 			if !enabled {
 				log.Info("release management disabled, skipping rollout of latest revisions")
 			}
-			return m.ReleaseLatest(ctx, enabled)
+			return m.ReleaseLatest(ctx, enabled, maintClient)
 		}(),
 		m.DoMaintenance(ctx),
 	); err != nil {
@@ -216,7 +225,6 @@ func getVersionHandler(k8sCLient client.Client, log logr.Logger) release.Version
 	}
 
 	return release.NewDefaultVersionHandler(
-		k8sCLient,
 		log,
 		opts,
 	)
@@ -228,4 +236,44 @@ func getStackgresClient() (*stackgres.StackgresClient, error) {
 		return nil, fmt.Errorf("cannot initilize stackgres http client: %w", err)
 	}
 	return sClient, nil
+}
+
+func getControlPlaneKubeConfig(ctx context.Context, kubeClient client.Client) (client.WithWatch, error) {
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "controlclustercredentials",
+			Namespace: "syn-appcat",
+		},
+	}
+
+	err := kubeClient.Get(ctx, client.ObjectKeyFromObject(secret), secret)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := clientcmd.RESTConfigFromKubeConfig(secret.Data["config"])
+	if err != nil {
+		return nil, err
+	}
+
+	maintClient, err := client.NewWithWatch(config, client.Options{
+		Scheme: pkg.SetupScheme(),
+	})
+
+	return maintClient, err
+}
+
+// This function checks, if compositions are available on the current cluster.
+// If not it will attempt to create a client pointing to the control plane.
+func getMaintClient(ctx context.Context, kubeClient client.Client) (client.Client, error) {
+	maintClient := kubeClient
+	var err error
+	if !utils.IsKindAvailable(xpapi.SchemeBuilder.GroupVersion, "Composition", ctrl.GetConfigOrDie()) {
+		maintClient, err = getControlPlaneKubeConfig(ctx, kubeClient)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get config for the control plane api: %w", err)
+		}
+	}
+	return maintClient, nil
 }

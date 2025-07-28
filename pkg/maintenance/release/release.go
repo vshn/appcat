@@ -32,7 +32,7 @@ type compositionObject interface {
 
 // VersionHandler is an interface for handling AppCat versions
 type VersionHandler interface {
-	ReleaseLatest(ctx context.Context, enabled bool) error
+	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client) error
 }
 
 // DefaultVersionHandler handles AppCat version change for a claim using composition revisions.
@@ -54,9 +54,8 @@ type ReleaserOpts struct {
 	ClaimName, Composite, ClaimNamespace, Group, Kind, Version, ServiceID string
 }
 
-func NewDefaultVersionHandler(k8sClient client.Client, l logr.Logger, opts ReleaserOpts) VersionHandler {
+func NewDefaultVersionHandler(l logr.Logger, opts ReleaserOpts) VersionHandler {
 	return &DefaultVersionHandler{
-		client:         k8sClient,
 		log:            l,
 		claimName:      opts.ClaimName,
 		compositeName:  opts.Composite,
@@ -69,8 +68,10 @@ func NewDefaultVersionHandler(k8sClient client.Client, l logr.Logger, opts Relea
 }
 
 // ReleaseLatest function releases the latest AppCat version for a given claim via latest composition revision
-func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool) error {
+func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client) error {
 	vh.log.Info("Releasing latest version of AppCat")
+
+	vh.client = kubeClient
 
 	revision := ""
 	if enabled {

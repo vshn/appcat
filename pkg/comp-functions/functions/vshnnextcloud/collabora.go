@@ -511,11 +511,11 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 					Containers: []corev1.Container{
 						{
 							Name:  comp.GetName() + "-install-collabora",
-							Image: svc.Config.Data["oc_image"],
+							Image: svc.Config.Data["kubectl_image"],
 							Command: []string{
 								"bash",
 								"-cefx",
-								fmt.Sprintf("oc exec -i deployments/%s -- /install-collabora.sh \"%s\" \"%s\" \"%s\"", comp.GetWorkloadName(), svc.Config.Data["isOpenshift"], comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
+								fmt.Sprintf("kubectl exec -i deployments/%s -- /install-collabora.sh \"%s\" \"%s\" \"%s\"", comp.GetWorkloadName(), svc.Config.Data["isOpenshift"], comp.GetName(), comp.Spec.Parameters.Service.Collabora.FQDN),
 							},
 						},
 					},

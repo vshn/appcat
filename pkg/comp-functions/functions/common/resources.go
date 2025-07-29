@@ -149,3 +149,53 @@ func GetBitnamiNano() map[string]any {
 		},
 	}
 }
+
+func MergeSidecarsIntoValues(values map[string]any, sidecars *utils.Sidecars) {
+	for name, sidecar := range *sidecars {
+		// Ensure the top-level key exists
+		entry, ok := values[name].(map[string]any)
+		if !ok {
+			entry = map[string]any{}
+			values[name] = entry
+		}
+
+		// Ensure a "resources" map exists
+		resources, ok := entry["resources"].(map[string]any)
+		if !ok {
+			resources = map[string]any{}
+			entry["resources"] = resources
+		}
+
+		// Merge Limits
+		limits, ok := resources["limits"].(map[string]any)
+		if !ok {
+			limits = map[string]any{}
+			resources["limits"] = limits
+		}
+		if sidecar.Limits.CPU != "" {
+			limits["cpu"] = sidecar.Limits.CPU
+		}
+		if sidecar.Limits.Memory != "" {
+			limits["memory"] = sidecar.Limits.Memory
+		}
+
+		// Merge Requests
+		requests, ok := resources["requests"].(map[string]any)
+		if !ok {
+			requests = map[string]any{}
+			resources["requests"] = requests
+		}
+		if sidecar.Requests.CPU != "" {
+			requests["cpu"] = sidecar.Requests.CPU
+		}
+		if sidecar.Requests.Memory != "" {
+			requests["memory"] = sidecar.Requests.Memory
+		}
+
+		// Put back merged maps (in case they were created)
+		resources["limits"] = limits
+		resources["requests"] = requests
+		entry["resources"] = resources
+		values[name] = entry
+	}
+}

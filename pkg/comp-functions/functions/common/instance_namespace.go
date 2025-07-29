@@ -264,9 +264,6 @@ func isBillingDisabled(controlNS, instanceNamespace, compName string, svc *runti
 
 	err = svc.GetObservedKubeObject(cm, compName+objSuffix)
 	if err != nil {
-		if err == runtime.ErrNotFound {
-			return false, nil
-		}
 		return false, err
 	}
 

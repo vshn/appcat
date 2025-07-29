@@ -11,6 +11,8 @@ env:
 jobs:
   create-and-merge-appcat-pr:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
       new_tag: ${{ steps.bump.outputs.new_tag }}
     steps:
@@ -70,7 +72,7 @@ jobs:
       - name: Merge PR
         run: gh pr merge ${{ steps.pr_info.outputs.pr_number }} --merge
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MERGE_TOKEN }}
 
       - name: Bump minor version and tag
         id: bump
@@ -87,6 +89,8 @@ jobs:
   create-component-release-pr:
     needs: create-and-merge-appcat-pr
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
     steps:
       - name: Clone component repo
         uses: actions/checkout@v4

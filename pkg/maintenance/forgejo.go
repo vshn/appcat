@@ -2,16 +2,13 @@ package maintenance
 
 import (
 	"context"
-	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
+
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 
 	"github.com/go-logr/logr"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	forgejoURL = "https://codeberg.org/v2/forgejo/forgejo/tags/list"
 )
 
 // Forgejo contains all necessary dependencies to successfully run a Forgejo maintenance
@@ -34,7 +31,12 @@ func NewForgejo(c client.Client, hc *http.Client, vh release.VersionHandler, log
 
 // DoMaintenance will run forgejo's maintenance script.
 func (f *Forgejo) DoMaintenance(ctx context.Context) error {
+	maintenanceURL, err := getMaintenanceURL()
+	if err != nil {
+		return err
+	}
+
 	patcher := helm.NewImagePatcher(f.k8sClient, f.httpClient, f.log)
 	valuesPath := helm.NewValuePath("image", "tag")
-	return patcher.DoMaintenance(ctx, forgejoURL, valuesPath, helm.SemVerPatchesOnly(true))
+	return patcher.DoMaintenance(ctx, maintenanceURL, valuesPath, helm.SemVerPatchesOnly(true))
 }

@@ -178,7 +178,7 @@ func addDeletionJob(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
 					Containers: []corev1.Container{
 						{
 							Name:            "sts-deleter",
-							Image:           "bitnami/kubectl",
+							Image:           svc.Config.Data["kubectl_image"],
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Env: []corev1.EnvVar{
 								{

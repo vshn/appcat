@@ -3,10 +3,11 @@ package maintenance
 import (
 	"context"
 	"encoding/json"
-	"github.com/go-logr/logr"
-	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 	"testing"
+
+	"github.com/go-logr/logr"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -68,6 +69,7 @@ func TestRedis_DoMaintenance(t *testing.T) {
 
 			// GIVEN
 			t.Setenv("INSTANCE_NAMESPACE", "test-namespace")
+			t.Setenv("MAINTENANCE_URL", "https://hub.docker.com/v2/repositories/bitnamilegacy/redis/tags/?page_size=100")
 			viper.AutomaticEnv()
 			fClient := fake.NewClientBuilder().
 				WithScheme(pkg.SetupScheme()).

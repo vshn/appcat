@@ -253,6 +253,10 @@ func (m *Maintenance) createMaintenanceJob(_ context.Context, cronSchedule strin
 			Name:  "RELEASE_MANAGEMENT_ENABLED",
 			Value: m.svc.Config.Data["releaseManagementEnabled"],
 		},
+		{
+			Name:  "MAINTENANCE_URL",
+			Value: m.svc.Config.Data["maintenanceURL"],
+		},
 	}
 
 	job := &batchv1.CronJob{

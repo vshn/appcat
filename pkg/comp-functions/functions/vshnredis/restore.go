@@ -89,7 +89,7 @@ func addPrepareRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runt
 					Containers: []corev1.Container{
 						{
 							Name:  "copyjob",
-							Image: "bitnami/kubectl:latest",
+							Image: svc.Config.Data["kubectl_image"],
 							Command: []string{
 								"bash",
 								"-c",
@@ -259,7 +259,7 @@ func addCleanUpJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 					Containers: []corev1.Container{
 						{
 							Name:  "copyjob",
-							Image: "bitnami/kubectl:latest",
+							Image: svc.Config.Data["kubectl_image"],
 							Command: []string{
 								"bash",
 								"-c",

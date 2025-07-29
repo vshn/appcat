@@ -664,7 +664,7 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 					Containers: []v1.Container{
 						{
 							Name:    "copyjob",
-							Image:   "bitnami/kubectl:latest",
+							Image:   svc.Config.Data["kubectl_image"],
 							Command: []string{"sh", "-c"},
 							Args:    []string{postgresqlCopyJobScript},
 							Env: []v1.EnvVar{

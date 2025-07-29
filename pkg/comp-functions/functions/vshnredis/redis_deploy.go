@@ -412,7 +412,7 @@ func migrateRedis(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 					Containers: []corev1.Container{
 						{
 							Name:    "migrationjob",
-							Image:   "bitnami/kubectl:latest",
+							Image:   svc.Config.Data["kubectl_image"],
 							Command: []string{"sh", "-c"},
 							Args:    []string{redisScalingScript},
 							Env: []corev1.EnvVar{

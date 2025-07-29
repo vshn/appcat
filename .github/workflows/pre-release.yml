@@ -82,10 +82,7 @@ jobs:
           git tag $NEW_TAG
           git push origin $NEW_TAG
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
-      - name: tobe deleted
-        id: bump
-        run: |
-          echo "new_tag=v4.164.0" >> $GITHUB_OUTPUT
+
 
   create-component-release-pr:
     needs: create-and-merge-appcat-pr

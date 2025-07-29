@@ -70,7 +70,7 @@ jobs:
           exit 1
 
       - name: Merge PR
-        run: gh pr merge ${{ steps.pr_info.outputs.pr_number }} --merge
+        run: gh pr merge ${{ steps.pr_info.outputs.pr_number }} --merge --admin
         env:
           GH_TOKEN: ${{ secrets.MERGE_TOKEN }}
 

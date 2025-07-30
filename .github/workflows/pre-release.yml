@@ -85,6 +85,13 @@ jobs:
           git push origin $NEW_TAG
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
+      - name: Fast forward develop to master
+        run: |
+          git checkout develop
+          git merge master --ff-only
+          git push origin develop
+        env:
+          GH_TOKEN: ${{ secrets.MERGE_TOKEN }}
 
   create-component-release-pr:
     needs: create-and-merge-appcat-pr

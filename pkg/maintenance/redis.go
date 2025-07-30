@@ -2,15 +2,16 @@ package maintenance
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/go-logr/logr"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
-	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	redisURL = "https://hub.docker.com/v2/repositories/bitnami/redis/tags/?page_size=100"
+	redisURL = "https://hub.docker.com/v2/repositories/bitnamilegacy/redis/tags/?page_size=100"
 )
 
 // Redis holds all the necessary objects to do a Redis maintenance

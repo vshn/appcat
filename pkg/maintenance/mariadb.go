@@ -2,16 +2,16 @@ package maintenance
 
 import (
 	"context"
-	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 
 	"github.com/go-logr/logr"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	mariaDBURL = "https://hub.docker.com/v2/repositories/bitnami/mariadb-galera/tags/?page_size=100"
+	mariaDBURL = "https://hub.docker.com/v2/repositories/bitnamilegacy/mariadb-galera/tags/?page_size=100"
 )
 
 // MariaDB holds all the necessary objects to do a MariaDB maintenance

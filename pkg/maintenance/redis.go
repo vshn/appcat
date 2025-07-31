@@ -10,10 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	redisURL = "https://hub.docker.com/v2/repositories/bitnamilegacy/redis/tags/?page_size=100"
-)
-
 // Redis holds all the necessary objects to do a Redis maintenance
 type Redis struct {
 	k8sClient  client.Client
@@ -34,6 +30,11 @@ func NewRedis(c client.Client, hc *http.Client, vh release.VersionHandler, logge
 
 // DoMaintenance will run redis' maintenance script.
 func (r *Redis) DoMaintenance(ctx context.Context) error {
+	maintenanceURL, err := getMaintenanceURL()
+	if err != nil {
+		return err
+	}
+
 	patcher := helm.NewImagePatcher(r.k8sClient, r.httpClient, r.log)
-	return patcher.DoMaintenance(ctx, redisURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
+	return patcher.DoMaintenance(ctx, maintenanceURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
 }

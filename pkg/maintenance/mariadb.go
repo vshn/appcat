@@ -10,10 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	mariaDBURL = "https://hub.docker.com/v2/repositories/bitnamilegacy/mariadb-galera/tags/?page_size=100"
-)
-
 // MariaDB holds all the necessary objects to do a MariaDB maintenance
 type MariaDB struct {
 	k8sClient  client.Client
@@ -22,7 +18,7 @@ type MariaDB struct {
 	release.VersionHandler
 }
 
-// NewMariaDB returns a new Redis maintenance job runner
+// NewMariaDB returns a new MariaDB maintenance job runner
 func NewMariaDB(c client.Client, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *MariaDB {
 	return &MariaDB{
 		k8sClient:      c,
@@ -32,8 +28,13 @@ func NewMariaDB(c client.Client, hc *http.Client, vh release.VersionHandler, log
 	}
 }
 
-// DoMaintenance will run redis' maintenance script.
+// DoMaintenance will run MariaDB's maintenance script.
 func (m *MariaDB) DoMaintenance(ctx context.Context) error {
+	maintenanceURL, err := getMaintenanceURL()
+	if err != nil {
+		return err
+	}
+
 	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
-	return patcher.DoMaintenance(ctx, mariaDBURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
+	return patcher.DoMaintenance(ctx, maintenanceURL, helm.NewValuePath("image", "tag"), helm.SemVerPatchesOnly(false))
 }

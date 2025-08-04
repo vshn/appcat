@@ -140,7 +140,7 @@ func addRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 							Name: "data",
 							VolumeSource: corev1.VolumeSource{
 								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: "redis-data-redis-master-0",
+									ClaimName: "redis-data-redis-node-0",
 								},
 							},
 						},
@@ -234,6 +234,13 @@ func addRestoreJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Ser
 				},
 			},
 		},
+	}
+
+	if !svc.GetBoolFromCompositionConfig("isOpenshift") {
+		fsGroup := int64(1001)
+		job.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			FSGroup: &fsGroup,
+		}
 	}
 
 	return svc.SetDesiredKubeObject(job, restoreJobName)

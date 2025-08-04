@@ -115,7 +115,7 @@ func ResizePVCs(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servic
 }
 
 func needReleasePatch(comp *vshnv1.VSHNRedis, values map[string]interface{}) (bool, *xfnproto.Result) {
-	releaseSizeValue, found, err := unstructured.NestedString(values, "master", "persistence", "size")
+	releaseSizeValue, found, err := unstructured.NestedString(values, "replica", "persistence", "size")
 	if !found {
 		return false, runtime.NewFatalResult(fmt.Errorf("disk size not found in release"))
 	}
@@ -183,7 +183,7 @@ func addDeletionJob(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
 							Env: []corev1.EnvVar{
 								{
 									Name:  "STS_NAME",
-									Value: "redis-master",
+									Value: "redis-node",
 								},
 								{
 									Name:  "STS_NAMESPACE",
@@ -212,17 +212,17 @@ func addDeletionJob(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
 		},
 	}
 
-	return svc.SetDesiredKubeObject(job, comp.Name+"-sts-deleter")
+	return svc.SetDesiredKubeObject(job, comp.Name+"-sts-deleter", runtime.KubeOptionAllowDeletion)
 }
 
 func addStsObserver(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
 
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "redis-master",
+			Name:      "redis-node",
 			Namespace: getInstanceNamespace(comp),
 		},
 	}
 
-	return svc.SetDesiredKubeObject(statefulset, comp.Name+"-sts-observer", runtime.KubeOptionObserve)
+	return svc.SetDesiredKubeObject(statefulset, comp.Name+"-sts-observer", runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion)
 }

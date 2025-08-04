@@ -56,7 +56,7 @@ EOF
 fi
 echo "scaling up redis"
 
-kubectl -n "${TARGET_NAMESPACE}" scale statefulset redis-master --replicas "${NUM_REPLICAS}"
+kubectl -n "${TARGET_NAMESPACE}" scale statefulset redis-node --replicas "${NUM_REPLICAS}"
 
 echo "cleanup secret"
 

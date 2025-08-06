@@ -326,7 +326,7 @@ jobs:
           gh pr merge -R "$COMPONENT_REPO" ${{ needs.check-conditions.outputs.comp-pr-number }} --merge --delete-branch
 
   merge-hotfix-update-develop:
-    needs: merge-hotfix
+    needs: [merge-hotfix, check-conditions]
     runs-on: ubuntu-latest
     steps:
       - name: Create PR to merge master into develop in appcat repo
@@ -337,7 +337,7 @@ jobs:
             --repo "$APPCAT_REPO" \
             --base develop \
             --head master \
-            --reviewer ${{ needs.check-conditions.outputs.author }} \ \
+            --reviewer ${{ needs.check-conditions.outputs.author }} \
             --title "🔀 Merge master into develop (sync hotfixes)" \
             --body "This PR synchronizes the hotfixes from master back into develop." || true
 

@@ -244,6 +244,20 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	if imageRepositoryPrefix := svc.Config.Data["imageRepositoryPrefix"]; imageRepositoryPrefix != "" {
+		if err := common.SetNestedObjectValue(values, []string{"image"}, map[string]any{
+			"repository": fmt.Sprintf("%s/mariadb-galera", imageRepositoryPrefix),
+		}); err != nil {
+			return nil, err
+		}
+
+		if err := common.SetNestedObjectValue(values, []string{"metrics", "image"}, map[string]any{
+			"repository": fmt.Sprintf("%s/mysqld-exporter", imageRepositoryPrefix),
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	return values, nil
 }
 

@@ -11,10 +11,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	keycloakURL = "https://docker-registry.inventage.com:10121/v2/keycloak-competence-center/keycloak-managed/tags/list"
-)
-
 // Keycloak contains all necessary dependencies to successfully run a Keycloak maintenance
 type Keycloak struct {
 	k8sClient  client.Client
@@ -35,7 +31,12 @@ func NewKeycloak(c client.Client, hc *http.Client, vh release.VersionHandler, lo
 
 // DoMaintenance will run minios's maintenance script.
 func (k *Keycloak) DoMaintenance(ctx context.Context) error {
+	maintenanceURL, err := getMaintenanceURL()
+	if err != nil {
+		return err
+	}
+
 	patcher := helm.NewImagePatcher(k.k8sClient, k.httpClient, k.log)
 	valuesPath := helm.NewValuePath("image", "tag")
-	return patcher.DoMaintenance(ctx, keycloakURL, valuesPath, helm.SemVerMinorAndPatches(true))
+	return patcher.DoMaintenance(ctx, maintenanceURL, valuesPath, helm.SemVerMinorAndPatches(true))
 }

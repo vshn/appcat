@@ -273,6 +273,34 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
 		_ = common.SetNestedObjectValue(values, []string{"global", "imageRegistry"}, registry)
 	}
+
+	if imageRepositoryPrefix := svc.Config.Data["imageRepositoryPrefix"]; imageRepositoryPrefix != "" {
+		if err := common.SetNestedObjectValue(values, []string{"image"}, map[string]any{
+			"repository": fmt.Sprintf("%s/redis", imageRepositoryPrefix),
+		}); err != nil {
+			return nil, err
+		}
+
+		if err := common.SetNestedObjectValue(values, []string{"sentinel", "image"}, map[string]any{
+			"repository": fmt.Sprintf("%s/redis-sentinel", imageRepositoryPrefix),
+		}); err != nil {
+			return nil, err
+		}
+
+		if err := common.SetNestedObjectValue(values, []string{"metrics", "image"}, map[string]any{
+			"repository": fmt.Sprintf("%s/redis-exporter", imageRepositoryPrefix),
+		}); err != nil {
+			return nil, err
+		}
+
+		if err := common.SetNestedObjectValue(values, []string{"kubectl", "image"}, map[string]any{
+			"repository": fmt.Sprintf("%s/kubectl", imageRepositoryPrefix),
+		}); err != nil {
+			return nil, err
+		}
+
+	}
+
 	return values, nil
 }
 
@@ -412,7 +440,7 @@ func migrateRedis(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1
 					Containers: []corev1.Container{
 						{
 							Name:    "migrationjob",
-							Image:   "bitnami/kubectl:latest",
+							Image:   svc.Config.Data["kubectl_image"],
 							Command: []string{"sh", "-c"},
 							Args:    []string{redisScalingScript},
 							Env: []corev1.EnvVar{

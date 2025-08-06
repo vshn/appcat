@@ -1090,7 +1090,7 @@ func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 					Containers: []v1.Container{
 						{
 							Name:    "copyjob",
-							Image:   "bitnami/kubectl:latest",
+							Image:   svc.Config.Data["kubectl_image"],
 							Command: []string{"sh", "-c"},
 							Args:    []string{keycloakCredentialsCopyJobScript},
 							Env: []v1.EnvVar{

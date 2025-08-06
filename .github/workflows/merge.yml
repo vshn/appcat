@@ -260,6 +260,21 @@ jobs:
           echo "✅ Created and pushed tag: $NEW_TAG"
           echo "appcat-tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
+      - name: Trigger Release Workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: 'master',
+              inputs: {
+                tag: '${{ steps.tag.outputs.appcat-tag }}'
+              }
+            });
+
       - name: Clone and patch component repo
         run: |
           COMPONENT_BRANCH="${{ needs.check-conditions.outputs.comp-feature-branch }}"

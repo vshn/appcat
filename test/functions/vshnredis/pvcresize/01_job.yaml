@@ -42,7 +42,7 @@ desired:
               image:
                 repository: bitnami/redis
                 tag: 7.0.11
-              master:
+              replica:
                 containerSecurityContext:
                   enabled: true
                 persistence:
@@ -169,7 +169,7 @@ observed:
               image:
                 repository: bitnami/redis
                 tag: "7.0"
-              master:
+              replica:
                 containerSecurityContext:
                   enabled: true
                 extraVolumes: []

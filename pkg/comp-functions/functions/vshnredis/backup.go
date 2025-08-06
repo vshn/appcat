@@ -71,17 +71,17 @@ func updateRelease(ctx context.Context, svc *runtime.ServiceRuntime) error {
 	}
 
 	l.Info("Adding the PVC k8up annotations")
-	if err := backup.AddPVCAnnotationToValues(values, "master", "persistence", "annotations"); err != nil {
+	if err := backup.AddPVCAnnotationToValues(values, "replica", "persistence", "annotations"); err != nil {
 		return err
 	}
 
 	l.Info("Adding the Pod k8up annotations")
-	if err := backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "master", "podAnnotations"); err != nil {
+	if err := backup.AddPodAnnotationToValues(values, "/scripts/backup.sh", ".tar", "replica", "podAnnotations"); err != nil {
 		return err
 	}
 
 	l.Info("Mounting CM into pod")
-	if err := backup.AddBackupCMToValues(values, []string{"master", "extraVolumes"}, []string{"master", "extraVolumeMounts"}); err != nil {
+	if err := backup.AddBackupCMToValues(values, []string{"replica", "extraVolumes"}, []string{"replica", "extraVolumeMounts"}); err != nil {
 		return err
 	}
 

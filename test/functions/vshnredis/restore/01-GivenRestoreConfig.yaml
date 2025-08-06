@@ -53,7 +53,7 @@ desired:
               image:
                 repository: bitnami/redis
                 tag: dummy
-              master:
+              replica:
                 containerSecurityContext:
                   enabled: true
                 persistence:

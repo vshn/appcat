@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"net/http"
 	"regexp"
 	"time"
+
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
@@ -17,7 +18,6 @@ import (
 )
 
 const (
-	minioURL        = "https://hub.docker.com/v2/repositories/minio/minio/tags/?page_size=100"
 	dateRegex       = minioTagPrefix + `(?P<date>.*Z$)`
 	minioTimeLayout = "2006-01-02T15-04-05Z07:00"
 	minioTagPrefix  = "RELEASE."
@@ -44,14 +44,18 @@ func NewMinio(c client.Client, hc *http.Client, vh release.VersionHandler, logge
 
 // DoMaintenance will run minio's maintenance script.
 func (m *Minio) DoMaintenance(ctx context.Context) error {
+	maintenanceURL, err := getMaintenanceURL()
+	if err != nil {
+		return err
+	}
+
 	patcher := helm.NewImagePatcher(m.k8sClient, m.httpClient, m.log)
 	valuesPath := helm.NewValuePath("image", "tag")
-	err := m.ensureTagIsNotNil(ctx, valuesPath)
-	if err != nil {
+	if err := m.ensureTagIsNotNil(ctx, valuesPath); err != nil {
 		return fmt.Errorf("could not ensure tag exists: %w", err)
 	}
 
-	return patcher.DoMaintenance(ctx, minioURL, valuesPath, compareMinioVersions)
+	return patcher.DoMaintenance(ctx, maintenanceURL, valuesPath, compareMinioVersions)
 }
 
 // compareMinioVersions specifically checks for new Minio versions

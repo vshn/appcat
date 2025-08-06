@@ -63,7 +63,7 @@ func Test_needReleasePatch(t *testing.T) {
 					},
 				},
 				values: map[string]interface{}{
-					"master": map[string]interface{}{
+					"replica": map[string]interface{}{
 						"persistence": map[string]interface{}{
 							"size": "15Gi",
 						},
@@ -85,7 +85,7 @@ func Test_needReleasePatch(t *testing.T) {
 					},
 				},
 				values: map[string]interface{}{
-					"master": map[string]interface{}{
+					"replica": map[string]interface{}{
 						"persistence": map[string]interface{}{
 							"size": "15Gi",
 						},
@@ -107,7 +107,7 @@ func Test_needReleasePatch(t *testing.T) {
 					},
 				},
 				values: map[string]interface{}{
-					"master": map[string]interface{}{
+					"replica": map[string]interface{}{
 						"persistence": map[string]interface{}{
 							"size": "15Gi",
 						},
@@ -130,7 +130,7 @@ func Test_needReleasePatch(t *testing.T) {
 					},
 				},
 				values: map[string]interface{}{
-					"master": map[string]interface{}{
+					"replica": map[string]interface{}{
 						"persistence": map[string]interface{}{
 							"size": "15Gi",
 						},
@@ -153,7 +153,7 @@ func Test_needReleasePatch(t *testing.T) {
 					},
 				},
 				values: map[string]interface{}{
-					"master": map[string]interface{}{
+					"replica": map[string]interface{}{
 						"persistence": map[string]interface{}{
 							"size": "foo",
 						},
@@ -176,7 +176,7 @@ func Test_needReleasePatch(t *testing.T) {
 					},
 				},
 				values: map[string]interface{}{
-					"master": map[string]interface{}{
+					"replica": map[string]interface{}{
 						"persistence": map[string]interface{}{},
 					},
 				},

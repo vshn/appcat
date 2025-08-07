@@ -173,10 +173,10 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		"postgresql-ha": map[string]any{
 			"enabled": false,
 		},
-		"redis": map[string]any{
+		"valkey": map[string]any{
 			"enabled": false,
 		},
-		"redis-cluster": map[string]any{
+		"valkey-cluster": map[string]any{
 			"enabled": false,
 		},
 		"strategy": map[string]any{

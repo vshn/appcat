@@ -97,11 +97,11 @@ type VSHNMariaDBParameters struct {
 
 // VSHNMariaDBServiceSpec contains MariaDB DBaaS specific properties
 type VSHNMariaDBServiceSpec struct {
-	// +kubebuilder:validation:Enum="10.4";"10.5";"10.6";"10.9";"10.10";"10.11";"11.0";"11.1";"11.2";"11.3";"11.4";"11.5";
-	// +kubebuilder:default="11.5"
+	// +kubebuilder:validation:Enum="10.4";"10.5";"10.6";"10.9";"10.10";"10.11";"11.0";"11.1";"11.2";"11.3";"11.4";"11.5";"11.8"
+	// +kubebuilder:default="11.8"
 
 	// Version contains supported version of MariaDB.
-	// Multiple versions are supported. The latest version "11.5" is the default version.
+	// Multiple versions are supported. The latest version "11.8" is the default version.
 	Version string `json:"version,omitempty"`
 
 	// MariadbSettings contains additional MariaDB settings.

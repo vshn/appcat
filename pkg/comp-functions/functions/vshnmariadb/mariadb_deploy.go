@@ -256,12 +256,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}); err != nil {
 			return nil, err
 		}
-
-		if metricsTag := svc.Config.Data["metricsTag"]; metricsTag != "" {
-			if err := common.SetNestedObjectValue(values, []string{"metrics", "image", "tag"}, metricsTag); err != nil {
-				return nil, fmt.Errorf("cannot set metrics image tag: %w", err)
-			}
-		}
 	}
 
 	return values, nil

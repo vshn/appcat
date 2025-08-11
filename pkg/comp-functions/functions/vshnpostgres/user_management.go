@@ -33,14 +33,15 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 
 		userPasswordRef := addUser(comp, svc, *access.User)
 
-		dbname := *access.User
+		dbuser := *access.User
+		dbname := dbuser
 		if access.Database != nil {
 			dbname = *access.Database
 		}
 
-		addDatabase(comp, svc, dbname)
+		addDatabase(comp, svc, dbuser, dbname)
 
-		addGrants(comp, svc, *access.User, dbname, access.Privileges)
+		addGrants(comp, svc, dbuser, dbname, access.Privileges)
 
 		err := addConnectionDetail(comp, svc, userPasswordRef, *access.User, dbname, access.WriteConnectionSecretToReference)
 		if err != nil {
@@ -244,8 +245,8 @@ func addProviderConfig(comp common.Composite, svc *runtime.ServiceRuntime, tlsEn
 // If not it will be added.
 // This should handle cases where there are mutliple users pointing to the same
 // database, and one is deleted, that the database is not dropped.
-func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string) {
-	resname := fmt.Sprintf("%s-%s-database", comp.GetName(), name)
+func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, username, dbname string) {
+	resname := fmt.Sprintf("%s-%s-database", comp.GetName(), dbname)
 
 	xdb := &pgv1alpha1.Database{}
 
@@ -263,7 +264,7 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 		ObjectMeta: metav1.ObjectMeta{
 			Name: resname,
 			Annotations: map[string]string{
-				"crossplane.io/external-name": name,
+				"crossplane.io/external-name": dbname,
 			},
 			Labels: map[string]string{
 				runtime.ProviderConfigIgnoreLabel: "true",
@@ -272,7 +273,7 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 		},
 		Spec: pgv1alpha1.DatabaseSpec{
 			ForProvider: pgv1alpha1.DatabaseParameters{
-				Owner: &name,
+				Owner: &username,
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{

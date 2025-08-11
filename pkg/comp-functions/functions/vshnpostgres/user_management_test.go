@@ -80,12 +80,29 @@ func Test_addDatabase(t *testing.T) {
 	comp := &vshnv1.VSHNPostgreSQL{}
 	assert.NoError(t, svc.GetObservedComposite(comp))
 
-	addDatabase(comp, svc, "unit")
+	addDatabase(comp, svc, "unit", "unit")
 
 	// then
 	db := &pgv1alpha1.Database{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "unit")))
+	assert.Equal(t, *db.Spec.ForProvider.Owner, "unit")
+}
 
+func Test_addDatabaseAndUser(t *testing.T) {
+	// given
+	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/usermanagement/01-emptyaccess.yaml")
+
+	// when
+	comp := &vshnv1.VSHNPostgreSQL{}
+	assert.NoError(t, svc.GetObservedComposite(comp))
+
+	addUser(comp, svc, "myUser")
+	addDatabase(comp, svc, "myUser", "myDB")
+
+	// then
+	db := &pgv1alpha1.Database{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "myDB")))
+	assert.Equal(t, *db.Spec.ForProvider.Owner, "myUser")
 }
 
 func Test_addGrants(t *testing.T) {

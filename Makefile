@@ -201,8 +201,8 @@ clean:
 	rm -rf bin/ appcat .work/ docs/node_modules $docs_out_dir .public .cache apiserver.local.config apis/generated default.sock
 
 get-crds:
-	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-helm provider-helm apis/release apis/helm
-	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-kubernetes provider-kubernetes apis/object/v1alpha2 apis/kubernetes
+	./hack/get_crds.sh https://github.com/vshn/provider-helm provider-helm apis/release apis/helm
+	./hack/get_crds.sh https://github.com/vshn/provider-kubernetes provider-kubernetes apis/object/v1alpha2 apis/kubernetes
 	# We don't need the conversion function and it messes with the v1alpha1 version
 	rm apis/kubernetes/v1alpha2/conversion.go
 	# There is currently a bug with the serialization if `inline` and  `omitempty` are set: https://github.com/crossplane/function-sdk-go/issues/161

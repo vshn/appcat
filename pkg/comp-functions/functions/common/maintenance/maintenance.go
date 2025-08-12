@@ -266,7 +266,7 @@ func (m *Maintenance) createMaintenanceJob(_ context.Context, cronSchedule strin
 		},
 		Spec: batchv1.CronJobSpec{
 			Schedule:                   cronSchedule,
-			SuccessfulJobsHistoryLimit: ptr.To(int32(0)),
+			SuccessfulJobsHistoryLimit: ptr.To(int32(1)),
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{

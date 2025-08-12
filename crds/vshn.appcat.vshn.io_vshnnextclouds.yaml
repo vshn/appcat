@@ -9464,10 +9464,10 @@ spec:
                             the build-in SQLite database is being used.
                           type: boolean
                         version:
-                          default: "30"
+                          default: "31"
                           description: |-
                             Version contains supported version of nextcloud.
-                            Multiple versions are supported. The latest version 30 is the default version.
+                            Multiple versions are supported. The latest version 31 is the default version.
                           type: string
                       required:
                         - fqdn

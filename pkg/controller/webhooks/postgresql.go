@@ -133,6 +133,14 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 		if errList := validateMajorVersionUpgrade(newPg, oldPg); errList != nil {
 			allErrs = append(allErrs, errList...)
 		}
+
+		// Validate encryption changes
+		newEncryption := &newPg.Spec.Parameters.Encryption
+		oldEncryption := &oldPg.Spec.Parameters.Encryption
+		fieldPath := "spec.parameters.encryption.enabled"
+		if err := validatePostgreSQLEncryptionChanges(newPg.GetName(), newEncryption, oldEncryption, fieldPath); err != nil {
+			return nil, err
+		}
 	}
 
 	if len(allErrs) > 0 {
@@ -334,4 +342,17 @@ func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSH
 		}
 	}
 	return errList
+}
+
+func validatePostgreSQLEncryptionChanges(name string, newEncryption, oldEncryption *vshnv1.VSHNPostgreSQLEncryption, fieldPath string) error {
+	// Check if encryption setting is being changed
+	if newEncryption.Enabled != oldEncryption.Enabled {
+		errList := field.ErrorList{}
+		errList = append(errList, field.Forbidden(
+			field.NewPath(fieldPath),
+			"encryption setting cannot be changed after instance creation. It can only be set during initial creation.",
+		))
+		return apierrors.NewInvalid(pgGK, name, errList)
+	}
+	return nil
 }

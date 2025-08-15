@@ -186,7 +186,8 @@ type VSHNPostgreSQLBackup struct {
 	// DeletionProtection will protect the instance from being deleted for the given retention time.
 	// This is enabled by default.
 	// +kubebuilder:default=true
-	DeletionProtection *bool `json:"deletionProtection,omitempty"`
+	// +kubebuilder:validation:Optional
+	DeletionProtection *bool `json:"deletionProtection"`
 
 	// DeletionRetention specifies in days how long the instance should be kept after deletion.
 	// The default is keeping it one week.

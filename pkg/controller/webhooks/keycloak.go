@@ -84,7 +84,7 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
 func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	_, ok := oldObj.(*vshnv1.VSHNKeycloak)
+	oldKeycloak, ok := oldObj.(*vshnv1.VSHNKeycloak)
 	if !ok {
 		return nil, fmt.Errorf("not a valid VSHNKeycloak object")
 	}
@@ -99,6 +99,16 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 
 	if warn, err := isDeprecatedFieldInUse(newKeycloak); warn != nil {
 		return warn, err
+	}
+
+	// Validate PostgreSQL encryption changes
+	if newKeycloak.Spec.Parameters.Service.PostgreSQLParameters != nil && oldKeycloak.Spec.Parameters.Service.PostgreSQLParameters != nil {
+		newEncryption := &newKeycloak.Spec.Parameters.Service.PostgreSQLParameters.Encryption
+		oldEncryption := &oldKeycloak.Spec.Parameters.Service.PostgreSQLParameters.Encryption
+		fieldPath := "spec.parameters.service.postgreSQLParameters.encryption.enabled"
+		if err := validatePostgreSQLEncryptionChanges(newKeycloak.GetName(), newEncryption, oldEncryption, fieldPath); err != nil {
+			return nil, err
+		}
 	}
 
 	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)

@@ -497,6 +497,83 @@ func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {
 
 }
 
+func TestPostgreSQLWebhookHandler_ValidateEncryptionChanges(t *testing.T) {
+	ctx := context.TODO()
+	claimNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "claimns",
+			Labels: map[string]string{
+				utils.OrgLabelName: "myorg",
+			},
+		},
+	}
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(claimNS).
+		Build()
+
+	handler := PostgreSQLWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:    fclient,
+			log:       logr.Discard(),
+			withQuota: false,
+			obj:       &vshnv1.VSHNPostgreSQL{},
+			name:      "postgresql",
+		},
+	}
+
+	// No encryption change should be valid
+	pgOrig := &vshnv1.VSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "claimns",
+		},
+		Spec: vshnv1.VSHNPostgreSQLSpec{
+			Parameters: vshnv1.VSHNPostgreSQLParameters{
+				Encryption: vshnv1.VSHNPostgreSQLEncryption{
+					Enabled: false,
+				},
+				Service: vshnv1.VSHNPostgreSQLServiceSpec{
+					MajorVersion:  "15",
+					RepackEnabled: true,
+				},
+			},
+		},
+	}
+
+	pgUpdated := pgOrig.DeepCopy()
+	// No changes to encryption state
+
+	_, err := handler.ValidateUpdate(ctx, pgOrig, pgUpdated)
+	assert.NoError(t, err)
+
+	// Test 2: Enabling encryption after creation should fail
+	pgEncryptionEnabled := pgOrig.DeepCopy()
+	pgEncryptionEnabled.Spec.Parameters.Encryption.Enabled = true
+
+	_, err = handler.ValidateUpdate(ctx, pgOrig, pgEncryptionEnabled)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "encryption setting cannot be changed after instance creation")
+
+	// Test 3: Disabling encryption after creation should fail
+	pgOrigEncrypted := pgOrig.DeepCopy()
+	pgOrigEncrypted.Spec.Parameters.Encryption.Enabled = true
+
+	pgEncryptionDisabled := pgOrigEncrypted.DeepCopy()
+	pgEncryptionDisabled.Spec.Parameters.Encryption.Enabled = false
+
+	_, err = handler.ValidateUpdate(ctx, pgOrigEncrypted, pgEncryptionDisabled)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "encryption setting cannot be changed after instance creation")
+
+	// Test 4: Same encryption state (enabled) should be valid
+	pgSameEncryption := pgOrigEncrypted.DeepCopy()
+	// No changes to encryption state
+
+	_, err = handler.ValidateUpdate(ctx, pgOrigEncrypted, pgSameEncryption)
+	assert.NoError(t, err)
+}
+
 // disabling this temporarily
 // func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 // 	tests := []struct {

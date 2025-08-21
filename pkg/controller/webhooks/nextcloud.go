@@ -80,7 +80,12 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 
 	nx, ok := newObj.(*vshnv1.VSHNNextcloud)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
+		return nil, fmt.Errorf("provided manifest is not a valid VSHNNextcloud object")
+	}
+
+	oldNx, ok := oldObj.(*vshnv1.VSHNNextcloud)
+	if !ok {
+		return nil, fmt.Errorf("provided old manifest is not a valid VSHNNextcloud object")
 	}
 
 	if err := validateFQDNs(nx.Spec.Parameters.Service.FQDN); err != nil {
@@ -89,6 +94,16 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 
 	if nx.Spec.Parameters.Service.Collabora.Enabled {
 		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
+			return nil, err
+		}
+	}
+
+	// Validate PostgreSQL encryption changes
+	if nx.Spec.Parameters.Service.PostgreSQLParameters != nil && oldNx.Spec.Parameters.Service.PostgreSQLParameters != nil {
+		newEncryption := &nx.Spec.Parameters.Service.PostgreSQLParameters.Encryption
+		oldEncryption := &oldNx.Spec.Parameters.Service.PostgreSQLParameters.Encryption
+		fieldPath := "spec.parameters.service.postgreSQLParameters.encryption.enabled"
+		if err := validatePostgreSQLEncryptionChanges(nx.GetName(), newEncryption, oldEncryption, fieldPath); err != nil {
 			return nil, err
 		}
 	}

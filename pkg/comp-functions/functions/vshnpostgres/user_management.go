@@ -38,17 +38,32 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 
 	for _, access := range comp.Spec.Parameters.Service.Access {
 
-		userPasswordRef := addUser(comp, svc, *access.User)
-
 		dbuser := *access.User
 		dbname := dbuser
 		if access.Database != nil {
 			dbname = *access.Database
 		}
 
-		addDatabase(comp, svc, dbuser, dbname)
+		userPasswordRef := addUser(comp, svc, *access.User)
+		roleResourceName := fmt.Sprintf("%s-%s-role", comp.GetName(), dbuser)
 
-		addGrants(comp, svc, dbuser, dbname, access.Privileges)
+		dbResourceName := fmt.Sprintf("%s-%s-database", comp.GetName(), dbname)
+		if svc.IsResourceSyncedAndReady(roleResourceName) {
+			addDatabase(comp, svc, dbuser, dbname)
+		} else {
+			msg := fmt.Sprintf("Role %s not ready, waiting before creating database %s", roleResourceName, dbResourceName)
+			svc.Log.Info(msg)
+			svc.AddResult(runtime.NewNormalResult(msg))
+		}
+
+		grantResourceName := fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), dbuser, dbname)
+		if svc.IsResourceSyncedAndReady(dbResourceName) {
+			addGrants(comp, svc, dbuser, dbname, access.Privileges)
+		} else {
+			msg := fmt.Sprintf("Database %s not ready, waiting before creating grants %s", dbResourceName, grantResourceName)
+			svc.Log.Info(msg)
+			svc.AddResult(runtime.NewNormalResult(msg))
+		}
 
 		err := addConnectionDetail(comp, svc, userPasswordRef, *access.User, dbname, access.WriteConnectionSecretToReference)
 		if err != nil {

@@ -7,10 +7,10 @@ desired:
         spec:
           forProvider:
             values:
-              tls:
-                enabled: true
-              replica:
-                replicaCount: 3
+              haproxy:
+                tls:
+                  enabled: true
+              replicas: 3
 
 input:
   apiVersion: v1
@@ -32,7 +32,7 @@ observed:
         spec:
           forProvider:
             values:
-              tls:
-                enabled: false
-              replica:
-                replicaCount: 0
+              haproxy:
+                tls:
+                  enabled: false
+              replicas: 0

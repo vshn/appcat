@@ -35,7 +35,7 @@ func HandleTLS(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstance, s
 		return runtime.NewNormalResult("TLS not enabled")
 	}
 
-	cd, err := svc.GetObservedComposedResourceConnectionDetails("haproxy-chart")
+	cd, err := svc.GetObservedComposedResourceConnectionDetails("redis-chart")
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get connection details of haproxy: %s", err.Error()))
 	}
@@ -48,10 +48,10 @@ func HandleTLS(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstance, s
 			"localhost",
 			"redis",
 			fmt.Sprintf("*.redis.%s.svc.cluster.local", comp.GetName()),
-			fmt.Sprintf("redis-master.%s.svc.cluster.local", comp.GetName()),
-			fmt.Sprintf("*.redis-master.%s.svc.cluster.local", comp.GetName()),
-			fmt.Sprintf("*.redis-headless.%s.svc.cluster.local", comp.GetName()),
-			fmt.Sprintf("redis-headless.%s.svc.cluster.local", comp.GetName()),
+			fmt.Sprintf("redis-announce-0.%s.svc.cluster.local", comp.GetName()),
+			fmt.Sprintf("redis-announce-1.%s.svc.cluster.local", comp.GetName()),
+			fmt.Sprintf("redis-announce-2	.%s.svc.cluster.local", comp.GetName()),
+			fmt.Sprintf("redis.%s.svc.cluster.local", comp.GetName()),
 		},
 		KubeOptions: []runtime.KubeObjectOption{
 			runtime.KubeOptionAddLabels(map[string]string{
@@ -104,7 +104,7 @@ func scaleRedisRelease(svc *runtime.ServiceRuntime, comp *spksv1alpha1.Composite
 			return err
 		}
 
-		err = common.SetNestedObjectValue(values, []string{"replica", "replicaCount"}, 0)
+		err = common.SetNestedObjectValue(values, []string{"replicas"}, 0)
 		if err != nil {
 			return err
 		}
@@ -163,7 +163,7 @@ func convertValuesToMap(rawValues []byte) (map[string]any, error) {
 func addSTSObserver(comp *spksv1alpha1.CompositeRedisInstance, svc *runtime.ServiceRuntime) error {
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "redis-node",
+			Name:      "redis-server",
 			Namespace: comp.GetName(),
 		},
 	}
@@ -195,9 +195,9 @@ func isSTSScaling(obsRelease *xhelm.Release, comp *spksv1alpha1.CompositeRedisIn
 		return false
 	}
 
-	count, _, err := unstructured.NestedFloat64(obsValues, "replica", "replicaCount")
+	count, _, err := unstructured.NestedFloat64(obsValues, "replicas")
 	if err != nil {
-		svc.Log.Error(err, "cannot get replica.replicaCount")
+		svc.Log.Error(err, "cannot get replica")
 		return false
 	}
 

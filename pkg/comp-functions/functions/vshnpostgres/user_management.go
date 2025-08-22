@@ -16,6 +16,13 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+var managementPoliciesWithoutDelete = xpv1.ManagementPolicies{
+	xpv1.ManagementActionCreate,
+	xpv1.ManagementActionLateInitialize,
+	xpv1.ManagementActionObserve,
+	xpv1.ManagementActionUpdate,
+}
+
 func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
@@ -87,6 +94,7 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
 				},
+				ManagementPolicies: managementPoliciesWithoutDelete,
 			},
 		},
 	}
@@ -279,6 +287,7 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, username, d
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
 				},
+				ManagementPolicies: managementPoliciesWithoutDelete,
 			},
 		},
 	}
@@ -320,6 +329,7 @@ func addGrants(comp common.Composite, svc *runtime.ServiceRuntime, username, dbn
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
 				},
+				ManagementPolicies: managementPoliciesWithoutDelete,
 			},
 		},
 	}

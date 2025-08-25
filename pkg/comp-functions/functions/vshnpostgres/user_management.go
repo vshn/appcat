@@ -110,6 +110,13 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 					Name: comp.GetName(),
 				},
 				ManagementPolicies: managementPoliciesWithoutDelete,
+				// we need to also write the connection details or the provider can't track
+				// password changes
+				// https://github.com/crossplane-contrib/provider-sql/issues/131
+				WriteConnectionSecretToReference: &xpv1.SecretReference{
+					Name:      secretName,
+					Namespace: svc.GetCrossplaneNamespace(),
+				},
 			},
 		},
 	}

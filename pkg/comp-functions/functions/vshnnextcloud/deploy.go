@@ -445,6 +445,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, fmt.Errorf("cannot determine if this is an OpenShift cluster or not: %w", err)
 	}
 	securityContext := map[string]any{}
+	podSecurityContext := map[string]any{}
 	if isOpenShift {
 		securityContext = map[string]any{
 			"runAsUser":                nil,
@@ -453,6 +454,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"drop": []string{
 					"ALL",
 				},
+			},
+		}
+		podSecurityContext = map[string]any{
+			"fsGroupChangePolicy": "OnRootMismatch",
+			"seLinuxOptions": map[string]any{
+				"type": "spc_t",
 			},
 		}
 	}
@@ -500,7 +507,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 			"extraInitContainers": extraInitContainers,
 			"containerPort":       8080,
-			"podSecurityContext":  securityContext,
+			"podSecurityContext":  podSecurityContext,
 			"extraVolumes": []map[string]any{
 				{
 					"name": "apache-config",

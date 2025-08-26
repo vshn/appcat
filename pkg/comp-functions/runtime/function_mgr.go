@@ -660,6 +660,16 @@ func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string
 		o.SetAnnotations(annotations)
 	}
 
+	labels := o.GetLabels()
+	if labels != nil {
+		for k := range labels {
+			if strings.HasPrefix(k, "argocd.argoproj.io") {
+				delete(labels, k)
+			}
+		}
+		o.SetLabels(labels)
+	}
+
 	// We check if there's already an object for this resource name.
 	// It there's one we take it's spec and add it to the new object we want to apply.
 	// This way we don't override anything, if the object contains other changes outside of `Spec.ForProvider.Manifest`.

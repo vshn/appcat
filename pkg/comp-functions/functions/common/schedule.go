@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	maitenanceWindowStart = time.Date(1970, 1, 1, 21, 0, 0, 0, time.UTC)
-	maitenanceWindowEnd   = time.Date(1970, 1, 2, 5, 0, 0, 0, time.UTC)
-	maitenanceWindowRange = maitenanceWindowEnd.Unix() - maitenanceWindowStart.Unix()
+	maintenanceWindowStart = time.Date(1970, 1, 1, 21, 0, 0, 0, time.UTC)
+	maintenanceWindowEnd   = time.Date(1970, 1, 2, 5, 0, 0, 0, time.UTC)
+	maintenanceWindowRange = maintenanceWindowEnd.Unix() - maintenanceWindowStart.Unix()
 )
 
 // BackupScheduler can schedule backups
@@ -35,7 +35,7 @@ func SetRandomSchedules(backup BackupScheduler, maintenance MaintenanceScheduler
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	availableDays := []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday"}
 	selectedDay := availableDays[rng.Intn(len(availableDays))]
-	maintTime := time.Unix(maitenanceWindowStart.Unix()+rng.Int63n(maitenanceWindowRange), 0).In(time.UTC)
+	maintTime := time.Unix(maintenanceWindowStart.Unix()+rng.Int63n(maintenanceWindowRange), 0).In(time.UTC)
 
 	// Special handling for Sunday: only allow times after 21:00 (not early morning)
 	if selectedDay == "sunday" && maintTime.Hour() < 21 {

@@ -146,3 +146,91 @@ func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, fmt.Errorf("FQDN n€xtcloud.example.tld is not a valid DNS name"), err)
 }
+
+func TestNextcloudWebhookHandler_ValidatePostgreSQLEncryptionChanges(t *testing.T) {
+	ctx := context.TODO()
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		Build()
+
+	handler := NextcloudWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:    fclient,
+			log:       logr.Discard(),
+			withQuota: false,
+			obj:       &vshnv1.VSHNNextcloud{},
+			name:      "nextcloud",
+		},
+	}
+
+	// Test 1: Same encryption state should be valid
+	nextcloudOrig := &vshnv1.VSHNNextcloud{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "testns",
+		},
+		Spec: vshnv1.VSHNNextcloudSpec{
+			Parameters: vshnv1.VSHNNextcloudParameters{
+				Service: vshnv1.VSHNNextcloudServiceSpec{
+					FQDN: []string{"mynextcloud.example.tld"},
+					PostgreSQLParameters: &vshnv1.VSHNPostgreSQLParameters{
+						Encryption: vshnv1.VSHNPostgreSQLEncryption{
+							Enabled: false,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nextcloudUpdated := nextcloudOrig.DeepCopy()
+	// No changes to encryption state
+
+	_, err := handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudUpdated)
+	assert.NoError(t, err)
+
+	// Test 2: Enabling encryption after creation should fail
+	nextcloudEncryptionEnabled := nextcloudOrig.DeepCopy()
+	nextcloudEncryptionEnabled.Spec.Parameters.Service.PostgreSQLParameters.Encryption.Enabled = true
+
+	_, err = handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudEncryptionEnabled)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "encryption setting cannot be changed after instance creation")
+
+	// Test 3: Disabling encryption after creation should fail
+	nextcloudOrigEncrypted := nextcloudOrig.DeepCopy()
+	nextcloudOrigEncrypted.Spec.Parameters.Service.PostgreSQLParameters.Encryption.Enabled = true
+
+	nextcloudEncryptionDisabled := nextcloudOrigEncrypted.DeepCopy()
+	nextcloudEncryptionDisabled.Spec.Parameters.Service.PostgreSQLParameters.Encryption.Enabled = false
+
+	_, err = handler.ValidateUpdate(ctx, nextcloudOrigEncrypted, nextcloudEncryptionDisabled)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "encryption setting cannot be changed after instance creation")
+
+	// Test 4: Same encryption state (enabled) should be valid
+	nextcloudSameEncryption := nextcloudOrigEncrypted.DeepCopy()
+	// No changes to encryption state
+
+	_, err = handler.ValidateUpdate(ctx, nextcloudOrigEncrypted, nextcloudSameEncryption)
+	assert.NoError(t, err)
+
+	// Test 5: No PostgreSQL parameters should be valid
+	nextcloudNoPostgreSQL := &vshnv1.VSHNNextcloud{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "testns",
+		},
+		Spec: vshnv1.VSHNNextcloudSpec{
+			Parameters: vshnv1.VSHNNextcloudParameters{
+				Service: vshnv1.VSHNNextcloudServiceSpec{
+					FQDN: []string{"mynextcloud.example.tld"},
+					// No PostgreSQLParameters
+				},
+			},
+		},
+	}
+
+	_, err = handler.ValidateUpdate(ctx, nextcloudNoPostgreSQL, nextcloudNoPostgreSQL)
+	assert.NoError(t, err)
+}

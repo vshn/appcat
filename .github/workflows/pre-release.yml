@@ -85,6 +85,13 @@ jobs:
           git push origin $NEW_TAG
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
+      - name: Trigger Release Workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ env.APPCAT_REPO }}
+          event-type: trigger-release
+          client-payload: '{"tag": "${{ steps.bump.outputs.new_tag }}"}'
 
   create-component-release-pr:
     needs: create-and-merge-appcat-pr
@@ -132,4 +139,3 @@ jobs:
             --body "This PR updates the version in defaults.yaml and regenerates golden files."
         env:
           GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
-

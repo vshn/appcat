@@ -660,6 +660,16 @@ func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string
 		o.SetAnnotations(annotations)
 	}
 
+	labels := o.GetLabels()
+	if labels != nil {
+		for k := range labels {
+			if strings.HasPrefix(k, "argocd.argoproj.io") {
+				delete(labels, k)
+			}
+		}
+		o.SetLabels(labels)
+	}
+
 	// We check if there's already an object for this resource name.
 	// It there's one we take it's spec and add it to the new object we want to apply.
 	// This way we don't override anything, if the object contains other changes outside of `Spec.ForProvider.Manifest`.
@@ -1034,8 +1044,8 @@ func (s *ServiceRuntime) DeleteDesiredCompososedResource(name string) {
 	delete(s.desiredResources, resource.Name(name))
 }
 
-// isResourceSyncedAndReady checks if the given resource is synced and ready.
-func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
+// IsResourceSyncedAndReady checks if the given resource is synced and ready.
+func (s *ServiceRuntime) IsResourceSyncedAndReady(name string) bool {
 	obj, ok := s.req.Observed.Resources[name]
 	if !ok {
 		return false
@@ -1057,10 +1067,10 @@ func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
 	}
 
 	for _, cond := range status.Conditions {
-		if cond.Type == xpv1.TypeSynced && cond.Status == "false" {
+		if cond.Type == xpv1.TypeSynced && cond.Status == corev1.ConditionFalse {
 			return false
 		}
-		if cond.Type == xpv1.TypeReady && cond.Status == "false" {
+		if cond.Type == xpv1.TypeReady && cond.Status == corev1.ConditionFalse {
 			return false
 		}
 	}
@@ -1071,7 +1081,7 @@ func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
 // areResourcesReady checks if all of the given resources are ready or not.
 func (s *ServiceRuntime) areResourcesReady(names []string) bool {
 	for _, name := range names {
-		ok := s.isResourceSyncedAndReady(name)
+		ok := s.IsResourceSyncedAndReady(name)
 		if !ok {
 			return false
 		}
@@ -1453,13 +1463,20 @@ func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 
 		compName := s.desiredResources[i].Resource.GetName()
 
+		opts := []KubeObjectOption{}
+
+		// if the main object can be deleted, so should also the copy
+		if _, ok := s.desiredResources[i].Resource.GetLabels()[WebhookAllowDeletionLabel]; ok {
+			opts = append(opts, KubeOptionAllowDeletion)
+		}
+
 		cdRef.Namespace = s.GetCrossplaneNamespace()
 
 		s.desiredResources[i].Resource.SetWriteConnectionSecretToReference(cdRef)
 
 		// We need to concatenate the name of the resource with the name of its immediate parent composite to avoid clashes
 		// in the desired map
-		err = s.SetDesiredKubeObject(secret, compName+"-"+s.observedComposite.GetName())
+		err = s.SetDesiredKubeObject(secret, compName+"-"+s.observedComposite.GetName(), opts...)
 		if err != nil {
 			return err
 		}

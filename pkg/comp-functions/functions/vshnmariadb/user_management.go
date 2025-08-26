@@ -67,10 +67,26 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 			},
 		},
 		Spec: my1alpha1.UserSpec{
-			ForProvider: my1alpha1.UserParameters{},
+			ForProvider: my1alpha1.UserParameters{
+				PasswordSecretRef: &xpv1.SecretKeySelector{
+					SecretReference: xpv1.SecretReference{
+						// We need to get the secret from the crossplane namespace on the control plane
+						Name:      secretName + "-cd",
+						Namespace: svc.GetCrossplaneNamespace(),
+					},
+					Key: "userpass",
+				},
+			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
+				},
+				// we need to also write the connection details or the provider can't track
+				// password changes
+				// https://github.com/crossplane-contrib/provider-sql/issues/131
+				WriteConnectionSecretToReference: &xpv1.SecretReference{
+					Name:      secretName,
+					Namespace: svc.GetCrossplaneNamespace(),
 				},
 			},
 		},

@@ -1044,9 +1044,9 @@ func (s *ServiceRuntime) DeleteDesiredCompososedResource(name string) {
 	delete(s.desiredResources, resource.Name(name))
 }
 
-// isResourceSyncedAndReady checks if the given resource is synced and ready.
+// IsResourceSyncedAndReady checks if the given resource is synced and ready.
 func (s *ServiceRuntime) IsResourceSyncedAndReady(name string) bool {
-	obj, ok := s.GetRequest().Observed.Resources[name]
+	obj, ok := s.req.Observed.Resources[name]
 	if !ok {
 		return false
 	}
@@ -1463,13 +1463,20 @@ func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
 
 		compName := s.desiredResources[i].Resource.GetName()
 
+		opts := []KubeObjectOption{}
+
+		// if the main object can be deleted, so should also the copy
+		if _, ok := s.desiredResources[i].Resource.GetLabels()[WebhookAllowDeletionLabel]; ok {
+			opts = append(opts, KubeOptionAllowDeletion)
+		}
+
 		cdRef.Namespace = s.GetCrossplaneNamespace()
 
 		s.desiredResources[i].Resource.SetWriteConnectionSecretToReference(cdRef)
 
 		// We need to concatenate the name of the resource with the name of its immediate parent composite to avoid clashes
 		// in the desired map
-		err = s.SetDesiredKubeObject(secret, compName+"-"+s.observedComposite.GetName())
+		err = s.SetDesiredKubeObject(secret, compName+"-"+s.observedComposite.GetName(), opts...)
 		if err != nil {
 			return err
 		}

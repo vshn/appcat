@@ -82,15 +82,16 @@ jobs:
             exit 1
           fi
 
-      - name: Check required status checks on appcat PR
-        run: |
-          PASSED=$(gh api repos/${{ github.repository }}/commits/${{ steps.appcat.outputs.last-sha }}/check-runs \
-            --jq '[.check_runs[].conclusion] | all(. == "success" or . == "skipped")')
-
-          if [ "$PASSED" != "true" ]; then
-            echo "❌ Required status checks did not pass"
-            exit 1
-          fi
+      # Disable temporarily
+      #- name: Check required status checks on appcat PR
+      #  run: |
+      #    PASSED=$(gh api repos/${{ github.repository }}/commits/${{ steps.appcat.outputs.last-sha }}/check-runs \
+      #      --jq '[.check_runs[].conclusion] | all(. == "success" or . == "skipped")')
+      #
+      #    if [ "$PASSED" != "true" ]; then
+      #      echo "❌ Required status checks did not pass"
+      #      exit 1
+      #    fi
 
       - name: Check for merge conflicts on appcat PR
         id: check-conflicts

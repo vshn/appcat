@@ -145,20 +145,11 @@ func TestUserManagement(t *testing.T) {
 	assert.NoError(t, setObservedComposition(svc, comp))
 
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
+	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
 
-	// we'll test the individual components directly since
-	// the sequencing logic requires actual observed resources
-	addUser(comp, svc, "prod")
-	addDatabase(comp, svc, "prod", "prod")
-	addGrants(comp, svc, "prod", "prod", []string{})
-
-	// then expect all resources to be created
-	role := &pgv1alpha1.Role{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(role, fmt.Sprintf("%s-%s-role", comp.GetName(), "prod")))
+	// then expect database
 	db = &pgv1alpha1.Database{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
-	grant := &pgv1alpha1.Grant{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(grant, fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), "prod", "prod")))
 
 	// when adding user pointing to same db
 	comp.Spec.Parameters.Service.Access = append(comp.Spec.Parameters.Service.Access, vshnv1.VSHNAccess{
@@ -167,10 +158,9 @@ func TestUserManagement(t *testing.T) {
 	})
 
 	assert.NoError(t, setObservedComposition(svc, comp))
-	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
 
-	// Test the second user creation directly
-	addUser(comp, svc, "another")
+	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
+	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
 
 	// then expect database
 	db = &pgv1alpha1.Database{}

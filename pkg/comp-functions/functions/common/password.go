@@ -36,35 +36,37 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 	secret := &corev1.Secret{}
 	cd := []xkube.ConnectionDetail{}
 
-	errObj := svc.GetObservedComposedResource(&xkube.Object{}, secretObjectName)
-
 	err := svc.GetObservedKubeObject(secret, secretObjectName)
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			svc.Log.Info("Could not find secret, generating new passwords", "secret", secretObjectName)
+		} else {
+			return secretObjectName, err
+		}
+	}
 
-	// runtime.ErrNotFound for the secret alone isn't enough here to prevent re-creating passwords
-	// during provisioning it can happen that provider-kubernetes already applied a secret, but
-	// hasn't yet set the status. If the status of the object is empty, the runtime will
-	// also throw an ErrNotFound.
-	// So we also check for the existence of the `Object` itself from the observed state, by
-	// trying to get the object directly.
-	if err == runtime.ErrNotFound && errObj == runtime.ErrNotFound {
+	stringData := map[string]string{}
 
-		stringData := map[string]string{}
-
-		for _, field := range fieldList {
+	// provider-kubernetes already decodes the base64 values for us, so
+	// when we want to re-apply it properly, we have to apply it as stringData.
+	for _, field := range fieldList {
+		if _, ok := secret.Data[field]; !ok {
+			svc.Log.Info("Secret does not contain field, generating new secret", "secret", secretObjectName, "field", field)
 			stringData[field], err = genPassword()
 			if err != nil {
 				return secretObjectName, fmt.Errorf("cannot generate pw for %s: %w", field, err)
 			}
+		} else {
+			stringData[field] = string(secret.Data[field])
 		}
-		secret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretObjectName,
-				Namespace: comp.GetInstanceNamespace(),
-			},
-			StringData: stringData,
-		}
-	} else if err != nil && err != runtime.ErrNotFound {
-		return secretObjectName, err
+	}
+
+	secret = &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretObjectName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		StringData: stringData,
 	}
 
 	// We need to add the secrets every time, or we override existing ones with

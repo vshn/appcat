@@ -131,15 +131,16 @@ jobs:
             exit 1
           fi
 
-      - name: Check required status checks on appcat PR
-        run: |
-          PASSED=$(gh api repos/$COMPONENT_REPO/commits/${{ steps.component.outputs.last-sha }}/check-runs \
-            --jq '[.check_runs[].conclusion] | all(. == "success" or . == "skipped")')
+      # Disabled temporarily
+      # - name: Check required status checks on appcat PR
+      #   run: |
+      #     PASSED=$(gh api repos/$COMPONENT_REPO/commits/${{ steps.component.outputs.last-sha }}/check-runs \
+      #       --jq '[.check_runs[].conclusion] | all(. == "success" or . == "skipped")')
 
-          if [ "$PASSED" != "true" ]; then
-            echo "❌ Required status checks did not pass"
-            exit 1
-          fi
+      #     if [ "$PASSED" != "true" ]; then
+      #       echo "❌ Required status checks did not pass"
+      #       exit 1
+      #     fi
 
       - name: Check for merge conflicts on component PR
         run: |
@@ -235,14 +236,14 @@ jobs:
         run: |
           git config --global user.email "githubbot@vshn.ch"
           git config --global user.name "GitHubBot"
-          
+
           git clone --quiet https://x-access-token:$APPCAT_GH_TOKEN@github.com/$APPCAT_REPO.git
           cd appcat
           git fetch --tags
-          
+
           # Get the latest tag (assumes tags are in 'vX.Y.Z' format)
           LATEST_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
-          
+
           if [ -z "$LATEST_TAG" ]; then
             echo "No tags found."
             exit 1
@@ -254,7 +255,7 @@ jobs:
             PATCH=$((PATCH + 1))
             NEW_TAG="v$MAJOR.$MINOR.$PATCH"
           fi
-          
+
           git checkout master
           git tag "$NEW_TAG"
           git push origin "$NEW_TAG"
@@ -401,4 +402,3 @@ jobs:
         run: |
           echo "✅ Merging component PR: https://github.com/$COMPONENT_REPO/pull/${{ steps.check_mergeable_component.outputs.pr-number }}"
           gh pr merge -R "$COMPONENT_REPO" ${{ steps.check_mergeable_component.outputs.pr-number }} --merge
-

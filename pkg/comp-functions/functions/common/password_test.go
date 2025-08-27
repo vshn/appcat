@@ -37,4 +37,16 @@ func TestAddCredentialsSecret(t *testing.T) {
 	assert.NotEmpty(t, obj.Spec.ConnectionDetails)
 	assert.Len(t, obj.Spec.ConnectionDetails, 2)
 
+	// add new field
+	res, err = AddCredentialsSecret(comp, svc, []string{"mytest", "mypw", "secret"}, DisallowDeletion)
+	assert.NoError(t, err)
+	assert.Equal(t, "mytest-credentials-secret", res)
+
+	secret = &corev1.Secret{}
+	assert.NoError(t, svc.GetDesiredKubeObject(secret, res))
+
+	assert.Len(t, secret.StringData, 3)
+	assert.NotEmpty(t, secret.StringData["mytest"])
+	assert.NotEmpty(t, secret.StringData["mypw"])
+	assert.NotEmpty(t, secret.StringData["secret"])
 }

@@ -1044,8 +1044,8 @@ func (s *ServiceRuntime) DeleteDesiredCompososedResource(name string) {
 	delete(s.desiredResources, resource.Name(name))
 }
 
-// IsResourceSyncedAndReady checks if the given resource is synced and ready.
-func (s *ServiceRuntime) IsResourceSyncedAndReady(name string) bool {
+// isResourceSyncedAndReady checks if the given resource is synced and ready.
+func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
 	obj, ok := s.req.Observed.Resources[name]
 	if !ok {
 		return false
@@ -1067,10 +1067,10 @@ func (s *ServiceRuntime) IsResourceSyncedAndReady(name string) bool {
 	}
 
 	for _, cond := range status.Conditions {
-		if cond.Type == xpv1.TypeSynced && cond.Status == corev1.ConditionFalse {
+		if cond.Type == xpv1.TypeSynced && cond.Status == "false" {
 			return false
 		}
-		if cond.Type == xpv1.TypeReady && cond.Status == corev1.ConditionFalse {
+		if cond.Type == xpv1.TypeReady && cond.Status == "false" {
 			return false
 		}
 	}
@@ -1081,7 +1081,7 @@ func (s *ServiceRuntime) IsResourceSyncedAndReady(name string) bool {
 // areResourcesReady checks if all of the given resources are ready or not.
 func (s *ServiceRuntime) areResourcesReady(names []string) bool {
 	for _, name := range names {
-		ok := s.IsResourceSyncedAndReady(name)
+		ok := s.isResourceSyncedAndReady(name)
 		if !ok {
 			return false
 		}

@@ -6,7 +6,6 @@ name="$STS_NAME"
 namespace="$STS_NAMESPACE"
 size="$STS_SIZE"
 release="$RELEASE_NAME"
-replica_key="$REPLICA_KEY"
 
 echo "Checking if the PVC sizes match"
 # Check if delete is necessary
@@ -28,9 +27,9 @@ while [[ i -lt 300 ]]; do
     # Upause the release so that the sts is recreated. We pause the release to avoid provider-helm updating the release
     # before the sts is deleted.
     echo "Triggering sts re-creation"
-    kubectl annotate release $release "crossplane.io/paused-"
-    kubectl patch release "$release" --type merge -p "{\"spec\":{\"forProvider\":{\"values\":{\"$replica_key\":{\"persistence\":{\"size\":\"foo\"}}}}}}"
-    kubectl patch release "$release" --type merge -p "{\"spec\":{\"forProvider\":{\"values\":{\"$replica_key\":{\"persistence\":{\"size\":\"$size\"}}}}}}"
+    kubectl annotate release "$release" "crossplane.io/paused-"
+    kubectl patch release "$release" --type merge -p "{\"spec\":{\"forProvider\":{\"values\":{\"persistentVolume\":{\"size\":\"foo\"}}}}}"
+    kubectl patch release "$release" --type merge -p "{\"spec\":{\"forProvider\":{\"values\":{\"persistentVolume\":{\"size\":\"$size\"}}}}}"
     count=0
     while ! kubectl -n "$namespace" get sts "$name" && [[ count -lt 300 ]]; do
       echo "waiting for sts to re-appear"

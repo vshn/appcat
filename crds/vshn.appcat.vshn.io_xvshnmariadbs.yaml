@@ -87,6 +87,12 @@ spec:
                     description: Backup contains settings to control how the instance
                       should get backed up.
                     properties:
+                      enabled:
+                        default: true
+                        description: |-
+                          Enabled specifies if automatic backups are enabled for the instance.
+                          If disabled, no backup bucket, repository password, or K8up schedule will be deployed.
+                        type: boolean
                       retention:
                         description: K8upRetentionPolicy describes the retention configuration
                           for a K8up backup.
@@ -5600,6 +5606,31 @@ spec:
                 required:
                 - name
                 type: object
+              resourceRefs:
+                items:
+                  description: |-
+                    A TypedReference refers to an object by Name, Kind, and APIVersion. It is
+                    commonly used to reference cluster-scoped objects or objects where the
+                    namespace is already known.
+                  properties:
+                    apiVersion:
+                      description: APIVersion of the referenced object.
+                      type: string
+                    kind:
+                      description: Kind of the referenced object.
+                      type: string
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                    uid:
+                      description: UID of the referenced object.
+                      type: string
+                  required:
+                  - apiVersion
+                  - kind
+                  - name
+                  type: object
+                type: array
               writeConnectionSecretToRef:
                 description: |-
                   WriteConnectionSecretToReference specifies the namespace and name of a

@@ -29,14 +29,17 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Ser
 		return runtime.NewFatalResult(fmt.Errorf("cannot add k8s backup to the desired state: %w", err))
 	}
 
-	err = backup.AddBackupScriptCM(svc, comp, nextcloudBackupScript)
-	if err != nil {
-		return runtime.NewFatalResult(err)
-	}
+	// Only add backup script and update release if backups are enabled
+	if comp.IsBackupEnabled() {
+		err = backup.AddBackupScriptCM(svc, comp, nextcloudBackupScript)
+		if err != nil {
+			return runtime.NewFatalResult(err)
+		}
 
-	err = updateRelease(svc, comp)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot update release with backup configuration: %s", err))
+		err = updateRelease(svc, comp)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot update release with backup configuration: %s", err))
+		}
 	}
 
 	return nil

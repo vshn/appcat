@@ -69,16 +69,20 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 		return runtime.NewWarningResult(fmt.Errorf("cannot create stackgres objects: %w", err).Error())
 	}
 
-	l.Info("Create ObjectBucket")
-	err = createObjectBucket(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot create xObjectBucket object: %w", err).Error())
-	}
+	if comp.Spec.Parameters.Backup.IsEnabled() {
+		l.Info("Create ObjectBucket")
+		err = createObjectBucket(comp, svc)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Errorf("cannot create xObjectBucket object: %w", err).Error())
+		}
 
-	l.Info("Create SgObjectStorage")
-	err = createSgObjectStorage(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot create sgObjectStorage object: %w", err).Error())
+		l.Info("Create SgObjectStorage")
+		err = createSgObjectStorage(comp, svc)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Errorf("cannot create sgObjectStorage object: %w", err).Error())
+		}
+	} else {
+		l.Info("Skipping backup bucket and object storage creation - backups disabled")
 	}
 
 	l.Info("Create podMonitor")
@@ -426,6 +430,20 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		}
 	}
 
+	configurations := &sgv1.SGClusterSpecConfigurations{
+		SgPostgresConfig: ptr.To(pgConfigName),
+	}
+
+	// Only add backup configuration if backups are enabled
+	if comp.Spec.Parameters.Backup.IsEnabled() {
+		configurations.Backups = &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
+			{
+				SgObjectStorage: "sgbackup-" + comp.GetName(),
+				Retention:       &comp.Spec.Parameters.Backup.Retention,
+			},
+		}
+	}
+
 	sgCluster := &sgv1.SGCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
@@ -434,16 +452,8 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		Spec: sgv1.SGClusterSpec{
 			Instances:         comp.Spec.Parameters.Instances,
 			SgInstanceProfile: ptr.To(comp.GetName()),
-			Configurations: &sgv1.SGClusterSpecConfigurations{
-				SgPostgresConfig: ptr.To(pgConfigName),
-				Backups: &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
-					{
-						SgObjectStorage: "sgbackup-" + comp.GetName(),
-						Retention:       &comp.Spec.Parameters.Backup.Retention,
-					},
-				},
-			},
-			InitialData: initialData,
+			Configurations:    configurations,
+			InitialData:       initialData,
 			Postgres: sgv1.SGClusterSpecPostgres{
 				Version: comp.Status.CurrentVersion,
 			},

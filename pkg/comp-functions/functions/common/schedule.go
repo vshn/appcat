@@ -20,6 +20,11 @@ type BackupScheduler interface {
 	SetBackupSchedule(string)
 }
 
+// BackupEnabledChecker can check if backups are enabled
+type BackupEnabledChecker interface {
+	IsBackupEnabled() bool
+}
+
 type MaintenanceScheduler interface {
 	GetMaintenanceDayOfWeek() string
 	SetMaintenanceDayOfWeek(string)
@@ -29,9 +34,14 @@ type MaintenanceScheduler interface {
 // SetRandomSchedules initializes the backup and maintenance schedules if the user did not explicitly provide a schedule.
 // The maintenance will be set to a random time on a random day (Sunday-Friday) between 21:00 and 5:00,
 // with the exception that Sunday maintenance only runs after 21:00 (not in the early morning hours).
-// The backup schedule will be set to once a day between 20:00 and 4:00.
+// The backup schedule will be set to once a day between 20:00 and 4:00, but only if backups are enabled.
 // If neither maintenance nor backup is set, the function will make sure that there will be backup scheduled one hour before the maintenance.
 func SetRandomSchedules(backup BackupScheduler, maintenance MaintenanceScheduler) {
+	SetRandomSchedulesWithBackupCheck(backup, maintenance, nil)
+}
+
+// SetRandomSchedulesWithBackupCheck initializes schedules with backup enabled check
+func SetRandomSchedulesWithBackupCheck(backup BackupScheduler, maintenance MaintenanceScheduler, backupEnabledChecker BackupEnabledChecker) {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	availableDays := []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday"}
 	selectedDay := availableDays[rng.Intn(len(availableDays))]
@@ -48,7 +58,13 @@ func SetRandomSchedules(backup BackupScheduler, maintenance MaintenanceScheduler
 
 	backupTime := maintTime.Add(-1 * time.Hour).In(time.UTC)
 
-	if backup.GetBackupSchedule() == "" {
+	// Only set backup schedule if backups are enabled
+	shouldSetBackupSchedule := true
+	if backupEnabledChecker != nil {
+		shouldSetBackupSchedule = backupEnabledChecker.IsBackupEnabled()
+	}
+
+	if backup.GetBackupSchedule() == "" && shouldSetBackupSchedule {
 		newSchedule := fmt.Sprintf("%d %d * * *", backupTime.Minute(), backupTime.Hour())
 		backup.SetBackupSchedule(newSchedule)
 	}

@@ -29,6 +29,8 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Ser
 		return runtime.NewFatalResult(fmt.Errorf("cannot add k8s backup to the desired state: %w", err))
 	}
 
+	// Always add backup script and update release to prevent StatefulSet patching issues
+	// Even when backup is disabled, we need to keep the volumes/annotations to avoid forbidden StatefulSet changes
 	err = backup.AddBackupScriptCM(svc, comp, nextcloudBackupScript)
 	if err != nil {
 		return runtime.NewFatalResult(err)

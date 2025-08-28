@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,12 +23,14 @@ import (
 
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -70,15 +73,18 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	}
 
 	l.Info("Create ObjectBucket")
-	err = createObjectBucket(comp, svc)
+	err = createObjectBucket(ctx, comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create xObjectBucket object: %w", err).Error())
 	}
 
-	l.Info("Create SgObjectStorage")
-	err = createSgObjectStorage(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot create sgObjectStorage object: %w", err).Error())
+	// Only create SGObjectStorage if backups are enabled
+	if comp.Spec.Parameters.Backup.IsEnabled() {
+		l.Info("Create SgObjectStorage")
+		err = createSgObjectStorage(comp, svc)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Errorf("cannot create sgObjectStorage object: %w", err).Error())
+		}
 	}
 
 	l.Info("Create podMonitor")
@@ -426,6 +432,25 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		}
 	}
 
+	configurations := &sgv1.SGClusterSpecConfigurations{
+		SgPostgresConfig: ptr.To(pgConfigName),
+		Backups:          nil, // Explicitly initialize as nil
+	}
+
+	// Only add backup configuration if backups are enabled
+	if comp.Spec.Parameters.Backup.IsEnabled() {
+		l.Info("Backup is enabled - adding backup configuration to SGCluster")
+		configurations.Backups = &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
+			{
+				SgObjectStorage: "sgbackup-" + comp.GetName(),
+				Retention:       &comp.Spec.Parameters.Backup.Retention,
+			},
+		}
+	} else {
+		// Explicitly ensure backup configuration is nil when backups are disabled
+		configurations.Backups = nil
+	}
+
 	sgCluster := &sgv1.SGCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
@@ -434,16 +459,8 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		Spec: sgv1.SGClusterSpec{
 			Instances:         comp.Spec.Parameters.Instances,
 			SgInstanceProfile: ptr.To(comp.GetName()),
-			Configurations: &sgv1.SGClusterSpecConfigurations{
-				SgPostgresConfig: ptr.To(pgConfigName),
-				Backups: &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
-					{
-						SgObjectStorage: "sgbackup-" + comp.GetName(),
-						Retention:       &comp.Spec.Parameters.Backup.Retention,
-					},
-				},
-			},
-			InitialData: initialData,
+			Configurations:    configurations,
+			InitialData:       initialData,
 			Postgres: sgv1.SGClusterSpecPostgres{
 				Version: comp.Status.CurrentVersion,
 			},
@@ -513,14 +530,98 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 
 }
 
-func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+func createObjectBucket(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+
+	// Start with base labels
+	labels := map[string]string{
+		runtime.ProviderConfigIgnoreLabel: "true",
+	}
+
+	// Check if backup is disabled and we need to preserve an existing bucket for retention
+	if !comp.Spec.Parameters.Backup.IsEnabled() {
+		svc.Log.Info("Backup disabled - checking if bucket needs retention timestamp label")
+
+		// Check if bucket exists in observed state (from when backup was enabled)
+		observedBucket := &appcatv1.XObjectBucket{}
+		bucketName := "pg-bucket"
+		err := svc.GetObservedComposedResource(observedBucket, bucketName)
+		if err != nil && err != runtime.ErrNotFound {
+			return fmt.Errorf("cannot check observed backup bucket: %w", err)
+		}
+
+		if err == nil {
+			// Bucket exists from when backup was enabled - preserve it with timestamp label
+			svc.Log.Info("Found existing bucket from when backup was enabled - adding retention timestamp")
+
+			// Copy existing labels
+			if observedBucket.Labels != nil {
+				for k, v := range observedBucket.Labels {
+					labels[k] = v
+				}
+			}
+
+			// Add backup-disabled timestamp label only if it doesn't exist yet
+			if _, exists := labels[backup.BackupDisabledTimestampLabel]; !exists {
+				now := time.Now()
+				timestampStr := strconv.FormatInt(now.Unix(), 10)
+				labels[backup.BackupDisabledTimestampLabel] = timestampStr
+				svc.Log.Info("Added backup disabled timestamp label to bucket for retention tracking",
+					"timestamp", now.Format(time.RFC3339),
+					"timestampUnix", timestampStr)
+			} else {
+				svc.Log.Info("Backup disabled timestamp label already exists")
+
+				// Check if retention period has expired and bucket should be deleted
+				timestampStr := labels[backup.BackupDisabledTimestampLabel]
+				timestampUnix, err := strconv.ParseInt(timestampStr, 10, 64)
+				if err != nil {
+					svc.Log.Error(err, "Failed to parse backup disabled timestamp, skipping retention check")
+				} else {
+					backupDisabledTime := time.Unix(timestampUnix, 0)
+					retention := comp.Spec.Parameters.Backup.Retention
+
+					// Use retention as the retention period in days, with a minimum of 1 day
+					retentionDays := retention
+					if retentionDays <= 0 {
+						retentionDays = 6 // Default value matching webhook
+					}
+
+					retentionPeriod := time.Duration(retentionDays) * 24 * time.Hour
+					allowedDeletionTime := backupDisabledTime.Add(retentionPeriod)
+					now := time.Now()
+
+					if now.After(allowedDeletionTime) {
+						// Retention period has expired, skip bucket creation to allow deletion
+						svc.Log.Info("Backup bucket retention period has expired, skipping bucket recreation to allow deletion",
+							"retentionDays", retentionDays,
+							"backupDisabledTime", backupDisabledTime.Format(time.RFC3339),
+							"expirationTime", allowedDeletionTime.Format(time.RFC3339))
+						return nil
+					} else {
+						timeRemaining := allowedDeletionTime.Sub(now)
+						svc.Log.Info("Backup bucket still in retention period, preserving it",
+							"retentionDays", retentionDays,
+							"backupDisabledTime", backupDisabledTime.Format(time.RFC3339),
+							"timeRemaining", timeRemaining.String())
+						labels["appcat.vshn.io/allow-deletion"] = "true"
+						// Also patch the connection secret with the same label
+						if err := patchConnectionSecretWithAllowDeletion(ctx, comp, svc); err != nil {
+							svc.Log.Error(err, "Failed to patch connection secret with allow-deletion label")
+						}
+					}
+				}
+			}
+		} else {
+			// No existing bucket - backup was never enabled, don't create one
+			svc.Log.Info("No existing backup bucket found - backup was never enabled, skipping bucket creation")
+			return nil
+		}
+	}
 
 	xObjectBucket := &appcatv1.XObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: comp.GetName(),
-			Labels: map[string]string{
-				runtime.ProviderConfigIgnoreLabel: "true",
-			},
+			Name:   comp.GetName(),
+			Labels: labels,
 		},
 		Spec: appcatv1.XObjectBucketSpec{
 			Parameters: appcatv1.ObjectBucketParameters{
@@ -591,7 +692,7 @@ func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRunt
 			},
 		},
 	}
-	err = svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup")
+	err = svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup", runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		err = fmt.Errorf("cannot create sgBackup: %w", err)
 		return err
@@ -743,4 +844,30 @@ func getBucketName(svc *runtime.ServiceRuntime, currentBucket *appcatv1.XObjectB
 	}
 
 	return bucket.Spec.Parameters.BucketName
+}
+
+// patchConnectionSecretWithAllowDeletion patches the connection secret (Kubernetes Object)
+// that manages the backup credentials with the allow-deletion label
+func patchConnectionSecretWithAllowDeletion(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	l := controllerruntime.LoggerFrom(ctx)
+
+	secretObjectName := comp.GetName() + "-" + comp.GetName()
+
+	// Create a Kubernetes Object resource to represent the connection secret
+	secretObject := &xkubev1.Object{}
+
+	// Try to get the existing secret object
+	err := svc.GetObservedComposedResource(secretObject, secretObjectName)
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			l.V(1).Info("Connection secret object not found yet, skipping label patch", "secretObjectName", secretObjectName)
+			return nil
+		}
+		return fmt.Errorf("cannot get connection secret object: %w", err)
+	}
+
+	l.Info("Patching connection secret object with allow-deletion label", "secretObjectName", secretObjectName)
+
+	return svc.SetDesiredKubeObject(secretObject, secretObjectName,
+		runtime.KubeOptionAllowDeletion)
 }

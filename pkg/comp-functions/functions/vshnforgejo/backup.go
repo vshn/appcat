@@ -28,6 +28,8 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.Servi
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add k8s backup to the desired state: %v", err))
 	}
 
+	// Always add backup script and update release to prevent StatefulSet patching issues
+	// Even when backup is disabled, we need to keep the volumes/annotations to avoid forbidden StatefulSet changes
 	err = backup.AddBackupScriptCM(svc, comp, forgejoBackupScript)
 	if err != nil {
 		return runtime.NewFatalResult(err)

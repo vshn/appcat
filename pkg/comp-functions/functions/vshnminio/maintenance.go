@@ -18,7 +18,8 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMinio, svc *runtime
 		return runtime.NewFatalResult(err)
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	maintTime := common.SetRandomMaintenanceSchedule(comp)
+	common.SetRandomBackupSchedule(comp, &maintTime)
 
 	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 		svc.Log.Error(err, "cannot set schedules in the composite status")

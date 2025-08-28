@@ -175,6 +175,12 @@ type VSHNDBaaSPostgresExtension struct {
 }
 
 type VSHNPostgreSQLBackup struct {
+	// Enabled specifies if automatic backups are enabled for the instance.
+	// If disabled, no backup bucket, repository password, or K8up schedule will be deployed.
+	// This also disables WAL (Write-Ahead Logging) archiving to reduce costs.
+	// +kubebuilder:default=true
+	Enabled *bool `json:"enabled,omitempty"`
+
 	// +kubebuilder:validation:Pattern=^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
 	Schedule string `json:"schedule,omitempty"`
 
@@ -203,6 +209,11 @@ func (v *VSHNPostgreSQLBackup) GetBackupSchedule() string {
 // SetBackupSchedule sets the schedule to the given value
 func (v *VSHNPostgreSQLBackup) SetBackupSchedule(schedule string) {
 	v.Schedule = schedule
+}
+
+// IsEnabled returns true if backups are enabled. Defaults to true if not explicitly set.
+func (v *VSHNPostgreSQLBackup) IsEnabled() bool {
+	return v.Enabled == nil || *v.Enabled
 }
 
 // VSHNPostgreSQLRestore contains restore specific parameters.
@@ -446,4 +457,9 @@ func (v *VSHNPostgreSQL) GetBillingName() string {
 
 func (v *VSHNPostgreSQL) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
+}
+
+// IsBackupEnabled returns true if backups are enabled for this instance
+func (v *VSHNPostgreSQL) IsBackupEnabled() bool {
+	return v.Spec.Parameters.Backup.IsEnabled()
 }

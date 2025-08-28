@@ -331,3 +331,8 @@ func (v *VSHNForgejo) GetWorkloadName() string {
 func (v *VSHNForgejo) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
 	return &StatefulSetManager{}
 }
+
+// IsBackupEnabled returns true if backups are enabled for this instance
+func (v *VSHNForgejo) IsBackupEnabled() bool {
+	return v.Spec.Parameters.Backup.IsEnabled()
+}

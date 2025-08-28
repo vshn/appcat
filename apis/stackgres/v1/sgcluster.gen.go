@@ -69,7 +69,7 @@ type SGClusterSpecConfigurations struct {
 	BackupPath *string `json:"backupPath,omitempty"`
 
 	// List of backups configurations for this SGCluster
-	Backups *[]SGClusterSpecConfigurationsBackupsItem `json:"backups,omitempty"`
+	Backups *[]SGClusterSpecConfigurationsBackupsItem `json:"backups"`
 
 	// **Deprecated**: use instead .spec.configurations.backups with sgObjectStorage.
 	//

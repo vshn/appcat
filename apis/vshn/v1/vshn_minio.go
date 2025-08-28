@@ -280,3 +280,9 @@ func (v *VSHNMinio) GetBillingName() string {
 func (v *VSHNMinio) GetSLA() string {
 	return string(BestEffort)
 }
+
+// IsBackupEnabled returns true if backups are enabled for this instance
+// MinIO doesn't currently support backups via K8up, so this always returns false
+func (v *VSHNMinio) IsBackupEnabled() bool {
+	return false
+}

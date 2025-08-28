@@ -368,3 +368,8 @@ func (v *VSHNNextcloud) GetBillingName() string {
 func (v *VSHNNextcloud) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
 }
+
+// IsBackupEnabled returns true if backups are enabled for this instance
+func (v *VSHNNextcloud) IsBackupEnabled() bool {
+	return v.Spec.Parameters.Backup.IsEnabled()
+}

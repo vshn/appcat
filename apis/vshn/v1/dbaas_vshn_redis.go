@@ -331,3 +331,8 @@ func (v *VSHNRedis) GetBillingName() string {
 func (v *VSHNRedis) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
 }
+
+// IsBackupEnabled returns true if backups are enabled for this instance
+func (v *VSHNRedis) IsBackupEnabled() bool {
+	return v.Spec.Parameters.Backup.IsEnabled()
+}

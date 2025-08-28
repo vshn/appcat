@@ -28,6 +28,26 @@ func TestAddBackupObjectCreation(t *testing.T) {
 
 }
 
+func TestAddBackupDisabled(t *testing.T) {
+	svc, comp := getRedisBackupComp(t)
+
+	// Disable backups
+	enabled := false
+	comp.Spec.Parameters.Backup.Enabled = &enabled
+
+	ctx := context.TODO()
+
+	// Should not return error
+	assert.Nil(t, AddK8upBackup(ctx, svc, comp))
+
+	// Should not create any backup resources
+	bucket := &appcatv1.XObjectBucket{}
+	assert.Error(t, svc.GetDesiredComposedResourceByName(bucket, comp.Name+"-backup"))
+
+	repoPW := &corev1.Secret{}
+	assert.Error(t, svc.GetDesiredKubeObject(repoPW, comp.Name+"-k8up-repo-pw"))
+}
+
 func getRedisBackupComp(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNRedis) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshnredis/backup/01_default.yaml")
 

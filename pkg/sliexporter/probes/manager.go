@@ -85,15 +85,18 @@ func NewManager(l logr.Logger, maintenanceStatus maintenancecontroller.Maintenan
 	}
 }
 
-// Collector returns the histogram to store the probe results
-func (m Manager) Collector() prometheus.Collector {
-	return m.hist
+// Collectors returns all collectors including service-specific ones
+func (m Manager) Collectors() []prometheus.Collector {
+	collectors := []prometheus.Collector{m.hist}
+
+	collectors = append(collectors, GetRedisCollectors()...)
+
+	return collectors
 }
 
 // StartProbe will send a probe once every second using the provided prober.
 // If a prober with the same ProbeInfo already runs, it will stop the running prober.
 func (m Manager) StartProbe(p Prober) {
-
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -102,7 +105,6 @@ func (m Manager) StartProbe(p Prober) {
 	cancel, ok := m.probers[probeKey]
 	if ok {
 		l.Info("Cancel Probe")
-
 		cancel()
 	}
 
@@ -134,17 +136,14 @@ func (m Manager) runProbe(ctx context.Context, p Prober) {
 	for {
 		select {
 		case <-ctx.Done():
-
 			return
 		case <-ticker:
-
 			go m.sendProbe(ctx, p)
 		}
 	}
 }
 
 func (m Manager) sendProbe(ctx context.Context, p Prober) {
-
 	pi := p.GetInfo()
 	l := m.log.WithValues("service", pi.Service, "namespace", pi.Namespace, "name", pi.Name)
 

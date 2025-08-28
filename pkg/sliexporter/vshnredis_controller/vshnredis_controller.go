@@ -85,8 +85,14 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, obj slireconcil
 	}
 
 	org := ns.GetLabels()[utils.OrgLabelName]
+	if org == "" {
+		org = "unknown"
+	}
 
 	sla := inst.Spec.Parameters.Service.ServiceLevel
+	if sla == "" {
+		sla = vshnv1.BestEffort
+	}
 
 	tlsEnabled := inst.Spec.Parameters.TLS.TLSEnabled
 
@@ -111,7 +117,9 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, obj slireconcil
 		redisOptions.TLSConfig = &tlsConfig
 	}
 
-	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel], org, string(sla), false, redisOptions)
+	ha := inst.Spec.Parameters.Instances > 1
+
+	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel], org, string(sla), ha, redisOptions)
 	if err != nil {
 		return nil, err
 	}

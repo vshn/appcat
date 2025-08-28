@@ -94,10 +94,14 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 
 	probeManager := probes.NewManager(log, maintenanceRecociler)
 
-	err = metrics.Registry.Register(probeManager.Collector())
-	if err != nil {
-		log.Error(err, "unable to register metrics")
-		return err
+	collectors := probeManager.Collectors()
+
+	for _, c := range collectors {
+		err := metrics.Registry.Register(c)
+		if err != nil {
+			log.Error(err, "unable to register metric collector", "collector", c)
+			return err
+		}
 	}
 
 	if utils.IsKindAvailable(vshnv1.GroupVersion, "XVSHNPostgreSQL", ctrl.GetConfigOrDie()) {

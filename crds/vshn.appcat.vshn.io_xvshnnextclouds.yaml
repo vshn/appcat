@@ -11258,6 +11258,16 @@ spec:
                                 - OnRestart
                                 type: string
                             type: object
+                          useCnpg:
+                            description: |-
+                              If enabled, provisions this instance using the CNPG operator instead of StackGres.
+                              Certain limitations apply when deploying using CPNG.
+                              Must be set when creating an instance and cannot be changed afterwards.
+                            type: boolean
+                            x-kubernetes-validations:
+                            - message: The method of deployment cannot be changed
+                                after creation
+                              rule: self == oldSelf
                         type: object
                       relativePath:
                         default: /

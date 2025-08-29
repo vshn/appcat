@@ -28,7 +28,7 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Service
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	common.SetRandomSchedulesWithBackupCheck(comp, comp, comp)
 
 	err = svc.SetDesiredCompositeStatus(comp)
 	if err != nil {
@@ -40,16 +40,21 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Service
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add k8up backup: %s", err.Error()))
 	}
 
-	l.Info("Adding backup script config map")
-	err = backup.AddBackupScriptCM(svc, comp, redisBackupScript)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create backup script configMap: %s", err.Error()))
-	}
+	// Only add backup script and update release if backups are enabled
+	if comp.IsBackupEnabled() {
+		l.Info("Adding backup script config map")
+		err = backup.AddBackupScriptCM(svc, comp, redisBackupScript)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot create backup script configMap: %s", err.Error()))
+		}
 
-	l.Info("Updating the release object")
-	err = updateRelease(ctx, svc)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot update release: %s", err.Error()))
+		l.Info("Updating the release object")
+		err = updateRelease(ctx, svc)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot update release: %s", err.Error()))
+		}
+	} else {
+		l.Info("Skipping backup script and release update - backups disabled")
 	}
 
 	return nil

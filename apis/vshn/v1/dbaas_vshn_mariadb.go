@@ -186,6 +186,7 @@ type XVSHNMariaDBSpec struct {
 	// Parameters are the configurable fields of a VSHNMariaDB.
 	Parameters VSHNMariaDBParameters `json:"parameters,omitempty"`
 
+	ResourceRefs      []xpv1.TypedReference `json:"resourceRefs,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 
@@ -315,4 +316,9 @@ func (v *VSHNMariaDB) GetBillingName() string {
 
 func (v *VSHNMariaDB) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
+}
+
+// IsBackupEnabled returns true if backups are enabled for this instance
+func (v *VSHNMariaDB) IsBackupEnabled() bool {
+	return v.Spec.Parameters.Backup.IsEnabled()
 }

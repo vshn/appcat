@@ -44,8 +44,10 @@ func DelayClusterDeployment(_ context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		return runtime.NewWarningResult("sgProfile is not yet ready, skipping creation of cluster")
 	}
 
-	if !kubeObjectSyncedAndReady("sg-backup", svc) {
-		return runtime.NewWarningResult("SGObjectStorage is not yet ready, skipping creation of cluster")
+	if comp.Spec.Parameters.Backup.IsEnabled() {
+		if !kubeObjectSyncedAndReady("sg-backup", svc) {
+			return runtime.NewWarningResult("SGObjectStorage is not yet ready, skipping creation of cluster")
+		}
 	}
 
 	if !kubeObjectSyncedAndReady(fmt.Sprintf("%s-%s-%s", comp.GetName(), configResourceName, comp.Status.CurrentVersion), svc) {

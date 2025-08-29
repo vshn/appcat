@@ -9,6 +9,7 @@ import (
 type InfoGetter interface {
 	GetBackupSchedule() string
 	GetBackupRetention() vshnv1.K8upRetentionPolicy
+	IsBackupEnabled() bool
 	GetServiceName() string
 	GetLabels() map[string]string
 	GetSize() vshnv1.VSHNSizeSpec

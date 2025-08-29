@@ -26,26 +26,63 @@ const (
 )
 
 // AddK8upBackup creates an S3 bucket and a K8up schedule according to the composition spec.
+// When backup is disabled, it only preserves existing buckets for retention, but doesn't create new ones.
 func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common.InfoGetter) error {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
-	l.Info("Creating backup bucket")
-	err := createObjectBucket(ctx, comp, svc)
-	if err != nil {
-		return fmt.Errorf("cannot create backup bucket: %w", err)
+	// Check if backups are enabled
+	if comp.IsBackupEnabled() {
+		l.Info("Creating backup resources - backups enabled")
+
+		l.Info("Creating backup bucket")
+		err := createObjectBucket(ctx, comp, svc)
+		if err != nil {
+			return fmt.Errorf("cannot create backup bucket: %w", err)
+		}
+
+		l.Info("Creating repository password")
+		err = createRepositoryPassword(ctx, comp, svc)
+		if err != nil {
+			return fmt.Errorf("cannot create repository password: %w", err)
+		}
+
+		l.Info("Creating backup schedule")
+		err = createK8upSchedule(ctx, comp, svc)
+		if err != nil {
+			return fmt.Errorf("cannot create backup schedule, %w", err)
+		}
+
+		return nil
 	}
 
-	l.Info("Creating repository password")
-	err = createRepositoryPassword(ctx, comp, svc)
+	// Backup is disabled - only preserve existing bucket if it exists (for retention)
+	l.Info("Backup disabled - checking for existing bucket to preserve for retention")
+	return preserveExistingBucketForRetention(ctx, comp, svc)
+}
+
+// preserveExistingBucketForRetention keeps existing backup buckets when backup is disabled.
+// The webhook handles retention logic based on creation time and retention policies.
+func preserveExistingBucketForRetention(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
+	l := controllerruntime.LoggerFrom(ctx)
+
+	// Check if backup bucket exists in observed state
+	bucket := &appcatv1.XObjectBucket{}
+	bucketName := comp.GetName() + "-backup"
+	err := svc.GetObservedComposedResource(bucket, bucketName)
 	if err != nil {
-		return fmt.Errorf("cannot create repository password: %w", err)
+		if err == runtime.ErrNotFound {
+			l.V(1).Info("No existing backup bucket found, backup was never enabled")
+			return nil
+		}
+		return fmt.Errorf("cannot get observed backup bucket: %w", err)
 	}
 
-	l.Info("Creating backup schedule")
-	err = createK8upSchedule(ctx, comp, svc)
+	// Preserve the existing bucket - webhook will handle retention based on creation time
+	l.Info("Preserving existing backup bucket for retention - webhook will handle deletion timing")
+	err = svc.SetDesiredComposedResource(bucket)
 	if err != nil {
-		return fmt.Errorf("cannot create backup schedule, %w", err)
+		return fmt.Errorf("cannot preserve backup bucket: %w", err)
 	}
 
 	return nil

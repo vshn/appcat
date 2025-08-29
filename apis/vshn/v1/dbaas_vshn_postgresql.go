@@ -81,6 +81,12 @@ type VSHNPostgreSQLParameters struct {
 	// Out of all Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
 	Instances int `json:"instances,omitempty"`
 
+	// If enabled, provisions this instance using the CNPG operator instead of StackGres.
+	// Certain limitations apply when deploying using CPNG.
+	// Must be set when creating an instance and cannot be changed afterwards.
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="The method of deployment cannot be changed after creation"
+	UseCNPG bool `json:"useCnpg,omitempty"`
+
 	// This section allows to configure Postgres replication mode and HA roles groups.
 	//
 	// The main replication group is implicit and contains the total number of instances less the sum of all instances in other replication groups.

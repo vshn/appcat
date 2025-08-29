@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -19,7 +20,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var HotfixerCMD = newHotfixer()
+var (
+	HotfixerCMD    = newHotfixer()
+	serviceIDLabel string
+	serviceID      string
+)
+
+func init() {
+	HotfixerCMD.Flags().StringVar(&serviceIDLabel, "serviceIDLabel", release.DefaultServiceIDLabel, "name of the service id Label")
+	HotfixerCMD.Flags().StringVar(&serviceID, "serviceID", "", "name of the service ID to update, if empty will update all")
+}
 
 type hotfixer struct {
 }
@@ -71,11 +81,16 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 			continue
 		}
 
+		// let's skip if the the serviceID is not empty and matches the service
+		if serviceID != "" && xrd.GetLabels()[serviceIDLabel] != serviceID {
+			continue
+		}
+
 		p := fieldpath.Pave(xrd.Object)
 
 		XRDLabels := xrd.GetLabels()
 
-		if XRDLabels[release.ServiceIDLabel] == "" {
+		if XRDLabels[serviceIDLabel] == "" {
 			return fmt.Errorf("xrd does not have the required label " + xrd.GetName())
 		}
 
@@ -84,11 +99,15 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 
-		// TODO: currently we only have v1, but that might change at some point...
-		compositeVersion := "v1"
+		// TODO: we currently just take the first version we find
+		compositeVersion, err := p.GetString("spec.versions[0].name")
+		if err != nil {
+			return fmt.Errorf("cannot get version: %w", err)
+		}
+
 		compositeGroup, err := p.GetString("spec.group")
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot get group: %w", err)
 		}
 
 		foundGVK := schema.GroupVersionResource{
@@ -99,6 +118,11 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 
 		l, err := dynClient.Resource(foundGVK).List(ctx, metav1.ListOptions{})
 		if err != nil {
+
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+
 			return err
 		}
 
@@ -114,7 +138,7 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 					return err
 				}
 
-				err := h.handleComposite(ctx, composite, XRDLabels[release.ServiceIDLabel], log, kubeClient)
+				err := h.handleComposite(ctx, composite, XRDLabels[serviceIDLabel], log, kubeClient)
 				if err != nil {
 					return err
 				}
@@ -145,6 +169,7 @@ func (h *hotfixer) handleComposite(ctx context.Context, comp unstructured.Unstru
 		Kind:           comp.GetKind(),
 		Version:        gv.Version,
 		ServiceID:      serviceID,
+		ServiceIDLabel: serviceIDLabel,
 	}
 
 	r := release.NewDefaultVersionHandler(
@@ -174,7 +199,8 @@ func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, lo
 		Group:          gv.Group,
 		Version:        gv.Version,
 		Kind:           ref["kind"],
-		ServiceID:      labels[release.ServiceIDLabel],
+		ServiceID:      labels[serviceIDLabel],
+		ServiceIDLabel: serviceIDLabel,
 	}
 
 	r := release.NewDefaultVersionHandler(

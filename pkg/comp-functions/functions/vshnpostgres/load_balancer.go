@@ -19,8 +19,17 @@ import (
 var serviceName = "primary-service"
 
 func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	err := svc.GetObservedComposite(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite: %w", err))
+	}
 
-	comp, err := getVSHNPostgreSQL(ctx, svc)
+	if comp.Spec.Parameters.UseCNPG {
+		svc.Log.Info("Skipping AddPrimaryService because we're using CNPG")
+		return nil
+	}
+
+	comp, err = getVSHNPostgreSQL(ctx, svc)
 
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))

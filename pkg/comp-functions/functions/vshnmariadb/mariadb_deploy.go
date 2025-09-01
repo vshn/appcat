@@ -286,7 +286,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 			SkipPartOfReleaseCheck: true,
 		},
 	}
-	rel, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release", cd...)
+	rel, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release", common.HelmReleaseOverrides{}, cd...)
 	rel.Spec.ForProvider.Chart.Name = comp.GetServiceName() + "-galera"
 
 	return rel, err

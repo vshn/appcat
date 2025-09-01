@@ -349,7 +349,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 		},
 	}
 
-	rel, err := common.NewRelease(ctx, svc, comp, values, redisRelease, cd...)
+	rel, err := common.NewRelease(ctx, svc, comp, values, redisRelease, common.HelmReleaseOverrides{}, cd...)
 	if err != nil {
 		return nil, err
 	}

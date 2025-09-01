@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	"github.com/crossplane/function-sdk-go/proto/v1"
+	v1 "github.com/crossplane/function-sdk-go/proto/v1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -25,6 +25,12 @@ func PgExporterConfig(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
+
+	if comp.Spec.Parameters.UseCNPG {
+		svc.Log.Info("Skipping PgExporterConfig because we're using CNPG")
+		return nil
+	}
+
 	// get configmap
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

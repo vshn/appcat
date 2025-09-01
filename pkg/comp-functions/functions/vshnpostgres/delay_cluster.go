@@ -18,9 +18,13 @@ import (
 func DelayClusterDeployment(_ context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(comp)
-
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite: %w", err))
+	}
+
+	if comp.Spec.Parameters.UseCNPG {
+		svc.Log.Info("Skipping DelayClusterDeployment because we're using CNPG")
+		return nil
 	}
 
 	clusterObject := &xkube.Object{}

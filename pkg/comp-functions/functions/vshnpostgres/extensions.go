@@ -3,9 +3,10 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
-	"k8s.io/utils/ptr"
 	"sort"
 	"strings"
+
+	"k8s.io/utils/ptr"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
@@ -29,6 +30,11 @@ func AddExtensions(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtim
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
+	}
+
+	if comp.Spec.Parameters.UseCNPG {
+		svc.Log.Info("Skipping AddExtensions because we're using CNPG")
+		return nil
 	}
 
 	extensionsMap := map[string]stackgresv1.SGClusterSpecPostgresExtensionsItem{}

@@ -657,7 +657,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
 	}
 
-	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release", common.HelmReleaseOverrides{})
 
 	release.Spec.ForProvider.Chart.Name = "nextcloud"
 

@@ -55,6 +55,12 @@ func SetupRedisWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	// First call the parent validation (includes provider config validation)
+	parentWarnings, parentErr := r.DefaultWebhookHandler.ValidateCreate(ctx, obj)
+	if parentErr != nil {
+		return parentWarnings, parentErr
+	}
+
 	allErrs := field.ErrorList{}
 	comp, ok := obj.(common.Composite)
 	if !ok {
@@ -101,6 +107,12 @@ func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Ob
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	// First call the parent validation (includes provider config validation)
+	parentWarnings, parentErr := r.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	if parentErr != nil {
+		return parentWarnings, parentErr
+	}
+
 	allErrs := field.ErrorList{}
 	comp, ok := newObj.(common.Composite)
 	if !ok {

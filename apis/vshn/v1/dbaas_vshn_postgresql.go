@@ -81,8 +81,6 @@ type VSHNPostgreSQLParameters struct {
 	// Out of all Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
 	Instances int `json:"instances,omitempty"`
 
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="The method of deployment cannot be changed after creation"
-
 	// If enabled, provisions this instance using the CNPG operator instead of StackGres.
 	// Certain limitations apply when deploying using CPNG.
 	// Must be set when creating an instance and cannot be changed afterwards.

@@ -1,15 +1,9 @@
 pg_replication:
   master: true
-  query: |
-    SELECT
-    CASE
-      WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() THEN 0
-      ELSE extract (EPOCH FROM now() - pg_last_xact_replay_timestamp())::integer
-    END AS lag,
-    CASE
-      WHEN pg_is_in_recovery() THEN 1
-      ELSE 0
-    END AS is_replicating;
+  query:
+    "SELECT\nCASE\n  WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn()\
+    \ THEN 0\n  ELSE extract (EPOCH FROM now() - pg_last_xact_replay_timestamp())::integer\n\
+    END AS lag,\nCASE\n  WHEN pg_is_in_recovery() THEN 1\n  ELSE 0\nEND AS is_replicating;\n"
   metrics:
     - lag:
         usage: "GAUGE"
@@ -17,7 +11,6 @@ pg_replication:
     - is_replicating:
         usage: "GAUGE"
         description: "Indicates if this host is a replica"
-
 pg_postmaster:
   master: true
   query: "SELECT pg_postmaster_start_time as start_time_seconds from pg_postmaster_start_time()"
@@ -25,54 +18,29 @@ pg_postmaster:
     - start_time_seconds:
         usage: "GAUGE"
         description: "Time at which postmaster started"
-
 pg_blocked:
   master: true
-  query: |
-    SET max_parallel_workers_per_gather = 0;
-    WITH databases AS (
-      SELECT oid, datname FROM pg_database
-      WHERE datname NOT IN ('template0', 'template1')
-    )
-    SELECT
-      locktype AS type,
-      NULL AS datname,
-      NULL AS schemaname,
-      NULL AS reltype,
-      NULL AS relname,
-      count(*) AS queries
-    FROM pg_catalog.pg_locks blocked
-    WHERE NOT blocked.granted AND relation IS NULL
-    GROUP BY locktype
-    UNION
-    SELECT
-      locktype AS type,
-      datname,
-      schemaname,
-      CASE relkind
-        WHEN 'r' THEN 'ordinary table'
-        WHEN 'i' THEN 'index'
-        WHEN 'S' THEN 'sequence'
-        WHEN 't' THEN 'TOAST table'
-        WHEN 'v' THEN 'view'
-        WHEN 'm' THEN 'materialized view'
-        WHEN 'c' THEN 'composite type'
-        WHEN 'f' THEN 'foreign table'
-        WHEN 'p' THEN 'partitioned table'
-        WHEN 'I' THEN 'partitioned index'
-        ELSE 'unknown type ''' || relkind || ''''
-        END AS reltype,
-      relname,
-      count(*) AS queries
-    FROM pg_catalog.pg_locks blocked
-    INNER JOIN databases
-      ON blocked.database = databases.oid,
-      LATERAL (SELECT * FROM dblink(
-        'host=/var/run/postgresql port=5432 user=' || CURRENT_USER || ' sslmode=disable dbname=''' || regexp_replace(datname, '([.\\])', '\\\1', 'g') || '''',
-        'SELECT nspname as schemaname, relkind, relname FROM pg_catalog.pg_class LEFT JOIN pg_catalog.pg_namespace ON (pg_namespace.oid = relnamespace) WHERE pg_class.oid = ' || blocked.relation)
-        AS (schemaname name, relkind char, relname name)) AS _
-    WHERE NOT blocked.granted AND relation IS NOT NULL
-    GROUP BY locktype, datname, schemaname, reltype, relname;
+  query:
+    "SET max_parallel_workers_per_gather = 0;\nWITH databases AS (\n  SELECT\
+    \ oid, datname FROM pg_database\n  WHERE datname NOT IN ('template0', 'template1')\n\
+    )\nSELECT\n  locktype AS type,\n  NULL AS datname,\n  NULL AS schemaname,\n  NULL\
+    \ AS reltype,\n  NULL AS relname,\n  count(*) AS queries\nFROM pg_catalog.pg_locks\
+    \ blocked\nWHERE NOT blocked.granted AND relation IS NULL\nGROUP BY locktype\n\
+    UNION\nSELECT\n  locktype AS type,\n  datname,\n  schemaname,\n  CASE relkind\n\
+    \    WHEN 'r' THEN 'ordinary table'\n    WHEN 'i' THEN 'index'\n    WHEN 'S' THEN\
+    \ 'sequence'\n    WHEN 't' THEN 'TOAST table'\n    WHEN 'v' THEN 'view'\n    WHEN\
+    \ 'm' THEN 'materialized view'\n    WHEN 'c' THEN 'composite type'\n    WHEN 'f'\
+    \ THEN 'foreign table'\n    WHEN 'p' THEN 'partitioned table'\n    WHEN 'I' THEN\
+    \ 'partitioned index'\n    ELSE 'unknown type ''' || relkind || ''''\n    END\
+    \ AS reltype,\n  relname,\n  count(*) AS queries\nFROM pg_catalog.pg_locks blocked\n\
+    INNER JOIN databases\n  ON blocked.database = databases.oid,\n  LATERAL (SELECT\
+    \ * FROM dblink(\n    'host=/var/run/postgresql port=5432 user=' || CURRENT_USER\
+    \ || ' sslmode=disable dbname=''' || regexp_replace(datname, '([.\\\\])', '\\\\\
+    \\1', 'g') || '''',\n    'SELECT nspname as schemaname, relkind, relname FROM\
+    \ pg_catalog.pg_class LEFT JOIN pg_catalog.pg_namespace ON (pg_namespace.oid =\
+    \ relnamespace) WHERE pg_class.oid = ' || blocked.relation)\n    AS (schemaname\
+    \ name, relkind char, relname name)) AS _\nWHERE NOT blocked.granted AND relation\
+    \ IS NOT NULL\nGROUP BY locktype, datname, schemaname, reltype, relname;\n"
   metrics:
     - type:
         usage: "LABEL"
@@ -92,31 +60,27 @@ pg_blocked:
     - queries:
         usage: "GAUGE"
         description: "The current number of blocked queries"
-
 pg_oldest_blocked:
   master: true
-  query: |
-    SELECT datname,
-      coalesce(extract('epoch' from max(clock_timestamp() - state_change)), 0) age_seconds
-    FROM pg_catalog.pg_stat_activity
-    WHERE wait_event_type = 'Lock'
-    AND state='active'
-    GROUP BY datname;
+  query:
+    "SELECT datname,\n  coalesce(extract('epoch' from max(clock_timestamp() -\
+    \ state_change)), 0) age_seconds\nFROM pg_catalog.pg_stat_activity\nWHERE wait_event_type\
+    \ = 'Lock'\nAND state='active'\nGROUP BY datname;\n"
   metrics:
     - age_seconds:
         usage: "GAUGE"
-        description: "Largest number of seconds any transaction is currently waiting on a lock"
+        description:
+          "Largest number of seconds any transaction is currently waiting\
+          \ on a lock"
     - datname:
         usage: "LABEL"
         description: "Database name"
-
 pg_slow:
   master: true
-  query: |
-    SELECT datname, COUNT(*) AS queries
-    FROM pg_catalog.pg_stat_activity
-    WHERE state = 'active' AND (now() - query_start) > '1 seconds'::interval
-    GROUP BY datname;
+  query:
+    "SELECT datname, COUNT(*) AS queries\nFROM pg_catalog.pg_stat_activity\n\
+    WHERE state = 'active' AND (now() - query_start) > '1 seconds'::interval\nGROUP\
+    \ BY datname;\n"
   metrics:
     - queries:
         usage: "GAUGE"
@@ -124,15 +88,13 @@ pg_slow:
     - datname:
         usage: "LABEL"
         description: "Database name"
-
 pg_long_running_transactions:
   master: true
-  query: |
-    SELECT datname, COUNT(*) as count,
-    MAX(EXTRACT(EPOCH FROM (clock_timestamp() - xact_start))) AS age_in_seconds
-    FROM pg_catalog.pg_stat_activity
-    WHERE state is distinct from 'idle' AND (now() - xact_start) > '1 minutes'::interval AND query not like '%VACUUM%'
-    GROUP BY datname;
+  query:
+    "SELECT datname, COUNT(*) as count,\nMAX(EXTRACT(EPOCH FROM (clock_timestamp()\
+    \ - xact_start))) AS age_in_seconds\nFROM pg_catalog.pg_stat_activity\nWHERE state\
+    \ is distinct from 'idle' AND (now() - xact_start) > '1 minutes'::interval AND\
+    \ query not like '%VACUUM%'\nGROUP BY datname;\n"
   metrics:
     - datname:
         usage: "LABEL"
@@ -143,17 +105,12 @@ pg_long_running_transactions:
     - age_in_seconds:
         usage: "GAUGE"
         description: "The current maximum transaction age in seconds"
-
 pg_vacuum:
   master: true
-  query: |
-    SELECT
-      datname,
-      COUNT(*) AS queries,
-      MAX(EXTRACT(EPOCH FROM (clock_timestamp() - query_start))) AS age_in_seconds
-    FROM pg_catalog.pg_stat_activity
-    WHERE state = 'active' AND trim(query) ~* '\AVACUUM (?!ANALYZE)'
-    GROUP BY datname;
+  query:
+    "SELECT\n  datname,\n  COUNT(*) AS queries,\n  MAX(EXTRACT(EPOCH FROM (clock_timestamp()\
+    \ - query_start))) AS age_in_seconds\nFROM pg_catalog.pg_stat_activity\nWHERE\
+    \ state = 'active' AND trim(query) ~* '\\AVACUUM (?!ANALYZE)'\nGROUP BY datname;\n"
   metrics:
     - datname:
         usage: "LABEL"
@@ -164,17 +121,12 @@ pg_vacuum:
     - age_in_seconds:
         usage: "GAUGE"
         description: "The current maximum VACUUM query age in seconds"
-
 pg_vacuum_analyze:
   master: true
-  query: |
-    SELECT
-      datname,
-      COUNT(*) AS queries,
-      MAX(EXTRACT(EPOCH FROM (clock_timestamp() - query_start))) AS age_in_seconds
-    FROM pg_catalog.pg_stat_activity
-    WHERE state = 'active' AND trim(query) ~* '\AVACUUM ANALYZE'
-    GROUP BY datname;
+  query:
+    "SELECT\n  datname,\n  COUNT(*) AS queries,\n  MAX(EXTRACT(EPOCH FROM (clock_timestamp()\
+    \ - query_start))) AS age_in_seconds\nFROM pg_catalog.pg_stat_activity\nWHERE\
+    \ state = 'active' AND trim(query) ~* '\\AVACUUM ANALYZE'\nGROUP BY datname;\n"
   metrics:
     - datname:
         usage: "LABEL"
@@ -185,15 +137,12 @@ pg_vacuum_analyze:
     - age_in_seconds:
         usage: "GAUGE"
         description: "The current maximum VACUUM ANALYZE query age in seconds"
-
 pg_stuck_idle_in_transaction:
   master: true
-  query: |
-    SELECT datname,
-      COUNT(*) AS queries
-    FROM pg_catalog.pg_stat_activity
-    WHERE state = 'idle in transaction' AND (now() - query_start) > '10 minutes'::interval
-    GROUP BY datname;
+  query:
+    "SELECT datname,\n  COUNT(*) AS queries\nFROM pg_catalog.pg_stat_activity\n\
+    WHERE state = 'idle in transaction' AND (now() - query_start) > '10 minutes'::interval\n\
+    GROUP BY datname;\n"
   metrics:
     - datname:
         usage: "LABEL"
@@ -201,29 +150,33 @@ pg_stuck_idle_in_transaction:
     - queries:
         usage: "GAUGE"
         description: "Current number of queries that are stuck being idle in transactions"
-
 pg_txid:
   master: true
-  query: |
-    SELECT
-      CASE WHEN pg_is_in_recovery() THEN 'NaN'::float ELSE txid_current() % (2^52)::bigint END AS current,
-      CASE WHEN pg_is_in_recovery() THEN 'NaN'::float ELSE txid_snapshot_xmin(txid_current_snapshot()) % (2^52)::bigint END AS xmin,
-      CASE WHEN pg_is_in_recovery() THEN 'NaN'::float ELSE txid_current() - txid_snapshot_xmin(txid_current_snapshot()) END AS xmin_age;
+  query:
+    "SELECT\n  CASE WHEN pg_is_in_recovery() THEN 'NaN'::float ELSE txid_current()\
+    \ % (2^52)::bigint END AS current,\n  CASE WHEN pg_is_in_recovery() THEN 'NaN'::float\
+    \ ELSE txid_snapshot_xmin(txid_current_snapshot()) % (2^52)::bigint END AS xmin,\n\
+    \  CASE WHEN pg_is_in_recovery() THEN 'NaN'::float ELSE txid_current() - txid_snapshot_xmin(txid_current_snapshot())\
+    \ END AS xmin_age;\n"
   metrics:
     - current:
         usage: "COUNTER"
-        description: "Current 64-bit transaction id of the query used to collect this metric (truncated to low 52 bits)"
+        description:
+          "Current 64-bit transaction id of the query used to collect this\
+          \ metric (truncated to low 52 bits)"
     - xmin:
         usage: "COUNTER"
-        description: "Oldest transaction id of a transaction still in progress, i.e. not known committed or aborted (truncated to low 52 bits)"
+        description:
+          "Oldest transaction id of a transaction still in progress, i.e.\
+          \ not known committed or aborted (truncated to low 52 bits)"
     - xmin_age:
         usage: "GAUGE"
-        description: "Age of oldest transaction still not committed or aborted measured in transaction ids"
-
+        description:
+          "Age of oldest transaction still not committed or aborted measured\
+          \ in transaction ids"
 pg_database_datfrozenxid:
   master: true
-  query: |
-    SELECT datname, age(datfrozenxid) AS age FROM pg_catalog.pg_database;
+  query: "SELECT datname, age(datfrozenxid) AS age FROM pg_catalog.pg_database;\n"
   metrics:
     - datname:
         usage: "LABEL"
@@ -231,31 +184,27 @@ pg_database_datfrozenxid:
     - age:
         usage: "GAUGE"
         description: "Age of the oldest transaction that has not been frozen."
-
 pg_wal_position:
   master: true
-  query: |
-    SELECT CASE
-           WHEN pg_is_in_recovery()
-           THEN (pg_last_wal_receive_lsn() - '0/0') % (2^52)::bigint
-           ELSE (pg_current_wal_lsn() - '0/0') % (2^52)::bigint
-           END AS bytes;
+  query:
+    "SELECT CASE\n       WHEN pg_is_in_recovery()\n       THEN (pg_last_wal_receive_lsn()\
+    \ - '0/0') % (2^52)::bigint\n       ELSE (pg_current_wal_lsn() - '0/0') % (2^52)::bigint\n\
+    \       END AS bytes;\n"
   metrics:
     - bytes:
         usage: "COUNTER"
-        description: "Postgres LSN (log sequence number) being generated on primary or replayed on replica (truncated to low 52 bits)"
-
-
-pg_replication_slots:
+        description:
+          "Postgres LSN (log sequence number) being generated on primary\
+          \ or replayed on replica (truncated to low 52 bits)"
+pg_replication_slots_stats:
   master: true
-  query: |
-    SELECT slot_name, slot_type,
-           case when active then 1.0 else 0.0 end AS active,
-           age(xmin) AS xmin_age,
-           age(catalog_xmin) AS catalog_xmin_age,
-           CASE WHEN pg_is_in_recovery() THEN pg_last_wal_receive_lsn() ELSE pg_current_wal_lsn() END - restart_lsn AS restart_lsn_bytes,
-           CASE WHEN pg_is_in_recovery() THEN pg_last_wal_receive_lsn() ELSE pg_current_wal_lsn() END - confirmed_flush_lsn AS confirmed_flush_lsn_bytes
-      FROM pg_catalog.pg_replication_slots;
+  query:
+    "SELECT slot_name, slot_type,\n       case when active then 1.0 else 0.0\
+    \ end AS active,\n       age(xmin) AS xmin_age,\n       age(catalog_xmin) AS catalog_xmin_age,\n\
+    \       CASE WHEN pg_is_in_recovery() THEN pg_last_wal_receive_lsn() ELSE pg_current_wal_lsn()\
+    \ END - restart_lsn AS restart_lsn_bytes,\n       CASE WHEN pg_is_in_recovery()\
+    \ THEN pg_last_wal_receive_lsn() ELSE pg_current_wal_lsn() END - confirmed_flush_lsn\
+    \ AS confirmed_flush_lsn_bytes\n  FROM pg_catalog.pg_replication_slots;\n"
   metrics:
     - slot_name:
         usage: "LABEL"
@@ -265,55 +214,73 @@ pg_replication_slots:
         description: "Slot Type"
     - active:
         usage: "GAUGE"
-        description: "Boolean flag indicating whether this slot has a consumer streaming from it"
+        description:
+          "Boolean flag indicating whether this slot has a consumer streaming\
+          \ from it"
     - xmin_age:
         usage: "GAUGE"
-        description: "Age of oldest transaction that cannot be vacuumed due to this replica"
+        description:
+          "Age of oldest transaction that cannot be vacuumed due to this\
+          \ replica"
     - catalog_xmin_age:
         usage: "GAUGE"
-        description: "Age of oldest transaction that cannot be vacuumed from catalogs due to this replica (used by logical replication)"
+        description:
+          "Age of oldest transaction that cannot be vacuumed from catalogs\
+          \ due to this replica (used by logical replication)"
     - restart_lsn_bytes:
         usage: "GAUGE"
-        description: "Amount of data on in xlog that must be this replica may need to complete recovery"
+        description:
+          "Amount of data on in xlog that must be this replica may need to\
+          \ complete recovery"
     - confirmed_flush_lsn_bytes:
         usage: "GAUGE"
-        description: "Amount of data on in xlog that must be this replica has not yet received"
-
+        description:
+          "Amount of data on in xlog that must be this replica has not yet\
+          \ received"
+pg_replication_status:
+  master: true
+  query:
+    "SELECT\n  application_name,\n  client_addr,\n  state,\n  pg_wal_lsn_diff(pg_stat_replication.sent_lsn,\
+    \ pg_stat_replication.replay_lsn) AS lag_size\nFROM pg_stat_replication;\n"
+  metrics:
+    - application_name:
+        usage: "LABEL"
+        description: "Application or node name"
+    - client_addr:
+        usage: "LABEL"
+        description: "Client ip address"
+    - state:
+        usage: "LABEL"
+        description: "Client replication state"
+    - lag_size_bytes:
+        usage: "GAUGE"
+        description: "Replication lag size in bytes"
 pg_vaccuum_wraparound:
   master: true
-  query: |
-    SET max_parallel_workers_per_gather = 0;
-    WITH databases AS (
-    SELECT datname FROM pg_database
-    WHERE datname NOT IN ('template0', 'template1')
-    )
-    SELECT datname, _.* FROM databases,
-    LATERAL (SELECT * FROM dblink(
-        'host=/var/run/postgresql port=5432 user=' || CURRENT_USER || ' sslmode=disable dbname=''' || regexp_replace(datname, '([.\\])', '\\\1', 'g') || '''',
-        '
-        WITH tabfreeze AS (
-            SELECT pg_class.oid::regclass AS full_table_name,
-            greatest(age(pg_class.relfrozenxid), age(toast.relfrozenxid)) as freeze_age,
-            pg_total_relation_size(pg_class.oid),
-            case
-                    when array_to_string(pg_class.reloptions, '''') like ''%autovacuum_freeze_max_age%'' then regexp_replace(array_to_string(pg_class.reloptions, ''''), ''.*autovacuum_freeze_max_age=([0-9.]+).*'', E''\\1'')::int8
-                    else current_setting(''autovacuum_freeze_max_age'')::int8
-                end as autovacuum_freeze_max_age
-        FROM pg_class JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
-            LEFT OUTER JOIN pg_class as toast
-                ON pg_class.reltoastrelid = toast.oid
-        WHERE nspname not in (''pg_catalog'', ''information_schema'')
-            AND nspname NOT LIKE ''pg_temp%''
-            AND pg_class.relkind = ''r''
-        )
-        SELECT full_table_name,  pg_total_relation_size,freeze_age,autovacuum_freeze_max_age, (freeze_age*1)::bigint/(autovacuum_freeze_max_age/100) as "percent"
-        FROM tabfreeze
-        WHERE pg_total_relation_size >=  10000000000 -- size of table 10 GB
-        AND (freeze_age*1)::bigint/(autovacuum_freeze_max_age/100)>=90 --percent of txid
-        ORDER BY 5 DESC;
-
-        ')
-        AS (full_table_name name, table_size bigint, freeze_age bigint, autovacuum_freeze_max_age bigint, percent integer)) AS _;
+  query:
+    "SET max_parallel_workers_per_gather = 0;\nWITH databases AS (\nSELECT datname\
+    \ FROM pg_database\nWHERE datname NOT IN ('template0', 'template1')\n)\nSELECT\
+    \ datname, _.* FROM databases, (SELECT true WHERE NOT pg_is_in_recovery()) AS\
+    \ pg_is_not_in_recovery,\nLATERAL (SELECT * FROM dblink(\n    'host=/var/run/postgresql\
+    \ port=5432 user=' || CURRENT_USER || ' sslmode=disable dbname=''' || regexp_replace(datname,\
+    \ '([.\\\\])', '\\\\\\1', 'g') || '''',\n    '\n    WITH tabfreeze AS (\n    \
+    \    SELECT pg_class.oid::regclass AS full_table_name,\n        greatest(age(pg_class.relfrozenxid),\
+    \ age(toast.relfrozenxid)) as freeze_age,\n        pg_total_relation_size(pg_class.oid),\n\
+    \        case\n                when array_to_string(pg_class.reloptions, '''')\
+    \ like ''%autovacuum_freeze_max_age%'' then regexp_replace(array_to_string(pg_class.reloptions,\
+    \ ''''), ''.*autovacuum_freeze_max_age=([0-9.]+).*'', E''\\\\1'')::int8\n    \
+    \            else current_setting(''autovacuum_freeze_max_age'')::int8\n     \
+    \       end as autovacuum_freeze_max_age\n    FROM pg_class JOIN pg_namespace\
+    \ ON pg_class.relnamespace = pg_namespace.oid\n        LEFT OUTER JOIN pg_class\
+    \ as toast\n            ON pg_class.reltoastrelid = toast.oid\n    WHERE nspname\
+    \ not in (''pg_catalog'', ''information_schema'')\n        AND nspname NOT LIKE\
+    \ ''pg_temp%''\n        AND pg_class.relkind = ''r''\n    )\n    SELECT full_table_name,\
+    \  pg_total_relation_size,freeze_age,autovacuum_freeze_max_age, (freeze_age*1)::bigint/(autovacuum_freeze_max_age/100)\
+    \ as \"percent\"\n    FROM tabfreeze\n    WHERE pg_total_relation_size >=  10000000000\
+    \ -- size of table 10 GB\n    AND (freeze_age*1)::bigint/(autovacuum_freeze_max_age/100)>=90\
+    \ --percent of txid\n    ORDER BY 5 DESC;\n\n    ')\n    AS (full_table_name name,\
+    \ table_size bigint, freeze_age bigint, autovacuum_freeze_max_age bigint, percent\
+    \ integer)) AS _;\n"
   metrics:
     - datname:
         usage: "LABEL"
@@ -333,16 +300,10 @@ pg_vaccuum_wraparound:
     - percent:
         usage: "GAUGE"
         description: "Percentage"
-
-# CURRENT ACTIVITY
-
 pg_stat_current_waiting_query:
-  query: |
-    SELECT
-        datname, wait_event, count(*) AS count
-    FROM pg_stat_activity
-    WHERE state = 'active' AND wait_event IS NOT NULL
-    GROUP BY datname, wait_event;
+  query:
+    "SELECT\n    datname, wait_event, count(*) AS count\nFROM pg_stat_activity\n\
+    WHERE state = 'active' AND wait_event IS NOT NULL\nGROUP BY datname, wait_event;\n"
   master: true
   metrics:
     - datname:
@@ -354,41 +315,31 @@ pg_stat_current_waiting_query:
     - count:
         usage: "GAUGE"
         description: "# of queries waiting for other process to finish"
-
 pg_stat_progress_vacuum:
-  query: |
-    SET max_parallel_workers_per_gather = 0;
-    WITH databases AS (
-    SELECT datname FROM pg_database
-    WHERE datname NOT IN ('template0', 'template1')
-    )
-    SELECT DISTINCT ON (datname, schemaname, relname) _.* FROM databases,
-    LATERAL (SELECT * FROM dblink(
-        'host=/var/run/postgresql port=5432 user=' || CURRENT_USER || ' sslmode=disable dbname=''' || regexp_replace(datname, '([.\\])', '\\\1', 'g') || '''',
-        '
-        SELECT
-          datname,
-          nspname AS schemaname,
-          relname,
-          heap_blks_total,
-          heap_blks_scanned,
-          heap_blks_vacuumed,
-          index_vacuum_count,
-          max_dead_tuples,
-          num_dead_tuples
-        FROM pg_stat_progress_vacuum
-        JOIN pg_class ON (pg_stat_progress_vacuum.relid = pg_class.oid)
-        JOIN pg_namespace ON (pg_class.relnamespace = pg_namespace.oid)
-        ')
-        AS (datname text,
-            schemaname text,
-            relname text,
-            heap_blks_total bigint,
-            heap_blks_scanned bigint,
-            heap_blks_vacuumed bigint,
-            index_vacuum_count bigint,
-            max_dead_tuples bigint,
-            num_dead_tuples bigint)) AS _;
+  query:
+    "SET max_parallel_workers_per_gather = 0;\nWITH databases AS (\nSELECT datname\
+    \ FROM pg_database\nWHERE datname NOT IN ('template0', 'template1')\n)\nSELECT\
+    \ DISTINCT ON (datname, schemaname, relname) _.* FROM databases,\nLATERAL (SELECT\
+    \ * FROM dblink(\n    'host=/var/run/postgresql port=5432 user=' || CURRENT_USER\
+    \ || ' sslmode=disable dbname=''' || regexp_replace(datname, '([.\\\\])', '\\\\\
+    \\1', 'g') || '''',\n    '\n    SELECT\n      datname,\n      nspname AS schemaname,\n\
+    \      relname,\n      heap_blks_total,\n      heap_blks_scanned,\n      heap_blks_vacuumed,\n\
+    \      index_vacuum_count,'\n    || CASE WHEN (SELECT setting FROM pg_settings\
+    \ WHERE name = 'server_version_num')::bigint >= 170000 THEN\n      '\n      NULL\
+    \ AS max_dead_tuples,\n      NULL AS num_dead_tuples,\n      max_dead_tuple_bytes,\n\
+    \      dead_tuple_bytes,\n      num_dead_item_ids,\n      indexes_total,\n   \
+    \   indexes_processed\n      '\n      ELSE\n      '\n      max_dead_tuples,\n\
+    \      num_dead_tuples,\n      NULL AS max_dead_tuple_bytes,\n      NULL AS dead_tuple_bytes,\n\
+    \      NULL AS num_dead_item_ids,\n      NULL AS indexes_total,\n      NULL AS\
+    \ indexes_processed\n      '\n      END\n    || '\n    FROM pg_stat_progress_vacuum\n\
+    \    JOIN pg_class ON (pg_stat_progress_vacuum.relid = pg_class.oid)\n    JOIN\
+    \ pg_namespace ON (pg_class.relnamespace = pg_namespace.oid)\n    ')\n    AS (datname\
+    \ text,\n        schemaname text,\n        relname text,\n        heap_blks_total\
+    \ bigint,\n        heap_blks_scanned bigint,\n        heap_blks_vacuumed bigint,\n\
+    \        index_vacuum_count bigint,\n        max_dead_tuples bigint,\n       \
+    \ num_dead_tuples bigint,\n        max_dead_tuple_bytes bigint,\n        dead_tuple_bytes\
+    \ bigint,\n        num_dead_item_ids bigint,\n        indexes_total bigint,\n\
+    \        indexes_processed bigint)) AS _;\n"
   master: true
   metrics:
     - datname:
@@ -414,43 +365,54 @@ pg_stat_progress_vacuum:
         description: "Number of completed index vacuum cycles"
     - max_dead_tuples:
         usage: "GAUGE"
-        description: "Number of dead tuples that we can store before needing to perform an index vacuum cycle"
+        description:
+          "Number of dead tuples that we can store before needing to perform\
+          \ an index vacuum cycle"
     - num_dead_tuples:
         usage: "GAUGE"
         description: "Number of dead tuples collected since the last index vacuum cycle"
-
+    - max_dead_tuple_bytes:
+        usage: "GAUGE"
+        description:
+          "Amount of dead tuple data that we can store before needing to\
+          \ perform an index vacuum cycle, based on maintenance_work_mem"
+    - dead_tuple_bytes:
+        usage: "GAUGE"
+        description:
+          "Amount of dead tuple data collected since the last index vacuum\
+          \ cycle"
+    - num_dead_item_ids:
+        usage: "GAUGE"
+        description:
+          "Number of dead item identifiers collected since the last index\
+          \ vacuum cycle"
+    - indexes_total:
+        usage: "GAUGE"
+        description:
+          "Total number of indexes that will be vacuumed or cleaned up. This\
+          \ number is reported at the beginning of the vacuuming indexes phase or the\
+          \ cleaning up indexes phase"
+    - indexes_processed:
+        usage: "GAUGE"
+        description:
+          "Number of indexes processed. This counter only advances when the\
+          \ phase is vacuuming indexes or cleaning up indexes"
 pg_stat_progress_cluster:
-  query: |
-    SET max_parallel_workers_per_gather = 0;
-    WITH databases AS (
-    SELECT datname FROM pg_database
-    WHERE datname NOT IN ('template0', 'template1')
-    )
-    SELECT DISTINCT ON (datname, schemaname, relname) _.* FROM databases,
-    LATERAL (SELECT * FROM dblink(
-        'host=/var/run/postgresql port=5432 user=' || CURRENT_USER || ' sslmode=disable dbname=''' || regexp_replace(datname, '([.\\])', '\\\1', 'g') || '''',
-        '
-        SELECT
-          datname,
-          nspname AS schemaname,
-          relname,
-          heap_tuples_scanned,
-          heap_tuples_written,
-          heap_blks_total,
-          heap_blks_scanned,
-          index_rebuild_count
-        FROM pg_stat_progress_cluster
-        JOIN pg_class ON (pg_stat_progress_cluster.relid = pg_class.oid)
-        JOIN pg_namespace ON (pg_class.relnamespace = pg_namespace.oid)
-        ')
-        AS (datname text,
-            schemaname text,
-            relname text,
-            heap_tuples_scanned bigint,
-            heap_tuples_written bigint,
-            heap_blks_total bigint,
-            heap_blks_scanned bigint,
-            index_rebuild_count bigint)) AS _;
+  query:
+    "SET max_parallel_workers_per_gather = 0;\nWITH databases AS (\nSELECT datname\
+    \ FROM pg_database\nWHERE datname NOT IN ('template0', 'template1')\n)\nSELECT\
+    \ DISTINCT ON (datname, schemaname, relname) _.* FROM databases,\nLATERAL (SELECT\
+    \ * FROM dblink(\n    'host=/var/run/postgresql port=5432 user=' || CURRENT_USER\
+    \ || ' sslmode=disable dbname=''' || regexp_replace(datname, '([.\\\\])', '\\\\\
+    \\1', 'g') || '''',\n    '\n    SELECT\n      datname,\n      nspname AS schemaname,\n\
+    \      relname,\n      heap_tuples_scanned,\n      heap_tuples_written,\n    \
+    \  heap_blks_total,\n      heap_blks_scanned,\n      index_rebuild_count\n   \
+    \ FROM pg_stat_progress_cluster\n    JOIN pg_class ON (pg_stat_progress_cluster.relid\
+    \ = pg_class.oid)\n    JOIN pg_namespace ON (pg_class.relnamespace = pg_namespace.oid)\n\
+    \    ')\n    AS (datname text,\n        schemaname text,\n        relname text,\n\
+    \        heap_tuples_scanned bigint,\n        heap_tuples_written bigint,\n  \
+    \      heap_blks_total bigint,\n        heap_blks_scanned bigint,\n        index_rebuild_count\
+    \ bigint)) AS _;\n"
   master: true
   metrics:
     - datname:
@@ -464,49 +426,42 @@ pg_stat_progress_cluster:
         description: "Name of this table"
     - heap_tuples_scanned:
         usage: "GAUGE"
-        description: "Number of heap tuples scanned. This counter only advances when the phase is seq scanning heap, index scanning heap or writing new heap"
+        description:
+          "Number of heap tuples scanned. This counter only advances when\
+          \ the phase is seq scanning heap, index scanning heap or writing new heap"
     - heap_tuples_written:
         usage: "GAUGE"
-        description: "Number of heap tuples written. This counter only advances when the phase is seq scanning heap, index scanning heap or writing new heap"
+        description:
+          "Number of heap tuples written. This counter only advances when\
+          \ the phase is seq scanning heap, index scanning heap or writing new heap"
     - heap_blks_total:
         usage: "GAUGE"
-        description: "Total number of heap blocks in the table. This number is reported as of the beginning of seq scanning heap"
+        description:
+          "Total number of heap blocks in the table. This number is reported\
+          \ as of the beginning of seq scanning heap"
     - heap_blks_scanned:
         usage: "GAUGE"
-        description: "Number of heap blocks scanned. This counter only advances when the phase is seq scanning heap"
+        description:
+          "Number of heap blocks scanned. This counter only advances when\
+          \ the phase is seq scanning heap"
     - index_rebuild_count:
         usage: "GAUGE"
-        description: "Number of indexes rebuilt. This counter only advances when the phase is rebuilding index"
-
-# PGBOUNCER QUERIES
-
+        description:
+          "Number of indexes rebuilt. This counter only advances when the\
+          \ phase is rebuilding index"
 pgbouncer_show_clients:
   master: true
-  query: |
-    SELECT _.type,
-    _."user",
-    _.database,
-    _.replication,
-    _.state,
-    _.addr,
-    _.port,
-    _.local_addr,
-    _.local_port,
-    _.connect_time,
-    _.request_time,
-    _.wait,
-    _.wait_us,
-    _.close_needed,
-    _.ptr,
-    _.link,
-    _.remote_pid,
-    _.tls,
-    _.application_name,
-    _.prepared_statements
-    FROM dblink('host=/var/run/postgresql port=6432 dbname=pgbouncer user=pgbouncer', 'show clients'::text)
-    AS _(type text, "user" text, database text, replication text, state text, addr text, port integer, local_addr text, local_port integer,
-    connect_time timestamp with time zone, request_time timestamp with time zone, wait integer, wait_us integer, close_needed integer,
-    ptr text, link text, remote_pid integer, tls text, application_name text, prepared_statements integer);
+  query:
+    "SELECT _.type,\n_.\"user\",\n_.database,\n_.replication,\n_.state,\n_.addr,\n\
+    _.port,\n_.local_addr,\n_.local_port,\n_.connect_time,\n_.request_time,\n_.wait,\n\
+    _.wait_us,\n_.close_needed,\n_.ptr,\n_.link,\n_.remote_pid,\n_.tls,\n_.application_name,\n\
+    _.prepared_statements\nFROM dblink('host=/var/run/postgresql port=6432 dbname=pgbouncer\
+    \ user=pgbouncer', 'show clients'::text)\nAS _(type text, \"user\" text, database\
+    \ text, replication text, state text, addr text, port integer, local_addr text,\
+    \ local_port integer,\nconnect_time timestamp with time zone, request_time timestamp\
+    \ with time zone, wait integer, wait_us integer, close_needed integer,\nptr text,\
+    \ link text, remote_pid integer, tls text, application_name text, prepared_statements\
+    \ integer, uid bigint);\n"
   metrics:
     - type:
         usage: "LABEL"
@@ -517,6 +472,9 @@ pgbouncer_show_clients:
     - database:
         usage: "LABEL"
         description: "Database name"
+    - replication:
+        usage: "LABEL"
+        description: "Replication status"
     - state:
         usage: "LABEL"
         description: "State of the client connection, one of active or waiting"
@@ -549,46 +507,42 @@ pgbouncer_show_clients:
         description: "not used for clients"
     - ptr:
         usage: "LABEL"
-        description: "Address of internal object for this connection. Used as unique ID"
+        description:
+          "Address of internal object for this connection. Used as unique\
+          \ ID"
     - link:
         usage: "LABEL"
         description: "Address of server connection the client is paired with"
     - remote_pid:
         usage: "GAUGE"
-        description: "Process ID, in case client connects over Unix socket and OS supports getting it"
+        description:
+          "Process ID, in case client connects over Unix socket and OS supports\
+          \ getting it"
     - tls:
         usage: "LABEL"
-        description: "A string with TLS connection information, or empty if not using TLS"
+        description:
+          "A string with TLS connection information, or empty if not using\
+          \ TLS"
     - application_name:
         usage: "LABEL"
-        description: "A string containing the application_name set by the client for this connection, or empty if this was not set"
+        description:
+          "A string containing the application_name set by the client for\
+          \ this connection, or empty if this was not set"
     - prepared_statements:
         usage: "GAUGE"
         description: "The amount of prepared statements that the client has prepared"
-
 pgbouncer_show_pools:
   master: true
-  query: |
-    SELECT _.database,
-    _."user",
-    _.cl_active,
-    _.cl_waiting,
-    _.cl_active_cancel_req,
-    _.cl_waiting_cancel_req,
-    _.sv_active,
-    _.sv_active_cancel,
-    _.sv_being_canceled,
-    _.sv_idle,
-    _.sv_used,
-    _.sv_tested,
-    _.sv_login,
-    _.maxwait,
-    _.maxwait_us,
-    _.pool_mode
-    FROM dblink('host=/var/run/postgresql port=6432 dbname=pgbouncer user=pgbouncer', 'show pools'::text)
-    _(database text, "user" text, cl_active integer, cl_waiting integer, cl_active_cancel_req integer, cl_waiting_cancel_req integer,
-    sv_active integer, sv_active_cancel integer, sv_being_canceled integer, sv_idle integer, sv_used integer,
-    sv_tested integer, sv_login integer, maxwait integer, maxwait_us integer, pool_mode text);
+  query:
+    "SELECT _.database,\n_.\"user\",\n_.cl_active,\n_.cl_waiting,\n_.cl_active_cancel_req,\n\
+    _.cl_waiting_cancel_req,\n_.sv_active,\n_.sv_active_cancel,\n_.sv_being_canceled,\n\
+    _.sv_idle,\n_.sv_used,\n_.sv_tested,\n_.sv_login,\n_.maxwait,\n_.maxwait_us,\n\
+    _.pool_mode\nFROM dblink('host=/var/run/postgresql port=6432 dbname=pgbouncer\
+    \ user=pgbouncer', 'show pools'::text)\n_(database text, \"user\" text, cl_active\
+    \ integer, cl_waiting integer, cl_active_cancel_req integer, cl_waiting_cancel_req\
+    \ integer,\nsv_active integer, sv_active_cancel integer, sv_being_canceled integer,\
+    \ sv_idle integer, sv_used integer,\nsv_tested integer, sv_login integer, maxwait\
+    \ integer, maxwait_us integer, pool_mode text, load_balance_hosts text);\n"
   metrics:
     - database:
         usage: "LABEL"
@@ -601,19 +555,29 @@ pgbouncer_show_pools:
         description: "User name"
     - cl_active:
         usage: "GAUGE"
-        description: "Client connections that are linked to server connection and can process queries"
+        description:
+          "Client connections that are linked to server connection and can\
+          \ process queries"
     - cl_waiting:
         usage: "GAUGE"
-        description: "Client connections that have sent queries but have not yet got a server connection"
+        description:
+          "Client connections that have sent queries but have not yet got\
+          \ a server connection"
     - cl_active_cancel_req:
         usage: "GAUGE"
-        description: "Client connections that have forwarded query cancellations to the server and are waiting for the server response"
+        description:
+          "Client connections that have forwarded query cancellations to\
+          \ the server and are waiting for the server response"
     - cl_waiting_cancel_req:
         usage: "GAUGE"
-        description: "    Client connections that have forwarded query cancellations to the server and are waiting for the server response"
+        description:
+          "    Client connections that have forwarded query cancellations\
+          \ to the server and are waiting for the server response"
     - cl_waiting_cancel_req:
         usage: "GAUGE"
-        description: "Client connections that have not forwarded query cancellations to the server yet"
+        description:
+          "Client connections that have not forwarded query cancellations\
+          \ to the server yet"
     - sv_active:
         usage: "GAUGE"
         description: "Server connections that are linked to a client"
@@ -622,16 +586,25 @@ pgbouncer_show_pools:
         description: "Server connections that are currently forwarding a cancel request"
     - sv_being_canceled:
         usage: "GAUGE"
-        description: "Servers that normally could become idle but are waiting to do so until all in-flight cancel requests have completed that were sent to cancel a query on this server"
+        description:
+          "Servers that normally could become idle but are waiting to do\
+          \ so until all in-flight cancel requests have completed that were sent to\
+          \ cancel a query on this server"
     - sv_idle:
         usage: "GAUGE"
-        description: "Server connections that are unused and immediately usable for client queries"
+        description:
+          "Server connections that are unused and immediately usable for\
+          \ client queries"
     - sv_used:
         usage: "GAUGE"
-        description: "Server connections that have been idle for more than server_check_delay so they need server_check_query to run on them"
+        description:
+          "Server connections that have been idle for more than server_check_delay\
+          \ so they need server_check_query to run on them"
     - sv_tested:
         usage: "GAUGE"
-        description: "Server connections that are currently running either server_reset_query or server_check_query"
+        description:
+          "Server connections that are currently running either server_reset_query\
+          \ or server_check_query"
     - sv_login:
         usage: "GAUGE"
         description: "Server connections currently in the process of logging in"
@@ -644,27 +617,18 @@ pgbouncer_show_pools:
     - pool_mode:
         usage: "LABEL"
         description: "The pooling mode in use"
-
 pgbouncer_show_databases:
   master: true
-  query: |
-    SELECT _.name,
-    _.host,
-    _.port,
-    _.database,
-    _.force_user,
-    _.pool_size,
-    _.min_pool_size,
-    _.reserve_pool,
-    _.server_lifetime,
-    _.pool_mode,
-    _.max_connections,
-    _.current_connections,
-    _.paused,
-    _.disabled
-    FROM dblink('host=/var/run/postgresql port=6432 dbname=pgbouncer user=pgbouncer', 'show databases'::text)
-    AS _(name text, host text, port integer, database text, force_user text, pool_size integer, min_pool_size integer,
-      reserve_pool integer, server_lifetime integer, pool_mode text, max_connections integer, current_connections integer, paused boolean, disabled boolean);
+  query:
+    "SELECT _.name,\n_.host,\n_.port,\n_.database,\n_.force_user,\n_.pool_size,\n\
+    _.min_pool_size,\n_.reserve_pool,\n_.server_lifetime,\n_.pool_mode,\n_.max_connections,\n\
+    _.current_connections,\n_.max_client_connections,\n_.current_client_connections,\n\
+    _.paused,\n_.disabled\nFROM dblink('host=/var/run/postgresql port=6432 dbname=pgbouncer\
+    \ user=pgbouncer', 'show databases'::text)\nAS _(name text, host text, port integer,\
+    \ database text, force_user text, pool_size integer, min_pool_size integer,\n\
+    \  reserve_pool integer, server_lifetime integer, pool_mode text, load_balance_hosts\
+    \ text,\n  max_connections integer, current_connections integer, max_client_connections\
+    \ integer, current_client_connections integer,\n  paused boolean, disabled boolean);\n"
   metrics:
     - name:
         usage: "LABEL"
@@ -680,7 +644,9 @@ pgbouncer_show_databases:
         description: "Actual database name pgbouncer connects to."
     - force_user:
         usage: "LABEL"
-        description: "When the user is part of the connection string the connection between pgbouncer and PostgreSQL is forced to the given user"
+        description:
+          "When the user is part of the connection string the connection\
+          \ between pgbouncer and PostgreSQL is forced to the given user"
     - pool_size:
         usage: "GAUGE"
         description: "Maximum number of server connections"
@@ -698,41 +664,43 @@ pgbouncer_show_databases:
         description: "The database override pool_mode"
     - max_connections:
         usage: "GAUGE"
-        description: "Maximum number of allowed connections for this database"
+        description:
+          "    Maximum number of allowed server connections for this database,\
+          \ as set by max_db_connections, either globally or per database"
     - current_connections:
         usage: "GAUGE"
         description: "Current number of connections for this database"
+    - max_client_connections:
+        usage: "GAUGE"
+        description:
+          "Maximum number of allowed client connections for this pgbouncer\
+          \ instance, as set by max_db_client_connections per database"
+    - current_client_connections:
+        usage: "GAUGE"
+        description: "    Current number of client connections for this database"
     - paused:
         usage: "GAUGE"
         description: "1 if this database is currently paused, else 0"
     - disabled:
         usage: "GAUGE"
         description: "1 if this database is currently paused, else 0"
-
 pgbouncer_show_stats:
   master: true
-  query: |
-    SELECT _.database,
-    _.total_xact_count,
-    _.total_query_count,
-    _.total_server_assignment_count,
-    _.total_received,
-    _.total_sent,
-    _.total_xact_time,
-    _.total_query_time,
-    _.total_wait_time,
-    _.avg_xact_count,
-    _.avg_query_count,
-    _.avg_server_assignment_count,
-    _.avg_recv,
-    _.avg_sent,
-    _.avg_xact_time,
-    _.avg_query_time,
-    _.avg_wait_time
-    FROM dblink('host=/var/run/postgresql port=6432 dbname=pgbouncer user=pgbouncer', 'show stats'::text)
-    AS _(database text, total_xact_count bigint, total_query_count bigint, total_server_assignment_count bigint, total_received bigint, total_sent bigint,total_xact_time bigint, total_query_time bigint,
-      total_wait_time bigint, avg_xact_count bigint, avg_query_count bigint, avg_server_assignment_count bigint, avg_recv bigint, avg_sent bigint, avg_xact_time bigint, avg_query_time bigint,
-      avg_wait_time bigint);
+  query:
+    "SELECT _.database,\n_.total_xact_count,\n_.total_query_count,\n_.total_server_assignment_count,\n\
+    _.total_received,\n_.total_sent,\n_.total_xact_time,\n_.total_query_time,\n_.total_wait_time,\n\
+    _.total_client_parse_count,\n_.total_server_parse_count,\n_.total_bind_count,\n\
+    _.avg_xact_count,\n_.avg_query_count,\n_.avg_server_assignment_count,\n_.avg_recv,\n\
+    _.avg_sent,\n_.avg_xact_time,\n_.avg_query_time,\n_.avg_wait_time,\n_.avg_client_parse_count,\n\
+    _.avg_server_parse_count,\n_.avg_bind_count\nFROM dblink('host=/var/run/postgresql\
+    \ port=6432 dbname=pgbouncer user=pgbouncer', 'show stats'::text)\nAS _(database\
+    \ text, total_xact_count bigint, total_query_count bigint, total_server_assignment_count\
+    \ bigint, total_received bigint, total_sent bigint,total_xact_time bigint, total_query_time\
+    \ bigint,\n  total_wait_time bigint, total_client_parse_count bigint, total_server_parse_count\
+    \ bigint, total_bind_count bigint, avg_xact_count bigint, avg_query_count bigint,\
+    \ avg_server_assignment_count bigint,\n  avg_recv bigint, avg_sent bigint, avg_xact_time\
+    \ bigint, avg_query_time bigint, avg_wait_time bigint, avg_client_parse_count\
+    \ bigint, avg_server_parse_count bigint, avg_bind_count bigint);\n"
   metrics:
     - database:
         usage: "LABEL"
@@ -754,13 +722,33 @@ pgbouncer_show_stats:
         description: "Total volume in bytes of network traffic sent"
     - total_xact_time:
         usage: "GAUGE"
-        description: "Total number of microseconds spent by pgbouncer when connected to PostgreSQL in a transaction"
+        description:
+          "Total number of microseconds spent by pgbouncer when connected\
+          \ to PostgreSQL in a transaction"
     - total_query_time:
         usage: "GAUGE"
-        description: "Total number of microseconds spent by pgbouncer when actively connected to PostgreSQL"
+        description:
+          "Total number of microseconds spent by pgbouncer when actively\
+          \ connected to PostgreSQL"
     - total_wait_time:
         usage: "GAUGE"
         description: "Time spent by clients waiting for a server, in microseconds"
+    - total_client_parse_count:
+        usage: "GAUGE"
+        description:
+          "Total number of prepared statements created by clients. Only applicable\
+          \ in named prepared statement tracking mode, see max_prepared_statements"
+    - total_server_parse_count:
+        usage: "GAUGE"
+        description:
+          "Total number of prepared statements created by pgbouncer on a\
+          \ server. Only applicable in named prepared statement tracking mode, see max_prepared_statements"
+    - total_bind_count:
+        usage: "GAUGE"
+        description:
+          "Total number of prepared statements readied for execution by clients\
+          \ and forwarded to PostgreSQL by pgbouncer. Only applicable in named prepared\
+          \ statement tracking mode, see max_prepared_statements"
     - avg_xact_count:
         usage: "GAUGE"
         description: "Average transactions per second in last stat period"
@@ -769,7 +757,9 @@ pgbouncer_show_stats:
         description: "Average queries per second in last stat period"
     - avg_server_assignment_count:
         usage: "GAUGE"
-        description: "Average number of times a server as assigned to a client per second in the last stat period"
+        description:
+          "Average number of times a server as assigned to a client per second\
+          \ in the last stat period"
     - avg_recv:
         usage: "GAUGE"
         description: "Average received from clients bytes per second"
@@ -784,27 +774,42 @@ pgbouncer_show_stats:
         description: "Average query duration, in microseconds"
     - avg_wait_time:
         usage: "GAUGE"
-        description: "Time spent by clients waiting for a server, in microseconds average per second"
-
+        description:
+          "Time spent by clients waiting for a server, in microseconds average\
+          \ per second"
+    - avg_client_parse_count:
+        usage: "GAUGE"
+        description:
+          "Average number of prepared statements created by clients. Only\
+          \ applicable in named prepared statement tracking mode, see max_prepared_statements."
+    - avg_server_parse_count:
+        usage: "GAUGE"
+        description:
+          "Average number of prepared statements created by pgbouncer on\
+          \ a server. Only applicable in named prepared statement tracking mode, see\
+          \ max_prepared_statements"
+    - avg_bind_count:
+        usage: "GAUGE"
+        description:
+          "Average number of prepared statements readied for execution by\
+          \ clients and forwarded to PostgreSQL by pgbouncer. Only applicable in named\
+          \ prepared statement tracking mode, see max_prepared_statements"
 node_filesystem:
   master: true
-  query: |
-    WITH mounts AS (
-      SELECT columns[1] AS device,
-        columns[2] AS mountpoint
-        FROM (SELECT regexp_split_to_array(line, E'\\s+') AS columns
-            FROM mounts() AS line) AS mounts
-      WHERE columns[2] LIKE '/var/%')
-    SELECT CASE WHEN columns[1] <> '-' THEN columns[1] ELSE NULL END AS device,
-        CASE WHEN columns[2] <> '-' THEN columns[2] ELSE NULL END AS mountpoint,
-        CASE WHEN columns[3] <> '-' THEN columns[3] ELSE NULL END AS fstype,
-        CASE WHEN columns[4] <> '-' THEN columns[4] ELSE NULL END AS size_bytes,
-        CASE WHEN columns[5] <> '-' THEN columns[5] ELSE NULL END AS avail_bytes,
-        CASE WHEN columns[6] <> '-' THEN columns[6] ELSE NULL END AS files,
-        CASE WHEN columns[7] <> '-' THEN columns[7] ELSE NULL END AS files_free,
-        CASE WHEN columns[8] <> '-' AND columns[8] <> 'timeout' THEN TRUE ELSE FALSE END AS device_error
-      FROM (SELECT regexp_split_to_array(line, E'\\s+') AS columns
-          FROM (SELECT df(mountpoint) AS line FROM mounts) AS df) AS df;
+  query:
+    "WITH mounts AS (\n  SELECT columns[1] AS device,\n    columns[2] AS mountpoint\n\
+    \    FROM (SELECT regexp_split_to_array(line, E'\\\\s+') AS columns\n        FROM\
+    \ mounts() AS line) AS mounts\n  WHERE columns[2] LIKE '/var/%')\nSELECT CASE\
+    \ WHEN columns[1] <> '-' THEN columns[1] ELSE NULL END AS device,\n    CASE WHEN\
+    \ columns[2] <> '-' THEN columns[2] ELSE NULL END AS mountpoint,\n    CASE WHEN\
+    \ columns[3] <> '-' THEN columns[3] ELSE NULL END AS fstype,\n    CASE WHEN columns[4]\
+    \ <> '-' THEN columns[4] ELSE NULL END AS size_bytes,\n    CASE WHEN columns[5]\
+    \ <> '-' THEN columns[5] ELSE NULL END AS avail_bytes,\n    CASE WHEN columns[6]\
+    \ <> '-' THEN columns[6] ELSE NULL END AS files,\n    CASE WHEN columns[7] <>\
+    \ '-' THEN columns[7] ELSE NULL END AS files_free,\n    CASE WHEN columns[8] <>\
+    \ '-' AND columns[8] <> 'timeout' THEN TRUE ELSE FALSE END AS device_error\n \
+    \ FROM (SELECT regexp_split_to_array(line, E'\\\\s+') AS columns\n      FROM (SELECT\
+    \ df(mountpoint) AS line FROM mounts) AS df) AS df;\n"
   metrics:
     - device:
         usage: "LABEL"
@@ -829,32 +834,27 @@ node_filesystem:
         description: "Filesystem total free file nodes."
     - device_error:
         usage: "GAUGE"
-        description: "Whether an error occurred while getting statistics for the given device."
-
-# PG_STAT_STATEMENT
+        description:
+          "Whether an error occurred while getting statistics for the given\
+          \ device."
 pg_statements:
-  query: |
-    SELECT * FROM dblink(
-        'host=/var/run/postgresql port=5432 user=' || CURRENT_USER || ' sslmode=disable dbname=postgres',
-        '
-        SELECT
-            pg_database.datname,
-            pg_roles.rolname as usename,
-            pg_stat_statements.queryid,
-            pg_stat_statements.calls as calls_total,
-        '
-        || CASE WHEN (SELECT setting FROM pg_settings WHERE name = 'server_version_num')::bigint >= 130000 THEN 'pg_stat_statements.total_exec_time' ELSE 'pg_stat_statements.total_time' END || ' / 1000 AS total_exec_time, '
-        || CASE WHEN (SELECT setting FROM pg_settings WHERE name = 'server_version_num')::bigint >= 130000 THEN 'pg_stat_statements.mean_exec_time' ELSE 'pg_stat_statements.mean_time' END || ' / 1000 AS mean_exec_time, '
-        || '
-            pg_stat_statements.rows as rows_total
-        FROM pg_stat_statements
-        JOIN pg_roles ON (pg_stat_statements.userid = pg_roles.oid)
-        JOIN pg_database ON (pg_stat_statements.dbid = pg_database.oid)
-        ')
-        AS (datname text, usename text, queryid bigint, calls_total bigint, total_exec_time double precision, mean_exec_time double precision, rows_total bigint)
-        WHERE calls_total > 1
-        ORDER BY total_exec_time -mean_exec_time * calls_total desc
-        LIMIT 20;
+  query:
+    "SELECT * FROM dblink(\n    'host=/var/run/postgresql port=5432 user=' ||\
+    \ CURRENT_USER || ' sslmode=disable dbname=postgres',\n    '\n    SELECT\n   \
+    \     pg_database.datname,\n        pg_roles.rolname as usename,\n        pg_stat_statements.queryid,\n\
+    \        pg_stat_statements.calls as calls_total,\n    '\n    || CASE WHEN (SELECT\
+    \ setting FROM pg_settings WHERE name = 'server_version_num')::bigint >= 130000\
+    \ THEN\n      '\n        pg_stat_statements.total_exec_time / 1000 AS total_exec_time,\n\
+    \        pg_stat_statements.mean_exec_time / 1000 AS mean_exec_time,\n      '\n\
+    \      ELSE\n      '\n        pg_stat_statements.total_time / 1000 AS total_exec_time,\n\
+    \        pg_stat_statements.mean_time / 1000 AS mean_exec_time,\n      '\n   \
+    \   END\n    || '\n        pg_stat_statements.rows as rows_total\n    FROM pg_stat_statements\n\
+    \    JOIN pg_roles ON (pg_stat_statements.userid = pg_roles.oid)\n    JOIN pg_database\
+    \ ON (pg_stat_statements.dbid = pg_database.oid)\n    ')\n    AS (datname text,\
+    \ usename text, queryid bigint, calls_total bigint, total_exec_time double precision,\
+    \ mean_exec_time double precision, rows_total bigint)\n    WHERE calls_total >\
+    \ 1\n    ORDER BY total_exec_time -mean_exec_time * calls_total desc\n    LIMIT\
+    \ 20;\n"
   master: true
   metrics:
     - datname:

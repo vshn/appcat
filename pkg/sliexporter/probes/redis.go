@@ -31,18 +31,19 @@ var (
 
 // VSHNRedis implements Prober for Redis.
 type VSHNRedis struct {
-	redisClient   *redis.Client
-	Service       string
-	Name          string
-	Namespace     string
-	HighAvailable bool
-	Organization  string
-	ServiceLevel  string
+	redisClient    *redis.Client
+	sentinelClient *redis.Client
+	Service        string
+	Name           string
+	Namespace      string
+	HighAvailable  bool
+	Organization   string
+	ServiceLevel   string
 }
 
 func NewRedis(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*VSHNRedis, error) {
 	client := redis.NewClient(&opts)
-	return &VSHNRedis{
+	r := &VSHNRedis{
 		redisClient:   client,
 		Service:       service,
 		Name:          name,
@@ -50,12 +51,50 @@ func NewRedis(service, name, namespace, organization, sla string, ha bool, opts 
 		HighAvailable: ha,
 		Organization:  organization,
 		ServiceLevel:  sla,
-	}, nil
+	}
+
+	if ha {
+		parts := strings.Split(opts.Addr, ":")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid redis address format: %s", opts.Addr)
+		}
+
+		hostParts := strings.SplitN(parts[0], ".", 2)
+		if len(hostParts) != 2 {
+			return nil, fmt.Errorf("invalid redis host format: %s", parts[0])
+		}
+
+		headlessHost := "redis-headless." + hostParts[1]
+
+		sentinelOpts := &redis.Options{
+			Addr:      fmt.Sprintf("%s:26379", headlessHost),
+			Username:  opts.Username,
+			Password:  opts.Password,
+			TLSConfig: opts.TLSConfig,
+		}
+		r.sentinelClient = redis.NewClient(sentinelOpts)
+	}
+
+	return r, nil
 }
 
 func (redis *VSHNRedis) Close() error {
+	var errors []error
+
 	if redis.redisClient != nil {
-		return redis.redisClient.Close()
+		if err := redis.redisClient.Close(); err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	if redis.sentinelClient != nil {
+		if err := redis.sentinelClient.Close(); err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("errors closing clients: %v", errors)
 	}
 	return nil
 }
@@ -113,32 +152,37 @@ func (redis *VSHNRedis) validateMasterRole(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("ROLE command failed: %w", err)
 	}
+
 	if len(res) == 0 {
 		return fmt.Errorf("ROLE: empty response")
 	}
-	role, _ := res[0].(string)
+
+	role := res[0].(string)
 	if role != "master" {
 		return fmt.Errorf("connected role=%s, expected master for HA service", role)
 	}
+
 	return nil
 }
 
 func (redis *VSHNRedis) validateQuorum(ctx context.Context) error {
-	const desiredSlaves = 2
+	if redis.sentinelClient == nil {
+		return fmt.Errorf("sentinel client not configured for HA setup")
+	}
 
-	info, err := redis.redisClient.Info(ctx, "replication").Result()
+	if _, err := redis.sentinelClient.Ping(ctx).Result(); err != nil {
+		return fmt.Errorf("sentinel ping failed: %w", err)
+	}
+
+	res, err := redis.sentinelClient.Do(ctx, "SENTINEL", "CKQUORUM", "mymaster").Result()
 	if err != nil {
-		return fmt.Errorf("INFO replication failed: %w", err)
+		return fmt.Errorf("SENTINEL CKQUORUM failed: %w", err)
 	}
 
-	connectedSlaves := parseIntFromInfo(info, "connected_slaves")
-
-	totalDesired := 1 + desiredSlaves
-	required := (totalDesired / 2) + 1
-	available := 1 + connectedSlaves
-	if available < required {
-		return fmt.Errorf("quorum insufficient: available=%d required=%d (connected_slaves=%d, desired_replicas=%d)", available, required, connectedSlaves, desiredSlaves)
+	if str, ok := res.(string); !ok || !strings.HasPrefix(str, "OK") {
+		return fmt.Errorf("quorum check failed: %v", res)
 	}
+
 	return nil
 }
 
@@ -151,29 +195,4 @@ func (redis *VSHNRedis) labels() prometheus.Labels {
 		"ha":           strconv.FormatBool(redis.HighAvailable),
 		"sla":          redis.ServiceLevel,
 	}
-}
-
-func parseValueFromInfo(info, key string) string {
-	for _, line := range strings.Split(info, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if kv := strings.SplitN(line, ":", 2); len(kv) == 2 {
-			k := strings.TrimSpace(kv[0])
-			if k == key {
-				return strings.TrimSpace(kv[1])
-			}
-		}
-	}
-	return ""
-}
-
-func parseIntFromInfo(info, key string) int {
-	if v := parseValueFromInfo(info, key); v != "" {
-		if i, err := strconv.Atoi(v); err == nil {
-			return i
-		}
-	}
-	return 0
 }

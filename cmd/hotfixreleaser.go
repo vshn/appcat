@@ -11,15 +11,30 @@ import (
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var HotfixerCMD = newHotfixer()
+var (
+	HotfixerCMD    = newHotfixer()
+	serviceIDLabel string
+	serviceID      string
+	planLabel      string
+	plan           string
+)
+
+func init() {
+	HotfixerCMD.Flags().StringVar(&serviceIDLabel, "serviceIDLabel", release.DefaultServiceIDLabel, "name of the service id Label")
+	HotfixerCMD.Flags().StringVar(&serviceID, "serviceID", "", "name of the service ID to update, if empty will update all")
+	HotfixerCMD.Flags().StringVar(&plan, "plan", "", "name of the plan to update, if empty will update all")
+	HotfixerCMD.Flags().StringVar(&planLabel, "planLabel", "", "label with the plan information to update, if empty will update all")
+}
 
 type hotfixer struct {
 }
@@ -52,11 +67,19 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	listOpts := metav1.ListOptions{}
+
+	// if we have a serviceID we will use it to filter
+	if serviceID != "" {
+		selector := metav1.LabelSelector{MatchLabels: map[string]string{serviceIDLabel: serviceID}}
+		listOpts.LabelSelector = labels.Set(selector.MatchLabels).String()
+	}
+
 	xrds, err := dynClient.Resource(schema.GroupVersionResource{
 		Group:    "apiextensions.crossplane.io",
 		Version:  "v1",
 		Resource: "compositeresourcedefinitions",
-	}).List(ctx, metav1.ListOptions{})
+	}).List(ctx, listOpts)
 
 	if err != nil {
 		return err
@@ -75,20 +98,20 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 
 		XRDLabels := xrd.GetLabels()
 
-		if XRDLabels[release.ServiceIDLabel] == "" {
-			return fmt.Errorf("xrd does not have the required label " + xrd.GetName())
-		}
-
 		compositeResource, err := p.GetString("spec.names.plural")
 		if err != nil {
 			return err
 		}
 
-		// TODO: currently we only have v1, but that might change at some point...
-		compositeVersion := "v1"
+		// TODO: we currently just take the first version we find
+		compositeVersion, err := p.GetString("spec.versions[0].name")
+		if err != nil {
+			return fmt.Errorf("cannot get version: %w", err)
+		}
+
 		compositeGroup, err := p.GetString("spec.group")
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot get group: %w", err)
 		}
 
 		foundGVK := schema.GroupVersionResource{
@@ -97,8 +120,23 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 			Group:    compositeGroup,
 		}
 
-		l, err := dynClient.Resource(foundGVK).List(ctx, metav1.ListOptions{})
+		compListOpts := metav1.ListOptions{}
+
+		if plan != "" {
+			if planLabel == "" {
+				return fmt.Errorf("planLabel has to be defined if plan is set")
+			}
+			selector := metav1.LabelSelector{MatchLabels: map[string]string{planLabel: plan}}
+			compListOpts.LabelSelector = labels.Set(selector.MatchLabels).String()
+		}
+
+		l, err := dynClient.Resource(foundGVK).List(ctx, compListOpts)
 		if err != nil {
+
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+
 			return err
 		}
 
@@ -114,7 +152,7 @@ func (h *hotfixer) runHotfixer(cmd *cobra.Command, _ []string) error {
 					return err
 				}
 
-				err := h.handleComposite(ctx, composite, XRDLabels[release.ServiceIDLabel], log, kubeClient)
+				err := h.handleComposite(ctx, composite, XRDLabels[serviceIDLabel], log, kubeClient)
 				if err != nil {
 					return err
 				}
@@ -145,6 +183,7 @@ func (h *hotfixer) handleComposite(ctx context.Context, comp unstructured.Unstru
 		Kind:           comp.GetKind(),
 		Version:        gv.Version,
 		ServiceID:      serviceID,
+		ServiceIDLabel: serviceIDLabel,
 	}
 
 	r := release.NewDefaultVersionHandler(
@@ -174,7 +213,8 @@ func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, lo
 		Group:          gv.Group,
 		Version:        gv.Version,
 		Kind:           ref["kind"],
-		ServiceID:      labels[release.ServiceIDLabel],
+		ServiceID:      labels[serviceIDLabel],
+		ServiceIDLabel: serviceIDLabel,
 	}
 
 	r := release.NewDefaultVersionHandler(

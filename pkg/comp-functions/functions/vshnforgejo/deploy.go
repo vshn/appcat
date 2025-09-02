@@ -285,7 +285,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return fmt.Errorf("cannot set forgejo version for release: %w", err)
 	}
 
-	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release", common.HelmReleaseOverrides{})
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")
 	if err != nil {
 		return err
 	}

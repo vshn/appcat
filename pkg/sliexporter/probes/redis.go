@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
@@ -119,12 +118,9 @@ func GetRedisCollectors() []prometheus.Collector {
 }
 
 func (redis *VSHNRedis) Probe(ctx context.Context) error {
-	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	labels := redis.labels(maintenanceFromContext(ctx))
 
-	labels := redis.labels()
-
-	if _, err := redis.redisClient.Ping(probeCtx).Result(); err != nil {
+	if _, err := redis.redisClient.Ping(ctx).Result(); err != nil {
 		return err
 	}
 
@@ -132,13 +128,13 @@ func (redis *VSHNRedis) Probe(ctx context.Context) error {
 		return nil
 	}
 
-	if err := redis.validateMasterRole(probeCtx); err != nil {
+	if err := redis.validateMasterRole(ctx); err != nil {
 		redisMasterGauge.With(labels).Set(0)
 	} else {
 		redisMasterGauge.With(labels).Set(1)
 	}
 
-	if err := redis.validateQuorum(probeCtx); err != nil {
+	if err := redis.validateQuorum(ctx); err != nil {
 		redisQuorumGauge.With(labels).Set(0)
 	} else {
 		redisQuorumGauge.With(labels).Set(1)
@@ -186,7 +182,7 @@ func (redis *VSHNRedis) validateQuorum(ctx context.Context) error {
 	return nil
 }
 
-func (redis *VSHNRedis) labels() prometheus.Labels {
+func (redis *VSHNRedis) labels(maintenance bool) prometheus.Labels {
 	return prometheus.Labels{
 		"service":      redis.Service,
 		"namespace":    redis.Namespace,
@@ -194,5 +190,6 @@ func (redis *VSHNRedis) labels() prometheus.Labels {
 		"organization": redis.Organization,
 		"ha":           strconv.FormatBool(redis.HighAvailable),
 		"sla":          redis.ServiceLevel,
+		"maintenance":  strconv.FormatBool(maintenance),
 	}
 }

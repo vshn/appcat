@@ -164,6 +164,8 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	ctx = withMaintenance(ctx, m.maintenanceStatus.IsMaintenanceRunning())
+
 	start := time.Now()
 	err = p.Probe(ctx)
 	latency := time.Since(start)

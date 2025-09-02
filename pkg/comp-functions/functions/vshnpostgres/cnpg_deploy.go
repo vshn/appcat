@@ -25,16 +25,16 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	}
 
 	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")
-	overrides := common.HelmReleaseOverrides{
-		Repository: svc.Config.Data["cnpgClusterChartSource"],
-		Version:    svc.Config.Data["cnpgClusterChartVersion"],
-		Chart:      svc.Config.Data["cnpgClusterChartName"],
-	}
-
-	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg", overrides)
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg")
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create release: %w", err))
 	}
+
+	// Release overrides
+	release.Spec.ForProvider.Chart.Repository = svc.Config.Data["cnpgClusterChartSource"]
+	release.Spec.ForProvider.Chart.Version = svc.Config.Data["cnpgClusterChartVersion"]
+	release.Spec.ForProvider.Chart.Name = svc.Config.Data["cnpgClusterChartName"]
+	release.Spec.ResourceSpec.WriteConnectionSecretToReference = nil
 
 	err = svc.SetDesiredComposedResource(release)
 	if err != nil {

@@ -70,41 +70,11 @@ func getDesiredRelease(svc *runtime.ServiceRuntime, releaseName string) (*xhelmv
 	return r, nil
 }
 
-// Optional helm release overrides for NewRelease().
-// Empty fields will be ignored.
-type HelmReleaseOverrides struct {
-	// Repository URL override
-	Repository string
-	// Chart version override
-	Version string
-	// Chart name override
-	Chart string
-}
-
 // NewRelease returns a new release with some defaults set.
-func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, values map[string]any, resName string, overrides HelmReleaseOverrides, cd ...xhelmv1.ConnectionDetail) (*xhelmv1.Release, error) {
-
+func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, values map[string]any, resName string, cd ...xhelmv1.ConnectionDetail) (*xhelmv1.Release, error) {
 	vb, err := json.Marshal(values)
 	if err != nil {
 		return nil, err
-	}
-
-	repository := svc.Config.Data["chartRepository"]
-	version := svc.Config.Data["chartVersion"]
-	name := comp.GetServiceName()
-
-	// Overrides
-	if overrides.Repository != "" {
-		svc.Log.Info("Overriding chart repository", "from", repository, "to", overrides.Repository)
-		repository = overrides.Repository
-	}
-	if overrides.Version != "" {
-		svc.Log.Info("Overriding chart version", "from", version, "to", overrides.Version)
-		version = overrides.Version
-	}
-	if overrides.Chart != "" {
-		svc.Log.Info("Overriding chart name", "from", name, "to", overrides.Chart)
-		name = overrides.Chart
 	}
 
 	release := &xhelmv1.Release{
@@ -114,9 +84,9 @@ func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGette
 		Spec: xhelmv1.ReleaseSpec{
 			ForProvider: xhelmv1.ReleaseParameters{
 				Chart: xhelmv1.ChartSpec{
-					Repository: repository,
-					Version:    version,
-					Name:       name,
+					Repository: svc.Config.Data["chartRepository"],
+					Version:    svc.Config.Data["chartVersion"],
+					Name:       comp.GetServiceName(),
 				},
 				Namespace: comp.GetInstanceNamespace(),
 				ValuesSpec: xhelmv1.ValuesSpec{

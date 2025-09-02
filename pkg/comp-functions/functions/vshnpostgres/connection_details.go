@@ -96,8 +96,6 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Sprintf("cannot add connection details to composite: %s", err))
 		}
-	} else {
-		svc.Log.Info("Not adding connection details")
 	}
 
 	return nil

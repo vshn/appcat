@@ -89,18 +89,19 @@ func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGette
 		return nil, err
 	}
 
-	// Overrides
 	repository := svc.Config.Data["chartRepository"]
+	version := svc.Config.Data["chartVersion"]
+	name := comp.GetServiceName()
+
+	// Overrides
 	if overrides.Repository != "" {
 		svc.Log.Info("Overriding chart repository", "from", repository, "to", overrides.Repository)
 		repository = overrides.Repository
 	}
-	version := svc.Config.Data["chartVersion"]
 	if overrides.Version != "" {
 		svc.Log.Info("Overriding chart version", "from", version, "to", overrides.Version)
 		version = overrides.Version
 	}
-	name := comp.GetServiceName()
 	if overrides.Chart != "" {
 		svc.Log.Info("Overriding chart name", "from", name, "to", overrides.Chart)
 		name = overrides.Chart

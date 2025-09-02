@@ -2,7 +2,6 @@ package vshnpostgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -43,13 +42,12 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	}
 
 	// PostgreSQLSettings
-	svc.Log.Info("Fetching postgresSettings")
+	svc.Log.Info("Setting postgresSettings")
 	pgConf, err := getPgSettingsMap(comp.Spec.Parameters.Service.PostgreSQLSettings)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get pg settings: %w", err))
 	}
 
-	svc.Log.Info("Setting postgresSettings")
 	for k, v := range pgConf {
 		err = common.SetNestedObjectValue(values, []string{"cluster", "postgresql", "parameters", k}, v)
 		if err != nil {
@@ -65,29 +63,26 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("could not fetch plans from config: %w", err))
 	}
-	svc.Log.Info("Got resources from plan", "plan", plan, "resources", resources)
 
 	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
 	if len(errs) > 0 {
 		svc.Log.Error(fmt.Errorf("could not get resources"), "errors", errors.Join(errs...))
 	}
-	svc.Log.Info("Final resources to use", "resources", res)
 
+	svc.Log.Info("Final resources to use", "resources", res)
 	err = setResourcesCnpg(values, res)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot set resources: %w", err))
 	}
 
-	o, _ := json.Marshal(values)
-	svc.Log.Info("Deploying PostgreSQL using CNPG", "values", string(o))
-
+	// Deploy
+	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")
 	overrides := common.HelmReleaseOverrides{
 		Repository: svc.Config.Data["cnpgClusterChartSource"],
 		Version:    svc.Config.Data["cnpgClusterChartVersion"],
 		Chart:      svc.Config.Data["cnpgClusterChartName"],
 	}
 
-	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")
 	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg", overrides)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create release: %w", err))

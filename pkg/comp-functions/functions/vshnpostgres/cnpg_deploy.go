@@ -15,9 +15,36 @@ import (
 // Deploy PostgresQL using the CNPG cluster helm chart
 func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	if !comp.Spec.Parameters.UseCNPG {
-		return nil
+		return runtime.NewFatalResult(fmt.Errorf("deployPostgresSQLUsingCNPG() called but useCnpg is false"))
 	}
 
+	// Deploy
+	values, err := createCnpgHelmValues(ctx, svc, comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot create helm values: %w", err))
+	}
+
+	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")
+	overrides := common.HelmReleaseOverrides{
+		Repository: svc.Config.Data["cnpgClusterChartSource"],
+		Version:    svc.Config.Data["cnpgClusterChartVersion"],
+		Chart:      svc.Config.Data["cnpgClusterChartName"],
+	}
+
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg", overrides)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot create release: %w", err))
+	}
+
+	err = svc.SetDesiredComposedResource(release)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot set desired release: %w", err))
+	}
+	return nil
+}
+
+// Generate CNPG cluster helm chart values
+func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (map[string]any, error) {
 	// https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml
 	values := map[string]any{
 		"version": map[string]string{
@@ -45,54 +72,30 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	svc.Log.Info("Setting postgresSettings")
 	pgConf, err := getPgSettingsMap(comp.Spec.Parameters.Service.PostgreSQLSettings)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot get pg settings: %w", err))
+		return map[string]any{}, fmt.Errorf("cannot get pg settings: %w", err)
 	}
 
 	for k, v := range pgConf {
 		err = common.SetNestedObjectValue(values, []string{"cluster", "postgresql", "parameters", k}, v)
 		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("cannot set pg settings %s=%s: %w", k, v, err))
+			return map[string]any{}, fmt.Errorf("cannot set pg settings %s=%s: %w", k, v, err)
 		}
 	}
 
 	// Compute resources
 	svc.Log.Info("Fetching and setting compute resources")
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
-
-	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
+	res, err := getResourcesForPlan(ctx, svc, comp, plan)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("could not fetch plans from config: %w", err))
+		return map[string]any{}, fmt.Errorf("could not set resources: %w", err)
 	}
 
-	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
-	if len(errs) > 0 {
-		svc.Log.Error(fmt.Errorf("could not get resources"), "errors", errors.Join(errs...))
-	}
-
-	svc.Log.Info("Final resources to use", "resources", res)
 	err = setResourcesCnpg(values, res)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot set resources: %w", err))
+		return map[string]any{}, fmt.Errorf("cannot set resources: %w", err)
 	}
 
-	// Deploy
-	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")
-	overrides := common.HelmReleaseOverrides{
-		Repository: svc.Config.Data["cnpgClusterChartSource"],
-		Version:    svc.Config.Data["cnpgClusterChartVersion"],
-		Chart:      svc.Config.Data["cnpgClusterChartName"],
-	}
-
-	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg", overrides)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create release: %w", err))
-	}
-
-	err = svc.SetDesiredComposedResource(release)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot set desired release: %w", err))
-	}
-	return nil
+	return values, nil
 }
 
 // Set compute resources in the values map
@@ -121,4 +124,19 @@ func setResourcesCnpg(values map[string]any, resources common.Resources) error {
 	}
 
 	return nil
+}
+
+// Get resources for a given plan
+func getResourcesForPlan(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, plan string) (common.Resources, error) {
+	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
+	if err != nil {
+		return common.Resources{}, err
+	}
+
+	res, errs := common.GetResources(&comp.Spec.Parameters.Size, resources)
+	if len(errs) > 0 {
+		return common.Resources{}, errors.Join(errs...)
+	}
+
+	return res, nil
 }

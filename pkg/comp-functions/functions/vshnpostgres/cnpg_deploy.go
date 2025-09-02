@@ -82,9 +82,9 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	svc.Log.Info("Deploying PostgreSQL using CNPG", "values", string(o))
 
 	overrides := common.HelmReleaseOverrides{
-		Repository: "https://cloudnative-pg.github.io/charts",
-		Version:    "0.3.1",
-		Chart:      "cluster",
+		Repository: svc.Config.Data["cnpgClusterChartSource"],
+		Version:    svc.Config.Data["cnpgClusterChartVersion"],
+		Chart:      svc.Config.Data["cnpgClusterChartName"],
 	}
 
 	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")

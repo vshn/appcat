@@ -8,13 +8,14 @@ import (
 )
 
 type VSHNMinio struct {
-	minioClient   *miniolib.Client
-	Service       string
-	Name          string
-	Namespace     string
-	HighAvailable bool
-	Organization  string
-	ServiceLevel  string
+	minioClient       *miniolib.Client
+	Service           string
+	Name              string
+	ClaimNamespace    string
+	InstanceNamespace string
+	HighAvailable     bool
+	Organization      string
+	ServiceLevel      string
 }
 
 func (minio VSHNMinio) Close() error {
@@ -23,12 +24,13 @@ func (minio VSHNMinio) Close() error {
 
 func (minio VSHNMinio) GetInfo() ProbeInfo {
 	return ProbeInfo{
-		Service:       minio.Service,
-		Name:          minio.Name,
-		Namespace:     minio.Namespace,
-		HighAvailable: minio.HighAvailable,
-		Organization:  minio.Organization,
-		ServiceLevel:  minio.ServiceLevel,
+		Service:           minio.Service,
+		Name:              minio.Name,
+		ClaimNamespace:    minio.ClaimNamespace,
+		InstanceNamespace: minio.InstanceNamespace,
+		HighAvailable:     minio.HighAvailable,
+		Organization:      minio.Organization,
+		ServiceLevel:      minio.ServiceLevel,
 	}
 }
 
@@ -44,7 +46,7 @@ func (minio VSHNMinio) Probe(ctx context.Context) error {
 	return nil
 }
 
-func NewMinio(service, name, namespace, organization, sla, endpointURL string, ha bool, opts miniolib.Options) (*VSHNMinio, error) {
+func NewMinio(service, name, claimNamespace, instanceNamespace, organization, sla, endpointURL string, ha bool, opts miniolib.Options) (*VSHNMinio, error) {
 
 	client, err := miniolib.New(endpointURL, &opts)
 	if err != nil {
@@ -52,12 +54,13 @@ func NewMinio(service, name, namespace, organization, sla, endpointURL string, h
 	}
 
 	return &VSHNMinio{
-		minioClient:   client,
-		Service:       service,
-		Name:          name,
-		Namespace:     namespace,
-		HighAvailable: ha,
-		Organization:  organization,
-		ServiceLevel:  sla,
+		minioClient:       client,
+		Service:           service,
+		Name:              name,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
+		HighAvailable:     ha,
+		Organization:      organization,
+		ServiceLevel:      sla,
 	}, nil
 }

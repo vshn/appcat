@@ -38,7 +38,7 @@ func TestPostgreSQL_Probe(t *testing.T) {
 
 	var p Prober
 	assert.Eventually(t, func() bool {
-		p, err = NewPostgreSQL("VSHN", "test", "test",
+		p, err = NewPostgreSQL("VSHN", "test", "test", "test",
 			fmt.Sprintf(
 				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 				user,
@@ -83,7 +83,7 @@ func TestPostgreSQL_Probe(t *testing.T) {
 
 func TestPostgreSQL_Fail(t *testing.T) {
 	t.Parallel()
-	p, err := NewFailingPostgreSQL("FAKE", "foo", "bar")
+	p, err := NewFailingPostgreSQL("FAKE", "foo", "bar", "bar")
 	require.NoError(t, err)
 
 	require.NotPanics(t, func() {
@@ -92,7 +92,8 @@ func TestPostgreSQL_Fail(t *testing.T) {
 		pi := p.GetInfo()
 		assert.Equal(t, pi.Service, "FAKE")
 		assert.Equal(t, pi.Name, "foo")
-		assert.Equal(t, pi.Namespace, "bar")
+		assert.Equal(t, pi.ClaimNamespace, "bar")
+		assert.Equal(t, pi.InstanceNamespace, "bar")
 		assert.NoError(t, p.Close())
 	})
 }

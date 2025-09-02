@@ -98,7 +98,10 @@ func (r VSHNKeycloakReconciler) getKeycloakProber(ctx context.Context, obj slire
 		return nil, fmt.Errorf("cannot parse certificate: %w", err)
 	}
 
-	return probes.NewHTTP(url, true, cert, vshnKeycloakServiceKey, inst.GetName(), inst.GetLabels()[slireconciler.ClaimNamespaceLabel], org, string(sla), ha), nil
+	claimNamespace := inst.GetLabels()[slireconciler.ClaimNamespaceLabel]
+	instanceNamespace := inst.Status.InstanceNamespace
+
+	return probes.NewHTTP(url, true, cert, vshnKeycloakServiceKey, inst.GetName(), claimNamespace, instanceNamespace, org, string(sla), ha), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

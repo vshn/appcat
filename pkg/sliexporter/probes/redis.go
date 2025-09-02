@@ -16,7 +16,7 @@ var (
 			Name: "appcat_probes_redis_ha_master_up",
 			Help: "Redis HA master status (1 if master, 0 if not)",
 		},
-		[]string{"service", "namespace", "name", "organization", "ha", "sla"},
+		[]string{"service", "claim_namespace", "instance_namespace", "name", "organization", "ha", "sla", "maintenance"},
 	)
 
 	redisQuorumGauge = prometheus.NewGaugeVec(
@@ -24,32 +24,34 @@ var (
 			Name: "appcat_probes_redis_ha_quorum_ok",
 			Help: "Redis HA quorum status (1 if quorum is healthy, 0 if not)",
 		},
-		[]string{"service", "namespace", "name", "organization", "ha", "sla"},
+		[]string{"service", "claim_namespace", "instance_namespace", "name", "organization", "ha", "sla", "maintenance"},
 	)
 )
 
 // VSHNRedis implements Prober for Redis.
 type VSHNRedis struct {
-	redisClient    *redis.Client
-	sentinelClient *redis.Client
-	Service        string
-	Name           string
-	Namespace      string
-	HighAvailable  bool
-	Organization   string
-	ServiceLevel   string
+	redisClient       *redis.Client
+	sentinelClient    *redis.Client
+	Service           string
+	Name              string
+	ClaimNamespace    string
+	InstanceNamespace string
+	HighAvailable     bool
+	Organization      string
+	ServiceLevel      string
 }
 
-func NewRedis(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*VSHNRedis, error) {
+func NewRedis(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*VSHNRedis, error) {
 	client := redis.NewClient(&opts)
 	r := &VSHNRedis{
-		redisClient:   client,
-		Service:       service,
-		Name:          name,
-		Namespace:     namespace,
-		HighAvailable: ha,
-		Organization:  organization,
-		ServiceLevel:  sla,
+		redisClient:       client,
+		Service:           service,
+		Name:              name,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
+		HighAvailable:     ha,
+		Organization:      organization,
+		ServiceLevel:      sla,
 	}
 
 	if ha {
@@ -100,12 +102,13 @@ func (redis *VSHNRedis) Close() error {
 
 func (redis *VSHNRedis) GetInfo() ProbeInfo {
 	return ProbeInfo{
-		Service:       redis.Service,
-		Name:          redis.Name,
-		Namespace:     redis.Namespace,
-		HighAvailable: redis.HighAvailable,
-		Organization:  redis.Organization,
-		ServiceLevel:  redis.ServiceLevel,
+		Service:           redis.Service,
+		Name:              redis.Name,
+		ClaimNamespace:    redis.ClaimNamespace,
+		InstanceNamespace: redis.InstanceNamespace,
+		HighAvailable:     redis.HighAvailable,
+		Organization:      redis.Organization,
+		ServiceLevel:      redis.ServiceLevel,
 	}
 }
 
@@ -184,12 +187,13 @@ func (redis *VSHNRedis) validateQuorum(ctx context.Context) error {
 
 func (redis *VSHNRedis) labels(maintenance bool) prometheus.Labels {
 	return prometheus.Labels{
-		"service":      redis.Service,
-		"namespace":    redis.Namespace,
-		"name":         redis.Name,
-		"organization": redis.Organization,
-		"ha":           strconv.FormatBool(redis.HighAvailable),
-		"sla":          redis.ServiceLevel,
-		"maintenance":  strconv.FormatBool(maintenance),
+		"service":            redis.Service,
+		"claim_namespace":    redis.ClaimNamespace,
+		"instance_namespace": redis.InstanceNamespace,
+		"name":               redis.Name,
+		"organization":       redis.Organization,
+		"ha":                 strconv.FormatBool(redis.HighAvailable),
+		"sla":                redis.ServiceLevel,
+		"maintenance":        strconv.FormatBool(maintenance),
 	}
 }

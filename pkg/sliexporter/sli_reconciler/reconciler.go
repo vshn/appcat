@@ -62,15 +62,19 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 
 	res := ctrl.Result{}
 
+	claimNamespace := r.inst.GetLabels()[ClaimNamespaceLabel]
+	instanceNamespace := r.inst.GetNamespace()
+
 	err := r.client.Get(ctx, r.nn, r.inst)
 
 	if apierrors.IsNotFound(err) || r.inst.GetDeletionTimestamp() != nil {
 		r.l.Info("Stopping Probe")
 		// r.pm.StopProbe(probes.NewProbeInfo(r.serviceKey, r.nn, r.inst))
 		r.pm.StopProbe(probes.ProbeInfo{
-			Service:   r.serviceKey,
-			Name:      r.nn.Name,
-			Namespace: r.nn.Namespace,
+			Service:           r.serviceKey,
+			Name:              r.nn.Name,
+			ClaimNamespace:    claimNamespace,
+			InstanceNamespace: instanceNamespace,
 		})
 		return ctrl.Result{}, nil
 	}
@@ -109,7 +113,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		res.RequeueAfter = 30 * time.Second
 
 		// Create a pobe that will always fail
-		probe, err = probes.NewFailingProbe(r.serviceKey, r.inst.GetName(), r.inst.GetLabels()[ClaimNamespaceLabel], err)
+		probe, err = probes.NewFailingProbe(r.serviceKey, r.inst.GetName(), claimNamespace, instanceNamespace, err)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

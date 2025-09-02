@@ -34,7 +34,7 @@ type VSHNRedisReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	RedisDialer        func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error)
+	RedisDialer        func(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error)
 	ScClient           client.Client
 }
 
@@ -78,8 +78,11 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, obj slireconcil
 		return nil, err
 	}
 
+	claimNamespace := inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel]
+	instanceNamespace := inst.Status.InstanceNamespace
+
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: claimNamespace}, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +122,7 @@ func (r VSHNRedisReconciler) getRedisProber(ctx context.Context, obj slireconcil
 
 	ha := inst.Spec.Parameters.Instances > 1
 
-	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel], org, string(sla), ha, redisOptions)
+	prober, err = r.RedisDialer(vshnRedisServiceKey, inst.Name, claimNamespace, instanceNamespace, org, string(sla), ha, redisOptions)
 	if err != nil {
 		return nil, err
 	}

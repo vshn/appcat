@@ -18,7 +18,7 @@ type HTTP struct {
 	ProbeInfo
 }
 
-func NewHTTP(url string, tlsEnabled bool, cacert *x509.Certificate, service, name, namespace, organization, servicelevel string, ha bool) *HTTP {
+func NewHTTP(url string, tlsEnabled bool, cacert *x509.Certificate, service, name, claimNamespace, instanceNamespace, organization, servicelevel string, ha bool) *HTTP {
 	transport := http.DefaultTransport
 	if tlsEnabled {
 		caPool := x509.NewCertPool()
@@ -35,12 +35,13 @@ func NewHTTP(url string, tlsEnabled bool, cacert *x509.Certificate, service, nam
 			Transport: transport,
 		},
 		ProbeInfo: ProbeInfo{
-			Service:       service,
-			Name:          name,
-			Namespace:     namespace,
-			Organization:  organization,
-			ServiceLevel:  servicelevel,
-			HighAvailable: ha,
+			Service:           service,
+			Name:              name,
+			ClaimNamespace:    claimNamespace,
+			InstanceNamespace: instanceNamespace,
+			Organization:      organization,
+			ServiceLevel:      servicelevel,
+			HighAvailable:     ha,
 		},
 	}
 }

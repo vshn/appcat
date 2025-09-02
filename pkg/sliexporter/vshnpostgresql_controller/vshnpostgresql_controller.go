@@ -49,7 +49,7 @@ type VSHNPostgreSQLReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	PostgreDialer      func(service, name, namespace, dsn, organization, serviceLevel string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
+	PostgreDialer      func(service, name, claimNamespace, instanceNamespace, dsn, organization, serviceLevel string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
 	ScClient           client.Client
 }
 
@@ -98,8 +98,11 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, obj slirec
 		return nil, errNotReady
 	}
 
+	claimNamespace := inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel]
+	instanceNamespace := inst.Status.InstanceNamespace
+
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.GetLabels()[slireconciler.ClaimNamespaceLabel]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: claimNamespace}, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +120,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, obj slirec
 		sslmode = "disable"
 	}
 
-	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.GetName(), inst.GetLabels()[slireconciler.ClaimNamespaceLabel],
+	probe, err := r.PostgreDialer(vshnpostgresqlsServiceKey, inst.GetName(), claimNamespace, instanceNamespace,
 		fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
 			credSecret.Data["POSTGRESQL_USER"],

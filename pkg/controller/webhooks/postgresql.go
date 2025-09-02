@@ -95,6 +95,12 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
+	// Validate provider config
+	providerConfigErrs := p.DefaultWebhookHandler.ValidateProviderConfig(ctx, newPg)
+	if len(providerConfigErrs) > 0 {
+		allErrs = append(allErrs, providerConfigErrs...)
+	}
+
 	// Validate Vacuum and Repack settings
 	if err := validateVacuumRepack(newPg.Spec.Parameters.Service.VacuumEnabled, newPg.Spec.Parameters.Service.RepackEnabled); err != nil {
 		allErrs = append(allErrs, err)

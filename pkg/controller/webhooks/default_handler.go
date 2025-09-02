@@ -8,7 +8,10 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	appcatruntime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -51,6 +54,11 @@ func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
 	}
 
+	providerConfigErrs := r.ValidateProviderConfig(ctx, comp)
+	if len(providerConfigErrs) > 0 {
+		allErrs = append(allErrs, providerConfigErrs...)
+	}
+
 	if r.withQuota {
 		quotaErrs := r.checkQuotas(ctx, comp, true)
 		if quotaErrs != nil {
@@ -88,6 +96,11 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 
 	if comp.GetDeletionTimestamp() != nil {
 		return nil, nil
+	}
+
+	providerConfigErrs := r.ValidateProviderConfig(ctx, comp)
+	if len(providerConfigErrs) > 0 {
+		allErrs = append(allErrs, providerConfigErrs...)
 	}
 
 	if r.withQuota {
@@ -247,5 +260,184 @@ func (r *DefaultWebhookHandler) validateResourceNameLength(name string, lenght i
 	if len(name) > lenght {
 		return fmt.Errorf("%d/%d chars.\n\tWe add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name), lenght)
 	}
+	return nil
+}
+
+// ValidateProviderConfig validates that the appcat.vshn.io/provider-config label, if set,
+// refers to valid kubernetes and helm provider configs with existing secrets
+func (r *DefaultWebhookHandler) ValidateProviderConfig(ctx context.Context, comp common.Composite) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	labels := comp.GetLabels()
+	if labels == nil {
+		return allErrs
+	}
+
+	providerConfigName, exists := labels[appcatruntime.ProviderConfigLabel]
+	if !exists || providerConfigName == "" {
+		// No provider config specified, validation passes
+		return allErrs
+	}
+
+	labelPath := field.NewPath("metadata", "labels", appcatruntime.ProviderConfigLabel)
+
+	// Validate kubernetes provider config
+	kubeProviderConfig := &unstructured.Unstructured{}
+	kubeProviderConfig.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "kubernetes.crossplane.io",
+		Version: "v1alpha1",
+		Kind:    "ProviderConfig",
+	})
+
+	err := r.client.Get(ctx, client.ObjectKey{
+		Name: providerConfigName,
+	}, kubeProviderConfig)
+
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			allErrs = append(allErrs, &field.Error{
+				Field:    labelPath.String(),
+				Detail:   fmt.Sprintf("kubernetes ProviderConfig %q not found", providerConfigName),
+				BadValue: providerConfigName,
+				Type:     field.ErrorTypeNotFound,
+			})
+		} else {
+			allErrs = append(allErrs, &field.Error{
+				Field:    labelPath.String(),
+				Detail:   fmt.Sprintf("failed to get kubernetes ProviderConfig %q: %v", providerConfigName, err),
+				BadValue: providerConfigName,
+				Type:     field.ErrorTypeInternal,
+			})
+		}
+	} else {
+		// Validate the secret referenced by the kubernetes provider config
+		if secretErr := r.validateProviderConfigSecret(ctx, kubeProviderConfig, "kubernetes", providerConfigName, labelPath); secretErr != nil {
+			allErrs = append(allErrs, secretErr)
+		}
+	}
+
+	// Validate helm provider config
+	helmProviderConfig := &unstructured.Unstructured{}
+	helmProviderConfig.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "helm.crossplane.io",
+		Version: "v1beta1",
+		Kind:    "ProviderConfig",
+	})
+
+	err = r.client.Get(ctx, client.ObjectKey{
+		Name: providerConfigName,
+	}, helmProviderConfig)
+
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			allErrs = append(allErrs, &field.Error{
+				Field:    labelPath.String(),
+				Detail:   fmt.Sprintf("helm ProviderConfig %q not found", providerConfigName),
+				BadValue: providerConfigName,
+				Type:     field.ErrorTypeNotFound,
+			})
+		} else {
+			allErrs = append(allErrs, &field.Error{
+				Field:    labelPath.String(),
+				Detail:   fmt.Sprintf("failed to get helm ProviderConfig %q: %v", providerConfigName, err),
+				BadValue: providerConfigName,
+				Type:     field.ErrorTypeInternal,
+			})
+		}
+	} else {
+		// Validate the secret referenced by the helm provider config
+		if secretErr := r.validateProviderConfigSecret(ctx, helmProviderConfig, "helm", providerConfigName, labelPath); secretErr != nil {
+			allErrs = append(allErrs, secretErr)
+		}
+	}
+
+	return allErrs
+}
+
+// validateProviderConfigSecret validates that the secret referenced by a provider config exists
+func (r *DefaultWebhookHandler) validateProviderConfigSecret(ctx context.Context, providerConfig *unstructured.Unstructured, providerType, providerConfigName string, labelPath *field.Path) *field.Error {
+	// Extract the secret reference from the provider config
+	credentials, found, err := unstructured.NestedMap(providerConfig.UnstructuredContent(), "spec", "credentials")
+	if err != nil {
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("failed to parse %s ProviderConfig %q credentials: %v", providerType, providerConfigName, err),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInternal,
+		}
+	}
+
+	if !found {
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("%s ProviderConfig %q has no credentials configured", providerType, providerConfigName),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInvalid,
+		}
+	}
+
+	secretRef, found, err := unstructured.NestedMap(credentials, "secretRef")
+	if err != nil {
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("failed to parse %s ProviderConfig %q secretRef: %v", providerType, providerConfigName, err),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInternal,
+		}
+	}
+
+	if !found {
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("%s ProviderConfig %q has no secretRef configured", providerType, providerConfigName),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInvalid,
+		}
+	}
+
+	secretName, found, err := unstructured.NestedString(secretRef, "name")
+	if err != nil || !found || secretName == "" {
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("%s ProviderConfig %q secretRef has no name", providerType, providerConfigName),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInvalid,
+		}
+	}
+
+	secretNamespace, found, err := unstructured.NestedString(secretRef, "namespace")
+	if err != nil || !found || secretNamespace == "" {
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("%s ProviderConfig %q secretRef has no namespace", providerType, providerConfigName),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInvalid,
+		}
+	}
+
+	// Check if the secret exists
+	secret := &corev1.Secret{}
+	err = r.client.Get(ctx, client.ObjectKey{
+		Name:      secretName,
+		Namespace: secretNamespace,
+	}, secret)
+
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return &field.Error{
+				Field:    labelPath.String(),
+				Detail:   fmt.Sprintf("%s ProviderConfig %q references secret %s/%s which does not exist", providerType, providerConfigName, secretNamespace, secretName),
+				BadValue: providerConfigName,
+				Type:     field.ErrorTypeNotFound,
+			}
+		}
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("failed to get secret %s/%s referenced by %s ProviderConfig %q: %v", secretNamespace, secretName, providerType, providerConfigName, err),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInternal,
+		}
+	}
+
 	return nil
 }

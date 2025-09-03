@@ -23,9 +23,11 @@ import (
 )
 
 var (
-	bucketName              = "vshn-test-bucket-for-sli"
-	namespace               = "vshnminio"
-	_          probeManager = &fakeProbeManager{}
+	bucketName        = "vshn-test-bucket-for-sli"
+	claimNamespace    = "vshnminio"
+	instanceNamespace = "vshn-minio-vshnminio"
+
+	_ probeManager = &fakeProbeManager{}
 )
 
 type fakeProbeManager struct {
@@ -55,27 +57,28 @@ func getFakeKey(pi probes.ProbeInfo) key {
 }
 
 func TestReconciler(t *testing.T) {
-	minio, ns := giveMeMinio(bucketName, namespace)
+	minio, ns := giveMeMinio(bucketName, claimNamespace)
 
 	ct := metav1.Now().Add(-20 * time.Minute)
 	minio.CreationTimestamp = metav1.Time{Time: ct}
 
 	r, manager, client := setupVSHNMinioTest(t,
 		minio, ns,
-		newTestVSHNMinioCred(bucketName, namespace),
+		newTestVSHNMinioCred(bucketName, claimNamespace),
 	)
 
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      bucketName,
-			Namespace: namespace,
+			Namespace: claimNamespace,
 		},
 	}
 
 	probeInfo := probes.ProbeInfo{
-		Service:   "VSHNMinio",
-		Name:      bucketName,
-		Namespace: namespace,
+		Service:           "VSHNMinio",
+		Name:              bucketName,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -90,7 +93,7 @@ func TestReconciler(t *testing.T) {
 }
 
 func TestVSHNMinio_Startup_NoCreds_Dont_Probe(t *testing.T) {
-	minio, ns := giveMeMinio(bucketName, namespace)
+	minio, ns := giveMeMinio(bucketName, claimNamespace)
 
 	r, manager, _ := setupVSHNMinioTest(t,
 		minio, ns,
@@ -99,14 +102,15 @@ func TestVSHNMinio_Startup_NoCreds_Dont_Probe(t *testing.T) {
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      bucketName,
-			Namespace: namespace,
+			Namespace: claimNamespace,
 		},
 	}
 
 	probeInfo := probes.ProbeInfo{
-		Service:   "VSHNMinio",
-		Name:      bucketName,
-		Namespace: namespace,
+		Service:           "VSHNMinio",
+		Name:              bucketName,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
 	}
 
 	res, err := r.Reconcile(context.TODO(), req)
@@ -126,13 +130,14 @@ func TestVSHNMinio_NoRef_Dont_Probe(t *testing.T) {
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      bucketName,
-			Namespace: namespace,
+			Namespace: claimNamespace,
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNPostgreSQL",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNPostgreSQL",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -195,14 +200,15 @@ func setupVSHNMinioTest(t *testing.T, objs ...client.Object) (VSHNMinioReconcile
 	return r, manager, client
 }
 
-func fakeMinioDialer(service, name, namespace, organization, sla, endpointURL string, ha bool, opts minio.Options) (*probes.VSHNMinio, error) {
+func fakeMinioDialer(service, name, claimNamespace, instanceNamespace, organization, sla, endpointURL string, ha bool, opts minio.Options) (*probes.VSHNMinio, error) {
 	p := &probes.VSHNMinio{
-		Service:       service,
-		Name:          name,
-		Namespace:     namespace,
-		Organization:  organization,
-		HighAvailable: ha,
-		ServiceLevel:  sla,
+		Service:           service,
+		Name:              name,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
+		Organization:      organization,
+		HighAvailable:     ha,
+		ServiceLevel:      sla,
 	}
 	return p, nil
 }

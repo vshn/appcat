@@ -37,12 +37,13 @@ type Prober interface {
 
 // ProbeInfo contains meta information on a prober and in turn an AppCat service
 type ProbeInfo struct {
-	Service       string
-	Name          string
-	Namespace     string
-	Organization  string
-	HighAvailable bool
-	ServiceLevel  string
+	Service           string
+	Name              string
+	ClaimNamespace    string
+	InstanceNamespace string
+	Organization      string
+	HighAvailable     bool
+	ServiceLevel      string
 }
 
 func NewProbeInfo(serviceKey string, nn types.NamespacedName, o client.Object) ProbeInfo {
@@ -51,9 +52,10 @@ func NewProbeInfo(serviceKey string, nn types.NamespacedName, o client.Object) P
 		namespace = o.GetLabels()["crossplane.io/claim-namespace"]
 	}
 	return ProbeInfo{
-		Service:   serviceKey,
-		Name:      o.GetName(),
-		Namespace: namespace,
+		Service:           serviceKey,
+		Name:              o.GetName(),
+		ClaimNamespace:    namespace,
+		InstanceNamespace: o.GetNamespace(),
 	}
 }
 
@@ -73,7 +75,7 @@ func NewManager(l logr.Logger, maintenanceStatus maintenancecontroller.Maintenan
 		Name:    "appcat_probes_seconds",
 		Help:    "Latency of probes to appact services",
 		Buckets: []float64{0.001, 0.002, 0.003, 0.004, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1, .5, 1},
-	}, []string{"service", "namespace", "name", "reason", "organization", "ha", "sla", "maintenance"})
+	}, []string{"service", "claim_namespace", "instance_namespace", "name", "reason", "organization", "ha", "sla", "maintenance"})
 
 	return Manager{
 		hist:              hist,
@@ -85,24 +87,26 @@ func NewManager(l logr.Logger, maintenanceStatus maintenancecontroller.Maintenan
 	}
 }
 
-// Collector returns the histogram to store the probe results
-func (m Manager) Collector() prometheus.Collector {
-	return m.hist
+// Collectors returns all collectors including service-specific ones
+func (m Manager) Collectors() []prometheus.Collector {
+	collectors := []prometheus.Collector{m.hist}
+
+	collectors = append(collectors, GetRedisCollectors()...)
+
+	return collectors
 }
 
 // StartProbe will send a probe once every second using the provided prober.
 // If a prober with the same ProbeInfo already runs, it will stop the running prober.
 func (m Manager) StartProbe(p Prober) {
-
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	l := m.log.WithValues("namespace", p.GetInfo().Namespace, "name", p.GetInfo().Name)
+	l := m.log.WithValues("claim_namespace", p.GetInfo().ClaimNamespace, "instance_namespace", p.GetInfo().InstanceNamespace, "name", p.GetInfo().Name)
 	probeKey := getKey(p.GetInfo())
 	cancel, ok := m.probers[probeKey]
 	if ok {
 		l.Info("Cancel Probe")
-
 		cancel()
 	}
 
@@ -134,28 +138,26 @@ func (m Manager) runProbe(ctx context.Context, p Prober) {
 	for {
 		select {
 		case <-ctx.Done():
-
 			return
 		case <-ticker:
-
 			go m.sendProbe(ctx, p)
 		}
 	}
 }
 
 func (m Manager) sendProbe(ctx context.Context, p Prober) {
-
 	pi := p.GetInfo()
-	l := m.log.WithValues("service", pi.Service, "namespace", pi.Namespace, "name", pi.Name)
+	l := m.log.WithValues("service", pi.Service, "claim_namespace", pi.ClaimNamespace, "instance_namespace", pi.InstanceNamespace, "name", pi.Name)
 
 	o, err := m.hist.CurryWith(prometheus.Labels{
-		"service":      pi.Service,
-		"namespace":    pi.Namespace,
-		"name":         pi.Name,
-		"organization": pi.Organization,
-		"ha":           strconv.FormatBool(pi.HighAvailable),
-		"sla":          pi.ServiceLevel,
-		"maintenance":  strconv.FormatBool(m.maintenanceStatus.IsMaintenanceRunning()),
+		"service":            pi.Service,
+		"claim_namespace":    pi.ClaimNamespace,
+		"instance_namespace": pi.InstanceNamespace,
+		"name":               pi.Name,
+		"organization":       pi.Organization,
+		"ha":                 strconv.FormatBool(pi.HighAvailable),
+		"sla":                pi.ServiceLevel,
+		"maintenance":        strconv.FormatBool(m.maintenanceStatus.IsMaintenanceRunning()),
 	})
 	if err != nil {
 		l.Error(err, "failed to instanciate prometheus histogram")
@@ -164,6 +166,8 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+
+	ctx = withMaintenance(ctx, m.maintenanceStatus.IsMaintenanceRunning())
 
 	start := time.Now()
 	err = p.Probe(ctx)

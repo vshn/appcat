@@ -26,7 +26,7 @@ func TestManger_Simple(t *testing.T) {
 		},
 	}
 	m.hist = observer
-	p := newFakeProbe("fake", "bar", "foo")
+	p := newFakeProbe("fake", "bar", "bar", "foo")
 	m.newTicker = func() (<-chan time.Time, func()) {
 		return p.ticker, func() {}
 	}
@@ -70,8 +70,8 @@ func TestManger_Multi(t *testing.T) {
 	}
 	m.hist = observer
 
-	pa := newFakeProbe("fake", "foo", "alice")
-	pb := newFakeProbe("fake", "foo", "bob")
+	pa := newFakeProbe("fake", "foo", "foo", "alice")
+	pb := newFakeProbe("fake", "foo", "foo", "bob")
 
 	m.StartProbe(pa)
 	tickerChan <- pa.ticker
@@ -96,9 +96,10 @@ func TestManger_Multi(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 	assert.EqualValues(t, 9, pa.getCount())
 	m.StopProbe(ProbeInfo{
-		Service:   "fake",
-		Namespace: "foo",
-		Name:      "alice",
+		Service:           "fake",
+		ClaimNamespace:    "foo",
+		InstanceNamespace: "foo",
+		Name:              "alice",
 	})
 
 	pb.tick(nil)
@@ -121,13 +122,14 @@ func TestManger_Multi(t *testing.T) {
 
 }
 
-func newFakeProbe(service, namespace, name string) *fakeProbe {
+func newFakeProbe(service, claimNamespace, instanceNamespace, name string) *fakeProbe {
 	return &fakeProbe{
 		info: ProbeInfo{
-			Service:      service,
-			Name:         name,
-			Namespace:    namespace,
-			Organization: "foo",
+			Service:           service,
+			Name:              name,
+			ClaimNamespace:    claimNamespace,
+			InstanceNamespace: instanceNamespace,
+			Organization:      "foo",
 		},
 		results: make(chan error, 10),
 		ticker:  make(chan time.Time, 10),

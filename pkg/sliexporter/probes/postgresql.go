@@ -16,13 +16,14 @@ var _ Prober = PostgreSQL{}
 type PostgreSQL struct {
 	db *pgxpool.Pool
 
-	Service       string
-	Name          string
-	Namespace     string
-	Organization  string
-	HighAvailable bool
-	TLSEnabled    bool
-	ServiceLevel  string
+	Service           string
+	Name              string
+	ClaimNamespace    string
+	InstanceNamespace string
+	Organization      string
+	HighAvailable     bool
+	TLSEnabled        bool
+	ServiceLevel      string
 }
 
 // Close closes open connections to the PostgreSQL server.
@@ -36,12 +37,13 @@ func (p PostgreSQL) Close() error {
 // GetInfo returns the prober infos
 func (p PostgreSQL) GetInfo() ProbeInfo {
 	return ProbeInfo{
-		Service:       p.Service,
-		Name:          p.Name,
-		Namespace:     p.Namespace,
-		Organization:  p.Organization,
-		HighAvailable: p.HighAvailable,
-		ServiceLevel:  p.ServiceLevel,
+		Service:           p.Service,
+		Name:              p.Name,
+		ClaimNamespace:    p.ClaimNamespace,
+		InstanceNamespace: p.InstanceNamespace,
+		Organization:      p.Organization,
+		HighAvailable:     p.HighAvailable,
+		ServiceLevel:      p.ServiceLevel,
 	}
 }
 
@@ -56,7 +58,7 @@ func (p PostgreSQL) Probe(ctx context.Context) error {
 }
 
 // NewPostgreSQL connects to the provided dsn and returns a prober
-func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ha bool, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
+func NewPostgreSQL(service, name, claimNamespace, instanceNamespace, dsn, organization, sla string, ha bool, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
 	conf, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, err
@@ -77,23 +79,25 @@ func NewPostgreSQL(service, name, namespace, dsn, organization, sla string, ha b
 	}
 
 	return &PostgreSQL{
-		db:            db,
-		Service:       service,
-		Name:          name,
-		Namespace:     namespace,
-		Organization:  organization,
-		HighAvailable: ha,
-		ServiceLevel:  sla,
+		db:                db,
+		Service:           service,
+		Name:              name,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
+		Organization:      organization,
+		HighAvailable:     ha,
+		ServiceLevel:      sla,
 	}, nil
 }
 
 // NewFailingPostgreSQL creates a prober that will fail.
 // Can be used if the controller can't access valid credentials.
-func NewFailingPostgreSQL(service, name, namespace string) (*PostgreSQL, error) {
+func NewFailingPostgreSQL(service, name, claimNamespace, instanceNamespace string) (*PostgreSQL, error) {
 	return &PostgreSQL{
-		Service:   service,
-		Name:      name,
-		Namespace: namespace,
+		Service:           service,
+		Name:              name,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
 	}, nil
 }
 

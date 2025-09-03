@@ -62,19 +62,14 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 
 	res := ctrl.Result{}
 
-	claimNamespace := r.inst.GetLabels()[ClaimNamespaceLabel]
-	instanceNamespace := r.inst.GetNamespace()
-
 	err := r.client.Get(ctx, r.nn, r.inst)
 
 	if apierrors.IsNotFound(err) || r.inst.GetDeletionTimestamp() != nil {
 		r.l.Info("Stopping Probe")
 		// r.pm.StopProbe(probes.NewProbeInfo(r.serviceKey, r.nn, r.inst))
 		r.pm.StopProbe(probes.ProbeInfo{
-			Service:           r.serviceKey,
-			Name:              r.nn.Name,
-			ClaimNamespace:    claimNamespace,
-			InstanceNamespace: instanceNamespace,
+			Service: r.serviceKey,
+			Name:    r.nn.Name,
 		})
 		return ctrl.Result{}, nil
 	}
@@ -103,6 +98,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	if !namespaceExists {
 		return ctrl.Result{}, nil
 	}
+
+	claimNamespace := r.inst.GetLabels()[ClaimNamespaceLabel]
+	instanceNamespace := r.inst.(common.InstanceNamespaceGetter).GetInstanceNamespace()
 
 	probe, err := r.fetchProberFor(ctx, r.inst)
 	// By using the composite the credential secret is available instantly, but initially empty.

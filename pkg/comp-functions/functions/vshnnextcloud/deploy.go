@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"strconv"
 	"strings"
 	"time"
@@ -105,6 +106,11 @@ func DeployNextcloud(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	err = addNextcloudHooks(svc, comp)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("Cannot add configmap for Nextcloud: %s", err))
+	}
+
+	err = createClusterRoleBinding(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create cluster role binding: %s", err))
 	}
 
 	err = createInstallCollaboraConfigMap(comp, svc)
@@ -602,6 +608,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": true,
 			"size":    res.Disk,
 		},
+		"rbac": map[string]any{
+			"enabled": true,
+			"serviceaccount": map[string]any{
+				"create": true,
+				"name":   comp.GetName(),
+			},
+		},
 	}
 
 	if image := svc.Config.Data["nextcloud_image"]; image != "" {
@@ -756,4 +769,25 @@ func setBackgroundJobMaintenance(t vshnv1.TimeOfDay, nextcloudConfig string) str
 	backgroundJobHour := t.GetTime().Add(40 * time.Minute).Add(time.Hour).Hour()
 
 	return strings.Replace(nextcloudConfig, "%maintenance_value%", strconv.Itoa(backgroundJobHour), 1)
+}
+
+func createClusterRoleBinding(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: comp.GetName(),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      comp.GetName(),
+				Namespace: comp.GetInstanceNamespace(),
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "appcat-scc",
+		},
+	}
+	return svc.SetDesiredKubeObject(crb, comp.GetName()+"-cluster-role-binding")
 }

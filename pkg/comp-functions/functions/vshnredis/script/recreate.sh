@@ -10,31 +10,23 @@ release="${COMPOSITION_NAME}"
 control_secret_namespace="syn-appcat"
 control_secret_name="controlclustercredentials"
 
-USE_CONTROL_KUBECONFIG=0
 control_kubeconfig="$(mktemp)"
 cleanup() { rm -f "${control_kubeconfig}"; }
 trap cleanup EXIT
 
-if kubectl -n "${control_secret_namespace}" get secret "${control_secret_name}" >/dev/null 2>&1; then
-  if kubectl -n "${control_secret_namespace}" get secret "${control_secret_name}" \
-       -o jsonpath='{.data.config}' 2>/dev/null | base64 -d > "${control_kubeconfig}"; then
-    if [[ -s "${control_kubeconfig}" ]]; then
-      echo "Using control-plane kubeconfig from ${control_secret_namespace}/${control_secret_name}"
-      USE_CONTROL_KUBECONFIG=1
-    else
-      echo "Control-plane kubeconfig secret exists but is empty; falling back to default context"
-    fi
-  else
-    echo "No permission to read ${control_secret_namespace}/${control_secret_name}; falling back to default context"
-  fi
+use_control_kubeconfig=0
+if kubectl -n "${control_secret_namespace}" get secret "${control_secret_name}" -o go-template='{{index .data "config" | base64decode}}' > "${control_kubeconfig}" 2>/dev/null && [[ -s "${control_kubeconfig}" ]]; then
+  echo "Using control-plane kubeconfig from ${control_secret_namespace}/${control_secret_name}"
+  use_control_kubeconfig=1
 else
-  echo "Secret ${control_secret_namespace}/${control_secret_name} not found; falling back to default context"
+  echo "Falling back to default context (secret missing/forbidden/empty)"
 fi
 
-if [[ "${USE_CONTROL_KUBECONFIG}" -eq 1 ]]; then
-  KPATCH=(kubectl --kubeconfig "${control_kubeconfig}")
+
+if [[ "${use_control_kubeconfig}" -eq 1 ]]; then
+  kpatch=(kubectl --kubeconfig "${control_kubeconfig}")
 else
-  KPATCH=(kubectl)
+  kpatch=(kubectl)
 fi
 
 echo "Checking if the PVC sizes match"
@@ -54,8 +46,8 @@ if [[ "${foundsize}" != "${size}" ]]; then
   # Then we patch the right size to enforce an upgrade
   # This is necessary as provider-helm doesn't actually retry failed helm deployments unless the values change.
   echo "Triggering sts re-creation"
-  "${KPATCH[@]}" patch release "${release}" --type merge -p '{"spec":{"forProvider":{"values":{"replica":{"persistence":{"size":"foo"}}}}}}'
-  "${KPATCH[@]}" patch release "${release}" --type merge -p "{\"spec\":{\"forProvider\":{\"values\":{\"replica\":{\"persistence\":{\"size\":\"${size}\"}}}}}}"
+  "${kpatch[@]}" patch release "${release}" --type merge -p '{"spec":{"forProvider":{"values":{"replica":{"persistence":{"size":"foo"}}}}}}'
+  "${kpatch[@]}" patch release "${release}" --type merge -p "{\"spec\":{\"forProvider\":{\"values\":{\"replica\":{\"persistence\":{\"size\":\"${size}\"}}}}}}"
 
   count=0
   while ! kubectl -n "$namespace" get sts "$name" && [[ count -lt 300 ]]; do

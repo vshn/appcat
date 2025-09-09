@@ -166,9 +166,10 @@ func TestVSHNRedis_StartStop(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -195,9 +196,10 @@ func TestVSHNRedis_StartStop_WithFinalizer(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -224,19 +226,22 @@ func TestVSHNRedis_Multi(t *testing.T) {
 	)
 
 	barPi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 	barerPi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "fooer",
-		Namespace: "barer",
+		Service:           "VSHNRedis",
+		Name:              "fooer",
+		ClaimNamespace:    "barer",
+		InstanceNamespace: "barer",
 	}
 	buzzPi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "fooz",
-		Namespace: "buzz",
+		Service:           "VSHNRedis",
+		Name:              "fooz",
+		ClaimNamespace:    "barz",
+		InstanceNamespace: "barz",
 	}
 
 	_, err := r.Reconcile(context.TODO(), recReq("", "foo"))
@@ -266,9 +271,10 @@ func TestVSHNRedis_Startup_NoCreds_Dont_Probe(t *testing.T) {
 		ns, db, instns,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	res, err := r.Reconcile(context.TODO(), recReq("", "foo"))
@@ -285,9 +291,10 @@ func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
 		ns, db, claim, instns,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), recReq("", "foo"))
@@ -302,9 +309,10 @@ func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
 		ns, db, instns,
 	)
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	res, err := r.Reconcile(context.TODO(), recReq("", "foo"))
@@ -331,11 +339,12 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		ns, db, instns,
 		cred,
 	)
-	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 
 		assert.Equal(t, "VSHNRedis", service)
 		assert.Equal(t, "foo", name)
-		assert.Equal(t, "bar", namespace)
+		assert.Equal(t, "bar", claimNamespace)
+		assert.Equal(t, "bar", instanceNamespace)
 		assert.Equal(t, "bar", organization)
 
 		certPair, err := tls.X509KeyPair(cred.Data["tls.crt"], cred.Data["tls.key"])
@@ -347,7 +356,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 			RootCAs:      x509.NewCertPool(),
 		}
 
-		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
+		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", false, redis.Options{
 			Addr:      string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
 			Username:  string(cred.Data["REDIS_USERNAME"]),
 			Password:  string(cred.Data["REDIS_PASSWORD"]),
@@ -360,9 +369,10 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -392,7 +402,7 @@ func TestVSHNRedis_Tls(t *testing.T) {
 		ns, db, instns,
 		cred,
 	)
-	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 		certPair, err := tls.X509KeyPair(cred.Data["tls.crt"], cred.Data["tls.key"])
 		if err != nil {
 			return nil, err
@@ -405,7 +415,7 @@ func TestVSHNRedis_Tls(t *testing.T) {
 			RootCAs:      x509.NewCertPool(),
 		}
 
-		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
+		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", false, redis.Options{
 			Addr:      string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
 			Username:  string(cred.Data["REDIS_USERNAME"]),
 			Password:  string(cred.Data["REDIS_PASSWORD"]),
@@ -418,9 +428,10 @@ func TestVSHNRedis_Tls(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -450,11 +461,11 @@ func TestVSHNRedis_NoTls(t *testing.T) {
 		ns, db, instns,
 		cred,
 	)
-	r.RedisDialer = func(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 
 		assert.Nil(t, opts.TLSConfig, "TLS config MUST be nil")
 
-		return fakeRedisDialer(service, name, namespace, organization, "besteffort", false, redis.Options{
+		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", false, redis.Options{
 			Addr:     string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
 			Username: string(cred.Data["REDIS_USERNAME"]),
 			Password: string(cred.Data["REDIS_PASSWORD"]),
@@ -466,9 +477,10 @@ func TestVSHNRedis_NoTls(t *testing.T) {
 		},
 	}
 	pi := probes.ProbeInfo{
-		Service:   "VSHNRedis",
-		Name:      "foo",
-		Namespace: "bar",
+		Service:           "VSHNRedis",
+		Name:              "foo",
+		ClaimNamespace:    "bar",
+		InstanceNamespace: "bar",
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
@@ -481,13 +493,14 @@ func TestVSHNRedis_NoTls(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
-func fakeRedisDialer(service, name, namespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+func fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 	p := &probes.VSHNRedis{
-		Service:       service,
-		Name:          name,
-		Namespace:     namespace,
-		HighAvailable: ha,
-		Organization:  organization,
+		Service:           service,
+		Name:              name,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
+		HighAvailable:     ha,
+		Organization:      organization,
 	}
 	return p, nil
 }

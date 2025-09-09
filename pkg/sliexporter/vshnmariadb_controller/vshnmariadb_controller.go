@@ -36,7 +36,7 @@ type VSHNMariaDBReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	MariaDBDialer      func(service, name, namespace, dsn, organization, serviceLevel, caCRT string, ha, TLSEnabled bool) (*probes.MariaDB, error)
+	MariaDBDialer      func(service, name, claimNamespace, instanceNamespace, dsn, organization, serviceLevel, caCRT string, ha, TLSEnabled bool) (*probes.MariaDB, error)
 	ScClient           client.Client
 }
 
@@ -81,8 +81,11 @@ func (r VSHNMariaDBReconciler) fetchProberFor(ctx context.Context, obj slireconc
 		return nil, errNotReady
 	}
 
+	claimNamespace := inst.ObjectMeta.Labels[slireconciler.ClaimNamespaceLabel]
+	instanceNamespace := inst.Status.InstanceNamespace
+
 	ns := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: inst.GetLabels()[slireconciler.ClaimNamespaceLabel]}, ns)
+	err = r.Get(ctx, types.NamespacedName{Name: claimNamespace}, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,7 @@ func (r VSHNMariaDBReconciler) fetchProberFor(ctx context.Context, obj slireconc
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", credSecret.Data["MARIADB_USERNAME"], credSecret.Data["MARIADB_PASSWORD"], credSecret.Data["MARIADB_HOST"], credSecret.Data["MARIADB_PORT"], "mysql")
 
-	probe, err := r.MariaDBDialer(vshnMariadbServiceKey, inst.Name, inst.GetLabels()[slireconciler.ClaimNamespaceLabel], dsn, org, string(credSecret.Data["ca.crt"]), string(sla), ha, inst.Spec.Parameters.TLS.TLSEnabled)
+	probe, err := r.MariaDBDialer(vshnMariadbServiceKey, inst.Name, claimNamespace, instanceNamespace, dsn, org, string(credSecret.Data["ca.crt"]), string(sla), ha, inst.Spec.Parameters.TLS.TLSEnabled)
 	if err != nil {
 		return nil, err
 	}

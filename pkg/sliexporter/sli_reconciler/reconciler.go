@@ -68,9 +68,8 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		r.l.Info("Stopping Probe")
 		// r.pm.StopProbe(probes.NewProbeInfo(r.serviceKey, r.nn, r.inst))
 		r.pm.StopProbe(probes.ProbeInfo{
-			Service:   r.serviceKey,
-			Name:      r.nn.Name,
-			Namespace: r.nn.Namespace,
+			Service: r.serviceKey,
+			Name:    r.nn.Name,
 		})
 		return ctrl.Result{}, nil
 	}
@@ -100,6 +99,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	claimNamespace := r.inst.GetLabels()[ClaimNamespaceLabel]
+	instanceNamespace := r.inst.(common.InstanceNamespaceGetter).GetInstanceNamespace()
+
 	probe, err := r.fetchProberFor(ctx, r.inst)
 	// By using the composite the credential secret is available instantly, but initially empty.
 	if err != nil && (apierrors.IsNotFound(err) || err == errNotReady) {
@@ -109,7 +111,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		res.RequeueAfter = 30 * time.Second
 
 		// Create a pobe that will always fail
-		probe, err = probes.NewFailingProbe(r.serviceKey, r.inst.GetName(), r.inst.GetLabels()[ClaimNamespaceLabel], err)
+		probe, err = probes.NewFailingProbe(r.serviceKey, r.inst.GetName(), claimNamespace, instanceNamespace, err)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

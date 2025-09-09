@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	ServiceIDLabel = "metadata.appcat.vshn.io/serviceID"
-	RevisionLabel  = "metadata.appcat.vshn.io/revision"
+	DefaultServiceIDLabel = "metadata.appcat.vshn.io/serviceID"
+	RevisionLabel         = "metadata.appcat.vshn.io/revision"
 )
 
 // Interface for both Claim and Composite objects
@@ -46,15 +46,22 @@ type DefaultVersionHandler struct {
 	ownerKind      string
 	ownerVersion   string
 	serviceId      string
+	serviceIDLabel string
 }
 
 // ReleaserOpts holds all necessary information for a
 // release handler to switch the revisions.
 type ReleaserOpts struct {
-	ClaimName, Composite, ClaimNamespace, Group, Kind, Version, ServiceID string
+	ClaimName, Composite, ClaimNamespace, Group, Kind, Version, ServiceID, ServiceIDLabel string
 }
 
 func NewDefaultVersionHandler(l logr.Logger, opts ReleaserOpts) VersionHandler {
+
+	serviceIDLabel := opts.ServiceIDLabel
+	if serviceIDLabel == "" {
+		serviceIDLabel = DefaultServiceIDLabel
+	}
+
 	return &DefaultVersionHandler{
 		log:            l,
 		claimName:      opts.ClaimName,
@@ -64,6 +71,7 @@ func NewDefaultVersionHandler(l logr.Logger, opts ReleaserOpts) VersionHandler {
 		ownerKind:      opts.Kind,
 		ownerVersion:   opts.Version,
 		serviceId:      opts.ServiceID,
+		serviceIDLabel: serviceIDLabel,
 	}
 }
 
@@ -88,12 +96,12 @@ func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool
 	err := vh.updateClaim(ctx, revision, enabled)
 	if err != nil {
 
-		if apierrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) || (vh.claimName == "" && vh.claimNamespace == "") {
 			err := vh.updateComposite(ctx, revision, enabled)
 			if err != nil {
 				return err
 			}
-			vh.log.Info("Composite updated successfully", ServiceIDLabel, revision)
+			vh.log.Info("Composite updated successfully", RevisionLabel, revision, vh.serviceIDLabel, vh.serviceId)
 			return nil
 		}
 
@@ -120,10 +128,10 @@ func (vh *DefaultVersionHandler) getLatestRevisionLabel(ctx context.Context) (st
 }
 
 func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.CompositionRevision, error) {
-	vh.log.Info("Filtering composition revisions by service id", ServiceIDLabel, vh.serviceId)
+	vh.log.Info("Filtering composition revisions by service id", vh.serviceIDLabel, vh.serviceId)
 	crl := &v1.CompositionRevisionList{}
 	if err := vh.client.List(ctx, crl, client.MatchingLabelsSelector{
-		Selector: labels.SelectorFromSet(labels.Set{ServiceIDLabel: vh.serviceId}),
+		Selector: labels.SelectorFromSet(labels.Set{vh.serviceIDLabel: vh.serviceId}),
 	}); err != nil {
 		return nil, fmt.Errorf("failed to list composition revisions: %w", err)
 	}

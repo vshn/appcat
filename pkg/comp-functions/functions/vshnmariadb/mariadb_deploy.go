@@ -310,7 +310,7 @@ func createUserSettingsConfigMap(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNM
 			Namespace: comp.Status.InstanceNamespace,
 		},
 		Data: map[string]string{
-			extraConfig: comp.Spec.Parameters.Service.MariadbSettings,
+			extraConfig: "[mysqld]\n" + comp.Spec.Parameters.Service.MariadbSettings,
 		},
 	}
 

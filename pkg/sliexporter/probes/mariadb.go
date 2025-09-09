@@ -17,12 +17,13 @@ var _ Prober = MariaDB{}
 type MariaDB struct {
 	db *sql.DB
 
-	Service       string
-	Name          string
-	Namespace     string
-	Organization  string
-	HighAvailable bool
-	ServiceLevel  string
+	Service           string
+	Name              string
+	ClaimNamespace    string
+	InstanceNamespace string
+	Organization      string
+	HighAvailable     bool
+	ServiceLevel      string
 }
 
 // Close closes open connections to the MariaDB server.
@@ -36,12 +37,13 @@ func (p MariaDB) Close() error {
 // GetInfo returns the prober infos
 func (p MariaDB) GetInfo() ProbeInfo {
 	return ProbeInfo{
-		Service:       p.Service,
-		Name:          p.Name,
-		Namespace:     p.Namespace,
-		Organization:  p.Organization,
-		HighAvailable: p.HighAvailable,
-		ServiceLevel:  p.ServiceLevel,
+		Service:           p.Service,
+		Name:              p.Name,
+		ClaimNamespace:    p.ClaimNamespace,
+		InstanceNamespace: p.InstanceNamespace,
+		Organization:      p.Organization,
+		HighAvailable:     p.HighAvailable,
+		ServiceLevel:      p.ServiceLevel,
 	}
 }
 
@@ -56,7 +58,7 @@ func (p MariaDB) Probe(ctx context.Context) error {
 }
 
 // NewMariaDB connects to the provided dsn and returns a prober
-func NewMariaDB(service, name, namespace, dsn, organization, caCRT, serviceLevel string, ha, TLSEnabled bool) (*MariaDB, error) {
+func NewMariaDB(service, name, claimNamespace, instanceNamespace, dsn, organization, caCRT, serviceLevel string, ha, TLSEnabled bool) (*MariaDB, error) {
 	// regardless of the TLS setting, ca.crt is present in connection secret, therefore, it's safe to keep self-signed cert in a pool
 	rootCAs := x509.NewCertPool()
 	// open connection to MariaDB
@@ -78,22 +80,24 @@ func NewMariaDB(service, name, namespace, dsn, organization, caCRT, serviceLevel
 	}
 
 	return &MariaDB{
-		db:            db,
-		Service:       service,
-		Name:          name,
-		Namespace:     namespace,
-		Organization:  organization,
-		HighAvailable: ha,
-		ServiceLevel:  serviceLevel,
+		db:                db,
+		Service:           service,
+		Name:              name,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
+		Organization:      organization,
+		HighAvailable:     ha,
+		ServiceLevel:      serviceLevel,
 	}, nil
 }
 
 // NewFailingMariaDB creates a prober that will fail.
 // Can be used if the controller can't access valid credentials.
-func NewFailingMariaDB(service, name, namespace string) (*MariaDB, error) {
+func NewFailingMariaDB(service, name, claimNamespace, instanceNamespace string) (*MariaDB, error) {
 	return &MariaDB{
-		Service:   service,
-		Name:      name,
-		Namespace: namespace,
+		Service:           service,
+		Name:              name,
+		ClaimNamespace:    claimNamespace,
+		InstanceNamespace: instanceNamespace,
 	}, nil
 }

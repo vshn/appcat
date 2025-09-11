@@ -18,6 +18,9 @@ type TLSOptions struct {
 	// AdditionalSans is a list of additional SANs that should get added to the
 	// certificate
 	AdditionalSans []string
+	// AdditionalOutputFormats is a list of additional output formats for the issued
+	// certificate
+	AdditionalOutputFormats []cmv1.CertificateAdditionalOutputFormat
 	// IssuerOptions is a list of additional functions that manipulate the Issuer resource
 	IssuerOptions []IssuerOption
 	// CertOptions is a list of additional functions that manipulate the Certificate resource
@@ -139,13 +142,19 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 		return serverCertsSecret, err
 	}
 
+	certificateAdditionalOutputFormats := []cmv1.CertificateAdditionalOutputFormat{}
+	if opts != nil {
+		certificateAdditionalOutputFormats = opts.AdditionalOutputFormats
+	}
+
 	serverCert := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceName + "-server",
 			Namespace: ns,
 		},
 		Spec: cmv1.CertificateSpec{
-			SecretName: serverCertsSecret,
+			SecretName:              serverCertsSecret,
+			AdditionalOutputFormats: certificateAdditionalOutputFormats,
 			Duration: &metav1.Duration{
 				Duration: time.Duration(87600 * time.Hour),
 			},

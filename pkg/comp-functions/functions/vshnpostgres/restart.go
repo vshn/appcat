@@ -29,6 +29,12 @@ func transformRestart(ctx context.Context, svc *runtime.ServiceRuntime, now func
 	if err != nil {
 		return runtime.NewFatalResult(err)
 	}
+
+	if comp.Spec.Parameters.UseCNPG {
+		svc.Log.Info("Skipping transformRestart because we're using CNPG")
+		return nil
+	}
+
 	err = keepRecentRestartOps(ctx, svc, comp.GetName(), now)
 	if err != nil {
 		return runtime.NewFatalResult(err)

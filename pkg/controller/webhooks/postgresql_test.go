@@ -330,7 +330,12 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
 		Raw: []byte(`{"foo": "bar", "fsync": "bar", "wal_level": "foo", "max_connections": "bar"}`),
 	}
+	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
+	assert.Error(t, err)
 
+	// check useCnpg immutability
+	pgInvalid = pgOrig.DeepCopy()
+	pgInvalid.Spec.Parameters.UseCNPG = true
 	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
 	assert.Error(t, err)
 }

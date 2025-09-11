@@ -135,6 +135,14 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 			return nil, nil
 		}
 
+		// Enforce UseCNPG immutability
+		if newPg.Spec.Parameters.UseCNPG != oldObj.(*vshnv1.VSHNPostgreSQL).Spec.Parameters.UseCNPG {
+			allErrs = append(allErrs, field.Forbidden(
+				field.NewPath("spec.parameters.useCnpg"),
+				"the method of deployment can only be set on creation",
+			))
+		}
+
 		// Validate major upgrades
 		if errList := validateMajorVersionUpgrade(newPg, oldPg); errList != nil {
 			allErrs = append(allErrs, errList...)

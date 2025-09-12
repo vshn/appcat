@@ -125,9 +125,11 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		return runtime.NewWarningResult(fmt.Errorf("cannot set the minor version for the PostgreSQL instance: %w", err).Error())
 	}
 
-	backups := *cluster.Spec.Configurations.Backups
-	backups[0].CronSchedule = ptr.To(comp.GetBackupSchedule())
-	cluster.Spec.Configurations.Backups = &backups
+	if cluster.Spec.Configurations.Backups != nil && len(*cluster.Spec.Configurations.Backups) > 0 {
+		backups := *cluster.Spec.Configurations.Backups
+		backups[0].CronSchedule = ptr.To(comp.GetBackupSchedule())
+		cluster.Spec.Configurations.Backups = &backups
+	}
 
 	err = svc.SetDesiredKubeObjectWithName(cluster, comp.GetName()+"-cluster", "cluster")
 	if err != nil {

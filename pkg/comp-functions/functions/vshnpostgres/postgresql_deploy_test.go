@@ -145,6 +145,30 @@ func TestPostgreSqlDeployWithRestore(t *testing.T) {
 	assert.Equal(t, comp.GetClaimNamespace(), copyJob.Spec.Template.Spec.Containers[0].Env[0].Value)
 }
 
+func TestPostgreSqlDeployWithBackupDisabled(t *testing.T) {
+	svc, comp := getPostgreSqlComp(t, "vshn-postgres/deploy/01_default.yaml")
+
+	// Disable backups
+	enabled := false
+	comp.Spec.Parameters.Backup.Enabled = &enabled
+
+	ctx := context.TODO()
+
+	assert.Nil(t, DeployPostgreSQL(ctx, comp, svc))
+
+	// SGCluster should not have backup configuration
+	cluster := &sgv1.SGCluster{}
+	assert.NoError(t, svc.GetDesiredKubeObject(cluster, "cluster"))
+	assert.Nil(t, cluster.Spec.Configurations.Backups)
+
+	// Other resources should still be created
+	ns := &corev1.Namespace{}
+	assert.NoError(t, svc.GetDesiredKubeObject(ns, "namespace-conditions"))
+
+	sgInstanceProfile := &sgv1.SGInstanceProfile{}
+	assert.NoError(t, svc.GetDesiredKubeObject(sgInstanceProfile, "profile"))
+}
+
 func getPostgreSqlComp(t *testing.T, file string) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQL) {
 	svc := commontest.LoadRuntimeFromFile(t, file)
 

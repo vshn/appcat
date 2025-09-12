@@ -18,7 +18,7 @@ func GetBucketObjectName(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBuc
 
 	err := svc.GetObservedComposedResource(obj, resName)
 	if err != nil {
-		return bucket.Spec.Parameters.BucketName
+		return bucket.GetBucketName()
 	}
 
 	return obj.GetName()

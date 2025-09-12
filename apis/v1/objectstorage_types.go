@@ -42,13 +42,12 @@ type ObjectBucketSpec struct {
 
 // ObjectBucketParameters are the configurable fields of a ObjectBucket.
 type ObjectBucketParameters struct {
-	// +kubebuilder:validation:Required
-
 	// BucketName is the name of the bucket to create.
+	// If not set, the composite name will be used.
 	// Cannot be changed after bucket is created.
 	// Name must be acceptable by the S3 protocol, which follows RFC 1123.
 	// Be aware that S3 providers may require a unique name across the platform or region.
-	BucketName string `json:"bucketName"`
+	BucketName string `json:"bucketName,omitempty"`
 
 	// Region is the name of the region where the bucket shall be created.
 	// The region must be available in the S3 endpoint.
@@ -102,4 +101,13 @@ type NamespacedName struct {
 
 func (v *ObjectBucket) GetSecurity() *vshnv1.Security {
 	return &v.Spec.Parameters.Security
+}
+
+// GetBucketName returns the effective bucket name.
+// If bucketName is specified, it returns that, otherwise it returns the composite name.
+func (v *ObjectBucket) GetBucketName() string {
+	if v.Spec.Parameters.BucketName != "" {
+		return v.Spec.Parameters.BucketName
+	}
+	return v.GetName()
 }

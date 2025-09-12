@@ -22,6 +22,15 @@ func ProvisionMiniobucket(_ context.Context, bucket *appcatv1.ObjectBucket, svc 
 		return runtime.NewFatalResult(err)
 	}
 
+	// Populate bucketName in spec if it's empty (using composite name)
+	if bucket.Spec.Parameters.BucketName == "" {
+		bucket.Spec.Parameters.BucketName = bucket.GetName()
+		err = svc.SetDesiredCompositeStatus(bucket)
+		if err != nil {
+			return runtime.NewFatalResult(err)
+		}
+	}
+
 	config, ok := svc.Config.Data["providerConfig"]
 	if !ok {
 		return runtime.NewFatalResult(fmt.Errorf("no providerConfig specified"))
@@ -42,7 +51,7 @@ func ProvisionMiniobucket(_ context.Context, bucket *appcatv1.ObjectBucket, svc 
 		return runtime.NewFatalResult(err)
 	}
 
-	svc.SetConnectionDetail("BUCKET_NAME", []byte(bucket.Spec.Parameters.BucketName))
+	svc.SetConnectionDetail("BUCKET_NAME", []byte(bucket.GetBucketName()))
 	svc.SetConnectionDetail("AWS_REGION", []byte(bucket.Spec.Parameters.Region))
 
 	err = populateEndpointConnectionDetails(svc)
@@ -57,7 +66,7 @@ func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 
 	mb := &miniov1.Bucket{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: bucket.Spec.Parameters.BucketName,
+			Name: bucket.GetBucketName(),
 		},
 		Spec: miniov1.BucketSpec{
 			ForProvider: miniov1.BucketParameters{
@@ -78,7 +87,7 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 
 	user := &miniov1.User{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: bucket.Spec.Parameters.BucketName,
+			Name: bucket.GetBucketName(),
 			Annotations: map[string]string{
 				runtime.IgnoreConnectionDetailsAnnotation: "true",
 			},
@@ -95,7 +104,7 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 			},
 			ForProvider: miniov1.UserParameters{
 				Policies: []string{
-					bucket.Spec.Parameters.BucketName,
+					bucket.GetBucketName(),
 				},
 			},
 		},
@@ -117,7 +126,7 @@ func addPolicy(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 
 	policy := &miniov1.Policy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: bucket.Spec.Parameters.BucketName,
+			Name: bucket.GetBucketName(),
 		},
 		Spec: miniov1.PolicySpec{
 			ResourceSpec: xpv1.ResourceSpec{
@@ -126,7 +135,7 @@ func addPolicy(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 				},
 			},
 			ForProvider: miniov1.PolicyParameters{
-				AllowBucket: bucket.Spec.Parameters.BucketName,
+				AllowBucket: bucket.GetBucketName(),
 			},
 		},
 	}

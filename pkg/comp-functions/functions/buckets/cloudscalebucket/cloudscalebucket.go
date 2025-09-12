@@ -29,6 +29,15 @@ func ProvisionCloudscalebucket(_ context.Context, bucket *appcatv1.ObjectBucket,
 		return runtime.NewFatalResult(err)
 	}
 
+	// Populate bucketName in spec if it's empty (using composite name)
+	if bucket.Spec.Parameters.BucketName == "" {
+		bucket.Spec.Parameters.BucketName = bucket.GetName()
+		err = svc.SetDesiredCompositeStatus(bucket)
+		if err != nil {
+			return runtime.NewFatalResult(err)
+		}
+	}
+
 	config, ok := svc.Config.Data["providerConfig"]
 	if !ok {
 		return runtime.NewFatalResult(fmt.Errorf("no providerConfig specified"))
@@ -44,7 +53,7 @@ func ProvisionCloudscalebucket(_ context.Context, bucket *appcatv1.ObjectBucket,
 		return runtime.NewFatalResult(err)
 	}
 
-	svc.SetConnectionDetail("BUCKET_NAME", []byte(bucket.Spec.Parameters.BucketName))
+	svc.SetConnectionDetail("BUCKET_NAME", []byte(bucket.GetBucketName()))
 	svc.SetConnectionDetail("AWS_REGION", []byte(bucket.Spec.Parameters.Region))
 
 	err = populateEndpointConnectionDetails(svc)
@@ -63,7 +72,7 @@ func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 			ForProvider: cloudscalev1.BucketParameters{
 				BucketDeletionPolicy: cloudscalev1.BucketDeletionPolicy(bucket.Spec.Parameters.BucketDeletionPolicy),
 				Region:               bucket.Spec.Parameters.Region,
-				BucketName:           bucket.Spec.Parameters.BucketName,
+				BucketName:           bucket.GetBucketName(),
 				CredentialsSecretRef: v1.SecretReference{
 					Namespace: svc.Config.Data["providerSecretNamespace"],
 				},

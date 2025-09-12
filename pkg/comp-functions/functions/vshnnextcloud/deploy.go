@@ -679,6 +679,13 @@ func configureCronSidecar(values map[string]interface{}, version string, svc *ru
 			"command": []any{
 				"/cron.sh",
 			},
+			"securityContext": map[string]interface{}{
+				"capabilities": map[string]interface{}{
+					"add": []string{
+						"SETGID",
+					},
+				},
+			},
 			"image": image,
 			"volumeMounts": []any{
 				map[string]any{

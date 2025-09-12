@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -772,6 +772,10 @@ func setBackgroundJobMaintenance(t vshnv1.TimeOfDay, nextcloudConfig string) str
 }
 
 func createClusterRoleBinding(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	if !svc.GetBoolFromCompositionConfig("isOpenshift") {
+		return nil
+	}
+
 	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName(),

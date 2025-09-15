@@ -99,11 +99,6 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	if comp.Spec.Parameters.UseCNPG {
-		svc.Log.Info("Using CNPG, not setting up maintenance job")
-		return nil
-	}
-
 	instanceNamespace := getInstanceNamespace(comp)
 	sgNamespace := svc.Config.Data["sgNamespace"]
 	schedule := comp.GetFullMaintenanceSchedule()

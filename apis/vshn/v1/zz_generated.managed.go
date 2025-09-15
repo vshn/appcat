@@ -64,6 +64,66 @@ func (mg *VSHNPostgreSQL) SetWriteConnectionSecretToReference(r *xpv1.SecretRefe
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 
+// GetCondition of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetDeletionPolicy of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) GetDeletionPolicy() xpv1.DeletionPolicy {
+	return mg.Spec.DeletionPolicy
+}
+
+// GetManagementPolicies of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) GetManagementPolicies() xpv1.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// GetProviderConfigReference of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) GetProviderConfigReference() *xpv1.Reference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// GetPublishConnectionDetailsTo of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
+	return mg.Spec.PublishConnectionDetailsTo
+}
+
+// GetWriteConnectionSecretToReference of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetDeletionPolicy of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+	mg.Spec.DeletionPolicy = r
+}
+
+// SetManagementPolicies of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) SetManagementPolicies(r xpv1.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// SetProviderConfigReference of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) SetProviderConfigReference(r *xpv1.Reference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// SetPublishConnectionDetailsTo of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
+	mg.Spec.PublishConnectionDetailsTo = r
+}
+
+// SetWriteConnectionSecretToReference of this VSHNPostgreSQLCNPG.
+func (mg *VSHNPostgreSQLCNPG) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
 // GetCondition of this XVSHNForgejo.
 func (mg *XVSHNForgejo) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
 	return mg.Status.GetCondition(ct)
@@ -421,6 +481,66 @@ func (mg *XVSHNPostgreSQL) SetPublishConnectionDetailsTo(r *xpv1.PublishConnecti
 
 // SetWriteConnectionSecretToReference of this XVSHNPostgreSQL.
 func (mg *XVSHNPostgreSQL) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
+// GetCondition of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetDeletionPolicy of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) GetDeletionPolicy() xpv1.DeletionPolicy {
+	return mg.Spec.DeletionPolicy
+}
+
+// GetManagementPolicies of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) GetManagementPolicies() xpv1.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// GetProviderConfigReference of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) GetProviderConfigReference() *xpv1.Reference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// GetPublishConnectionDetailsTo of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
+	return mg.Spec.PublishConnectionDetailsTo
+}
+
+// GetWriteConnectionSecretToReference of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetDeletionPolicy of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+	mg.Spec.DeletionPolicy = r
+}
+
+// SetManagementPolicies of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) SetManagementPolicies(r xpv1.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// SetProviderConfigReference of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) SetProviderConfigReference(r *xpv1.Reference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// SetPublishConnectionDetailsTo of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
+	mg.Spec.PublishConnectionDetailsTo = r
+}
+
+// SetWriteConnectionSecretToReference of this XVSHNPostgreSQLCNPG.
+func (mg *XVSHNPostgreSQLCNPG) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 

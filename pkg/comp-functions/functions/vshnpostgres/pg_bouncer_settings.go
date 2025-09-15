@@ -20,10 +20,6 @@ func addPGBouncerSettings(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
 	}
-	if comp.Spec.Parameters.UseCNPG {
-		svc.Log.Info("Skipping addPGBouncerSettings because we're using CNPG")
-		return nil
-	}
 
 	comp, err = getVSHNPostgreSQL(ctx, svc)
 	if err != nil {

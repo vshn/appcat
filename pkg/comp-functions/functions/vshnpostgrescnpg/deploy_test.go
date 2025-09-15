@@ -1,4 +1,4 @@
-package vshnpostgres
+package vshnpostgrescnpg
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
@@ -64,8 +65,17 @@ func Test_sizing(t *testing.T) {
 }
 
 // Obtain svc and comp for CNPG tests
-func getSvcCompCnpg(testing *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQL) {
+func getSvcCompCnpg(testing *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQLCNPG) {
 	svc, comp := getPostgreSqlComp(testing, testingPath)
-	comp.Spec.Parameters.UseCNPG = true
+	return svc, comp
+}
+
+func getPostgreSqlComp(t *testing.T, file string) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQLCNPG) {
+	svc := commontest.LoadRuntimeFromFile(t, file)
+
+	comp := &vshnv1.VSHNPostgreSQLCNPG{}
+	err := svc.GetObservedComposite(comp)
+	assert.NoError(t, err)
+
 	return svc, comp
 }

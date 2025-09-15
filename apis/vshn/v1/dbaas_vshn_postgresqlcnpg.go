@@ -4,52 +4,45 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Workaround to make nested defaulting work.
 // kubebuilder is unable to set a {} default
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.tls.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.maintenance.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqls.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqlcnpgs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqlcnpgs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqlcnpgs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqlcnpgs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.tls.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqlcnpgs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqlcnpgs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.maintenance.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnpostgresqlcnpgs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
 
 // +kubebuilder:object:root=true
 
-// VSHNPostgreSQL is the API for creating Postgresql clusters.
-type VSHNPostgreSQL struct {
+// VSHNPostgreSQLCNPG is the API for creating Postgresql clusters.
+type VSHNPostgreSQLCNPG struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec defines the desired state of a VSHNPostgreSQL.
-	Spec VSHNPostgreSQLSpec `json:"spec"`
+	// Spec defines the desired state of a VSHNPostgreSQLCNPG.
+	Spec VSHNPostgreSQLCNPGSpec `json:"spec"`
 
-	// Status reflects the observed state of a VSHNPostgreSQL.
-	Status VSHNPostgreSQLStatus `json:"status,omitempty"`
+	// Status reflects the observed state of a VSHNPostgreSQLCNPG.
+	Status VSHNPostgreSQLCNPGStatus `json:"status,omitempty"`
 }
 
-// VSHNPostgreSQLSpec defines the desired state of a VSHNPostgreSQL.
-type VSHNPostgreSQLSpec struct {
-	// Parameters are the configurable fields of a VSHNPostgreSQL.
-	Parameters        VSHNPostgreSQLParameters `json:"parameters,omitempty"`
-	CompositionRef    crossplaneCompositionRef `json:"compositionRef,omitempty"`
+// VSHNPostgreSQLCNPGSpec defines the desired state of a VSHNPostgreSQLCNPG.
+type VSHNPostgreSQLCNPGSpec struct {
+	// Parameters are the configurable fields of a VSHNPostgreSQLCNPG.
+	Parameters        VSHNPostgreSQLCNPGParameters `json:"parameters,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 
-// Crossplane composition reference
-type crossplaneCompositionRef struct {
-	Name string `json:"name"`
-}
-
-// VSHNPostgreSQLParameters are the configurable fields of a VSHNPostgreSQL.
-type VSHNPostgreSQLParameters struct {
+// VSHNPostgreSQLCNPGParameters are the configurable fields of a VSHNPostgreSQLCNPG.
+type VSHNPostgreSQLCNPGParameters struct {
 	// Service contains PostgreSQL DBaaS specific properties
-	Service VSHNPostgreSQLServiceSpec `json:"service,omitempty"`
+	Service VSHNPostgreSQLCNPGServiceSpec `json:"service,omitempty"`
 
 	// Maintenance contains settings to control the maintenance of an instance.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`
@@ -64,19 +57,19 @@ type VSHNPostgreSQLParameters struct {
 	Network VSHNDBaaSNetworkSpec `json:"network,omitempty"`
 
 	// Backup contains settings to control the backups of an instance.
-	Backup VSHNPostgreSQLBackup `json:"backup,omitempty"`
+	Backup VSHNPostgreSQLCNPGBackup `json:"backup,omitempty"`
 
 	// Restore contains settings to control the restore of an instance.
-	Restore *VSHNPostgreSQLRestore `json:"restore,omitempty"`
+	Restore *VSHNPostgreSQLCNPGRestore `json:"restore,omitempty"`
 
 	// Monitoring contains settings to control monitoring.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
 	// Encryption contains settings to control the storage encryption of an instance.
-	Encryption VSHNPostgreSQLEncryption `json:"encryption,omitempty"`
+	Encryption VSHNPostgreSQLCNPGEncryption `json:"encryption,omitempty"`
 
 	// UpdateStrategy indicates when updates to the instance spec will be applied.
-	UpdateStrategy VSHNPostgreSQLUpdateStrategy `json:"updateStrategy,omitempty"`
+	UpdateStrategy VSHNPostgreSQLCNPGUpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=1
@@ -87,40 +80,15 @@ type VSHNPostgreSQLParameters struct {
 	// Out of all Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
 	Instances int `json:"instances,omitempty"`
 
-	// This section allows to configure Postgres replication mode and HA roles groups.
-	//
-	// The main replication group is implicit and contains the total number of instances less the sum of all instances in other replication groups.
-	Replication VSHNPostgreSQLReplicationStrategy `json:"replication,omitempty"`
-
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
 }
 
-type VSHNPostgreSQLReplicationStrategy struct {
-	// +kubebuilder:validation:Enum="async";"sync";"strict-sync"
+const VSHNPostgreSQLCNPGUpdateStrategyTypeImmediate = "Immediate"
+const VSHNPostgreSQLCNPGUpdateStrategyTypeOnRestart = "OnRestart"
 
-	// Mode defines the replication mode applied to the whole cluster. Possible values are: "async"(default), "sync", and "strict-sync"
-	//
-	// "async": When in asynchronous mode the cluster is allowed to lose some committed transactions.
-	// When the primary server fails or becomes unavailable for any other reason a sufficiently healthy standby will automatically be promoted to primary.
-	// Any transactions that have not been replicated to that standby remain in a “forked timeline” on the primary, and are effectively unrecoverable
-	//
-	// "sync": When in synchronous mode a standby will not be promoted unless it is certain that the standby contains all transactions that may have returned a successful commit status to client.
-	//  This means that the system may be unavailable for writes even though some servers are available.
-	//
-	// "strict-sync": When it is absolutely necessary to guarantee that each write is stored durably on at least two nodes, use the strict synchronous mode.
-	// This mode prevents synchronous replication to be switched off on the primary when no synchronous standby candidates are available.
-	// As a downside, the primary will not be available for writes, blocking all client write requests until at least one synchronous replica comes up.
-	//
-	// NOTE: We recommend to always use three intances when setting the mode to "strict-sync".
-	Mode string `json:"mode,omitempty"`
-}
-
-const VSHNPostgreSQLUpdateStrategyTypeImmediate = "Immediate"
-const VSHNPostgreSQLUpdateStrategyTypeOnRestart = "OnRestart"
-
-// VSHNPostgreSQLUpdateStrategy indicates how and when updates to the instance spec will be applied.
-type VSHNPostgreSQLUpdateStrategy struct {
+// VSHNPostgreSQLCNPGUpdateStrategy indicates how and when updates to the instance spec will be applied.
+type VSHNPostgreSQLCNPGUpdateStrategy struct {
 	// +kubebuilder:validation:Enum="Immediate";"OnRestart"
 	// +kubebuilder:default="Immediate"
 
@@ -131,62 +99,26 @@ type VSHNPostgreSQLUpdateStrategy struct {
 	Type string `json:"type,omitempty"`
 }
 
-// VSHNPostgreSQLServiceSpec contains PostgreSQL DBaaS specific properties
-type VSHNPostgreSQLServiceSpec struct {
+// VSHNPostgreSQLCNPGServiceSpec contains PostgreSQL DBaaS specific properties
+type VSHNPostgreSQLCNPGServiceSpec struct {
 	// +kubebuilder:validation:Enum="12";"13";"14";"15";"16";"17"
 	// +kubebuilder:default="15"
 
 	// MajorVersion contains supported version of PostgreSQL.
 	// Multiple versions are supported. The latest version "15" is the default version.
-	// Currently it's impossible to change the version of an existing instance - we're working on it.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
 	// PGSettings contains additional PostgreSQL settings.
 	PostgreSQLSettings runtime.RawExtension `json:"pgSettings,omitempty"`
-
-	// Extensions allow to enable/disable any of the supported
-	Extensions []VSHNDBaaSPostgresExtension `json:"extensions,omitempty"`
 
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
 	// +kubebuilder:default="besteffort"
 
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
-
-	// PgBouncerSettings passes additional configuration to the pgBouncer instance.
-	PgBouncerSettings *sgv1.SGPoolingConfigSpecPgBouncerPgbouncerIni `json:"pgBouncerSettings,omitempty"`
-
-	// Disable connection pooling service PgBouncer. All connections will go straight to PostgreSQL instance.
-	// +kubebuilder:default=false
-	DisablePgBouncer bool `json:"disablePgBouncer,omitempty"`
-
-	// +kubebuilder:default=true
-	// This is default option if neither repack or vacuum are selected
-	RepackEnabled bool `json:"repackEnabled,omitempty"`
-	// +kubebuilder:default=false
-	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
-
-	// Access defines additional users and databases for this instance.
-	Access []VSHNAccess `json:"access,omitempty"`
-
-	// TLS settings for the instance.
-	TLS VSHNPostgreSQLTLS `json:"tls,omitempty"`
 }
 
-// VSHNDBaaSPostgresExtension contains the name of a single extension.
-type VSHNDBaaSPostgresExtension struct {
-	// Name is the name of the extension to enable.
-	// For an extensive list, please consult https://stackgres.io/doc/latest/intro/extensions/
-	Name string `json:"name,omitempty"`
-}
-
-type VSHNPostgreSQLBackup struct {
-	// Enabled specifies if automatic backups are enabled for the instance.
-	// If disabled, no backup bucket, repository password, or K8up schedule will be deployed.
-	// This also disables WAL (Write-Ahead Logging) archiving to reduce costs.
-	// +kubebuilder:default=true
-	Enabled *bool `json:"enabled,omitempty"`
-
+type VSHNPostgreSQLCNPGBackup struct {
 	// +kubebuilder:validation:Pattern=^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
 	Schedule string `json:"schedule,omitempty"`
 
@@ -198,8 +130,7 @@ type VSHNPostgreSQLBackup struct {
 	// DeletionProtection will protect the instance from being deleted for the given retention time.
 	// This is enabled by default.
 	// +kubebuilder:default=true
-	// +kubebuilder:validation:Optional
-	DeletionProtection *bool `json:"deletionProtection"`
+	DeletionProtection *bool `json:"deletionProtection,omitempty"`
 
 	// DeletionRetention specifies in days how long the instance should be kept after deletion.
 	// The default is keeping it one week.
@@ -208,22 +139,17 @@ type VSHNPostgreSQLBackup struct {
 }
 
 // GetBackupSchedule gets the currently set schedule
-func (v *VSHNPostgreSQLBackup) GetBackupSchedule() string {
+func (v *VSHNPostgreSQLCNPGBackup) GetBackupSchedule() string {
 	return v.Schedule
 }
 
 // SetBackupSchedule sets the schedule to the given value
-func (v *VSHNPostgreSQLBackup) SetBackupSchedule(schedule string) {
+func (v *VSHNPostgreSQLCNPGBackup) SetBackupSchedule(schedule string) {
 	v.Schedule = schedule
 }
 
-// IsEnabled returns true if backups are enabled. Defaults to true if not explicitly set.
-func (v *VSHNPostgreSQLBackup) IsEnabled() bool {
-	return v.Enabled == nil || *v.Enabled
-}
-
-// VSHNPostgreSQLRestore contains restore specific parameters.
-type VSHNPostgreSQLRestore struct {
+// VSHNPostgreSQLCNPGRestore contains restore specific parameters.
+type VSHNPostgreSQLCNPGRestore struct {
 
 	// ClaimName specifies the name of the instance you want to restore from.
 	// The claim has to be in the same namespace as this new instance.
@@ -241,27 +167,27 @@ type VSHNPostgreSQLRestore struct {
 	RecoveryTimeStamp string `json:"recoveryTimeStamp,omitempty"`
 }
 
-func (v *VSHNPostgreSQL) GetVSHNMonitoring() VSHNMonitoring {
+func (v *VSHNPostgreSQLCNPG) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
-// VSHNPostgreSQLEncryption contains storage encryption specific parameters
-type VSHNPostgreSQLEncryption struct {
+// VSHNPostgreSQLCNPGEncryption contains storage encryption specific parameters
+type VSHNPostgreSQLCNPGEncryption struct {
 
 	// Enabled specifies if the instance should use encrypted storage for the instance.
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-// VSHNPostgreSQLTLS contains TLS specific parameters
-type VSHNPostgreSQLTLS struct {
+// VSHNPostgreSQLCNPGTLS contains TLS specific parameters
+type VSHNPostgreSQLCNPGTLS struct {
 	// Enabled specifies if the instance should use TLS for the instance.
 	// This change takes effect immediately and does not require a restart of the database.
 	// +kubebuilder:default=true
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-// VSHNPostgreSQLStatus reflects the observed state of a VSHNPostgreSQL.
-type VSHNPostgreSQLStatus struct {
+// VSHNPostgreSQLCNPGStatus reflects the observed state of a VSHNPostgreSQLCNPG.
+type VSHNPostgreSQLCNPGStatus struct {
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 
@@ -293,26 +219,26 @@ type VSHNPostgreSQLStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
 }
 
-func (v *VSHNPostgreSQL) GetClaimNamespace() string {
+func (v *VSHNPostgreSQLCNPG) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
-func (v *VSHNPostgreSQL) GetClaimName() string {
+func (v *VSHNPostgreSQLCNPG) GetClaimName() string {
 	return v.GetLabels()["crossplane.io/claim-name"]
 }
 
 // +kubebuilder:object:root=true
 
-// VSHNPostgreSQLList defines a list of VSHNPostgreSQL
-type VSHNPostgreSQLList struct {
+// VSHNPostgreSQLCNPGList defines a list of VSHNPostgreSQLCNPG
+type VSHNPostgreSQLCNPGList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []VSHNPostgreSQL `json:"items"`
+	Items []VSHNPostgreSQLCNPG `json:"items"`
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
-func (v *VSHNPostgreSQL) GetMaintenanceDayOfWeek() string {
+func (v *VSHNPostgreSQLCNPG) GetMaintenanceDayOfWeek() string {
 	if v.Spec.Parameters.Maintenance.DayOfWeek != "" {
 		return v.Spec.Parameters.Maintenance.DayOfWeek
 	}
@@ -320,7 +246,7 @@ func (v *VSHNPostgreSQL) GetMaintenanceDayOfWeek() string {
 }
 
 // GetMaintenanceTimeOfDay returns the currently set time of day
-func (v *VSHNPostgreSQL) GetMaintenanceTimeOfDay() *TimeOfDay {
+func (v *VSHNPostgreSQLCNPG) GetMaintenanceTimeOfDay() *TimeOfDay {
 	if v.Spec.Parameters.Maintenance.TimeOfDay != "" {
 		return &v.Spec.Parameters.Maintenance.TimeOfDay
 	}
@@ -328,17 +254,17 @@ func (v *VSHNPostgreSQL) GetMaintenanceTimeOfDay() *TimeOfDay {
 }
 
 // SetMaintenanceDayOfWeek sets the day of week to the given value
-func (v *VSHNPostgreSQL) SetMaintenanceDayOfWeek(dow string) {
+func (v *VSHNPostgreSQLCNPG) SetMaintenanceDayOfWeek(dow string) {
 	v.Status.Schedules.Maintenance.DayOfWeek = dow
 }
 
 // SetMaintenanceTimeOfDay sets the time of day to the given value
-func (v *VSHNPostgreSQL) SetMaintenanceTimeOfDay(tod TimeOfDay) {
+func (v *VSHNPostgreSQLCNPG) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	v.Status.Schedules.Maintenance.TimeOfDay = tod
 }
 
 // GetBackupSchedule returns the current backup schedule
-func (v *VSHNPostgreSQL) GetBackupSchedule() string {
+func (v *VSHNPostgreSQLCNPG) GetBackupSchedule() string {
 	if v.Spec.Parameters.Backup.Schedule != "" {
 		return v.Spec.Parameters.Backup.Schedule
 	}
@@ -346,12 +272,12 @@ func (v *VSHNPostgreSQL) GetBackupSchedule() string {
 }
 
 // SetBackupSchedule overwrites the current backup schedule
-func (v *VSHNPostgreSQL) SetBackupSchedule(schedule string) {
+func (v *VSHNPostgreSQLCNPG) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
 }
 
 // GetFullMaintenanceSchedule returns
-func (v *VSHNPostgreSQL) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
+func (v *VSHNPostgreSQLCNPG) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSpec {
 	schedule := v.Spec.Parameters.Maintenance
 	schedule.DayOfWeek = v.GetMaintenanceDayOfWeek()
 	schedule.TimeOfDay = *v.GetMaintenanceTimeOfDay()
@@ -361,111 +287,106 @@ func (v *VSHNPostgreSQL) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceSchedu
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
-// XVSHNPostgreSQL represents the internal composite of this claim
-type XVSHNPostgreSQL struct {
+// XVSHNPostgreSQLCNPG represents the internal composite of this claim
+type XVSHNPostgreSQLCNPG struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   XVSHNPostgreSQLSpec   `json:"spec"`
-	Status XVSHNPostgreSQLStatus `json:"status,omitempty"`
+	Spec   XVSHNPostgreSQLCNPGSpec   `json:"spec"`
+	Status XVSHNPostgreSQLCNPGStatus `json:"status,omitempty"`
 }
 
-type XVSHNPostgreSQLStatus struct {
-	VSHNPostgreSQLStatus `json:",inline"`
-	xpv1.ResourceStatus  `json:",inline"`
+type XVSHNPostgreSQLCNPGStatus struct {
+	VSHNPostgreSQLCNPGStatus `json:",inline"`
+	xpv1.ResourceStatus      `json:",inline"`
 }
 
-type XVSHNPostgreSQLSpec struct {
-	// Parameters are the configurable fields of a VSHNPostgreSQL.
-	Parameters        VSHNPostgreSQLParameters `json:"parameters,omitempty"`
+type XVSHNPostgreSQLCNPGSpec struct {
+	// Parameters are the configurable fields of a VSHNPostgreSQLCNPG.
+	Parameters        VSHNPostgreSQLCNPGParameters `json:"parameters,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
-// XVSHNPostgreSQLList represents a list of composites
-type XVSHNPostgreSQLList struct {
+// XVSHNPostgreSQLCNPGList represents a list of composites
+type XVSHNPostgreSQLCNPGList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []XVSHNPostgreSQL `json:"items"`
+	Items []XVSHNPostgreSQLCNPG `json:"items"`
 }
 
-func (v *VSHNPostgreSQL) GetInstanceNamespace() string {
+func (v *VSHNPostgreSQLCNPG) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", v.GetName())
 }
 
-func (v *VSHNPostgreSQL) SetInstanceNamespaceStatus() {
+func (v *VSHNPostgreSQLCNPG) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
-func (v *XVSHNPostgreSQL) GetInstanceNamespace() string {
+func (v *XVSHNPostgreSQLCNPG) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", v.GetName())
 }
 
 // GetBackupRetention returns the retention definition for this backup.
-func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
+func (v *VSHNPostgreSQLCNPG) GetBackupRetention() K8upRetentionPolicy {
 	return K8upRetentionPolicy{}
 }
 
 // GetServiceName returns the name of this service
-func (v *VSHNPostgreSQL) GetServiceName() string {
+func (v *VSHNPostgreSQLCNPG) GetServiceName() string {
 	return "postgresql"
 }
 
 // GetAllowAllNamespaces returns the AllowAllNamespaces field of this service
-func (v *VSHNPostgreSQL) GetAllowAllNamespaces() bool {
+func (v *VSHNPostgreSQLCNPG) GetAllowAllNamespaces() bool {
 	return v.Spec.Parameters.Security.AllowAllNamespaces
 }
 
 // GetAllowedNamespaces returns the AllowedNamespaces array of this service
-func (v *VSHNPostgreSQL) GetAllowedNamespaces() []string {
+func (v *VSHNPostgreSQLCNPG) GetAllowedNamespaces() []string {
 	if v.Spec.Parameters.Security.AllowedNamespaces == nil {
 		v.Spec.Parameters.Security.AllowedNamespaces = []string{}
 	}
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }
 
-func (v *VSHNPostgreSQL) GetSize() VSHNSizeSpec {
+func (v *VSHNPostgreSQLCNPG) GetSize() VSHNSizeSpec {
 	return v.Spec.Parameters.Size
 }
 
-func (v *VSHNPostgreSQL) GetMonitoring() VSHNMonitoring {
+func (v *VSHNPostgreSQLCNPG) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
-func (v *VSHNPostgreSQL) GetInstances() int {
+func (v *VSHNPostgreSQLCNPG) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }
 
-func (v *VSHNPostgreSQL) GetPDBLabels() map[string]string {
+func (v *VSHNPostgreSQLCNPG) GetPDBLabels() map[string]string {
 	return map[string]string{
 		"stackgres.io/cluster": "true",
 	}
 }
 
-func (v *VSHNPostgreSQL) GetSecurity() *Security {
+func (v *VSHNPostgreSQLCNPG) GetSecurity() *Security {
 	return &v.Spec.Parameters.Security
 }
 
-func (v *VSHNPostgreSQL) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
+func (v *VSHNPostgreSQLCNPG) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
 	return &StatefulSetManager{}
 }
 
-func (v *VSHNPostgreSQL) GetWorkloadName() string {
+func (v *VSHNPostgreSQLCNPG) GetWorkloadName() string {
 	return v.GetName()
 }
 
-func (v *VSHNPostgreSQL) GetBillingName() string {
+func (v *VSHNPostgreSQLCNPG) GetBillingName() string {
 	return "appcat-" + v.GetServiceName()
 }
 
-func (v *VSHNPostgreSQL) GetSLA() string {
+func (v *VSHNPostgreSQLCNPG) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
-}
-
-// IsBackupEnabled returns true if backups are enabled for this instance
-func (v *VSHNPostgreSQL) IsBackupEnabled() bool {
-	return v.Spec.Parameters.Backup.IsEnabled()
 }

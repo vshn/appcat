@@ -66,12 +66,6 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
 	}
 
-	// We'll skip the rest if we're deploying using CNPG instead
-	if comp.Spec.Parameters.UseCNPG {
-		svc.Log.Info("Deploying using CNPG")
-		return deployPostgresSQLUsingCNPG(ctx, comp, svc)
-	}
-
 	l.Info("Create Stackgres objects")
 	err = createStackgresObjects(ctx, comp, svc)
 	if err != nil {
@@ -141,10 +135,6 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	}
 
 	svcName := comp.GetName()
-	if comp.Spec.Parameters.UseCNPG {
-		svcName = comp.GetName() + "-cluster-rw"
-	}
-
 	certificate := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),

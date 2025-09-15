@@ -135,12 +135,9 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 			return nil, nil
 		}
 
-		// Enforce UseCNPG immutability
-		if newPg.Spec.Parameters.UseCNPG != oldObj.(*vshnv1.VSHNPostgreSQL).Spec.Parameters.UseCNPG {
-			allErrs = append(allErrs, field.Forbidden(
-				field.NewPath("spec.parameters.useCnpg"),
-				"the method of deployment can only be set on creation",
-			))
+		// Do not allow changing compositionRef
+		if newPg.Spec.CompositionRef != oldPg.Spec.CompositionRef {
+			return nil, field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
 		}
 
 		// Validate major upgrades

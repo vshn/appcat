@@ -332,12 +332,6 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 	}
 	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
 	assert.Error(t, err)
-
-	// check useCnpg immutability
-	pgInvalid = pgOrig.DeepCopy()
-	pgInvalid.Spec.Parameters.UseCNPG = true
-	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
-	assert.Error(t, err)
 }
 
 func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {

@@ -1,4 +1,4 @@
-package vshnpostgres
+package vshnpostgrescnpg
 
 import (
 	"context"
@@ -37,7 +37,7 @@ const (
 )
 
 // AddConnectionDetails changes the desired state of a FunctionIO
-func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *v1.Result {
+func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) *v1.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 
 	err := svc.GetObservedComposite(comp)
@@ -67,7 +67,7 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		return runtime.NewWarningResult("no connection details yet on cluster")
 	}
 
-	svcName := comp.GetName()
+	svcName := comp.GetName() + "-cluster-rw"
 
 	rootPw, err := getPGRootPassword(comp, svc)
 	if err != nil {
@@ -83,11 +83,6 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 	svc.SetConnectionDetail(PostgresqlPassword, []byte(rootPw))
 	svc.SetConnectionDetail(PostgresqlUser, []byte(defaultUser))
 	svc.SetConnectionDetail(PostgresqlHost, []byte(host))
-
-	err = svc.AddObservedConnectionDetails("cluster")
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot add connection details to composite: %s", err))
-	}
 
 	return nil
 }
@@ -105,8 +100,8 @@ func getPostgresURLCustomUser(host, userName, pw, db string) string {
 	return "postgres://" + userName + ":" + pw + "@" + host + ":" + defaultPort + "/" + db
 }
 
-func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, targetName string) error {
-	certSecretName := "tls-certificate"
+func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime, targetName string) error {
+	const certSecretName = "tls-certificate"
 
 	obj.Spec.ConnectionDetails = []xkubev1.ConnectionDetail{
 		{
@@ -159,10 +154,10 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 // reference. During deletion, if the secret gets removed before the kube-object gets removed, the kube-object will get stuck
 // with observation errors, as it can't resolve the connectiondetails anymore. This is a bug in provider-kubernetes itself.
 // To avoid this, we deploy a separate observer for that secret and get the value directly that way.
-func getPGRootPassword(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) (string, error) {
+func getPGRootPassword(comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) (string, error) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName(),
+			Name:      comp.GetName() + "-cluster-superuser",
 			Namespace: comp.GetInstanceNamespace(),
 		},
 	}
@@ -180,7 +175,7 @@ func getPGRootPassword(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 		return "", err
 	}
 
-	pw := secret.Data["superuser-password"]
+	pw := secret.Data["password"]
 
 	return string(pw), nil
 }

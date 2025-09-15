@@ -32,11 +32,6 @@ func AddExtensions(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtim
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
 	}
 
-	if comp.Spec.Parameters.UseCNPG {
-		svc.Log.Info("Skipping AddExtensions because we're using CNPG")
-		return nil
-	}
-
 	extensionsMap := map[string]stackgresv1.SGClusterSpecPostgresExtensionsItem{}
 
 	for _, ext := range comp.Spec.Parameters.Service.Extensions {

@@ -24,11 +24,6 @@ func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *ru
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite: %w", err))
 	}
 
-	if comp.Spec.Parameters.UseCNPG {
-		svc.Log.Info("Skipping AddPrimaryService because we're using CNPG")
-		return nil
-	}
-
 	comp, err = getVSHNPostgreSQL(ctx, svc)
 
 	if err != nil {

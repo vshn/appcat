@@ -29,11 +29,6 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))
 	}
 
-	if comp.Spec.Parameters.UseCNPG {
-		svc.Log.Info("Skipping UserManagement because we're using CNPG")
-		return nil
-	}
-
 	// Nothing defined, let's return early
 	if len(comp.Spec.Parameters.Service.Access) == 0 {
 		return nil

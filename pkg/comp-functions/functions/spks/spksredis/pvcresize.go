@@ -218,7 +218,7 @@ func addDeletionJob(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRed
 							Env: []corev1.EnvVar{
 								{
 									Name:  "STS_NAME",
-									Value: "redis-sts",
+									Value: "redis-server",
 								},
 								{
 									Name:  "STS_NAMESPACE",

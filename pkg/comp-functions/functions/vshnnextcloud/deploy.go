@@ -23,7 +23,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 const (
@@ -615,6 +614,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"name":   comp.GetName(),
 			},
 		},
+		"cronjob": map[string]any{
+			"enabled": true,
+			"type":    "cronjob",
+		},
 	}
 
 	if image := svc.Config.Data["nextcloud_image"]; image != "" {
@@ -649,14 +652,9 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot get observed release values: %w", err)
 	}
 
-	version, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
 	if err != nil {
 		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
-	}
-
-	err = configureCronSidecar(values, version, svc)
-	if err != nil {
-		return nil, fmt.Errorf("cannot set keycloak version for cron sidecar: %w", err)
 	}
 
 	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")
@@ -664,63 +662,6 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	release.Spec.ForProvider.Chart.Name = "nextcloud"
 
 	return release, err
-}
-
-func configureCronSidecar(values map[string]interface{}, version string, svc *runtime.ServiceRuntime) error {
-	image := "nextcloud:" + version
-
-	if nextcloudImage := svc.Config.Data["nextcloud_image"]; nextcloudImage != "" {
-		image = fmt.Sprintf("%s:%s", nextcloudImage, version)
-	}
-
-	extraSidecarContainers := []any{
-		map[string]any{
-			"name": "cron",
-			"command": []any{
-				"/cron.sh",
-			},
-			"image": image,
-			"volumeMounts": []any{
-				map[string]any{
-					"mountPath": "/var/www",
-					"name":      "nextcloud-main",
-					"subpath":   "root",
-				},
-				map[string]any{
-					"mountPath": "/var/www/html",
-					"name":      "nextcloud-main",
-					"subPath":   "html",
-				},
-				map[string]any{
-					"mountPath": "/var/www/html/data",
-					"name":      "nextcloud-main",
-					"subPath":   "data",
-				},
-				map[string]any{
-					"mountPath": "/var/www/html/config",
-					"name":      "nextcloud-main",
-					"subPath":   "config",
-				},
-				map[string]any{
-					"mountPath": "/var/www/html/custom_apps",
-					"name":      "nextcloud-main",
-					"subPath":   "custom_apps",
-				},
-				map[string]any{
-					"mountPath": "/var/www/tmp",
-					"name":      "nextcloud-main",
-					"subPath":   "tmp",
-				},
-				map[string]any{
-					"mountPath": "/var/www/html/themes",
-					"name":      "nextcloud-main",
-					"subPath":   "themes",
-				},
-			},
-		},
-	}
-
-	return unstructured.SetNestedSlice(values, extraSidecarContainers, []string{"nextcloud", "extraSidecarContainers"}...)
 }
 
 func addApacheConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) error {

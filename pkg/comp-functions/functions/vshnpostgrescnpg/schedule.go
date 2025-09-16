@@ -11,7 +11,7 @@ import (
 )
 
 // TransformSchedule initializes the backup and maintenance schedules  if the user did not explicitly provide a schedule.
-func TransformSchedule(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func TransformSchedule(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {

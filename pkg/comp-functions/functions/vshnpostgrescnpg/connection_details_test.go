@@ -23,7 +23,7 @@ func TestTransform_NoInstanceNamespace(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/secrets/01_input_no-instance-namespace.yaml")
 
 		// When
-		result := AddConnectionDetails(ctx, &vshnv1.VSHNPostgreSQLCNPG{}, svc)
+		result := AddConnectionDetails(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		// Then
 		assert.Equal(t, expectResult, result)

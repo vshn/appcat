@@ -154,7 +154,7 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 	return nil
 }
 
-// getPGRootPassword will deploy an observer for stackgres' or CNPGs generated secret and return the password for the root user.
+// getPGRootPassword will deploy an observer for stackgres' generated secret and return the password for the root user.
 // This is necessary, because provider-kubernetes can hang during de-provisioning, if the secret is used as a connectiondetails
 // reference. During deletion, if the secret gets removed before the kube-object gets removed, the kube-object will get stuck
 // with observation errors, as it can't resolve the connectiondetails anymore. This is a bug in provider-kubernetes itself.

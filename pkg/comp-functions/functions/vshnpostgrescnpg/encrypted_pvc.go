@@ -18,7 +18,7 @@ import (
 
 // AddPvcSecret adds a secret for the encrypted PVC for the PostgreSQL instance.
 // ToDo: Rewrite for CNPG
-func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	log := controllerruntime.LoggerFrom(ctx)
 
@@ -54,7 +54,7 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc *run
 	return nil
 }
 
-func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.VSHNPostgreSQLCNPG, i int) *xfnproto.Result {
+func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.VSHNPostgreSQL, i int) *xfnproto.Result {
 	// luksSecretResourceName is the resource name defined in the composition
 	// This name is different from metadata.name of the same resource
 	// The value is hardcoded in the composition for each resource and due to crossplane limitation

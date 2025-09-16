@@ -51,7 +51,7 @@ func TestNoEncryptedPVC(t *testing.T) {
 			svc := commontest.LoadRuntimeFromFile(t, tt.args.inputFuncIO)
 			expSvc := commontest.LoadRuntimeFromFile(t, tt.args.expectedFuncIO)
 
-			r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQLCNPG{}, svc)
+			r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 			assert.Equal(t, tt.expResult, r)
 			assert.Equal(t, expSvc, svc)
@@ -67,11 +67,11 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParams.yaml")
 
-		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQLCNPG{}, svc)
+		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		assert.Equal(t, r, runtime.NewWarningResult("luks secret not yet ready"))
 
-		comp := &vshnv1.VSHNPostgreSQLCNPG{}
+		comp := &vshnv1.VSHNPostgreSQL{}
 
 		assert.NoError(t, svc.GetObservedComposite(comp))
 
@@ -87,11 +87,11 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
 
-		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQLCNPG{}, svc)
+		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
 
 		assert.Nil(t, r)
 
-		comp := &vshnv1.VSHNPostgreSQLCNPG{}
+		comp := &vshnv1.VSHNPostgreSQL{}
 
 		assert.NoError(t, svc.GetObservedComposite(comp))
 

@@ -65,15 +65,15 @@ func Test_sizing(t *testing.T) {
 }
 
 // Obtain svc and comp for CNPG tests
-func getSvcCompCnpg(testing *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQLCNPG) {
+func getSvcCompCnpg(testing *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQL) {
 	svc, comp := getPostgreSqlComp(testing, testingPath)
 	return svc, comp
 }
 
-func getPostgreSqlComp(t *testing.T, file string) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQLCNPG) {
+func getPostgreSqlComp(t *testing.T, file string) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQL) {
 	svc := commontest.LoadRuntimeFromFile(t, file)
 
-	comp := &vshnv1.VSHNPostgreSQLCNPG{}
+	comp := &vshnv1.VSHNPostgreSQL{}
 	err := svc.GetObservedComposite(comp)
 	assert.NoError(t, err)
 

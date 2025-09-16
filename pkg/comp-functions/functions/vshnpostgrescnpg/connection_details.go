@@ -37,7 +37,7 @@ const (
 )
 
 // AddConnectionDetails changes the desired state of a FunctionIO
-func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) *v1.Result {
+func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *v1.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 
 	err := svc.GetObservedComposite(comp)
@@ -100,7 +100,7 @@ func getPostgresURLCustomUser(host, userName, pw, db string) string {
 	return "postgres://" + userName + ":" + pw + "@" + host + ":" + defaultPort + "/" + db
 }
 
-func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime, targetName string) error {
+func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, targetName string) error {
 	const certSecretName = "tls-certificate"
 
 	obj.Spec.ConnectionDetails = []xkubev1.ConnectionDetail{
@@ -149,12 +149,12 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 	return nil
 }
 
-// getPGRootPassword will deploy an observer for stackgres' or CNPGs generated secret and return the password for the root user.
+// getPGRootPassword will deploy an observer for CNPGs generated secret and return the password for the root user.
 // This is necessary, because provider-kubernetes can hang during de-provisioning, if the secret is used as a connectiondetails
 // reference. During deletion, if the secret gets removed before the kube-object gets removed, the kube-object will get stuck
 // with observation errors, as it can't resolve the connectiondetails anymore. This is a bug in provider-kubernetes itself.
 // To avoid this, we deploy a separate observer for that secret and get the value directly that way.
-func getPGRootPassword(comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) (string, error) {
+func getPGRootPassword(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) (string, error) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-cluster-superuser",

@@ -10,8 +10,8 @@ import (
 var pgAlerts = nonsla.NewAlertSetBuilder("patroni").AddAll().AddCustomServiceRule("maxconnections", maxConnectionsAlert).GetAlerts()
 
 func init() {
-	runtime.RegisterService[*vshnv1.VSHNPostgreSQLCNPG]("postgresqlcnpg", runtime.Service[*vshnv1.VSHNPostgreSQLCNPG]{
-		Steps: []runtime.Step[*vshnv1.VSHNPostgreSQLCNPG]{
+	runtime.RegisterService[*vshnv1.VSHNPostgreSQL]("postgresqlcnpg", runtime.Service[*vshnv1.VSHNPostgreSQL]{
+		Steps: []runtime.Step[*vshnv1.VSHNPostgreSQL]{
 			{
 				Name:    "deploy",
 				Execute: DeployPostgreSQL,
@@ -22,7 +22,7 @@ func init() {
 			},
 			{
 				Name:    "user-alerting",
-				Execute: common.AddUserAlerting[*vshnv1.VSHNPostgreSQLCNPG],
+				Execute: common.AddUserAlerting[*vshnv1.VSHNPostgreSQL],
 			},
 			{
 				Name:    "random-default-schedule",
@@ -34,11 +34,11 @@ func init() {
 			},
 			{
 				Name:    "mailgun-alerting",
-				Execute: common.MailgunAlerting[*vshnv1.VSHNPostgreSQLCNPG],
+				Execute: common.MailgunAlerting[*vshnv1.VSHNPostgreSQL],
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNPostgreSQLCNPG](pgAlerts),
+				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNPostgreSQL](pgAlerts),
 			},
 			{
 				Name:    "ensure-objectbucket-labels",
@@ -46,7 +46,7 @@ func init() {
 			},
 			{
 				Name:    "pdb",
-				Execute: common.AddPDBSettings[*vshnv1.VSHNPostgreSQLCNPG],
+				Execute: common.AddPDBSettings[*vshnv1.VSHNPostgreSQL],
 			},
 			{
 				Name:    "billing",

@@ -12,7 +12,7 @@ import (
 
 // EnsureObjectBucketLabels just gets the bucket present from the PnT part and adds it again to the
 // desired state. This ensures that the correct labels are injected.
-func EnsureObjectBucketLabels(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func EnsureObjectBucketLabels(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {

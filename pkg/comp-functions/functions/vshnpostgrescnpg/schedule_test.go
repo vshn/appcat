@@ -21,10 +21,10 @@ func TestTransformSchedule_SetRandomSchedule(t *testing.T) {
 		t.Run(fmt.Sprintf("Round %d", i), func(t *testing.T) {
 			svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
-			res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQLCNPG{}, svc)
+			res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 			assert.Nil(t, res)
 
-			out := &vshnv1.VSHNPostgreSQLCNPG{}
+			out := &vshnv1.VSHNPostgreSQL{}
 			err := svc.GetDesiredComposite(out)
 			assert.NoError(t, err)
 
@@ -44,14 +44,14 @@ func TestTransformSchedule_SetRandomSchedule(t *testing.T) {
 func TestTransformSchedule_DontOverwriteBackup(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
-	comp := &vshnv1.VSHNPostgreSQLCNPG{}
+	comp := &vshnv1.VSHNPostgreSQL{}
 	err := svc.GetDesiredComposite(comp)
 	assert.NoError(t, err)
 	comp.Spec.Parameters.Backup.Schedule = "3 2 * * *"
 	err = svc.GetDesiredComposite(comp)
 	assert.NoError(t, err)
 
-	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQLCNPG{}, svc)
+	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Nil(t, res)
 
 	err = svc.GetDesiredComposite(comp)
@@ -64,7 +64,7 @@ func TestTransformSchedule_DontOverwriteBackup(t *testing.T) {
 func TestTransformSchedule_DontOverwriteMaintenance(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
-	comp := &vshnv1.VSHNPostgreSQLCNPG{}
+	comp := &vshnv1.VSHNPostgreSQL{}
 	err := svc.GetDesiredComposite(comp)
 	assert.NoError(t, err)
 	comp.Spec.Parameters.Maintenance.DayOfWeek = "thursday"
@@ -72,7 +72,7 @@ func TestTransformSchedule_DontOverwriteMaintenance(t *testing.T) {
 	err = svc.SetDesiredCompositeStatus(comp)
 	assert.NoError(t, err)
 
-	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQLCNPG{}, svc)
+	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
 	assert.Nil(t, res)
 
 	err = svc.GetDesiredComposite(comp)
@@ -86,7 +86,7 @@ func TestTransformSchedule_DontOverwriteMaintenance(t *testing.T) {
 func TestTransformSchedule_DontOverwriteBackupOrMaintenance(t *testing.T) {
 	iof := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
-	comp := &vshnv1.VSHNPostgreSQLCNPG{}
+	comp := &vshnv1.VSHNPostgreSQL{}
 	err := iof.GetDesiredComposite(comp)
 	assert.NoError(t, err)
 	comp.Spec.Parameters.Backup.Schedule = "3 2 * * *"
@@ -95,7 +95,7 @@ func TestTransformSchedule_DontOverwriteBackupOrMaintenance(t *testing.T) {
 	err = iof.SetDesiredCompositeStatus(comp)
 	assert.NoError(t, err)
 
-	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQLCNPG{}, iof)
+	res := TransformSchedule(context.TODO(), &vshnv1.VSHNPostgreSQL{}, iof)
 	assert.Nil(t, res)
 
 	err = iof.GetDesiredComposite(comp)
@@ -105,7 +105,7 @@ func TestTransformSchedule_DontOverwriteBackupOrMaintenance(t *testing.T) {
 	assert.Equal(t, vshnv1.TimeOfDay("11:12:23"), comp.Spec.Parameters.Maintenance.TimeOfDay)
 }
 
-func parseAndValidateBackupSchedule(t *testing.T, comp *vshnv1.VSHNPostgreSQLCNPG) time.Time {
+func parseAndValidateBackupSchedule(t *testing.T, comp *vshnv1.VSHNPostgreSQL) time.Time {
 	var backupTime time.Time
 	t.Run("validateBackupSchedule", func(t *testing.T) {
 		t.Logf("backup schedule %q", comp.GetBackupSchedule())
@@ -139,7 +139,7 @@ func parseAndValidateBackupSchedule(t *testing.T, comp *vshnv1.VSHNPostgreSQLCNP
 	return backupTime
 }
 
-func parseAndValidateMaintenance(t *testing.T, comp *vshnv1.VSHNPostgreSQLCNPG) time.Time {
+func parseAndValidateMaintenance(t *testing.T, comp *vshnv1.VSHNPostgreSQL) time.Time {
 	var maintTime time.Time
 	t.Run("validateMaintenanceSchedule", func(t *testing.T) {
 

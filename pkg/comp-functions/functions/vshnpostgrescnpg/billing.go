@@ -11,7 +11,7 @@ import (
 )
 
 // AddBilling enables billing for this service
-func AddBilling(ctx context.Context, comp *v1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddBilling(ctx context.Context, comp *v1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))

@@ -30,8 +30,10 @@ const (
 	encryptedPvcSc        = "ssd-encrypted"
 )
 
-func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	l := svc.Log
+
+	l.Info("Deploying CNPG PostgresQL...")
 
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
@@ -60,7 +62,7 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc 
 
 // setMajorVersionStatus sets version in status only when it is provisioned
 // The subsequent update of this field is to happen in the MajorUpgrade comp-func
-func setMajorVersionStatus(comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) error {
+func setMajorVersionStatus(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 	if comp.Status.CurrentVersion == "" {
 		comp.Status.CurrentVersion = comp.Spec.Parameters.Service.MajorVersion
 		return svc.SetDesiredCompositeStatus(comp)
@@ -68,7 +70,7 @@ func setMajorVersionStatus(comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.Service
 	return nil
 }
 
-func createCerts(comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) error {
+func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 	selfSignedIssuer := &cmv1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
@@ -137,7 +139,7 @@ func createCerts(comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) e
 	return nil
 }
 
-func createObjectBucket(comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) error {
+func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 	xObjectBucket := &appcatv1.XObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: comp.GetName(),
@@ -181,7 +183,7 @@ func getBucketName(svc *runtime.ServiceRuntime, currentBucket *appcatv1.XObjectB
 }
 
 // Deploy PostgresQL using the CNPG cluster helm chart
-func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQLCNPG, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	// Deploy
 	values, err := createCnpgHelmValues(ctx, svc, comp)
 	if err != nil {
@@ -208,7 +210,7 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 }
 
 // Generate CNPG cluster helm chart values
-func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQLCNPG) (map[string]any, error) {
+func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (map[string]any, error) {
 	// https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml
 	values := map[string]any{
 		"cluster": map[string]any{
@@ -327,7 +329,7 @@ func setResourcesCnpg(values map[string]any, resources common.Resources) error {
 }
 
 // Get resources for a given plan
-func getResourcesForPlan(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQLCNPG, plan string) (common.Resources, error) {
+func getResourcesForPlan(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, plan string) (common.Resources, error) {
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
 	if err != nil {
 		return common.Resources{}, err

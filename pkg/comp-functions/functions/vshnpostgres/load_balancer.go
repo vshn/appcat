@@ -19,12 +19,7 @@ import (
 var serviceName = "primary-service"
 
 func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	err := svc.GetObservedComposite(comp)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite: %w", err))
-	}
-
-	comp, err = getVSHNPostgreSQL(ctx, svc)
+	comp, err := getVSHNPostgreSQL(ctx, svc)
 
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite from function io: %w", err))

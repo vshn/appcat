@@ -27,11 +27,10 @@ const (
 	// PostgresqlDb is env variable in the connection secret
 	PostgresqlDb = "POSTGRESQL_DB"
 	// PostgresqlURL is env variable in the connection secret
-	PostgresqlURL       = "POSTGRESQL_URL"
-	defaultUser         = "postgres"
-	defaultPort         = "5432"
-	defaultDB           = "postgres"
-	rootPwOserverSuffix = "-root-pw-observer"
+	PostgresqlURL = "POSTGRESQL_URL"
+	defaultUser   = "postgres"
+	defaultPort   = "5432"
+	defaultDB     = "postgres"
 )
 
 // AddConnectionDetails changes the desired state of a FunctionIO
@@ -50,7 +49,7 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		return runtime.NewWarningResult(fmt.Sprintf("cannot get the sgcluster object: %s", err))
 	}
 
-	err = addConnectionDetailsToObject(obj, comp, svc, "cluster")
+	err = addConnectionDetailsToObject(obj, comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot expose connection details on cluster: %s", err))
 	}
@@ -65,14 +64,12 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		return runtime.NewWarningResult("no connection details yet on cluster")
 	}
 
-	svcName := comp.GetName()
-
 	rootPw, err := getPGRootPassword(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult("cannot observe root password: " + err.Error())
 	}
 
-	host := fmt.Sprintf("%s.vshn-postgresql-%s.svc.cluster.local", svcName, comp.GetName())
+	host := fmt.Sprintf("%s.vshn-postgresql-%s.svc.cluster.local", comp.GetName(), comp.GetName())
 	url := getPostgresURL(host, rootPw)
 
 	svc.SetConnectionDetail(PostgresqlURL, []byte(url))
@@ -103,7 +100,7 @@ func getPostgresURLCustomUser(host, userName, pw, db string) string {
 	return "postgres://" + userName + ":" + pw + "@" + host + ":" + defaultPort + "/" + db
 }
 
-func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, targetName string) error {
+func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 	certSecretName := "tls-certificate"
 
 	obj.Spec.ConnectionDetails = []xkubev1.ConnectionDetail{
@@ -144,7 +141,7 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 		Namespace: svc.GetCrossplaneNamespace(),
 	}
 
-	err := svc.SetDesiredComposedResourceWithName(obj, targetName)
+	err := svc.SetDesiredComposedResourceWithName(obj, "cluster")
 	if err != nil {
 		return fmt.Errorf("cannot deploy postgresql connection details: %w", err)
 	}
@@ -158,6 +155,8 @@ func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreS
 // with observation errors, as it can't resolve the connectiondetails anymore. This is a bug in provider-kubernetes itself.
 // To avoid this, we deploy a separate observer for that secret and get the value directly that way.
 func getPGRootPassword(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) (string, error) {
+	resNameSuffix := "-root-pw-observer"
+
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
@@ -165,12 +164,12 @@ func getPGRootPassword(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime)
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(secret, comp.GetName()+rootPwOserverSuffix, runtime.KubeOptionObserve)
+	err := svc.SetDesiredKubeObject(secret, comp.GetName()+resNameSuffix, runtime.KubeOptionObserve)
 	if err != nil {
 		return "", err
 	}
 
-	err = svc.GetObservedKubeObject(secret, comp.GetName()+rootPwOserverSuffix)
+	err = svc.GetObservedKubeObject(secret, comp.GetName()+resNameSuffix)
 	if err != nil {
 		if err == runtime.ErrNotFound {
 			return "", nil

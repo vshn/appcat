@@ -25,7 +25,6 @@ func PgExporterConfig(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
-
 	// get configmap
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

@@ -29,7 +29,6 @@ func transformRestart(ctx context.Context, svc *runtime.ServiceRuntime, now func
 	if err != nil {
 		return runtime.NewFatalResult(err)
 	}
-
 	err = keepRecentRestartOps(ctx, svc, comp.GetName(), now)
 	if err != nil {
 		return runtime.NewFatalResult(err)

@@ -57,7 +57,7 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	l.Info("Set major version in status")
 	err = setMajorVersionStatus(comp, svc)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot set major version: %w", err).Error())
+		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
 	}
 
 	l.Info("Create tls certificate")
@@ -134,7 +134,6 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 		return err
 	}
 
-	svcName := comp.GetName()
 	certificate := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
@@ -161,8 +160,8 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 			},
 			Usages: []cmv1.KeyUsage{"server auth", "client auth"},
 			DNSNames: []string{
-				svcName + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
-				svcName + "." + comp.GetInstanceNamespace() + ".svc",
+				comp.GetName() + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
+				comp.GetName() + "." + comp.GetInstanceNamespace() + ".svc",
 			},
 			IssuerRef: certmgrv1.ObjectReference{
 				Name:  comp.GetName(),
@@ -338,24 +337,16 @@ func generateContainers(s utils.Sidecars, containerMap map[string]string, limits
 	return containers
 }
 
-// Marshal PostgreSQLSettings into map[string]string
-func getPgSettingsMap(pgSettings k8sruntime.RawExtension) (map[string]string, error) {
-	pgConfBytes := pgSettings
+func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+
+	pgConfBytes := comp.Spec.Parameters.Service.PostgreSQLSettings
 
 	pgConf := map[string]string{}
 	if pgConfBytes.Raw != nil {
 		err := json.Unmarshal(pgConfBytes.Raw, &pgConf)
 		if err != nil {
-			return pgConf, fmt.Errorf("cannot unmarshall pgConf: %w", err)
+			return fmt.Errorf("cannot unmarshall pgConf: %w", err)
 		}
-	}
-	return pgConf, nil
-}
-
-func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
-	pgConf, err := getPgSettingsMap(comp.Spec.Parameters.Service.PostgreSQLSettings)
-	if err != nil {
-		return err
 	}
 
 	pgConfigName, pgKubeName := getCurrentSettings(comp, svc, comp.Status.CurrentVersion, comp.Status.PreviousVersion)
@@ -371,7 +362,7 @@ func createSgPostgresConfig(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRun
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(&currentVersionConfig, pgKubeName, runtime.KubeOptionAllowDeletion)
+	err := svc.SetDesiredKubeObject(&currentVersionConfig, pgKubeName, runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		return fmt.Errorf("cannot create current version postgres config: %w", err)
 	}

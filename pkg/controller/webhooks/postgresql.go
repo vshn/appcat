@@ -136,7 +136,7 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 		}
 
 		// Do not allow changing compositionRef
-		if newPg.Spec.CompositionRef != oldPg.Spec.CompositionRef {
+		if newPg.Spec.CompositionRef.Name != oldPg.Spec.CompositionRef.Name {
 			return nil, field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
 		}
 

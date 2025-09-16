@@ -12,12 +12,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	// fnv1aplha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 )
 
 func TestTransformSchedule_SetRandomSchedule(t *testing.T) {
-
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		t.Run(fmt.Sprintf("Round %d", i), func(t *testing.T) {
 			svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
 
@@ -38,7 +36,6 @@ func TestTransformSchedule_SetRandomSchedule(t *testing.T) {
 			assert.Equal(t, time.Hour, diff)
 		})
 	}
-
 }
 
 func TestTransformSchedule_DontOverwriteBackup(t *testing.T) {
@@ -151,18 +148,37 @@ func parseAndValidateMaintenance(t *testing.T, comp *vshnv1.VSHNPostgreSQL) time
 		maintTime, err = time.ParseInLocation(time.TimeOnly, string(comp.GetFullMaintenanceSchedule().TimeOfDay), time.UTC)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, comp.GetFullMaintenanceSchedule().DayOfWeek)
-		switch comp.GetFullMaintenanceSchedule().DayOfWeek {
-		case "tuesday":
-		case "wednesday":
-			maintTime = maintTime.Add(24 * time.Hour)
-		default:
-			assert.Failf(t, "unexpected Maintenance day", "Day: %q", comp.GetFullMaintenanceSchedule().DayOfWeek)
+
+		// Updated to support Sunday through Friday
+		dayOfWeek := comp.GetFullMaintenanceSchedule().DayOfWeek
+		validDays := map[string]bool{
+			"sunday": true, "monday": true, "tuesday": true,
+			"wednesday": true, "thursday": true, "friday": true,
 		}
 
-		maintWindowStart := time.Date(0, 1, 1, 21, 0, 0, 0, time.UTC)
-		maintWindowEnd := time.Date(0, 1, 2, 5, 0, 0, 0, time.UTC)
-		assert.LessOrEqual(t, maintWindowStart, maintTime)
-		assert.LessOrEqual(t, maintTime, maintWindowEnd)
+		if !validDays[dayOfWeek] {
+			assert.Failf(t, "unexpected Maintenance day", "Day: %q", dayOfWeek)
+			return
+		}
+
+		if maintTime.Hour() < 6 {
+			maintTime = maintTime.Add(24 * time.Hour)
+		}
+
+		// Updated time window validation based on day
+		if dayOfWeek == "sunday" {
+			// Sunday: only 21:00-23:59 (no early morning)
+			sundayWindowStart := time.Date(0, 1, 1, 21, 0, 0, 0, time.UTC)
+			sundayWindowEnd := time.Date(0, 1, 1, 23, 59, 59, 0, time.UTC)
+			assert.LessOrEqual(t, sundayWindowStart, maintTime)
+			assert.LessOrEqual(t, maintTime, sundayWindowEnd)
+		} else {
+			// Monday-Friday: 21:00-05:00 (can cross midnight)
+			maintWindowStart := time.Date(0, 1, 1, 21, 0, 0, 0, time.UTC)
+			maintWindowEnd := time.Date(0, 1, 2, 5, 0, 0, 0, time.UTC)
+			assert.LessOrEqual(t, maintWindowStart, maintTime)
+			assert.LessOrEqual(t, maintTime, maintWindowEnd)
+		}
 	})
 	return maintTime
 }

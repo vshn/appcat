@@ -41,7 +41,8 @@ type VSHNPostgreSQLSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
 }
 
-// Crossplane composition reference. Only to allow the webhook to compare this field.
+// Crossplane composition reference. Added here to allow the webhook to compare this field.
+
 type crossplaneCompositionRef struct {
 	Name string `json:"name"`
 }

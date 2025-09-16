@@ -40,7 +40,6 @@ spec:
               description: Spec defines the desired state of a VSHNPostgreSQL.
               properties:
                 compositionRef:
-                  description: Crossplane composition reference
                   properties:
                     name:
                       type: string

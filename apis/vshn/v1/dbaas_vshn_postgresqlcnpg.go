@@ -116,6 +116,9 @@ type VSHNPostgreSQLCNPGServiceSpec struct {
 
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
+
+	// TLS settings for the instance.
+	TLS VSHNPostgreSQLTLS `json:"tls,omitempty"`
 }
 
 type VSHNPostgreSQLCNPGBackup struct {
@@ -175,14 +178,6 @@ func (v *VSHNPostgreSQLCNPG) GetVSHNMonitoring() VSHNMonitoring {
 type VSHNPostgreSQLCNPGEncryption struct {
 
 	// Enabled specifies if the instance should use encrypted storage for the instance.
-	Enabled bool `json:"enabled,omitempty"`
-}
-
-// VSHNPostgreSQLCNPGTLS contains TLS specific parameters
-type VSHNPostgreSQLCNPGTLS struct {
-	// Enabled specifies if the instance should use TLS for the instance.
-	// This change takes effect immediately and does not require a restart of the database.
-	// +kubebuilder:default=true
 	Enabled bool `json:"enabled,omitempty"`
 }
 

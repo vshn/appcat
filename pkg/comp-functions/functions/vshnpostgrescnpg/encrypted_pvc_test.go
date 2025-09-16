@@ -84,31 +84,29 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 		assert.NotEmpty(t, s.Data["luksKey"])
 	})
 
-	// WIP
-	//t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
-	//
-	//	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
-	//
-	//	r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQLCNPG{}, svc)
-	//
-	//	assert.Nil(t, r)
-	//
-	//	comp := &vshnv1.VSHNPostgreSQLCNPG{}
-	//
-	//	assert.NoError(t, svc.GetObservedComposite(comp))
-	//
-	//	resName := comp.Name + "-luks-key-0"
-	//	kubeObject := &xkube.Object{}
-	//	assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, resName))
-	//
-	//	s := &v1.Secret{}
-	//	assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
-	//	assert.NotEmpty(t, s.Data["luksKey"])
-	//
-	//	// Get values
-	//	values, err := createCnpgHelmValues(ctx, svc, comp)
-	//	assert.NoError(t, err)
-	//	assert.NotNil(t, values)
-	//	assert.Equal(t, "ssd-encrypted", values["cluster"].(map[string]any)["storage"].(map[string]any)["storageClass"])
-	//})
+	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
+
+		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQLCNPG{}, svc)
+
+		assert.Nil(t, r)
+
+		comp := &vshnv1.VSHNPostgreSQLCNPG{}
+
+		assert.NoError(t, svc.GetObservedComposite(comp))
+
+		resName := comp.Name + "-luks-key-0"
+		kubeObject := &xkube.Object{}
+		assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, resName))
+
+		s := &v1.Secret{}
+		assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
+		assert.NotEmpty(t, s.Data["luksKey"])
+
+		// Get values
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+		assert.Equal(t, "ssd-encrypted", values["cluster"].(map[string]any)["storage"].(map[string]any)["storageClass"])
+	})
 }

@@ -6,7 +6,9 @@ import (
 
 	// "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 
+	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	v1 "github.com/crossplane/function-sdk-go/proto/v1"
+	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +48,16 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		return runtime.NewWarningResult("cannot observe root password: " + err.Error())
 	}
 
+	obj := &xkubev1.Object{}
+	err = svc.GetDesiredComposedResourceByName(obj, "certificate")
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot get the certificate object: %s", err))
+	}
+	err = addConnectionDetailsToObject(obj, comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot expose connection details on certificate: %s", err))
+	}
+
 	host := fmt.Sprintf("%s.vshn-postgresql-%s.svc.cluster.local", svcName, comp.GetName())
 	url := getPostgresURL(host, rootPw)
 
@@ -55,6 +67,11 @@ func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 	svc.SetConnectionDetail(PostgresqlPassword, []byte(rootPw))
 	svc.SetConnectionDetail(PostgresqlUser, []byte(defaultUser))
 	svc.SetConnectionDetail(PostgresqlHost, []byte(host))
+
+	err = svc.AddObservedConnectionDetails("certificate")
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add connection details to composite: %s", err))
+	}
 
 	return nil
 }
@@ -70,6 +87,54 @@ func getPostgresURLCustomUser(host, userName, pw, db string) string {
 	}
 
 	return "postgres://" + userName + ":" + pw + "@" + host + ":" + defaultPort + "/" + db
+}
+
+func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	certSecretName := "tls-certificate"
+	obj.Spec.ConnectionDetails = []xkubev1.ConnectionDetail{
+		{
+			ToConnectionSecretKey: "ca.crt",
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  comp.GetInstanceNamespace(),
+				Name:       certSecretName,
+				FieldPath:  "data[ca.crt]",
+			},
+		},
+		{
+			ToConnectionSecretKey: "tls.crt",
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  comp.GetInstanceNamespace(),
+				Name:       certSecretName,
+				FieldPath:  "data[tls.crt]",
+			},
+		},
+		{
+			ToConnectionSecretKey: "tls.key",
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  comp.GetInstanceNamespace(),
+				Name:       certSecretName,
+				FieldPath:  "data[tls.key]",
+			},
+		},
+	}
+
+	obj.Spec.WriteConnectionSecretToReference = &commonv1.SecretReference{
+		Name:      comp.GetName() + "-connection",
+		Namespace: svc.GetCrossplaneNamespace(),
+	}
+
+	err := svc.SetDesiredComposedResourceWithName(obj, "certificate")
+	if err != nil {
+		return fmt.Errorf("cannot deploy postgresql connection details: %w", err)
+	}
+
+	return nil
 }
 
 // getPGRootPassword will deploy an observer for CNPGs generated secret and return the password for the root user.

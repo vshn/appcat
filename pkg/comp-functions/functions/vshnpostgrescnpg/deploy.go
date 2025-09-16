@@ -92,7 +92,6 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	}
 
 	svcName := comp.GetName() + "-cluster-rw"
-
 	certificate := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),

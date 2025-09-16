@@ -15,8 +15,6 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
-// TEST
-
 const (
 	// PostgresqlHost is env variable in the connection secret
 	PostgresqlHost = "POSTGRESQL_HOST"

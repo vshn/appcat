@@ -332,6 +332,12 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 	}
 	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
 	assert.Error(t, err)
+
+	// Do not allow changing compositionRef
+	pgInvalid = pgOrig.DeepCopy()
+	pgInvalid.Spec.CompositionRef.Name = "new-composition"
+	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
+	assert.Error(t, err)
 }
 
 func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {

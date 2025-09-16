@@ -39,7 +39,7 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 	pods := comp.GetInstances()
 
 	for i := 0; i < pods; i++ {
-		result := writeLuksSecret(svc, log, comp, i)
+		result := writeLuksSecret(svc, log, comp, i+1) // i+1 because we are dealing with an STS
 		if result != nil {
 			return result
 		}
@@ -57,36 +57,45 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 	// This name is different from metadata.name of the same resource
 	// The value is hardcoded in the composition for each resource and due to crossplane limitation
 	// it cannot be matched to the metadata.name
-	luksSecretResourceName := fmt.Sprintf("%s-luks-key-%d", comp.Name, i)
+	luksSecretResourceNames := []string{
+		fmt.Sprintf("%s-cluster-%d-luks-key", comp.Name, i),
+		fmt.Sprintf("%s-cluster-%d-wal-luks-key", comp.Name, i),
+	}
 
-	secret := &v1.Secret{}
-	err := svc.GetObservedKubeObject(secret, luksSecretResourceName)
-	luksKey := ""
-	if err == runtime.ErrNotFound {
-		log.Info("Secret does not exist yet. Creating...")
-		luksKey, err = password.Generate(64, 10, 1, false, true)
-		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("cannot generate new luksKey: %w", err))
+	for _, luksSecretResourceName := range luksSecretResourceNames {
+		log.Info("Processing LUKS key...", "luksKey", luksSecretResourceName)
+
+		secret := &v1.Secret{}
+		err := svc.GetObservedKubeObject(secret, luksSecretResourceName)
+		luksKey := ""
+		switch err {
+		case runtime.ErrNotFound:
+			log.Info("Secret does not exist yet. Creating...")
+			luksKey, err = password.Generate(64, 10, 1, false, true)
+			if err != nil {
+				return runtime.NewFatalResult(fmt.Errorf("cannot generate new luksKey: %w", err))
+			}
+		case nil:
+			log.Info("retrieving existing secret key...")
+			luksKey = string(secret.Data["luksKey"])
+		default:
+			return runtime.NewFatalResult(fmt.Errorf("cannot get luks secret object: %w", err))
 		}
-	} else if err == nil {
-		log.Info("retrieving existing secret key...")
-		luksKey = string(secret.Data["luksKey"])
-	} else {
-		return runtime.NewFatalResult(fmt.Errorf("cannot get luks secret object: %w", err))
+
+		secret = &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      luksSecretResourceName,
+				Namespace: comp.GetInstanceNamespace(),
+			},
+			Data: map[string][]byte{
+				"luksKey": []byte(luksKey),
+			},
+		}
+		err = svc.SetDesiredKubeObject(secret, luksSecretResourceName)
+		if err != nil {
+			return runtime.NewFatalResult(fmt.Errorf("cannot add luks secret object: %w", err))
+		}
 	}
 
-	secret = &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-data-%s-%d-luks-key", comp.ObjectMeta.Labels["crossplane.io/composite"], comp.ObjectMeta.Labels["crossplane.io/composite"], i),
-			Namespace: comp.GetInstanceNamespace(),
-		},
-		Data: map[string][]byte{
-			"luksKey": []byte(luksKey),
-		},
-	}
-	err = svc.SetDesiredKubeObject(secret, luksSecretResourceName)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot add luks secret object: %w", err))
-	}
 	return nil
 }

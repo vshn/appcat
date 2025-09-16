@@ -60,48 +60,44 @@ func TestNoEncryptedPVC(t *testing.T) {
 }
 
 func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
-
 	ctx := context.Background()
 
 	t.Run("GivenEncryptionEnabled_ThenExpectOutput", func(t *testing.T) {
-
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParams.yaml")
 
 		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
-
 		assert.Equal(t, r, runtime.NewWarningResult("luks secret not yet ready"))
 
 		comp := &vshnv1.VSHNPostgreSQL{}
-
 		assert.NoError(t, svc.GetObservedComposite(comp))
 
-		resName := comp.Name + "-luks-key-0"
-		kubeObject := &xkube.Object{}
-		assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, resName))
+		for _, v := range getLuksKeyNames(comp) {
+			kubeObject := &xkube.Object{}
+			assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, v))
 
-		s := &v1.Secret{}
-		assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
-		assert.NotEmpty(t, s.Data["luksKey"])
+			s := &v1.Secret{}
+			assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
+			assert.NotEmpty(t, s.Data["luksKey"])
+		}
 	})
 
 	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
 
 		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
-
 		assert.Nil(t, r)
 
 		comp := &vshnv1.VSHNPostgreSQL{}
-
 		assert.NoError(t, svc.GetObservedComposite(comp))
 
-		resName := comp.Name + "-luks-key-0"
-		kubeObject := &xkube.Object{}
-		assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, resName))
+		for _, v := range getLuksKeyNames(comp) {
+			kubeObject := &xkube.Object{}
+			assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, v))
 
-		s := &v1.Secret{}
-		assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
-		assert.NotEmpty(t, s.Data["luksKey"])
+			s := &v1.Secret{}
+			assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
+			assert.NotEmpty(t, s.Data["luksKey"])
+		}
 
 		// Get values
 		values, err := createCnpgHelmValues(ctx, svc, comp)
@@ -109,4 +105,11 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 		assert.NotNil(t, values)
 		assert.Equal(t, "ssd-encrypted", values["cluster"].(map[string]any)["storage"].(map[string]any)["storageClass"])
 	})
+}
+
+func getLuksKeyNames(comp *vshnv1.VSHNPostgreSQL) []string {
+	return []string{
+		comp.Name + "-cluster-1-luks-key",
+		comp.Name + "-cluster-1-wal-luks-key",
+	}
 }

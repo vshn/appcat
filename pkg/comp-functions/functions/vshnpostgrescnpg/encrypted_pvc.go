@@ -17,15 +17,13 @@ import (
 )
 
 // AddPvcSecret adds a secret for the encrypted PVC for the PostgreSQL instance.
-// ToDo: Rewrite for CNPG
 func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
 	log := controllerruntime.LoggerFrom(ctx)
 
 	err := svc.GetObservedComposite(comp)
 
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("Cannot get composite: %w", err))
+		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 	log.Info("Check if encrypted storage is enabled")
 
@@ -68,13 +66,13 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 		log.Info("Secret does not exist yet. Creating...")
 		luksKey, err = password.Generate(64, 10, 1, false, true)
 		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("Cannot generate new luksKey: %w", err))
+			return runtime.NewFatalResult(fmt.Errorf("cannot generate new luksKey: %w", err))
 		}
 	} else if err == nil {
-		log.Info("retreiviing existing secret key...")
+		log.Info("retrieving existing secret key...")
 		luksKey = string(secret.Data["luksKey"])
 	} else {
-		return runtime.NewFatalResult(fmt.Errorf("Cannot get luks secret object: %w", err))
+		return runtime.NewFatalResult(fmt.Errorf("cannot get luks secret object: %w", err))
 	}
 
 	secret = &v1.Secret{
@@ -88,7 +86,7 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 	}
 	err = svc.SetDesiredKubeObject(secret, luksSecretResourceName)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("Cannot add luks secret object: %w", err))
+		return runtime.NewFatalResult(fmt.Errorf("cannot add luks secret object: %w", err))
 	}
 	return nil
 }

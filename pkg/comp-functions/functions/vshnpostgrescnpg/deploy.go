@@ -226,9 +226,11 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 				"serverCASecret":  certificateSecretName,
 				"serverTLSSecret": certificateSecretName,
 			},
+			"walStorage": map[string]any{
+				"enabled": true,
+			},
 			// The following will be overwritten by setResources() later
-			"storage":    map[string]any{},
-			"walStorage": map[string]any{}, // Disabled by default, but the SC gets set
+			"storage": map[string]any{},
 			"resources": map[string]any{
 				"requests": map[string]any{},
 				"limits":   map[string]any{},

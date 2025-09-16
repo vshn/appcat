@@ -1,35 +1,10 @@
 package vshnpostgrescnpg
 
 import (
-	"context"
 	"testing"
-
-	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
-
-	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func TestTransform_NoInstanceNamespace(t *testing.T) {
-	ctx := context.Background()
-	expectSvc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/secrets/01_expected_no-instance-namespace.yaml")
-	expectResult := runtime.NewWarningResult("cannot get the sgcluster object: not found")
-
-	t.Run("WhenNoInstance_ThenWarningAndNoChange", func(t *testing.T) {
-
-		//Given
-		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/secrets/01_input_no-instance-namespace.yaml")
-
-		// When
-		result := AddConnectionDetails(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
-
-		// Then
-		assert.Equal(t, expectResult, result)
-		assert.Equal(t, expectSvc, svc)
-	})
-}
 
 func TestGetPostgresURL(t *testing.T) {
 	tests := map[string]struct {

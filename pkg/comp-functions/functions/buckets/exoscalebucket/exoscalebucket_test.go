@@ -49,3 +49,32 @@ func TestExistingBuckets(t *testing.T) {
 	assert.Equal(t, "existing-iam", user.GetName())
 
 }
+
+// TestBucketWithoutName tests that when bucketName is not specified, it uses the composite name
+func TestBucketWithoutName(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "exoscalebucket/bucket-no-name.yaml")
+
+	ctx := context.TODO()
+	compositeName := "testbucket-xyz123"
+
+	// Get the composite bucket to verify bucketName gets populated
+	compositeBucket := &v1.ObjectBucket{}
+	err := svc.GetObservedComposite(compositeBucket)
+	assert.NoError(t, err)
+
+	res := ProvisionExoscalebucket(ctx, compositeBucket, svc)
+	assert.Nil(t, res)
+
+	// Verify that bucketName was populated in the composite status
+	assert.Equal(t, compositeName, compositeBucket.Status.BucketName)
+
+	bucket := &exoscalev1.Bucket{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(bucket, "exoscale-bucket"))
+	assert.Equal(t, compositeName, bucket.GetName())
+	assert.Equal(t, compositeName, bucket.Spec.ForProvider.BucketName)
+
+	user := &exoscalev1.IAMKey{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(user, "exoscale-iam"))
+	assert.Equal(t, compositeName, user.GetName())
+	assert.Contains(t, user.Spec.ForProvider.Services.SOS.Buckets, compositeName)
+}

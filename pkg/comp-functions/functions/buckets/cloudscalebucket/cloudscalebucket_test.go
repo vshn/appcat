@@ -48,3 +48,31 @@ func TestExistingBuckets(t *testing.T) {
 	assert.Equal(t, "existing-user", user.GetName())
 
 }
+
+// TestBucketWithoutName tests that when bucketName is not specified, it uses the composite name
+func TestBucketWithoutName(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "cloudscalebucket/bucket-no-name.yaml")
+
+	ctx := context.TODO()
+	compositeName := "testbucket-abc789"
+
+	// Get the composite bucket to verify bucketName gets populated
+	compositeBucket := &v1.ObjectBucket{}
+	err := svc.GetObservedComposite(compositeBucket)
+	assert.NoError(t, err)
+
+	res := ProvisionCloudscalebucket(ctx, compositeBucket, svc)
+	assert.Nil(t, res)
+
+	// Verify that bucketName was populated in the composite status
+	assert.Equal(t, compositeName, compositeBucket.Status.BucketName)
+
+	bucket := &cloudscalev1.Bucket{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(bucket, "cloudscale-bucket"))
+	assert.Equal(t, compositeName, bucket.GetName())
+	assert.Equal(t, compositeName, bucket.Spec.ForProvider.BucketName)
+
+	user := &cloudscalev1.ObjectsUser{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(user, "cloudscale-user"))
+	assert.Equal(t, compositeName, user.GetName())
+}

@@ -28,6 +28,13 @@ func ProvisionExoscalebucket(_ context.Context, bucket *appcatv1.ObjectBucket, s
 		return runtime.NewFatalResult(err)
 	}
 
+	// Set the effective bucket name in status
+	bucket.Status.BucketName = bucket.GetBucketName()
+	err = svc.SetDesiredCompositeStatus(bucket)
+	if err != nil {
+		return runtime.NewFatalResult(err)
+	}
+
 	config, ok := svc.Config.Data["providerConfig"]
 	if !ok {
 		return runtime.NewFatalResult(fmt.Errorf("no providerConfig specified"))
@@ -43,7 +50,7 @@ func ProvisionExoscalebucket(_ context.Context, bucket *appcatv1.ObjectBucket, s
 		return runtime.NewFatalResult(err)
 	}
 
-	svc.SetConnectionDetail("BUCKET_NAME", []byte(bucket.Spec.Parameters.BucketName))
+	svc.SetConnectionDetail("BUCKET_NAME", []byte(bucket.GetBucketName()))
 	svc.SetConnectionDetail("AWS_REGION", []byte(bucket.Spec.Parameters.Region))
 
 	err = populateEndpointConnectionDetails(svc)
@@ -62,7 +69,7 @@ func addBucket(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, confi
 			ForProvider: exoscalev1.BucketParameters{
 				BucketDeletionPolicy: exoscalev1.BucketDeletionPolicy(bucket.Spec.Parameters.BucketDeletionPolicy),
 				Zone:                 bucket.Spec.Parameters.Region,
-				BucketName:           bucket.Spec.Parameters.BucketName,
+				BucketName:           bucket.GetBucketName(),
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{
@@ -101,7 +108,7 @@ func addUser(svc *runtime.ServiceRuntime, bucket *appcatv1.ObjectBucket, config 
 				Services: exoscalev1.ServicesSpec{
 					SOS: exoscalev1.SOSSpec{
 						Buckets: []string{
-							bucket.Spec.Parameters.BucketName,
+							bucket.GetBucketName(),
 						},
 					},
 				},

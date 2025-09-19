@@ -41,14 +41,6 @@ func init() {
 				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNPostgreSQL](pgAlerts),
 			},
 			{
-				Name:    "ensure-objectbucket-labels",
-				Execute: EnsureObjectBucketLabels,
-			},
-			{
-				Name:    "pdb",
-				Execute: common.AddPDBSettings[*vshnv1.VSHNPostgreSQL],
-			},
-			{
 				Name:    "billing",
 				Execute: AddBilling,
 			},

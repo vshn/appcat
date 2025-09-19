@@ -301,7 +301,7 @@ HOSTIP=$(docker inspect kindev-control-plane | jq '.[0].NetworkSettings.Networks
 kind get kubeconfig --name kindev  > ~/.kind/.kind/kube-config
 
 kubectl delete apiservice v1.api.appcat.vshn.io
-kubectl -n syn-appcat delete svc appcat 
+kubectl -n syn-appcat delete svc appcat
 
 cat <<EOF | sed -e "s/172.21.0.1/$HOSTIP/g" | kubectl apply -f -
 apiVersion: apiregistration.k8s.io/v1

@@ -105,6 +105,32 @@ func TestTransformSchedule_DontOverwriteBackupOrMaintenance(t *testing.T) {
 	assert.Equal(t, vshnv1.TimeOfDay("11:12:23"), comp.Spec.Parameters.Maintenance.TimeOfDay)
 }
 
+func TestTransformSchedule_BackupDisabled(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/base.yaml")
+
+	comp := &vshnv1.VSHNPostgreSQL{}
+	err := svc.GetDesiredComposite(comp)
+	assert.NoError(t, err)
+
+	// Disable backups
+	enabled := false
+	comp.Spec.Parameters.Backup.Enabled = &enabled
+	err = svc.SetDesiredCompositeStatus(comp)
+	assert.NoError(t, err)
+
+	res := TransformSchedule(context.TODO(), comp, svc)
+	assert.Nil(t, res)
+
+	err = svc.GetDesiredComposite(comp)
+	assert.NoError(t, err)
+
+	// When backups are disabled, no backup schedule should be generated
+	assert.Empty(t, comp.GetBackupSchedule())
+
+	// But maintenance schedule should still be generated
+	_ = parseAndValidateMaintenance(t, comp)
+}
+
 func parseAndValidateBackupSchedule(t *testing.T, comp *vshnv1.VSHNPostgreSQL) time.Time {
 	var backupTime time.Time
 	t.Run("validateBackupSchedule", func(t *testing.T) {

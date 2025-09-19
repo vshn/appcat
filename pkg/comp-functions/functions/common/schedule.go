@@ -18,6 +18,12 @@ var (
 type BackupScheduler interface {
 	GetBackupSchedule() string
 	SetBackupSchedule(string)
+	BackupEnabledChecker
+}
+
+// BackupEnabledChecker can check if backups are enabled
+type BackupEnabledChecker interface {
+	IsBackupEnabled() bool
 }
 
 type MaintenanceScheduler interface {
@@ -26,12 +32,11 @@ type MaintenanceScheduler interface {
 	GetMaintenanceTimeOfDay() *v1.TimeOfDay
 }
 
-// SetRandomSchedules initializes the backup and maintenance schedules if the user did not explicitly provide a schedule.
+// SetRandomMaintenanceSchedule sets a random maintenance schedule if not already set.
 // The maintenance will be set to a random time on a random day (Sunday-Friday) between 21:00 and 5:00,
 // with the exception that Sunday maintenance only runs after 21:00 (not in the early morning hours).
-// The backup schedule will be set to once a day between 20:00 and 4:00.
-// If neither maintenance nor backup is set, the function will make sure that there will be backup scheduled one hour before the maintenance.
-func SetRandomSchedules(backup BackupScheduler, maintenance MaintenanceScheduler) {
+// Returns the maintenance time that was set or already existed.
+func SetRandomMaintenanceSchedule(maintenance MaintenanceScheduler) time.Time {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	availableDays := []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday"}
 	selectedDay := availableDays[rng.Intn(len(availableDays))]
@@ -46,13 +51,6 @@ func SetRandomSchedules(backup BackupScheduler, maintenance MaintenanceScheduler
 		maintTime = time.Unix(eveningStart.Unix()+rng.Int63n(eveningRange), 0).In(time.UTC)
 	}
 
-	backupTime := maintTime.Add(-1 * time.Hour).In(time.UTC)
-
-	if backup.GetBackupSchedule() == "" {
-		newSchedule := fmt.Sprintf("%d %d * * *", backupTime.Minute(), backupTime.Hour())
-		backup.SetBackupSchedule(newSchedule)
-	}
-
 	timeOfDay := maintenance.GetMaintenanceTimeOfDay()
 	if timeOfDay.IsNotSet() {
 		timeOfDay.SetTime(maintTime)
@@ -61,4 +59,43 @@ func SetRandomSchedules(backup BackupScheduler, maintenance MaintenanceScheduler
 	if maintenance.GetMaintenanceDayOfWeek() == "" {
 		maintenance.SetMaintenanceDayOfWeek(selectedDay)
 	}
+
+	return maintTime
+}
+
+// SetRandomBackupSchedule sets a random backup schedule if not already set and backups are enabled.
+// The backup schedule will be set to once a day, one hour before the provided maintenance time.
+// If no maintenance time is provided, it will be set to a random time between 20:00 and 4:00.
+func SetRandomBackupSchedule(backup BackupScheduler, maintenanceTime *time.Time) {
+	// Only set backup schedule if backups are enabled
+	shouldSetBackupSchedule := backup.IsBackupEnabled()
+
+	if !shouldSetBackupSchedule {
+		// Clear backup schedule when backups are disabled
+		if backup.GetBackupSchedule() != "" {
+			backup.SetBackupSchedule("")
+		}
+		return
+	}
+
+	if backup.GetBackupSchedule() != "" {
+		// Backup schedule already set
+		return
+	}
+
+	var backupTime time.Time
+	if maintenanceTime != nil {
+		// Schedule backup one hour before maintenance
+		backupTime = maintenanceTime.Add(-1 * time.Hour).In(time.UTC)
+	} else {
+		// Set random backup time between 20:00 and 4:00
+		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+		backupWindowStart := time.Date(1970, 1, 1, 20, 0, 0, 0, time.UTC)
+		backupWindowEnd := time.Date(1970, 1, 2, 4, 0, 0, 0, time.UTC)
+		backupWindowRange := backupWindowEnd.Unix() - backupWindowStart.Unix()
+		backupTime = time.Unix(backupWindowStart.Unix()+rng.Int63n(backupWindowRange), 0).In(time.UTC)
+	}
+
+	newSchedule := fmt.Sprintf("%d %d * * *", backupTime.Minute(), backupTime.Hour())
+	backup.SetBackupSchedule(newSchedule)
 }

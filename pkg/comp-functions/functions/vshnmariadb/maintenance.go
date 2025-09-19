@@ -17,7 +17,8 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runti
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	maintTime := common.SetRandomMaintenanceSchedule(comp)
+	common.SetRandomBackupSchedule(comp, &maintTime)
 
 	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 		svc.Log.Error(err, "cannot set schedules in the composite status")

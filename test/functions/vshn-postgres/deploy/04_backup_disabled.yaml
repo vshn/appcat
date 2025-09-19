@@ -1,0 +1,163 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters:
+          service:
+            majorVersion: "15"
+          instances: 1
+          backup:
+            enabled: false
+          maintenance:
+            schedule: 12 34 * * *
+        writeConnectionSecretToRef: {}
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+  namespace-conditions:
+    resource:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        labels:
+          appuio.io/organization: vshn
+          name.appuio.io/app-display-name: pgsql
+          name.appuio.io/app-instance: pgsql-gc9x4
+          name.appuio.io/app-name: postgresql
+          name.appuio.io/app-version: "15"
+          name.appuio.io/project-display-name: unit-test
+          postgresql.appcat.vshn.io/postgresql-name: pgsql-gc9x4
+        name: vshn-postgresql-pgsql-gc9x4
+      spec: {}
+  local-ca:
+    resource:
+      apiVersion: cert-manager.io/v1
+      kind: Issuer
+      metadata:
+        name: pgsql-gc9x4
+        namespace: vshn-postgresql-pgsql-gc9x4
+      spec:
+        selfSigned:
+          crlDistributionPoints: []
+  certificate:
+    resource:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: pgsql-gc9x4
+        namespace: vshn-postgresql-pgsql-gc9x4
+      spec:
+        dnsNames:
+        - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc.cluster.local
+        - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc
+        duration: 87600h0m0s
+        isCA: false
+        issuerRef:
+          group: cert-manager.io
+          kind: Issuer
+          name: pgsql-gc9x4
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 4096
+        renewBefore: 2400h0m0s
+        secretName: tls-certificate
+        subject:
+          organizations:
+          - vshn-appcat
+        usages:
+        - server auth
+        - client auth
+  profile:
+    resource:
+      apiVersion: stackgres.io/v1
+      kind: SGInstanceProfile
+      metadata:
+        name: pgsql-gc9x4
+        namespace: vshn-postgresql-pgsql-gc9x4
+      spec:
+        cpu: "0.5"
+        memory: 1Gi
+  "pgsql-gc9x4-pg-conf-15":
+    resource:
+      apiVersion: stackgres.io/v1
+      kind: SGPostgresConfig
+      metadata:
+        name: pgsql-gc9x4-postgres-config-15
+        namespace: vshn-postgresql-pgsql-gc9x4
+      spec:
+        postgresqlConf: {}
+        postgresVersion: "15"
+  cluster:
+    resource:
+      apiVersion: stackgres.io/v1
+      kind: SGCluster
+      metadata:
+        name: pgsql-gc9x4
+        namespace: vshn-postgresql-pgsql-gc9x4
+      spec:
+        configurations:
+          sgPostgresConfig: pgsql-gc9x4-postgres-config-15
+          # Note: No backups configuration when backup is disabled
+        initialData: {}
+        instances: 1
+        nonProductionOptions:
+          enableSetClusterCpuRequests: true
+          enableSetClusterMemoryRequests: true
+          enableSetPatroniCpuRequests: true
+          enableSetPatroniMemoryRequests: true
+        pods:
+          disableConnectionPooling: false
+          disableEnvoy: false
+          persistentVolume:
+            size: 16Gi
+          resources:
+            enableClusterLimitsRequirements: true
+          scheduling:
+            nodeSelector: {}
+        postgres:
+          ssl:
+            certificateSecretKeySelector:
+              key: tls.crt
+              name: tls-certificate
+            enabled: true
+            privateKeySecretKeySelector:
+              key: tls.key
+              name: tls-certificate
+          version: "15"
+        sgInstanceProfile: pgsql-gc9x4
+  podmonitor:
+    resource:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: postgresql-podmonitor
+        namespace: vshn-postgresql-pgsql-gc9x4
+      spec:
+        namespaceSelector:
+          matchNames:
+          - vshn-postgresql-pgsql-gc9x4
+        podMetricsEndpoints:
+        - metricRelabelings:
+          - action: keep
+            regex: (pg_up|pg_postmaster_start_time_seconds|pg_settings_shared_preload_libraries|pg_settings_max_connections|pg_stat_database_xact_commit|pg_stat_database_xact_rollback|pg_stat_database_blks_read|pg_stat_database_blks_hit|pg_stat_database_tup_returned|pg_stat_database_tup_fetched|pg_stat_database_tup_inserted|pg_stat_database_tup_updated|pg_stat_database_tup_deleted|pg_stat_database_conflicts|pg_stat_database_temp_files|pg_stat_database_temp_bytes|pg_stat_database_deadlocks|pg_stat_database_blk_read_time|pg_stat_database_blk_write_time|pg_database_size_bytes|pg_stat_bgwriter_checkpoints_timed|pg_stat_bgwriter_checkpoints_req|pg_stat_bgwriter_checkpoint_write_time|pg_stat_bgwriter_checkpoint_sync_time|pg_stat_bgwriter_buffers_checkpoint|pg_stat_bgwriter_buffers_clean|pg_stat_bgwriter_maxwritten_clean|pg_stat_bgwriter_buffers_backend|pg_stat_bgwriter_buffers_backend_fsync|pg_stat_bgwriter_buffers_alloc|pg_stat_bgwriter_stats_reset|pg_stat_archiver_archived_count|pg_stat_archiver_failed_count|pg_replication_lag|pg_stat_replication_sent_lsn|pg_stat_replication_write_lsn|pg_stat_replication_flush_lsn|pg_stat_replication_replay_lsn|pg_stat_replication_write_lag|pg_stat_replication_flush_lag|pg_stat_replication_replay_lag|pg_stat_wal_receiver_received_lsn|pg_stat_wal_receiver_received_tli|pg_stat_wal_receiver_last_msg_send_time|pg_stat_wal_receiver_last_msg_receipt_time|pg_stat_wal_receiver_latest_end_lsn|pg_stat_wal_receiver_latest_end_time|process_resident_memory_bytes|process_virtual_memory_bytes|process_open_fds|go_memstats_alloc_bytes|go_memstats_sys_bytes)
+            sourceLabels:
+            - __name__
+          port: pgexporter
+        selector:
+          matchLabels:
+            app: StackGresCluster
+            stackgres.io/cluster-name: pgsql-gc9x4

@@ -218,6 +218,12 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 				"kind": "ImageCatalog",
 				"name": comp.GetName() + "-cluster",
 			},
+			"monitoring": map[string]any{
+				"enabled": true,
+				"prometheusRules": map[string]bool{
+					"enabled": false,
+				},
+			},
 			"postgresql": map[string]any{
 				"parameters": map[string]any{},
 			},

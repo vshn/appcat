@@ -37,7 +37,7 @@ func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common
 
 	// Always create/preserve the backup bucket (handles both enabled and disabled states)
 	l.Info("Creating/preserving backup bucket", "backupEnabled", comp.IsBackupEnabled())
-	err := createObjectBucket(ctx, comp, svc)
+	err := CreateObjectBucket(ctx, comp, svc)
 	if err != nil {
 		return fmt.Errorf("cannot create/preserve backup bucket: %w", err)
 	}
@@ -76,7 +76,8 @@ func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common
 	return nil
 }
 
-func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
+// Create object bucket for backups
+func CreateObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
 	l := controllerruntime.LoggerFrom(ctx)
 
 	if comp.GetName() == "" {

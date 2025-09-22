@@ -11,9 +11,7 @@ import (
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certmgrv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
-	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
@@ -141,55 +139,16 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	return nil
 }
 
-func createObjectBucket(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
-	xObjectBucket := &appcatv1.XObjectBucket{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: comp.GetName(),
-			Labels: map[string]string{
-				runtime.ProviderConfigIgnoreLabel: "true",
-			},
-		},
-		Spec: appcatv1.XObjectBucketSpec{
-			Parameters: appcatv1.ObjectBucketParameters{
-				BucketName: fmt.Sprintf("%s-%s-%s", comp.GetName(), svc.Config.Data["bucketRegion"], "backup"),
-			},
-			ResourceSpec: xpv1.ResourceSpec{
-				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      "pgbucket-" + comp.GetName(),
-					Namespace: svc.GetCrossplaneNamespace(),
-				},
-			},
-		},
-	}
-
-	xObjectBucket.Spec.Parameters.BucketName = getBucketName(svc, xObjectBucket)
-
-	err := svc.SetDesiredComposedResourceWithName(xObjectBucket, "pg-bucket")
-	if err != nil {
-		err = fmt.Errorf("cannot create xObjectBucket: %w", err)
-		return err
-	}
-
-	return nil
-}
-
-func getBucketName(svc *runtime.ServiceRuntime, currentBucket *appcatv1.XObjectBucket) string {
-	bucket := &appcatv1.XObjectBucket{}
-
-	err := svc.GetObservedComposedResource(bucket, "pg-bucket")
-	if err != nil {
-		return currentBucket.Spec.Parameters.BucketName
-	}
-
-	return bucket.Spec.Parameters.BucketName
-}
-
 // Deploy PostgresQL using the CNPG cluster helm chart
 func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	// Deploy
 	values, err := createCnpgHelmValues(ctx, svc, comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create helm values: %w", err))
+	}
+
+	if err := SetupBackup(ctx, svc, comp, values); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot set up backup: %v", err))
 	}
 
 	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")
@@ -215,6 +174,10 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (map[string]any, error) {
 	// https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml
 	values := map[string]any{
+		// Backup gets set up later
+		"backups": map[string]any{
+			"s3": map[string]any{},
+		},
 		"cluster": map[string]any{
 			"instances": 1, // For the moment we only support single instance deployments
 			"imageCatalogRef": map[string]string{

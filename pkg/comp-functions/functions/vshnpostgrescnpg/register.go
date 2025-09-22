@@ -25,10 +25,6 @@ func init() {
 				Execute: common.AddUserAlerting[*vshnv1.VSHNPostgreSQL],
 			},
 			{
-				Name:    "random-default-schedule",
-				Execute: TransformSchedule,
-			},
-			{
 				Name:    "encrypted-pvc-secret",
 				Execute: AddPvcSecret,
 			},

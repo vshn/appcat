@@ -15,8 +15,6 @@ const (
 	plan        = "standard-1"
 )
 
-// Note: We are only testing stuff regarding the CNPG helm deployment.
-// Other things, such as certificates etc., are already handled in other tests
 func Test_deploy(t *testing.T) {
 	svc, comp := getSvcCompCnpg(t)
 	ctx := context.TODO()

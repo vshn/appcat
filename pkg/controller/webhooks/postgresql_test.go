@@ -333,10 +333,19 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
 	assert.Error(t, err)
 
-	// Do not allow changing compositionRef
+	// Allow changing compositionRef IF not yet set
+	// Crossplane immediately sets this after creation automatically if the user does not supply it themselves
+	pgValid = pgOrig.DeepCopy()
+	pgValid.Spec.CompositionRef.Name = "vshnpostgrescnpg.vshn.appcat.vshn.io"
+	_, err = handler.ValidateUpdate(ctx, pgOrig, pgValid)
+	assert.NoError(t, err)
+
+	// Do not allow changing compositionRef IF already set
+	pgRef := pgOrig.DeepCopy()
+	pgRef.Spec.CompositionRef.Name = "vshnpostgres.vshn.appcat.vshn.io"
 	pgInvalid = pgOrig.DeepCopy()
-	pgInvalid.Spec.CompositionRef.Name = "new-composition"
-	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
+	pgInvalid.Spec.CompositionRef.Name = "vshnpostgrescnpg.vshn.appcat.vshn.io"
+	_, err = handler.ValidateUpdate(ctx, pgRef, pgInvalid)
 	assert.Error(t, err)
 }
 

@@ -135,8 +135,9 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 			return nil, nil
 		}
 
-		// Do not allow changing compositionRef
-		if newPg.Spec.CompositionRef.Name != oldPg.Spec.CompositionRef.Name {
+		// Do not allow changing compositionRef if it has been set previously.
+		// When creating a new VSHNPostgresQL, crossplane will automatically set this field if unset.
+		if oldPg.Spec.CompositionRef.Name != "" && newPg.Spec.CompositionRef.Name != oldPg.Spec.CompositionRef.Name {
 			return nil, field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
 		}
 

@@ -61,6 +61,12 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 				"schedule":             transformSchedule(comp.GetBackupSchedule()),
 				"backupOwnerReference": "self",
 			}},
+			"data": map[string]string{
+				"encryption": "",
+			},
+			"wal": map[string]string{
+				"encryption": "",
+			},
 			"s3": map[string]string{
 				"bucket":    connectionDetails.bucket,
 				"region":    connectionDetails.region,

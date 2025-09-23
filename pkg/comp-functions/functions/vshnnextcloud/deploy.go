@@ -451,6 +451,11 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 	securityContext := map[string]any{}
 	podSecurityContext := map[string]any{}
+
+	metrics := map[string]any{
+		"enabled": true,
+	}
+
 	if isOpenShift {
 		securityContext = map[string]any{
 			"runAsUser":                nil,
@@ -466,6 +471,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"seLinuxOptions": map[string]any{
 				"type": "spc_t",
 			},
+		}
+
+		metrics["securityContext"] = map[string]any{
+			"runAsUser": nil,
 		}
 	}
 
@@ -585,9 +594,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled":             true,
 		},
 		"externalDatabase": externalDb,
-		"metrics": map[string]any{
-			"enabled": true,
-		},
+		"metrics":          metrics,
 		"resources": map[string]any{
 			"requests": map[string]any{
 				"memory": res.ReqMem,

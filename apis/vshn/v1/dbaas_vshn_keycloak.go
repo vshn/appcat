@@ -416,3 +416,8 @@ func (v *VSHNKeycloak) GetBillingName() string {
 func (v *VSHNKeycloak) GetSLA() string {
 	return string(v.Spec.Parameters.Service.ServiceLevel)
 }
+
+// IsBackupEnabled returns true if backups are enabled for this instance
+func (v *VSHNKeycloak) IsBackupEnabled() bool {
+	return v.Spec.Parameters.Backup.IsEnabled()
+}

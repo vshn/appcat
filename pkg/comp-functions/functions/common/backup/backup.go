@@ -3,11 +3,14 @@ package backup
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	"github.com/sethvargo/go-password/password"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -19,49 +22,155 @@ import (
 )
 
 const (
-	credentialSecretName = "backup-bucket-credentials"
-	k8upRepoSecretName   = "k8up-repository-password"
-	k8upRepoSecretKey    = "password"
-	backupScriptCMName   = "backup-script"
+	credentialSecretName         = "backup-bucket-credentials"
+	k8upRepoSecretName           = "k8up-repository-password"
+	k8upRepoSecretKey            = "password"
+	backupScriptCMName           = "backup-script"
+	BackupDisabledTimestampLabel = "appcat.vshn.io/backup-disabled-timestamp"
 )
 
 // AddK8upBackup creates an S3 bucket and a K8up schedule according to the composition spec.
+// When backup is disabled, it only creates/preserves the bucket for retention but skips other backup objects.
 func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common.InfoGetter) error {
 
 	l := controllerruntime.LoggerFrom(ctx)
 
-	l.Info("Creating backup bucket")
+	// Always create/preserve the backup bucket (handles both enabled and disabled states)
+	l.Info("Creating/preserving backup bucket", "backupEnabled", comp.IsBackupEnabled())
 	err := createObjectBucket(ctx, comp, svc)
 	if err != nil {
-		return fmt.Errorf("cannot create backup bucket: %w", err)
+		return fmt.Errorf("cannot create/preserve backup bucket: %w", err)
 	}
 
-	l.Info("Creating repository password")
-	err = createRepositoryPassword(ctx, comp, svc)
-	if err != nil {
-		return fmt.Errorf("cannot create repository password: %w", err)
+	// Check if bucket exists by looking for observed bucket or if backup is enabled
+	bucketExists := comp.IsBackupEnabled()
+	if !bucketExists {
+		// Check if bucket exists in observed state (when backup was previously enabled)
+		observedBucket := &appcatv1.XObjectBucket{}
+		bucketName := comp.GetName() + "-backup"
+		err := svc.GetObservedComposedResource(observedBucket, bucketName)
+		if err != nil && err != runtime.ErrNotFound {
+			return fmt.Errorf("cannot check backup bucket: %w", err)
+		}
+		bucketExists = (err == nil)
 	}
 
-	l.Info("Creating backup schedule")
-	err = createK8upSchedule(ctx, comp, svc)
-	if err != nil {
-		return fmt.Errorf("cannot create backup schedule, %w", err)
+	if bucketExists {
+		l.Info("Creating repository password for bucket access")
+		err = createRepositoryPassword(ctx, comp, svc)
+		if err != nil {
+			return fmt.Errorf("cannot create repository password: %w", err)
+		}
+	}
+
+	if comp.IsBackupEnabled() {
+		l.Info("Creating backup schedule - backups enabled")
+		err = createK8upSchedule(ctx, comp, svc)
+		if err != nil {
+			return fmt.Errorf("cannot create backup schedule, %w", err)
+		}
+	} else {
+		l.Info("Skipping backup schedule - backups disabled")
 	}
 
 	return nil
 }
 
 func createObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
+	l := controllerruntime.LoggerFrom(ctx)
+
 	if comp.GetName() == "" {
 		return fmt.Errorf("could not get composite name")
 	}
 
+	// Start with base labels
+	labels := map[string]string{
+		runtime.ProviderConfigIgnoreLabel: "true",
+	}
+
+	// Check if backup is disabled and we need to preserve an existing bucket for retention
+	if !comp.IsBackupEnabled() {
+		l.Info("Backup disabled - checking if bucket needs retention timestamp label")
+
+		// Check if bucket exists in observed state (from when backup was enabled)
+		observedBucket := &appcatv1.XObjectBucket{}
+		bucketName := comp.GetName() + "-backup"
+		err := svc.GetObservedComposedResource(observedBucket, bucketName)
+		if err == runtime.ErrNotFound {
+			l.Info("No existing backup bucket found - backup was never enabled, skipping bucket creation")
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("cannot check observed backup bucket: %w", err)
+		}
+
+		// Bucket exists from when backup was enabled - preserve it with timestamp label
+		l.Info("Found existing bucket from when backup was enabled - adding retention timestamp")
+
+		// Copy existing labels
+		if observedBucket.Labels != nil {
+			for k, v := range observedBucket.Labels {
+				labels[k] = v
+			}
+		}
+
+		// Add backup-disabled timestamp label only if it doesn't exist yet
+		if _, exists := labels[BackupDisabledTimestampLabel]; !exists {
+			now := time.Now()
+			timestampStr := strconv.FormatInt(now.Unix(), 10)
+			labels[BackupDisabledTimestampLabel] = timestampStr
+			l.Info("Added backup disabled timestamp label to bucket for retention tracking",
+				"timestamp", now.Format(time.RFC3339),
+				"timestampUnix", timestampStr)
+		} else {
+			l.Info("Backup disabled timestamp label already exists")
+
+			// Check if retention period has expired and bucket should be deleted
+			timestampStr := labels[BackupDisabledTimestampLabel]
+			timestampUnix, err := strconv.ParseInt(timestampStr, 10, 64)
+			if err != nil {
+				l.Error(err, "Failed to parse backup disabled timestamp, skipping retention check")
+			} else {
+				backupDisabledTime := time.Unix(timestampUnix, 0)
+				retention := comp.GetBackupRetention()
+
+				// Use KeepDaily as the retention period in days, with a minimum of 1 day
+				retentionDays := retention.KeepDaily
+				if retentionDays <= 0 {
+					retentionDays = 6 // Default value matching webhook
+				}
+
+				retentionPeriod := time.Duration(retentionDays) * 24 * time.Hour
+				allowedDeletionTime := backupDisabledTime.Add(retentionPeriod)
+				now := time.Now()
+
+				if now.After(allowedDeletionTime) {
+					// Retention period has expired, skip bucket creation to allow deletion
+					l.Info("Backup bucket retention period has expired, skipping bucket recreation to allow deletion",
+						"retentionDays", retentionDays,
+						"backupDisabledTime", backupDisabledTime.Format(time.RFC3339),
+						"expirationTime", allowedDeletionTime.Format(time.RFC3339))
+					return nil
+				} else {
+					timeRemaining := allowedDeletionTime.Sub(now)
+					l.Info("Backup bucket still in retention period, preserving it",
+						"retentionDays", retentionDays,
+						"backupDisabledTime", backupDisabledTime.Format(time.RFC3339),
+						"timeRemaining", timeRemaining.String())
+					labels["appcat.vshn.io/allow-deletion"] = "true"
+					// Also patch the connection secret with the same label
+					if err := PatchConnectionSecretWithAllowDeletion(ctx, comp, svc); err != nil {
+						l.Error(err, "Failed to patch connection secret with allow-deletion label")
+					}
+				}
+			}
+		}
+	}
+
 	ob := &appcatv1.XObjectBucket{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: comp.GetName() + "-backup",
-			Labels: map[string]string{
-				runtime.ProviderConfigIgnoreLabel: "true",
-			},
+			Name:   comp.GetName() + "-backup",
+			Labels: labels,
 		},
 		Spec: appcatv1.XObjectBucketSpec{
 			Parameters: appcatv1.ObjectBucketParameters{
@@ -101,7 +210,7 @@ func createRepositoryPassword(ctx context.Context, comp common.InfoGetter, svc *
 
 	if _, ok := secret.Data[k8upRepoSecretKey]; ok {
 		l.V(1).Info("secret is not empty")
-		return svc.SetDesiredKubeObject(secret, secretName)
+		return svc.SetDesiredKubeObject(secret, secretName, runtime.KubeOptionAllowDeletion)
 	}
 
 	pw, err := password.Generate(64, 5, 5, false, true)
@@ -113,7 +222,7 @@ func createRepositoryPassword(ctx context.Context, comp common.InfoGetter, svc *
 		k8upRepoSecretKey: []byte(pw),
 	}
 
-	return svc.SetDesiredKubeObject(secret, secretName)
+	return svc.SetDesiredKubeObject(secret, secretName, runtime.KubeOptionAllowDeletion)
 }
 
 func createK8upSchedule(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
@@ -190,7 +299,7 @@ func createK8upSchedule(ctx context.Context, comp common.InfoGetter, svc *runtim
 		},
 	}
 
-	return svc.SetDesiredKubeObject(schedule, comp.GetName()+"-backup-schedule")
+	return svc.SetDesiredKubeObject(schedule, comp.GetName()+"-backup-schedule", runtime.KubeOptionAllowDeletion)
 }
 
 // AddPVCAnnotationToValues adds the default exclude annotations to the PVCs via the release values.
@@ -289,4 +398,30 @@ func getBucketName(svc *runtime.ServiceRuntime, currentBucket *appcatv1.XObjectB
 	}
 
 	return bucket.Spec.Parameters.BucketName
+}
+
+// patchConnectionSecretWithAllowDeletion patches the connection secret (Kubernetes Object)
+// that manages the backup credentials with the allow-deletion label
+func PatchConnectionSecretWithAllowDeletion(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
+	l := controllerruntime.LoggerFrom(ctx)
+
+	secretObjectName := comp.GetName() + "-backup-" + comp.GetName()
+
+	// Create a Kubernetes Object resource to represent the connection secret
+	secretObject := &xkube.Object{}
+
+	// Try to get the existing secret object
+	err := svc.GetObservedComposedResource(secretObject, secretObjectName)
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			l.V(1).Info("Connection secret object not found yet, skipping label patch", "secretObjectName", secretObjectName)
+			return nil
+		}
+		return fmt.Errorf("cannot get connection secret object: %w", err)
+	}
+
+	l.Info("Patching connection secret object with allow-deletion label", "secretObjectName", secretObjectName)
+
+	return svc.SetDesiredKubeObject(secretObject, secretObjectName,
+		runtime.KubeOptionAllowDeletion)
 }

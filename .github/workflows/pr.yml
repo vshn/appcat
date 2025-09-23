@@ -17,7 +17,7 @@ env:
 
 jobs:
   check-allow-merge:
-    if: github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master'
+    if: github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master' && !contains(github.event.pull_request.labels.*.name, 'automated-release')
     runs-on: ubuntu-latest
     steps:
       # Labels in the context don't get updated so they are stuck at what's set during creation
@@ -33,7 +33,8 @@ jobs:
 
   check-labels:
     # Act doesn't set a pull request number by default, so we skip if it's 0
-    if: github.event.pull_request.number != 0 && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master')
+    # Skip if PR has automated-release label
+    if: github.event.pull_request.number != 0 && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master') && !contains(github.event.pull_request.labels.*.name, 'automated-release')
     name: Check labels
     runs-on: ubuntu-latest
     steps:
@@ -48,7 +49,8 @@ jobs:
           one_of: major,minor,patch,documentation,dependency
           repo_token: ${{ secrets.GITHUB_TOKEN }}
   publish-branch-images:
-    if: github.event.action != 'closed' && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master')
+    # Skip if PR has automated-release label
+    if: github.event.action != 'closed' && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master') && !contains(github.event.pull_request.labels.*.name, 'automated-release')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -106,8 +108,9 @@ jobs:
         run: make package-push-branchtag -e IMG_TAG="${{ steps.extract_branch.outputs.branch }}" -e IMG_REPO=xpkg.upbound.io
 
   open-pr-component:
+    # Skip if PR has automated-release label
+    if: github.event.pull_request.number != 0 && github.event.action == 'opened' && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master') && !contains(github.event.pull_request.labels.*.name, 'automated-release')
     runs-on: ubuntu-latest
-    if: github.event.pull_request.number != 0 && github.event.action == 'opened' && (github.event.pull_request.base.ref != 'develop' || github.event.pull_request.head.ref != 'master')
     steps:
       - name: Get current labels
         uses: snnaplab/get-labels-action@v1
@@ -170,7 +173,7 @@ jobs:
           labels: ignoreChangelog
 
   create-release:
-    if: github.event.pull_request.merged && github.base_ref == 'master'
+    if: github.event.pull_request.merged && github.base_ref == 'master' && !contains(github.event.pull_request.labels.*.name, 'automated-release')
     runs-on: ubuntu-latest
     steps:
       - name: Check for patch label

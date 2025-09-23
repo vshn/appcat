@@ -12,6 +12,7 @@ import (
 // Test implementations that use real types
 type testBackupScheduler struct {
 	schedule string
+	enabled  bool
 }
 
 func (t *testBackupScheduler) GetBackupSchedule() string {
@@ -20,6 +21,10 @@ func (t *testBackupScheduler) GetBackupSchedule() string {
 
 func (t *testBackupScheduler) SetBackupSchedule(schedule string) {
 	t.schedule = schedule
+}
+
+func (t *testBackupScheduler) IsBackupEnabled() bool {
+	return t.enabled
 }
 
 type testMaintenanceScheduler struct {
@@ -40,10 +45,11 @@ func (t *testMaintenanceScheduler) GetMaintenanceTimeOfDay() *v1.TimeOfDay {
 }
 
 func TestSetRandomSchedules_EmptySchedules(t *testing.T) {
-	backup := &testBackupScheduler{}
+	backup := &testBackupScheduler{enabled: true}
 	maintenance := &testMaintenanceScheduler{}
 
-	SetRandomSchedules(backup, maintenance)
+	maintTime := SetRandomMaintenanceSchedule(maintenance)
+	SetRandomBackupSchedule(backup, &maintTime)
 
 	// Test that backup schedule is set
 	if backup.GetBackupSchedule() == "" {
@@ -69,10 +75,11 @@ func TestSetRandomSchedules_EmptySchedules(t *testing.T) {
 
 func TestSetRandomSchedules_PresetBackupSchedule(t *testing.T) {
 	existingSchedule := "30 2 * * *"
-	backup := &testBackupScheduler{schedule: existingSchedule}
+	backup := &testBackupScheduler{schedule: existingSchedule, enabled: true}
 	maintenance := &testMaintenanceScheduler{}
 
-	SetRandomSchedules(backup, maintenance)
+	maintTime := SetRandomMaintenanceSchedule(maintenance)
+	SetRandomBackupSchedule(backup, &maintTime)
 
 	// Test that existing backup schedule is preserved
 	if backup.GetBackupSchedule() != existingSchedule {
@@ -87,10 +94,11 @@ func TestSetRandomSchedules_PresetBackupSchedule(t *testing.T) {
 
 func TestSetRandomSchedules_PresetMaintenanceDay(t *testing.T) {
 	existingDay := "monday"
-	backup := &testBackupScheduler{}
+	backup := &testBackupScheduler{enabled: true}
 	maintenance := &testMaintenanceScheduler{dayOfWeek: existingDay}
 
-	SetRandomSchedules(backup, maintenance)
+	maintTime := SetRandomMaintenanceSchedule(maintenance)
+	SetRandomBackupSchedule(backup, &maintTime)
 
 	// Test that existing maintenance day is preserved
 	if maintenance.GetMaintenanceDayOfWeek() != existingDay {
@@ -104,14 +112,15 @@ func TestSetRandomSchedules_PresetMaintenanceDay(t *testing.T) {
 }
 
 func TestSetRandomSchedules_PresetMaintenanceTime(t *testing.T) {
-	backup := &testBackupScheduler{}
+	backup := &testBackupScheduler{enabled: true}
 	maintenance := &testMaintenanceScheduler{}
 
 	// Pre-set the maintenance time
 	presetTime := time.Date(2023, 1, 1, 22, 30, 0, 0, time.UTC)
 	maintenance.timeOfDay.SetTime(presetTime)
 
-	SetRandomSchedules(backup, maintenance)
+	maintTime := SetRandomMaintenanceSchedule(maintenance)
+	SetRandomBackupSchedule(backup, &maintTime)
 
 	// Test that existing maintenance time is preserved
 	timeOfDay := maintenance.GetMaintenanceTimeOfDay()
@@ -131,10 +140,11 @@ func TestSetRandomSchedules_PresetMaintenanceTime(t *testing.T) {
 func TestSetRandomSchedules_MaintenanceTimeWindow(t *testing.T) {
 	// Run the test multiple times to check randomness
 	for i := 0; i < 100; i++ {
-		backup := &testBackupScheduler{}
+		backup := &testBackupScheduler{enabled: true}
 		maintenance := &testMaintenanceScheduler{}
 
-		SetRandomSchedules(backup, maintenance)
+		maintTime := SetRandomMaintenanceSchedule(maintenance)
+		SetRandomBackupSchedule(backup, &maintTime)
 
 		// Extract hour from the maintenance time
 		// We need to check the actual time that was set
@@ -185,10 +195,11 @@ func TestSetRandomSchedules_MaintenanceTimeWindow(t *testing.T) {
 }
 
 func TestSetRandomSchedules_BackupOneHourBeforeMaintenance(t *testing.T) {
-	backup := &testBackupScheduler{}
+	backup := &testBackupScheduler{enabled: true}
 	maintenance := &testMaintenanceScheduler{}
 
-	SetRandomSchedules(backup, maintenance)
+	maintTime := SetRandomMaintenanceSchedule(maintenance)
+	SetRandomBackupSchedule(backup, &maintTime)
 
 	// Parse the backup schedule (format: "minute hour * * *")
 	backupSchedule := backup.GetBackupSchedule()
@@ -232,10 +243,11 @@ func TestSetRandomSchedules_SundayTimeRestriction(t *testing.T) {
 
 	// Run many iterations to specifically test Sunday scheduling
 	for i := 0; i < iterations; i++ {
-		backup := &testBackupScheduler{}
+		backup := &testBackupScheduler{enabled: true}
 		maintenance := &testMaintenanceScheduler{}
 
-		SetRandomSchedules(backup, maintenance)
+		maintTime := SetRandomMaintenanceSchedule(maintenance)
+		SetRandomBackupSchedule(backup, &maintTime)
 
 		if maintenance.GetMaintenanceDayOfWeek() == "sunday" {
 			sundayCount++
@@ -271,10 +283,11 @@ func TestSetRandomSchedules_DayDistribution(t *testing.T) {
 
 	// Run many iterations to test day distribution
 	for i := 0; i < iterations; i++ {
-		backup := &testBackupScheduler{}
+		backup := &testBackupScheduler{enabled: true}
 		maintenance := &testMaintenanceScheduler{}
 
-		SetRandomSchedules(backup, maintenance)
+		maintTime := SetRandomMaintenanceSchedule(maintenance)
+		SetRandomBackupSchedule(backup, &maintTime)
 		day := maintenance.GetMaintenanceDayOfWeek()
 		dayCount[day]++
 	}

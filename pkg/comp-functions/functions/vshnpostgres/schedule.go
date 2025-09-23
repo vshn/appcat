@@ -18,7 +18,8 @@ func TransformSchedule(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *ru
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	maintTime := common.SetRandomMaintenanceSchedule(comp)
+	common.SetRandomBackupSchedule(comp, &maintTime)
 
 	err = svc.SetDesiredCompositeStatus(comp)
 	if err != nil {

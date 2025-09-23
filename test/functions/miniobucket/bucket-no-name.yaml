@@ -1,0 +1,22 @@
+desired: {}
+input:
+  apiVersion: v1
+  data:
+    providerConfig: minio
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: appcat.vshn.io/v1
+      kind: ObjectBucket
+      metadata:
+        name: testbucket-minio123
+        namespace: default
+      spec:
+        parameters:
+          region: us-east-1

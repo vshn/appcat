@@ -12,6 +12,11 @@ type TimeOfDay string
 // K8upBackupSpec specifies when a backup for redis should be triggered.
 // It also contains the retention policy for the backup.
 type K8upBackupSpec struct {
+	// Enabled specifies if automatic backups are enabled for the instance.
+	// If disabled, no backup bucket, repository password, or K8up schedule will be deployed.
+	// +kubebuilder:default=true
+	Enabled *bool `json:"enabled,omitempty"`
+
 	// +kubebuilder:validation:Pattern=^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
 	Schedule string `json:"schedule,omitempty"`
 
@@ -31,6 +36,11 @@ func (k *K8upBackupSpec) SetBackupSchedule(schedule string) {
 // GetBackupRetention returns the retention definition for this backup.
 func (k *K8upBackupSpec) GetBackupRetention() K8upRetentionPolicy {
 	return k.Retention
+}
+
+// IsEnabled returns true if backups are enabled. Defaults to true if not explicitly set.
+func (k *K8upBackupSpec) IsEnabled() bool {
+	return k.Enabled == nil || *k.Enabled
 }
 
 // K8upRetentionPolicy describes the retention configuration for a K8up backup.

@@ -28,7 +28,8 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Service
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
 
-	common.SetRandomSchedules(comp, comp)
+	maintTime := common.SetRandomMaintenanceSchedule(comp)
+	common.SetRandomBackupSchedule(comp, &maintTime)
 
 	err = svc.SetDesiredCompositeStatus(comp)
 	if err != nil {
@@ -40,13 +41,15 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Service
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add k8up backup: %s", err.Error()))
 	}
 
-	l.Info("Adding backup script config map")
+	// Always add backup script and update release to prevent StatefulSet patching issues
+	// Even when backup is disabled, we need to keep the volumes/annotations to avoid forbidden StatefulSet changes
+	l.Info("Adding backup script config map", "backupEnabled", comp.IsBackupEnabled())
 	err = backup.AddBackupScriptCM(svc, comp, redisBackupScript)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create backup script configMap: %s", err.Error()))
 	}
 
-	l.Info("Updating the release object")
+	l.Info("Updating the release object", "backupEnabled", comp.IsBackupEnabled())
 	err = updateRelease(ctx, svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot update release: %s", err.Error()))

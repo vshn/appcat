@@ -29,10 +29,6 @@ var stsRecreateScript string
 // ResizeSpksPVCs will add a job to do the pvc resize for the instance
 func ResizeSpksPVCs(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstance, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
-	replicaKey := svc.Config.Data["replicaKey"]
-	if replicaKey == "" {
-		return runtime.NewFatalResult(fmt.Errorf("failed to parse replicaKey config value"))
-	}
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
@@ -77,7 +73,7 @@ func ResizeSpksPVCs(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstan
 		if len(sts.Spec.VolumeClaimTemplates) > 0 {
 			stsSize, _ = sts.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage().AsInt64()
 		}
-		newSize, found, err := unstructured.NestedString(values, replicaKey, "persistence", "size")
+		newSize, found, err := unstructured.NestedString(values, "persistentVolume", "size")
 		if !found {
 			return runtime.NewFatalResult(fmt.Errorf("disk size not found in observed release"))
 		}
@@ -102,7 +98,7 @@ func ResizeSpksPVCs(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstan
 		// The job hasn't been observed yet, so we need to keep it in desired, or we will have a recreate loop
 		// Also as long as it hasn't finished we need to make sure it exists.
 		if (!observedJob || deletionJob.Status.Succeeded < 1) || (sts.Status.ReadyReplicas == 0 && !stsUpdated) {
-			err := addDeletionJob(svc, comp, newSize, release.GetName(), replicaKey)
+			err := addDeletionJob(svc, comp, newSize, release.GetName())
 			if err != nil {
 				return runtime.NewFatalResult(fmt.Errorf("cannot create RBAC for the deletion job: %w", err))
 			}
@@ -130,13 +126,13 @@ func ResizeSpksPVCs(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstan
 		stsSize, _ = sts.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage().AsInt64()
 	}
 
-	patch, newSize, result := needReleasePatch(values, stsSize, replicaKey)
+	patch, newSize, result := needReleasePatch(values, stsSize)
 	if result != nil {
 		return result
 	}
 
 	if patch {
-		err = addDeletionJob(svc, comp, newSize, release.GetName(), replicaKey)
+		err = addDeletionJob(svc, comp, newSize, release.GetName())
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("cannot create the deletion job: %w", err))
 		}
@@ -158,7 +154,7 @@ func ResizeSpksPVCs(ctx context.Context, comp *spksv1alpha1.CompositeRedisInstan
 func addStsObserver(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRedisInstance) error {
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "redis-node",
+			Name:      "redis-server",
 			Namespace: comp.GetName(),
 		},
 	}
@@ -172,8 +168,8 @@ func addStsObserver(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRed
 	return svc.SetDesiredKubeObject(statefulset, comp.GetName()+"-sts-observer", KubeOptionAddProviderRef(providerConfigRef, true))
 }
 
-func needReleasePatch(values map[string]interface{}, stsSize int64, replicaKey string) (bool, string, *xfnproto.Result) {
-	releaseSizeValue, found, err := unstructured.NestedString(values, replicaKey, "persistence", "size")
+func needReleasePatch(values map[string]interface{}, stsSize int64) (bool, string, *xfnproto.Result) {
+	releaseSizeValue, found, err := unstructured.NestedString(values, "persistentVolume", "size")
 	if !found {
 		return false, "", runtime.NewFatalResult(fmt.Errorf("disk size not found in observed release"))
 	}
@@ -200,7 +196,7 @@ func getSizeAsInt(size string) (int64, error) {
 	return finalSize, nil
 }
 
-func addDeletionJob(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRedisInstance, newSize string, releaseName string, replicaKey string) error {
+func addDeletionJob(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRedisInstance, newSize string, releaseName string) error {
 	ns := svc.Config.Data["spksNamespace"]
 	stsDeleterImage := svc.Config.Data["stsDeleterImage"]
 
@@ -222,7 +218,7 @@ func addDeletionJob(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRed
 							Env: []corev1.EnvVar{
 								{
 									Name:  "STS_NAME",
-									Value: "redis-node",
+									Value: "redis-server",
 								},
 								{
 									Name:  "STS_NAMESPACE",
@@ -235,10 +231,6 @@ func addDeletionJob(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeRed
 								{
 									Name:  "RELEASE_NAME",
 									Value: releaseName,
-								},
-								{
-									Name:  "REPLICA_KEY",
-									Value: replicaKey,
 								},
 							},
 							Command: []string{

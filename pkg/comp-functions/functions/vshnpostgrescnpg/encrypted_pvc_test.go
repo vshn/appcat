@@ -66,7 +66,7 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParams.yaml")
 
 		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
-		assert.Equal(t, r, runtime.NewWarningResult("luks secret not yet ready"))
+		assert.Equal(t, r, runtime.NewWarningResult("luks secret 'psql-cluster-1-luks-key' not yet ready"))
 
 		comp := &vshnv1.VSHNPostgreSQL{}
 		assert.NoError(t, svc.GetObservedComposite(comp))

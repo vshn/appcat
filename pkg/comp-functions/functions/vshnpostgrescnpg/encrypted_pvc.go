@@ -39,13 +39,17 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 	pods := comp.GetInstances()
 
 	for i := 0; i < pods; i++ {
-		result := writeLuksSecret(svc, log, comp, i+1) // i+1 because we are dealing with an STS
+		index := i + 1 // i+1 because we are dealing with an STS
+		result := writeLuksSecret(svc, log, comp, index)
 		if result != nil {
 			return result
 		}
-		ready := svc.WaitForDesiredDependencies(comp.GetName(), fmt.Sprintf("%s-luks-key-%d", comp.Name, i))
-		if !ready {
-			return runtime.NewWarningResult("luks secret not yet ready")
+
+		for _, luksKey := range getLuksKeyNamesArray(comp, index) {
+			ready := svc.WaitForDesiredDependencies(comp.GetName(), luksKey)
+			if !ready {
+				return runtime.NewWarningResult(fmt.Sprintf("luks secret '%s' not yet ready", luksKey))
+			}
 		}
 	}
 
@@ -57,12 +61,7 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 	// This name is different from metadata.name of the same resource
 	// The value is hardcoded in the composition for each resource and due to crossplane limitation
 	// it cannot be matched to the metadata.name
-	luksSecretResourceNames := []string{
-		fmt.Sprintf("%s-cluster-%d-luks-key", comp.Name, i),
-		fmt.Sprintf("%s-cluster-%d-wal-luks-key", comp.Name, i),
-	}
-
-	for _, luksSecretResourceName := range luksSecretResourceNames {
+	for _, luksSecretResourceName := range getLuksKeyNamesArray(comp, i) {
 		log.Info("Processing LUKS key...", "luksKey", luksSecretResourceName)
 
 		secret := &v1.Secret{}
@@ -98,4 +97,11 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 	}
 
 	return nil
+}
+
+func getLuksKeyNamesArray(comp *vshnv1.VSHNPostgreSQL, index int) []string {
+	return []string{
+		fmt.Sprintf("%s-cluster-%d-luks-key", comp.Name, index),
+		fmt.Sprintf("%s-cluster-%d-wal-luks-key", comp.Name, index),
+	}
 }

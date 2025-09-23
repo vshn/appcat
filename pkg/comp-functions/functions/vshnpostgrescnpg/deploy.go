@@ -174,10 +174,6 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (map[string]any, error) {
 	// https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml
 	values := map[string]any{
-		// Backup gets set up later
-		"backups": map[string]any{
-			"s3": map[string]any{},
-		},
 		"cluster": map[string]any{
 			"instances": 1, // For the moment we only support single instance deployments
 			"imageCatalogRef": map[string]string{

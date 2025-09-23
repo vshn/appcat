@@ -128,12 +128,13 @@ observed:
   resources:
     "pgsql-gc9x4-backup":
       connection_details:
-        AWS_ACCESS_KEY_ID: whatever
-        AWS_REGION: whatever
-        AWS_SECRET_ACCESS_KEY: whatever
-        BUCKET_NAME: whatever
-        ENDPOINT: whatever
-        ENDPOINT_URL: whatever    
+          # Needs to be b64 encoded for LoadRuntimeFromFile()
+          AWS_ACCESS_KEY_ID: c2VjcmV0QWNjZXNzSWQ=         # secretAccessId
+          AWS_REGION: cm1h                                # rma
+          AWS_SECRET_ACCESS_KEY: c2VjcmV0QWNjZXNzS2V5     # secretAccessKey
+          BUCKET_NAME: YmFja3VwQnVja2V0                   # backupBucket
+          ENDPOINT: czMubWluaW8ubG9jYWw=                  # s3.minio.local
+          ENDPOINT_URL: aHR0cHM6Ly9zMy5taW5pby5sb2NhbC8=  # https://s3.minio.local/
       resource:
         apiVersion: appcat.vshn.io/v1
         kind: XObjectBucket

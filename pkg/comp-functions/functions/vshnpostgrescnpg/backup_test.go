@@ -51,6 +51,12 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	// Bucket configuration
 	cd, err := getBackupBucketConnectionDetails(svc, comp)
 	assert.NoError(t, err)
+	assert.Equal(t, cd.endpoint, "https://s3.minio.local") // No trailing /
+	assert.Equal(t, cd.bucket, "backupBucket")
+	assert.Equal(t, cd.region, "rma")
+	assert.Equal(t, cd.accessId, "secretAccessId")
+	assert.Equal(t, cd.accessKey, "secretAccessKey")
+
 	assert.Equal(t, cd.endpoint, backupValues["endpointURL"])
 	assert.Equal(t, cd.bucket, backupValues["s3"].(map[string]string)["bucket"])
 	assert.Equal(t, cd.region, backupValues["s3"].(map[string]string)["region"])

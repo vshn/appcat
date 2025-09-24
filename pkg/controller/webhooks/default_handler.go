@@ -20,6 +20,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;patch;update;delete
+//+kubebuilder:rbac:groups=cloudscale.crossplane.io;kubernetes.crossplane.io;helm.crossplane.io;minio.crossplane.io;postgresql.sql.crossplane.io,resources=providerconfigs,verbs=get;list;watch
+
 type DefaultWebhookHandler struct {
 	client    client.Client
 	log       logr.Logger

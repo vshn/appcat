@@ -9,6 +9,7 @@ rules:
   resources:
   - configmaps
   - namespaces
+  - secrets
   verbs:
   - delete
   - get
@@ -27,6 +28,18 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - cloudscale.crossplane.io
+  - helm.crossplane.io
+  - kubernetes.crossplane.io
+  - minio.crossplane.io
+  - postgresql.sql.crossplane.io
+  resources:
+  - providerconfigs
+  verbs:
+  - get
+  - list
   - watch
 - apiGroups:
   - codey.io

@@ -4,9 +4,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// BillingServiceFinalizer is the finalizer used to protect BillingService resources from deletion
+	BillingServiceFinalizer = "billing.appcat.vshn.io/delete-protection"
+)
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:object:generate=true
+// +kubebuilder:resource:scope=Namespaced,categories=appcat
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
+// +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 // BillingService represents a service instance for billing purposes
 type BillingService struct {

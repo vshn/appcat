@@ -8,13 +8,25 @@ metadata:
 spec:
   group: vshn.appcat.vshn.io
   names:
+    categories:
+    - appcat
     kind: BillingService
     listKind: BillingServiceList
     plural: billingservices
     singular: billingservice
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: READY
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Synced')].status
+      name: SYNCED
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: BillingService represents a service instance for billing purposes

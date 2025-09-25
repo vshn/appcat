@@ -141,6 +141,11 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 			return nil, field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
 		}
 
+		// Check for disk downsizing
+		if diskErr := p.DefaultWebhookHandler.ValidateDiskDownsizing(ctx, oldPg, newPg, p.gk.Kind); diskErr != nil {
+			allErrs = append(allErrs, diskErr)
+		}
+
 		// Validate major upgrades
 		if errList := validateMajorVersionUpgrade(newPg, oldPg); errList != nil {
 			allErrs = append(allErrs, errList...)

@@ -95,7 +95,7 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 
 	secret = &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-data-%s-%d-luks-key", comp.ObjectMeta.Labels["crossplane.io/composite"], comp.ObjectMeta.Labels["crossplane.io/composite"], i),
+			Name:      fmt.Sprintf("%s-data-%s-%d-luks-key", comp.GetName(), comp.GetName(), i),
 			Namespace: getInstanceNamespace(comp),
 		},
 		Data: map[string][]byte{

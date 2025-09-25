@@ -189,7 +189,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "✅ No changes to commit"
           else
-            git commit -m "Auto update from appcat PR #${{ needs.check-conditions.outputs.pr-number }}, dependency $APPCAT_FR_COMMIT_SHA"
+            git commit -m "Auto update from appcat PR https://github.com/${{ env.APPCAT_REPO }}/pull/${{ needs.check-conditions.outputs.pr-number }}, dependency $APPCAT_FR_COMMIT_SHA"
             git push origin "$COMPONENT_BRANCH"
           fi
 
@@ -301,7 +301,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "✅ No changes to commit"
           else
-            git commit -m "Auto update from appcat PR #${{ needs.check-conditions.outputs.pr-number }}, dependency $APPCAT_NEW_TAG"
+            git commit -m "Auto update from appcat PR https://github.com/${{ env.APPCAT_REPO }}/pull/${{ needs.check-conditions.outputs.pr-number }}, dependency $APPCAT_NEW_TAG"
             git push origin "$COMPONENT_BRANCH"
           fi
 

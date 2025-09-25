@@ -1491,6 +1491,7 @@ func (in *VSHNPostgreSQLServiceSpec) DeepCopy() *VSHNPostgreSQLServiceSpec {
 func (in *VSHNPostgreSQLSpec) DeepCopyInto(out *VSHNPostgreSQLSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.CompositionRef = in.CompositionRef
 	in.ResourceSpec.DeepCopyInto(&out.ResourceSpec)
 }
 

@@ -19,7 +19,6 @@ import (
 var serviceName = "primary-service"
 
 func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
 	comp, err := getVSHNPostgreSQL(ctx, svc)
 
 	if err != nil {

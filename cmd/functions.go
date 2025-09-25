@@ -16,6 +16,7 @@ import (
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnminio"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnnextcloud"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgrescnpg"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnredis"
 
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"

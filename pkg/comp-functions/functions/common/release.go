@@ -72,7 +72,6 @@ func getDesiredRelease(svc *runtime.ServiceRuntime, releaseName string) (*xhelmv
 
 // NewRelease returns a new release with some defaults set.
 func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, values map[string]any, resName string, cd ...xhelmv1.ConnectionDetail) (*xhelmv1.Release, error) {
-
 	vb, err := json.Marshal(values)
 	if err != nil {
 		return nil, err

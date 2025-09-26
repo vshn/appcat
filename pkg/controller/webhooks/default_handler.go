@@ -391,7 +391,17 @@ func (r *DefaultWebhookHandler) validateProviderConfigSecret(ctx context.Context
 		}
 	}
 
-	secretRef, found, err := unstructured.NestedMap(credentials, "secretRef")
+	_, foundSource, err := unstructured.NestedString(credentials, "source")
+	if err != nil {
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("failed to parse %s ProviderConfig %q source: %v", providerType, providerConfigName, err),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInternal,
+		}
+	}
+
+	secretRef, foundSecret, err := unstructured.NestedMap(credentials, "secretRef")
 	if err != nil {
 		return &field.Error{
 			Field:    labelPath.String(),
@@ -401,7 +411,19 @@ func (r *DefaultWebhookHandler) validateProviderConfigSecret(ctx context.Context
 		}
 	}
 
-	if !found {
+	if foundSource == false && foundSecret == false {
+		return &field.Error{
+			Field:    labelPath.String(),
+			Detail:   fmt.Sprintf("%s ProviderConfig %q has no secretRef or source configured", providerType, providerConfigName),
+			BadValue: providerConfigName,
+			Type:     field.ErrorTypeInvalid,
+		}
+	}
+	if foundSource == true {
+		return nil
+	}
+
+	if !foundSecret {
 		return &field.Error{
 			Field:    labelPath.String(),
 			Detail:   fmt.Sprintf("%s ProviderConfig %q has no secretRef configured", providerType, providerConfigName),

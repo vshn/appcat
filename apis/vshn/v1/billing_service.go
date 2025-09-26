@@ -43,17 +43,23 @@ type OdooSpec struct {
 	// InstanceID uniquely identifies the service instance in Odoo
 	InstanceID string `json:"instanceID"`
 
+	// ProductID identifies the product in the billing system
+	ProductID string `json:"productID"`
+
 	// SalesOrderID identifies the sales order in Odoo
 	SalesOrderID string `json:"salesOrderID,omitempty"`
 
-	// ItemDescription is a human readable description of the billing item
-	ItemDescription string `json:"itemDescription"`
+	// UnitID defines the billing unit type in Odoo
+	UnitID string `json:"unitID"`
+
+	// Size represents the size of the service instance
+	Size string `json:"size,omitempty"`
 
 	// ItemGroupDescription describes the billing item group
 	ItemGroupDescription string `json:"itemGroupDescription"`
 
-	// UnitID defines the billing unit type in Odoo
-	UnitID string `json:"unitID"`
+	// ItemDescription is a human readable description of the billing item
+	ItemDescription string `json:"itemDescription"`
 }
 
 // BillingServiceStatus defines the observed state of a BillingService
@@ -83,6 +89,10 @@ type BillingEventStatus struct {
 	// State represents the current state of the event (sent, pending, failed)
 	// +kubebuilder:validation:Enum="sent";"pending";"failed"
 	State string `json:"state"`
+
+	// RetryCount tracks the number of retry attempts for failed events
+	// +kubebuilder:default=0
+	RetryCount int `json:"retryCount,omitempty"`
 }
 
 // +kubebuilder:object:root=true

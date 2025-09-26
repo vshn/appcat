@@ -69,8 +69,14 @@ spec:
                   itemGroupDescription:
                     description: ItemGroupDescription describes the billing item group
                     type: string
+                  productID:
+                    description: ProductID identifies the product in the billing system
+                    type: string
                   salesOrderID:
                     description: SalesOrderID identifies the sales order in Odoo
+                    type: string
+                  size:
+                    description: Size represents the size of the service instance
                     type: string
                   unitID:
                     description: UnitID defines the billing unit type in Odoo
@@ -79,6 +85,7 @@ spec:
                 - instanceID
                 - itemDescription
                 - itemGroupDescription
+                - productID
                 - unitID
                 type: object
             type: object
@@ -153,6 +160,11 @@ spec:
                       description: ProductID identifies the product in the billing
                         system
                       type: string
+                    retryCount:
+                      default: 0
+                      description: RetryCount tracks the number of retry attempts
+                        for failed events
+                      type: integer
                     size:
                       description: Size represents the size/plan at the time of the
                         event

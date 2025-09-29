@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -101,6 +102,7 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 			return runtime.NewWarningResult(fmt.Errorf("cannot set custom MariaDB settings: %w", err).Error())
 		}
 	}
+
 	return nil
 }
 
@@ -117,9 +119,14 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 		return fmt.Errorf("cannot get observed release values: %w", err)
 	}
 
-	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	versionTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
 	if err != nil {
 		return fmt.Errorf("cannot set mariadb version for release: %w", err)
+	}
+
+	// Extract and update the MariaDB version in status
+	if err := updateMariaDBVersionFromTag(comp, svc, versionTag); err != nil {
+		svc.Log.Error(err, "cannot update MariaDB version in status")
 	}
 
 	r, err := newRelease(ctx, svc, values, comp)
@@ -527,4 +534,26 @@ func getMariaDBRootPassword(secretName string, svc *runtime.ServiceRuntime) ([]b
 		return nil, err
 	}
 	return secret.Data["mariadb-root-password"], nil
+}
+
+// updateMariaDBVersionFromTag extracts the semantic version from a tag and appends MariaDB-log suffix
+func updateMariaDBVersionFromTag(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, tag string) error {
+	if tag == "" {
+		return nil
+	}
+
+	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)`)
+	matches := re.FindStringSubmatch(tag)
+	if len(matches) <= 1 {
+		return nil
+	}
+
+	version := matches[1] + "-MariaDB-log"
+	if version != comp.Status.MariaDBVersion {
+		svc.Log.Info("Updating MariaDB version in status", "version", version)
+		comp.Status.MariaDBVersion = version
+		return svc.SetDesiredCompositeStatus(comp)
+	}
+
+	return nil
 }

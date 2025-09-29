@@ -43,22 +43,16 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runti
 
 // AddInitialMaintenanceJob creates a one-time job from the CronJob template to run maintenance immediately after provisioning
 func AddInitialMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	cronJobName := comp.GetName() + "-maintenancejob"
-	initialJobName := comp.GetName() + "-initial-maintenance"
-
-	observedJob := &batchv1.Job{}
-	err := svc.GetObservedKubeObject(observedJob, initialJobName)
-	if err == nil {
-		// Keep it in the desired state to avoid deletion
-		errSet := svc.SetDesiredKubeObject(observedJob, initialJobName, runtime.KubeOptionAllowDeletion)
-		if errSet != nil {
-			return runtime.NewFatalResult(fmt.Errorf("failed to set desired kube object for existing job: %w", errSet))
-		}
+	// Check if initial maintenance has already been triggered
+	if comp.Status.InitialMaintenanceRan {
 		return nil
 	}
 
+	cronJobName := comp.GetName() + "-maintenancejob"
+	initialJobName := comp.GetName() + "-initial-maintenance"
+
 	observedCronJob := &batchv1.CronJob{}
-	err = svc.GetObservedKubeObject(observedCronJob, cronJobName)
+	err := svc.GetObservedKubeObject(observedCronJob, cronJobName)
 	if err != nil {
 		return nil
 	}
@@ -82,5 +76,12 @@ func AddInitialMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc
 	if errSet != nil {
 		return runtime.NewFatalResult(fmt.Errorf("failed to set desired kube object: %w", errSet))
 	}
+
+	// Mark that initial maintenance has been triggered
+	comp.Status.InitialMaintenanceRan = true
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot update InitialMaintenanceRan status: %v", err))
+	}
+
 	return nil
 }

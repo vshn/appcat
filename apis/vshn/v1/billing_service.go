@@ -86,13 +86,16 @@ type BillingEventStatus struct {
 	// Timestamp when the event occurred
 	Timestamp metav1.Time `json:"timestamp"`
 
-	// State represents the current state of the event (sent, pending, failed)
-	// +kubebuilder:validation:Enum="sent";"pending";"failed"
+	// State represents the current state of the event (sent, pending, failed, superseded)
+	// +kubebuilder:validation:Enum="sent";"pending";"failed";"superseded"
 	State string `json:"state"`
 
 	// RetryCount tracks the number of retry attempts for failed events
 	// +kubebuilder:default=0
 	RetryCount int `json:"retryCount,omitempty"`
+
+	// LastAttemptTime is when we last tried to send this event
+	LastAttemptTime metav1.Time `json:"lastAttemptTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true

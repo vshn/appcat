@@ -156,6 +156,11 @@ spec:
                   description: BillingEventStatus represents the status of a billing
                     event
                   properties:
+                    lastAttemptTime:
+                      description: LastAttemptTime is when we last tried to send this
+                        event
+                      format: date-time
+                      type: string
                     productId:
                       description: ProductID identifies the product in the billing
                         system
@@ -171,11 +176,12 @@ spec:
                       type: string
                     state:
                       description: State represents the current state of the event
-                        (sent, pending, failed)
+                        (sent, pending, failed, superseded)
                       enum:
                       - sent
                       - pending
                       - failed
+                      - superseded
                       type: string
                     timestamp:
                       description: Timestamp when the event occurred

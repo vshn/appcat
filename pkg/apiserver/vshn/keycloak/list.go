@@ -35,22 +35,24 @@ func (v *vshnKeycloakBackupStorage) List(ctx context.Context, options *metainter
 	}
 
 	for _, instance := range instances.Items {
-		pgNamespace, pgCompName := v.getPostgreSQLNamespaceAndName(ctx, &instance)
+		pgNamespace, pgCompName, pgCompRefName := v.getPostgreSQLMetadata(ctx, &instance)
 
-		sgBackups := []appcatv1.SGBackupInfo{}
+		backups := []appcatv1.BackupInfo{}
 		if pgNamespace != "" {
 			dynClient, err := v.vshnKeycloak.GetDynKubeClient(ctx, &instance)
 			if err != nil {
 				return nil, err
 			}
-			sg, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, dynClient, options)
+
+			schema := postgres.DetermineTargetSchema(pgCompRefName)
+			b, err := v.backup.ListBackup(ctx, pgNamespace, schema, dynClient, options)
 			if err != nil {
 				return nil, err
 			}
-			sgBackups = *sg
+			backups = *b
 		}
 
-		for _, sgBackup := range sgBackups {
+		for _, sgBackup := range backups {
 			backupMeta := sgBackup.ObjectMeta
 			backupMeta.Namespace = instance.GetNamespace()
 
@@ -84,12 +86,12 @@ func (v *vshnKeycloakBackupStorage) Watch(ctx context.Context, options *metainte
 
 	mw := apiserver.NewEmptyMultiWatch()
 	for _, instance := range instances.Items {
-		pgNamespace, _ := v.getPostgreSQLNamespaceAndName(ctx, &instance)
+		pgNamespace, _, _ := v.getPostgreSQLMetadata(ctx, &instance)
 		if pgNamespace == "" {
 			continue // Skip if no PostgreSQL instance is found
 		}
 
-		backupWatcher, err := v.sgBackup.WatchSGBackup(ctx, pgNamespace, options)
+		backupWatcher, err := v.backup.WatchBackup(ctx, pgNamespace, options)
 		if err != nil {
 			return nil, apiserver.ResolveError(appcatv1.GetGroupResource(appcatv1.ResourceBackup), err)
 		}
@@ -118,7 +120,7 @@ func (v *vshnKeycloakBackupStorage) Watch(ctx context.Context, options *metainte
 			return in, false
 		}
 
-		_, pgName := v.getPostgreSQLNamespaceAndName(ctx, matchedInstance)
+		_, pgName, _ := v.getPostgreSQLMetadata(ctx, matchedInstance)
 
 		backupMeta := backupInfo.ObjectMeta
 		backupMeta.Namespace = matchedInstance.GetNamespace()
@@ -139,17 +141,18 @@ func (v *vshnKeycloakBackupStorage) Watch(ctx context.Context, options *metainte
 	}), nil
 }
 
-func (v *vshnKeycloakBackupStorage) getPostgreSQLNamespaceAndName(ctx context.Context, inst *vshnv1.VSHNKeycloak) (string, string) {
+// Get namespace, name and compositionReference (in that order) of a XVSHNPostgreSQL
+func (v *vshnKeycloakBackupStorage) getPostgreSQLMetadata(ctx context.Context, inst *vshnv1.VSHNKeycloak) (string, string, string) {
 	compName := inst.Spec.ResourceRef.Name
-	ncComp := vshnv1.XVSHNKeycloak{}
+	kcComp := vshnv1.XVSHNKeycloak{}
 
-	err := v.vshnKeycloak.Get(ctx, client.ObjectKey{Name: compName}, &ncComp)
+	err := v.vshnKeycloak.Get(ctx, client.ObjectKey{Name: compName}, &kcComp)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 
 	pgName := ""
-	for _, comp := range ncComp.Spec.ResourceRefs {
+	for _, comp := range kcComp.Spec.ResourceRefs {
 		if comp.Kind == "XVSHNPostgreSQL" {
 			pgName = comp.Name
 			break
@@ -160,10 +163,10 @@ func (v *vshnKeycloakBackupStorage) getPostgreSQLNamespaceAndName(ctx context.Co
 
 	err = v.vshnKeycloak.Get(ctx, client.ObjectKey{Name: pgName}, pgComp)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 
-	return pgComp.Status.InstanceNamespace, pgName
+	return pgComp.Status.InstanceNamespace, pgName, pgComp.Spec.CompositionRef.Name
 }
 
 func (v *vshnKeycloakBackupStorage) NewList() runtime.Object {

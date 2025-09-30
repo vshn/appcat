@@ -1,18 +1,19 @@
 package v1
 
 import (
+	"testing"
+
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"testing"
 )
 
 func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 	tests := map[string]struct {
 		db                 string
 		namespace          string
-		backupInfo         *SGBackupInfo
+		backupInfo         *BackupInfo
 		vshnPostgresBackup *VSHNPostgresBackup
 	}{
 		"GivenNoBackupInfo_ThenNil": {
@@ -20,7 +21,7 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 			namespace: "namespace",
 		},
 		"GivenNoDB_ThenNil": {
-			backupInfo: &SGBackupInfo{
+			backupInfo: &BackupInfo{
 				ObjectMeta:        metav1.ObjectMeta{Name: "backup"},
 				Process:           *rawFromObject(getTestProcess()),
 				BackupInformation: *rawFromObject(getTestBI()),
@@ -28,7 +29,7 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 			namespace: "namespace",
 		},
 		"GivenNoNamespace_ThenNil": {
-			backupInfo: &SGBackupInfo{
+			backupInfo: &BackupInfo{
 				ObjectMeta:        metav1.ObjectMeta{Name: "backup"},
 				Process:           *rawFromObject(getTestProcess()),
 				BackupInformation: *rawFromObject(getTestBI()),
@@ -38,7 +39,7 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 		"GivenBackupInfo_ThenVSHNBackup": {
 			db:        "db1",
 			namespace: "namespace",
-			backupInfo: &SGBackupInfo{
+			backupInfo: &BackupInfo{
 				ObjectMeta:        metav1.ObjectMeta{Name: "backup"},
 				Process:           *rawFromObject(getTestProcess()),
 				BackupInformation: *rawFromObject(getTestBI()),
@@ -55,7 +56,7 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 		"GivenBackupInfoWithNoProcess_ThenVSHNBackup": {
 			db:        "db1",
 			namespace: "namespace",
-			backupInfo: &SGBackupInfo{
+			backupInfo: &BackupInfo{
 				ObjectMeta:        metav1.ObjectMeta{Name: "backup"},
 				BackupInformation: *rawFromObject(getTestBI()),
 			},
@@ -70,7 +71,7 @@ func TestNewVSHNBackupFromBackInfo(t *testing.T) {
 		"GivenBackupInfoWithNoBI_ThenVSHNBackup": {
 			db:        "db1",
 			namespace: "namespace",
-			backupInfo: &SGBackupInfo{
+			backupInfo: &BackupInfo{
 				ObjectMeta: metav1.ObjectMeta{Name: "backup"},
 				Process:    *rawFromObject(getTestProcess()),
 			},

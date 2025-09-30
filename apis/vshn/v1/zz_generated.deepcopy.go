@@ -2541,6 +2541,7 @@ func (in *XVSHNPostgreSQLList) DeepCopyObject() runtime.Object {
 func (in *XVSHNPostgreSQLSpec) DeepCopyInto(out *XVSHNPostgreSQLSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.CompositionRef = in.CompositionRef
 	in.ResourceSpec.DeepCopyInto(&out.ResourceSpec)
 }
 

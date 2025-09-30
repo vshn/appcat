@@ -112,15 +112,15 @@ func New() *VSHNPostgresBackup {
 	return &VSHNPostgresBackup{}
 }
 
-// SGBackupInfo holds necessary data for VSHNPostgresBackup
-type SGBackupInfo struct {
+// BackupInfo holds necessary data for VSHNPostgresBackup
+type BackupInfo struct {
 	metav1.ObjectMeta
 	Process           runtime.RawExtension
 	BackupInformation runtime.RawExtension
 }
 
-// NewVSHNPostgresBackup creates a new VSHNPostgresBackup out of a SGBackupInfo and a database instance
-func NewVSHNPostgresBackup(backup *SGBackupInfo, db, originalNamespace string) *VSHNPostgresBackup {
+// NewVSHNPostgresBackup creates a new VSHNPostgresBackup out of a BackupInfo and a database instance
+func NewVSHNPostgresBackup(backup *BackupInfo, db, originalNamespace string) *VSHNPostgresBackup {
 	if backup == nil || originalNamespace == "" || db == "" {
 		return nil
 	}

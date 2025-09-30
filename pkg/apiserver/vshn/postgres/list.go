@@ -19,7 +19,7 @@ func (v *vshnPostgresBackupStorage) NewList() runtime.Object {
 	return &v1.VSHNPostgresBackupList{}
 }
 
-// List returns a list of VSHNPostgresBackup services based on stackgres SGBackup resources
+// List returns a list of VSHNPostgresBackup services based on PSQL backup resources
 func (v *vshnPostgresBackupStorage) List(ctx context.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
 	namespace, ok := request.NamespaceFrom(ctx)
 	if !ok {
@@ -38,7 +38,9 @@ func (v *vshnPostgresBackupStorage) List(ctx context.Context, options *metainter
 		if err != nil {
 			return nil, fmt.Errorf("cannot get KubeClient from ProviderConfig: %w", err)
 		}
-		bis, err := v.sgbackups.ListSGBackup(ctx, value.Status.InstanceNamespace, client, options)
+
+		targetSchema := DetermineTargetSchema(value.Spec.CompositionRef.Name)
+		bis, err := v.backups.ListBackup(ctx, value.Status.InstanceNamespace, targetSchema, client, options)
 		if err != nil {
 			return nil, apiserver.ResolveError(v1.GetGroupResource(v1.ResourceBackup), err)
 		}
@@ -55,7 +57,7 @@ func (v *vshnPostgresBackupStorage) List(ctx context.Context, options *metainter
 
 var _ rest.Watcher = &vshnPostgresBackupStorage{}
 
-// Watch returns a watched list of VSHNPostgresBackup services based on stackgres SGBackup resources
+// Watch returns a watched list of VSHNPostgresBackup services based on PSQL backup resources
 func (v *vshnPostgresBackupStorage) Watch(ctx context.Context, options *metainternalversion.ListOptions) (watch.Interface, error) {
 	namespace, ok := request.NamespaceFrom(ctx)
 	if !ok {
@@ -69,7 +71,7 @@ func (v *vshnPostgresBackupStorage) Watch(ctx context.Context, options *metainte
 
 	mw := apiserver.NewEmptyMultiWatch()
 	for _, value := range instances.Items {
-		backupWatcher, err := v.sgbackups.WatchSGBackup(ctx, value.Status.InstanceNamespace, options)
+		backupWatcher, err := v.backups.WatchBackup(ctx, value.Status.InstanceNamespace, options)
 		if err != nil {
 			return nil, apiserver.ResolveError(v1.GetGroupResource(v1.ResourceBackup), err)
 		}
@@ -82,14 +84,14 @@ func (v *vshnPostgresBackupStorage) Watch(ctx context.Context, options *metainte
 			return in, true
 		}
 
-		sgbackupInfo := GetFromEvent(in)
-		if sgbackupInfo == nil {
+		backupInfo := GetFromEvent(in)
+		if backupInfo == nil {
 			return in, true
 		}
 
 		db := ""
 		for _, value := range instances.Items {
-			if value.Status.InstanceNamespace == sgbackupInfo.Namespace {
+			if value.Status.InstanceNamespace == backupInfo.Namespace {
 				db = value.GetName()
 			}
 		}
@@ -98,7 +100,7 @@ func (v *vshnPostgresBackupStorage) Watch(ctx context.Context, options *metainte
 			return in, false
 		}
 
-		in.Object = v1.NewVSHNPostgresBackup(sgbackupInfo, db, namespace)
+		in.Object = v1.NewVSHNPostgresBackup(backupInfo, db, namespace)
 
 		if in.Object.(*v1.VSHNPostgresBackup) == nil {
 			return in, false

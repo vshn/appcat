@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/postgres"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,18 +29,20 @@ func (v *vshnKeycloakBackupStorage) Get(ctx context.Context, name string, _ *met
 	keycloakBackup := &appcatv1.VSHNKeycloakBackup{}
 
 	for _, instance := range instances.Items {
-		pgNamespace, pgName := v.getPostgreSQLNamespaceAndName(ctx, &instance)
+		pgNamespace, pgName, compRefName := v.getPostgreSQLMetadata(ctx, &instance)
 		dynClient, err := v.vshnKeycloak.GetDynKubeClient(ctx, &instance)
 		if err != nil {
 			return nil, err
 		}
-		sgBackups, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, dynClient, &internalversion.ListOptions{})
+
+		schema := postgres.DetermineTargetSchema(compRefName)
+		backups, err := v.backup.ListBackup(ctx, pgNamespace, schema, dynClient, &internalversion.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
 
-		var sgBackup *appcatv1.SGBackupInfo
-		for _, backup := range *sgBackups {
+		var sgBackup *appcatv1.BackupInfo
+		for _, backup := range *backups {
 			if name == backup.GetName() {
 				sgBackup = &backup
 				break

@@ -373,7 +373,8 @@ type XVSHNPostgreSQLStatus struct {
 
 type XVSHNPostgreSQLSpec struct {
 	// Parameters are the configurable fields of a VSHNPostgreSQL.
-	Parameters        VSHNPostgreSQLParameters `json:"parameters,omitempty"`
+	Parameters        VSHNPostgreSQLParameters  `json:"parameters,omitempty"`
+	CompositionRef    cpv1.CompositionReference `json:"compositionRef,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 

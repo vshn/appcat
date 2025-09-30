@@ -3,7 +3,9 @@ package nextcloud
 import (
 	"context"
 	"fmt"
+
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/postgres"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,25 +72,26 @@ func (v *vshnNextcloudBackupStorage) Get(ctx context.Context, name string, _ *me
 
 		// Continue searching for database backup
 		status.DBType = appcatv1.Dedicated
-		pgNamespace, pgCompName := v.getPostgreSQLNamespaceAndName(ctx, &instance)
+		pgNamespace, pgCompName, pgCompRefName := v.getPostgreSQLMetadata(ctx, &instance)
 
 		dynClient, err := v.vshnNextcloud.GetDynKubeClient(ctx, &instance)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get dynamic kube client: %w", err)
 		}
 
-		sgBackups, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, dynClient, &internalversion.ListOptions{})
+		schema := postgres.DetermineTargetSchema(pgCompRefName)
+		backups, err := v.backup.ListBackup(ctx, pgNamespace, schema, dynClient, &internalversion.ListOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("cannot list SGBackups: %w", err)
+			return nil, fmt.Errorf("cannot list backups: %w", err)
 		}
 
-		var matchedBackup *appcatv1.SGBackupInfo
+		var matchedBackup *appcatv1.BackupInfo
 		if snapFound {
-			matchedBackup, _ = v.getClosestPGBackup(*sgBackups, *snap.Spec.Date)
+			matchedBackup, _ = v.getClosestPGBackup(*backups, *snap.Spec.Date)
 		}
 
 		if matchedBackup == nil {
-			for _, b := range *sgBackups {
+			for _, b := range *backups {
 				if name == hashString(b.GetName()) {
 					matchedBackup = &b
 					break

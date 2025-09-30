@@ -16,15 +16,15 @@ import (
 )
 
 // newMockedVSHNPostgresBackupStorage is a mocked instance of vshnPostgresBackup
-func newMockedVSHNPostgresBackupStorage(t *testing.T, ctrl *gomock.Controller) (rest.StandardStorage, *mocks.MocksgbackupProvider, *mocks.MockvshnPostgresqlProvider) {
+func newMockedVSHNPostgresBackupStorage(t *testing.T, ctrl *gomock.Controller) (rest.StandardStorage, *mocks.MockbackupProvider, *mocks.MockvshnPostgresqlProvider) {
 	t.Helper()
-	sgbackup := mocks.NewMocksgbackupProvider(ctrl)
+	backup := mocks.NewMockbackupProvider(ctrl)
 	vshnpostgres := mocks.NewMockvshnPostgresqlProvider(ctrl)
 	stor := &vshnPostgresBackupStorage{
-		sgbackups:      sgbackup,
+		backups:        backup,
 		vshnpostgresql: vshnpostgres,
 	}
-	return rest.Storage(stor).(rest.StandardStorage), sgbackup, vshnpostgres
+	return rest.Storage(stor).(rest.StandardStorage), backup, vshnpostgres
 }
 
 // Test AppCat instances
@@ -41,7 +41,7 @@ var (
 		},
 	}
 
-	backupInfoOne = &v1.SGBackupInfo{
+	backupInfoOne = &v1.BackupInfo{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "one",
 			Namespace: "namespace-one",
@@ -80,7 +80,7 @@ var (
 		},
 	}
 
-	backupInfoTwo = &v1.SGBackupInfo{
+	backupInfoTwo = &v1.BackupInfo{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "two",
 			Namespace: "namespace-two",

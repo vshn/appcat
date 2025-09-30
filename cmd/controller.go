@@ -7,8 +7,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/controller/billing"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
+	"github.com/vshn/appcat/v4/pkg/odoo"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -26,6 +28,7 @@ type controller struct {
 	enableProviderWebhooks  bool
 	enableQuotas            bool
 	enableEventForwarding   bool
+	enableBilling           bool
 	certDir                 string
 }
 
@@ -51,6 +54,7 @@ func init() {
 	ControllerCMD.Flags().StringVar(&c.certDir, "certdir", "/etc/webhook/certs", "Set the webhook certificate directory")
 	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
+	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", true, "Disable billing")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
 		viper.Set("PLANS_NAMESPACE", "syn-appcat")
@@ -77,6 +81,30 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	if c.enableBilling {
+		opts := odoo.Options{
+			BaseURL:      viper.GetString("ODOO_BASE_URL"),
+			DB:           viper.GetString("ODOO_DB"),
+			ClientID:     viper.GetString("ODOO_CLIENT_ID"),
+			ClientSecret: viper.GetString("ODOO_CLIENT_SECRET"),
+			TokenURL:     viper.GetString("ODOO_TOKEN_URL"),
+		}
+
+		if opts.BaseURL == "" || opts.DB == "" || opts.ClientID == "" || opts.ClientSecret == "" || opts.TokenURL == "" {
+			return fmt.Errorf("billing is enabled but Odoo configuration is incomplete")
+		}
+
+		odooClient, err := odoo.NewClient(cmd.Context(), opts)
+		if err != nil {
+			return fmt.Errorf("initialize Odoo client: %w", err)
+		}
+
+		b := billing.New(mgr.GetClient(), mgr.GetScheme(), odooClient)
+		if err := b.SetupWithManager(mgr); err != nil {
+			return err
+		}
 	}
 
 	if c.enableEventForwarding {

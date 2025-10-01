@@ -68,7 +68,7 @@ func NewClient(ctx context.Context, opts Options) (*Client, error) {
 }
 
 func (c *Client) SendInstanceEvent(ctx context.Context, event InstanceEvent) error {
-	endpoint, err := url.JoinPath(c.baseURL.String(), "/api/v2/billing/product_usage_event_POST")
+	endpoint, err := url.JoinPath(c.baseURL.String(), "/api/v2/product_usage_event_POST")
 	if err != nil {
 		return fmt.Errorf("join path: %w", err)
 	}
@@ -82,7 +82,7 @@ func (c *Client) SendInstanceEvent(ctx context.Context, event InstanceEvent) err
 	q.Set("db", c.db)
 	u.RawQuery = q.Encode()
 
-	body, err := json.Marshal(event)
+	body, err := json.Marshal([]InstanceEvent{event})
 	if err != nil {
 		return fmt.Errorf("marshal event: %w", err)
 	}

@@ -5708,6 +5708,10 @@ spec:
                 description: Conditions of the resource.
                 type: array
                 x-kubernetes-list-type: map
+              initialMaintenanceRan:
+                description: InitialMaintenanceRan tracks if the initial maintenance
+                  job has been triggered
+                type: boolean
               instanceNamespace:
                 description: InstanceNamespace contains the name of the namespace
                   where the instance resides

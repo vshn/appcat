@@ -5870,6 +5870,10 @@ spec:
               currentVersion:
                 description: CurrentVersion contains the current version of PostgreSQL.
                 type: string
+              initialMaintenanceRan:
+                description: InitialMaintenanceRan tracks if the initial maintenance
+                  job has been triggered
+                type: boolean
               instanceNamespace:
                 description: InstanceNamespace contains the name of the namespace
                   where the instance resides

@@ -223,6 +223,8 @@ type VSHNKeycloakStatus struct {
 	// Schedules keeps track of random generated schedules, is overwriten by
 	// schedules set in the service's spec.
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
+	// InitialMaintenanceRan tracks if the initial maintenance job has been triggered
+	InitialMaintenanceRan bool `json:"initialMaintenanceRan,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 	// LastConfigHash is the hash of last applied customConfigurationRef.
@@ -249,6 +251,14 @@ func (v *XVSHNKeycloak) GetInstanceNamespace() string {
 
 func (v *VSHNKeycloak) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
+func (v *VSHNKeycloak) GetInitialMaintenanceRan() bool {
+	return v.Status.InitialMaintenanceRan
+}
+
+func (v *VSHNKeycloak) SetInitialMaintenanceRan(ran bool) {
+	v.Status.InitialMaintenanceRan = ran
 }
 
 func (v *VSHNKeycloak) GetLastConfigHash() string {

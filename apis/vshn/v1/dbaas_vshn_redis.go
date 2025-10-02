@@ -152,6 +152,8 @@ type VSHNRedisStatus struct {
 	// Schedules keeps track of random generated schedules, is overwriten by
 	// schedules set in the service's spec.
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
+	// InitialMaintenanceRan tracks if the initial maintenance job has been triggered
+	InitialMaintenanceRan bool `json:"initialMaintenanceRan,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 }
@@ -215,6 +217,14 @@ func (v *VSHNRedis) GetInstanceNamespace() string {
 
 func (v *VSHNRedis) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
+func (v *VSHNRedis) GetInitialMaintenanceRan() bool {
+	return v.Status.InitialMaintenanceRan
+}
+
+func (v *VSHNRedis) SetInitialMaintenanceRan(ran bool) {
+	v.Status.InitialMaintenanceRan = ran
 }
 
 func (v *VSHNRedis) GetMaintenanceDayOfWeek() string {

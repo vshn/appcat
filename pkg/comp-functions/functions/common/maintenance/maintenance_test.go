@@ -177,6 +177,68 @@ func TestAddMaintenanceJob(t *testing.T) {
 	}
 }
 
+func TestInitialMaintenanceJob(t *testing.T) {
+	tests := []struct {
+		name                      string
+		initialMaintenanceRan     bool
+		wantInitialJob            bool
+		wantInitialMaintenanceRan bool
+		fileName                  string
+	}{
+		{
+			name:                      "GivenNewInstance_ThenExpectInitialJob",
+			initialMaintenanceRan:     false,
+			wantInitialJob:            true,
+			wantInitialMaintenanceRan: true,
+			fileName:                  "vshn-postgres/maintenance/01-GivenSchedule.yaml",
+		},
+		{
+			name:                      "GivenInitialMaintenanceAlreadyRan_ThenExpectNoJob",
+			initialMaintenanceRan:     true,
+			wantInitialJob:            false,
+			wantInitialMaintenanceRan: true,
+			fileName:                  "vshn-postgres/maintenance/01-GivenSchedule.yaml",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
+
+			svc := commontest.LoadRuntimeFromFile(t, tt.fileName)
+
+			comp := &vshnv1.VSHNPostgreSQL{}
+			err := svc.GetObservedComposite(comp)
+			assert.NoError(t, err)
+
+			// Set initial maintenance status
+			comp.Status.InitialMaintenanceRan = tt.initialMaintenanceRan
+
+			in := "vshn-postgresql-" + comp.GetName()
+			m := New(comp, svc, comp.Spec.Parameters.Maintenance, in, "postgresql").
+				WithPolicyRules([]rbacv1.PolicyRule{}).
+				WithAdditionalClusterRoleBinding("cluster-role-binding").
+				WithRole("crossplane:appcat:job:postgres:maintenance").
+				WithExtraResources(createMaintenanceSecretTest(in, svc.Config.Data["sgNamespace"], comp.GetName()+"-maintenance-secret"))
+
+			result := m.Run(ctx)
+			assert.Nil(t, result)
+
+			// Check if initial maintenance job was created
+			initialJob := &batchv1.Job{}
+			err = svc.GetDesiredKubeObject(initialJob, comp.GetName()+"-initial-maintenance")
+
+			if tt.wantInitialJob {
+				assert.NoError(t, err, "Expected initial maintenance job to be created")
+			} else {
+				assert.Error(t, err, "Expected no initial maintenance job")
+			}
+
+			// Check if InitialMaintenanceRan was set
+			assert.Equal(t, tt.wantInitialMaintenanceRan, comp.Status.InitialMaintenanceRan)
+		})
+	}
+}
+
 func createMaintenanceSecretTest(instanceNamespace, sgNamespace, resourceName string) ExtraResource {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

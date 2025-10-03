@@ -71,7 +71,9 @@ func (n *CodeyInstanceWebhookHandler) ValidateCreate(ctx context.Context, obj ru
 	}
 
 	codeyFqdn := codeyInstance.ObjectMeta.Name + codeyUrlSuffix
-	if err := isCodeyFqdnUnique(codeyFqdn, codeyInstance.Spec.ResourceRef.Name, n.client); err != nil {
+
+	// compositeName is empty on creation
+	if err := isCodeyFqdnUnique(codeyFqdn, "", n.client); err != nil {
 		return nil, fmt.Errorf("failed FQDN validation: %v", err)
 	}
 

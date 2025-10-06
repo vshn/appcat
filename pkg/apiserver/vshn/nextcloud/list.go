@@ -57,7 +57,7 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 			schema := postgres.DetermineTargetSchema(pgCompRefName)
 			backupList, err := v.backup.ListBackup(ctx, pgNamespace, schema, dynClient, options)
 			if err != nil {
-				return nil, fmt.Errorf("error listing SGBackups: %w", err)
+				return nil, fmt.Errorf("error listing postgres backups: %w", err)
 			}
 			backups = *backupList
 		}
@@ -83,11 +83,11 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 				status.DatabaseBackupAvailable = false
 			} else {
 				status.DBType = appcatv1.Dedicated
-				if sgBackup, remaining := v.getClosestPGBackup(backups, *snap.Spec.Date); sgBackup != nil {
+				if backup, remaining := v.getClosestPGBackup(backups, *snap.Spec.Date); backup != nil {
 					status.DatabaseBackupAvailable = true
 					status.DatabaseBackupStatus = appcatv1.VSHNPostgresBackupStatus{
-						BackupInformation: &sgBackup.BackupInformation,
-						Process:           &sgBackup.Process,
+						BackupInformation: &backup.BackupInformation,
+						Process:           &backup.Process,
 						DatabaseInstance:  pgCompName,
 					}
 					backups = remaining
@@ -105,9 +105,9 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 			continue
 		}
 
-		// Include remaining SGBackups that had no matching file backup
-		for _, sgBackup := range backups {
-			backupMeta := sgBackup.ObjectMeta
+		// Include remaining PostgreSQL backups that had no matching file backup
+		for _, backup := range backups {
+			backupMeta := backup.ObjectMeta
 
 			nextcloudSnapshots.Items = append(nextcloudSnapshots.Items, appcatv1.VSHNNextcloudBackup{
 				ObjectMeta: backupMeta,
@@ -119,8 +119,8 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 						Date:     backupMeta.CreationTimestamp,
 					},
 					DatabaseBackupStatus: appcatv1.VSHNPostgresBackupStatus{
-						BackupInformation: &sgBackup.BackupInformation,
-						Process:           &sgBackup.Process,
+						BackupInformation: &backup.BackupInformation,
+						Process:           &backup.Process,
 						DatabaseInstance:  pgCompName,
 					},
 				},

@@ -52,8 +52,8 @@ func (v *vshnKeycloakBackupStorage) List(ctx context.Context, options *metainter
 			backups = *b
 		}
 
-		for _, sgBackup := range backups {
-			backupMeta := sgBackup.ObjectMeta
+		for _, backup := range backups {
+			backupMeta := backup.ObjectMeta
 			backupMeta.Namespace = instance.GetNamespace()
 
 			keycloakSnapshots.Items = append(keycloakSnapshots.Items, appcatv1.VSHNKeycloakBackup{
@@ -61,8 +61,8 @@ func (v *vshnKeycloakBackupStorage) List(ctx context.Context, options *metainter
 				Status: appcatv1.VSHNKeycloakBackupStatus{
 					DatabaseBackupAvailable: true,
 					DatabaseBackupStatus: appcatv1.VSHNPostgresBackupStatus{
-						BackupInformation: &sgBackup.BackupInformation,
-						Process:           &sgBackup.Process,
+						BackupInformation: &backup.BackupInformation,
+						Process:           &backup.Process,
 						DatabaseInstance:  pgCompName,
 					},
 				},

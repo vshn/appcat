@@ -41,25 +41,25 @@ func (v *vshnKeycloakBackupStorage) Get(ctx context.Context, name string, _ *met
 			return nil, err
 		}
 
-		var sgBackup *appcatv1.BackupInfo
-		for _, backup := range *backups {
-			if name == backup.GetName() {
-				sgBackup = &backup
+		var backup *appcatv1.BackupInfo
+		for _, back := range *backups {
+			if name == back.GetName() {
+				backup = &back
 				break
 			}
 		}
 
-		if sgBackup != nil {
+		if backup != nil {
 			status := appcatv1.VSHNKeycloakBackupStatus{
 				DatabaseBackupAvailable: true,
 				DatabaseBackupStatus: appcatv1.VSHNPostgresBackupStatus{
-					BackupInformation: &sgBackup.BackupInformation,
-					Process:           &sgBackup.Process,
+					BackupInformation: &backup.BackupInformation,
+					Process:           &backup.Process,
 					DatabaseInstance:  pgName,
 				},
 			}
 
-			backupMeta := sgBackup.ObjectMeta
+			backupMeta := backup.ObjectMeta
 			backupMeta.Namespace = instance.GetNamespace()
 
 			keycloakBackup = &appcatv1.VSHNKeycloakBackup{

@@ -16,7 +16,7 @@ import (
 
 var _ rest.Getter = &vshnPostgresBackupStorage{}
 
-// Get returns a VSHNPostgresBackupStorage service based on stackgres SGBackup resource
+// Get returns a VSHNPostgresBackupStorage service based on StackGres/CNPG backup resource
 func (v *vshnPostgresBackupStorage) Get(ctx context.Context, name string, _ *metav1.GetOptions) (runtime.Object, error) {
 	namespace, ok := request.NamespaceFrom(ctx)
 	if !ok {
@@ -38,7 +38,7 @@ func (v *vshnPostgresBackupStorage) Get(ctx context.Context, name string, _ *met
 		targetSchema := DetermineTargetSchema(value.Spec.CompositionRef.Name)
 		backupInfo, err := v.backups.GetBackup(ctx, name, value.Status.InstanceNamespace, targetSchema, client)
 		if err != nil {
-			resolvedErr := apiserver.ResolveError(SGbackupGroupVersionResource.GroupResource(), err)
+			resolvedErr := apiserver.ResolveError(targetSchema.GroupResource(), err)
 			if apierrors.IsNotFound(resolvedErr) {
 				continue
 			}

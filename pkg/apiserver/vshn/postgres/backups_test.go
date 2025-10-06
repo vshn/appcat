@@ -47,7 +47,7 @@ func TestConvertToBackupInfo(t *testing.T) {
 
 		// CNPG
 		"GivenAnUnstructuredCNPGObject_ThenBackupInfo": {
-			unstr:      getUnstructuredObjectCnp("one"),
+			unstr:      getUnstructuredObjectCnpg("one"),
 			backupInfo: getBackupInfoCnpg("one"),
 			err:        nil,
 		},
@@ -104,7 +104,7 @@ func getUnstructuredObjectWithoutMeta(name, kind string) *unstructured.Unstructu
 	if kind == kindSgBackup {
 		unstr = getUnstructuredObjectSg(name)
 	} else {
-		unstr = getUnstructuredObjectCnp(name)
+		unstr = getUnstructuredObjectCnpg(name)
 	}
 
 	unstructured.RemoveNestedField(unstr.Object, "metadata")
@@ -169,11 +169,12 @@ func getBackupInfoCnpg(name string) *v1.BackupInfo {
 			Object: map[string]interface{}{
 				"backupId":        "backup-123",
 				"backupName":      "daily-backup",
-				"destinationPath": "/backups/2024-06-01",
+				"destinationPath": "s3://backups/2024-06-01",
 				"beginLSN":        "0/7000028",
 				"beginWal":        "000000010000000700000028",
 				"endLSN":          "0/7000030",
 				"endWal":          "000000010000000700000030",
+				"serverName":      "my-cnpg-cluster",
 			},
 		}},
 	}
@@ -207,7 +208,7 @@ func getUnstructuredObjectSg(name string) *unstructured.Unstructured {
 	}
 }
 
-func getUnstructuredObjectCnp(name string) *unstructured.Unstructured {
+func getUnstructuredObjectCnpg(name string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"kind": kindCnpgBackup,
@@ -224,12 +225,20 @@ func getUnstructuredObjectCnp(name string) *unstructured.Unstructured {
 				"phase":           "Completed",
 				"backupId":        "backup-123",
 				"backupName":      "daily-backup",
-				"destinationPath": "/backups/2024-06-01",
+				"destinationPath": "s3://backups/2024-06-01",
 				"beginLSN":        "0/7000028",
 				"beginWal":        "000000010000000700000028",
 				"endLSN":          "0/7000030",
 				"endWal":          "000000010000000700000030",
+				"serverName":      "my-cnpg-cluster",
 			},
 		},
 	}
+}
+
+func TestPluralConversion(t *testing.T) {
+	assert.Equal(t, "Backups", getPluralOfSingularKind("Backup"))
+	assert.Equal(t, "Backups", getPluralOfSingularKind("Backups"))
+	assert.Equal(t, "backups", getPluralOfSingularKind("backup"))
+	assert.Equal(t, "backups", getPluralOfSingularKind("backups"))
 }

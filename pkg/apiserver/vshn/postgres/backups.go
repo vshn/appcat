@@ -42,7 +42,7 @@ type KubeBackupProvider struct {
 	DynamicClient client.NamespaceableResourceInterface
 }
 
-// GetBackup fetches a SG/CNPG resource into unstructured.Unstructured. Relevant data is saved to v1.BackupInfo
+// GetBackup fetches a SG/CNPG backup resource into unstructured.Unstructured. Relevant data is saved to v1.BackupInfo
 func (k *KubeBackupProvider) GetBackup(ctx context.Context, name, namespace string, schema schema.GroupVersionResource, scClient *client.DynamicClient) (*v1.BackupInfo, error) {
 	var unstructuredObject *unstructured.Unstructured
 	var err error
@@ -129,9 +129,13 @@ func convertToBackupInfo(object *unstructured.Unstructured) (*v1.BackupInfo, err
 		return nil, err
 	}
 
+	// oject.GetKind() will be the singular form, but schema.GroupVersionResource.Resource (which we compare against) contains the plural.
+	// As such, we need to convert the singular into plural first so that the switch..case actually works.
+	kind := getPluralOfSingularKind(strings.ToLower(object.GetKind()))
+
 	// BackupInfo gets populated differently depending on SG or CNPG
 	b := &v1.BackupInfo{ObjectMeta: *o}
-	switch strings.ToLower(object.GetKind()) {
+	switch kind {
 	case CNPGbackupGroupVersionResource.Resource:
 		// CNPG
 		status, _, err := unstructured.NestedMap(content, v1.Status)
@@ -161,6 +165,7 @@ func convertToBackupInfo(object *unstructured.Unstructured) (*v1.BackupInfo, err
 				"beginWal":        status["beginWal"],
 				"endLSN":          status["endLSN"],
 				"endWal":          status["endWal"],
+				"serverName":      status["serverName"],
 			}}}
 		}
 	default:
@@ -184,4 +189,13 @@ func convertToBackupInfo(object *unstructured.Unstructured) (*v1.BackupInfo, err
 	}
 
 	return b, nil
+}
+
+// Returns the plural form of a kind (if it isn't already)
+func getPluralOfSingularKind(kind string) string {
+	if strings.HasSuffix(kind, "s") {
+		return kind
+	} else {
+		return fmt.Sprintf("%ss", kind)
+	}
 }

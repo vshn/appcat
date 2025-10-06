@@ -65,13 +65,15 @@ func (n *CodeyInstanceWebhookHandler) ValidateCreate(ctx context.Context, obj ru
 		return warning, err
 	}
 
-	codey, ok := obj.(*codey.CodeyInstance)
+	codeyInstance, ok := obj.(*codey.CodeyInstance)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid CodeyInstance object")
 	}
 
-	codeyFqdn := codey.ObjectMeta.Name + codeyUrlSuffix
-	if err := isCodeyFqdnUnique(codeyFqdn, codey.Spec.ResourceRef.Name, n.client); err != nil {
+	codeyFqdn := codeyInstance.ObjectMeta.Name + codeyUrlSuffix
+
+	// compositeName is empty on creation
+	if err := isCodeyFqdnUnique(codeyFqdn, "", n.client); err != nil {
 		return nil, fmt.Errorf("failed FQDN validation: %v", err)
 	}
 
@@ -107,19 +109,23 @@ func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) error {
 		return err
 	}
 
-	//... but not the one belonging to ourself.
-	reqComposite, err := labels.NewRequirement("crossplane.io/composite", selection.NotEquals, []string{compositeName})
-	if err != nil {
-		return err
-	}
-
-	err = cl.List(context.TODO(), ingressList,
+	listOpts := []client.ListOption{
 		client.MatchingLabelsSelector{
 			Selector: labels.NewSelector().Add(*reqOwnerkind),
 		},
-		client.MatchingLabelsSelector{
+	}
+
+	if compositeName != "" {
+		reqComposite, err := labels.NewRequirement("crossplane.io/composite", selection.NotEquals, []string{compositeName})
+		if err != nil {
+			return err
+		}
+		listOpts = append(listOpts, client.MatchingLabelsSelector{
 			Selector: labels.NewSelector().Add(*reqComposite),
 		})
+	}
+
+	err = cl.List(context.TODO(), ingressList, listOpts...)
 	if err != nil {
 		return fmt.Errorf("failed listing ingresses: %v", err)
 	}

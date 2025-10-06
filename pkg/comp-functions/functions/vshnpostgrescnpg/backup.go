@@ -28,8 +28,10 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 		return err
 	}
 
+	maintTime := common.SetRandomMaintenanceSchedule(comp)
+	common.SetRandomBackupSchedule(comp, &maintTime)
+
 	if comp.IsBackupEnabled() {
-		setSchedules(comp)
 		if err := insertBackupValues(svc, comp, values); err != nil {
 			return err
 		}
@@ -98,11 +100,6 @@ func getBackupBucketConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.
 	backupCredentials.accessId = string(cd["AWS_ACCESS_KEY_ID"])
 	backupCredentials.accessKey = string(cd["AWS_SECRET_ACCESS_KEY"])
 	return backupCredentials, nil
-}
-
-func setSchedules(comp *vshnv1.VSHNPostgreSQL) {
-	maintTime := common.SetRandomMaintenanceSchedule(comp)
-	common.SetRandomBackupSchedule(comp, &maintTime)
 }
 
 // Transform backup schedule according to robfig/cron (used by CNPG)

@@ -3,6 +3,7 @@ package apiserver
 import (
 	"context"
 	"errors"
+	v2 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"sync"
 
 	"github.com/vshn/appcat/v4/pkg"
@@ -123,7 +124,12 @@ func (k *KubeClient) GetKubeClient(ctx context.Context, instance client.Object) 
 		return k.WithWatch, nil
 	}
 
-	kubeconfig, err := k.getKubeConfig(ctx, instance)
+	providerConfig, err := k.fetchProvider(ctx, instance.GetLabels()[appcatruntime.ProviderConfigLabel])
+	if err != nil {
+		return nil, err
+	}
+
+	kubeconfig, err := k.getKubeConfig(ctx, providerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -146,13 +152,22 @@ func (k *KubeClient) GetKubeClient(ctx context.Context, instance client.Object) 
 // It will check where the instance is running on and will return either the client
 // for the remote cluster (non-converged) or the local cluster (converged)
 func (k *KubeClient) GetDynKubeClient(ctx context.Context, instance client.Object) (*dynClient.DynamicClient, error) {
-	providerConfig := instance.GetLabels()[appcatruntime.ProviderConfigLabel]
-	if providerConfig == "" || providerConfig == "local" {
+	providerConfigLabelValue := instance.GetLabels()[appcatruntime.ProviderConfigLabel]
+	if providerConfigLabelValue == "" || providerConfigLabelValue == "local" {
 		// For converged clusters, create a dynamic client using the loopback config
 		return dynClient.NewForConfig(loopback.GetLoopbackMasterClientConfig())
 	}
 
-	kubeconfig, err := k.getKubeConfig(ctx, instance)
+	providerConfig, err := k.fetchProvider(ctx, instance.GetLabels()[appcatruntime.ProviderConfigLabel])
+	if err != nil {
+		return nil, err
+	}
+
+	if providerConfig.Spec.Credentials.Source == v2.CredentialsSourceInjectedIdentity {
+		return dynClient.NewForConfig(loopback.GetLoopbackMasterClientConfig())
+	}
+
+	kubeconfig, err := k.getKubeConfig(ctx, providerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -168,19 +183,20 @@ func (k *KubeClient) GetDynKubeClient(ctx context.Context, instance client.Objec
 	return client, nil
 }
 
-// GetKubeConfig will return a `Kubeconfig` for the provided instance and kubeclient
-func (k *KubeClient) getKubeConfig(ctx context.Context, instance client.Object) ([]byte, error) {
-	providerConfigName := instance.GetLabels()[appcatruntime.ProviderConfigLabel]
-
-	providerConfig := xkube.ProviderConfig{}
-	err := k.Get(ctx, client.ObjectKey{Name: providerConfigName}, &providerConfig)
+func (k *KubeClient) fetchProvider(ctx context.Context, providerConfigName string) (*xkube.ProviderConfig, error) {
+	providerConfig := &xkube.ProviderConfig{}
+	err := k.Get(ctx, client.ObjectKey{Name: providerConfigName}, providerConfig)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
+	return providerConfig, err
+}
 
+// GetKubeConfig will return a `Kubeconfig` for the provided instance and kubeclient
+func (k *KubeClient) getKubeConfig(ctx context.Context, providerConfig *xkube.ProviderConfig) ([]byte, error) {
 	secretRef := providerConfig.Spec.Credentials.SecretRef
 	secret := v1.Secret{}
-	err = k.Get(ctx, client.ObjectKey{Name: secretRef.Name, Namespace: secretRef.Namespace}, &secret)
+	err := k.Get(ctx, client.ObjectKey{Name: secretRef.Name, Namespace: secretRef.Namespace}, &secret)
 	if err != nil {
 		return []byte{}, err
 	}

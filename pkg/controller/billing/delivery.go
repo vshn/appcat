@@ -9,8 +9,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// processQueue delivers at most one event per call with priority: failed, pending deletes, any pending.
+// processQueue delivers at most one event per call with priority: resend, failed, pending deletes, any pending.
 func (b *BillingHandler) processQueue(ctx context.Context, billingService *vshnv1.BillingService) (bool, error) {
+	if i, _, ok := findEvent(billingService, findEventOpts{
+		States: []BillingEventState{BillingEventStateResend},
+	}); ok {
+		return b.deliverQueuedEvent(ctx, billingService, i)
+	}
+
 	if i, _, ok := findEvent(billingService, findEventOpts{
 		States: []BillingEventState{BillingEventStateFailed},
 	}); ok {

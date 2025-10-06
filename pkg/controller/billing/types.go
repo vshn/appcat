@@ -23,6 +23,7 @@ const (
 	BillingEventStateSent       BillingEventState = "sent"
 	BillingEventStateFailed     BillingEventState = "failed"
 	BillingEventStateSuperseded BillingEventState = "superseded"
+	BillingEventStateResend     BillingEventState = "resend"
 )
 
 type BillingEventType string

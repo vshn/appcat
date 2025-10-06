@@ -11,11 +11,9 @@ func handleResendAnnotation(billingService *vshnv1.BillingService, mode string) 
 			if billingService.Status.Events[i].State == string(BillingEventStateSuperseded) {
 				continue
 			}
-			if billingService.Status.Events[i].State != string(BillingEventStateFailed) {
-				billingService.Status.Events[i].State = string(BillingEventStateFailed)
-				billingService.Status.Events[i].RetryCount++
-				changed = true
-			}
+			billingService.Status.Events[i].State = string(BillingEventStateResend)
+			billingService.Status.Events[i].RetryCount++
+			changed = true
 		}
 	case ResendNotSent:
 		for i := range billingService.Status.Events {
@@ -23,16 +21,15 @@ func handleResendAnnotation(billingService *vshnv1.BillingService, mode string) 
 				continue
 			}
 			if billingService.Status.Events[i].State != string(BillingEventStateSent) {
-				if billingService.Status.Events[i].State != string(BillingEventStateFailed) {
-					billingService.Status.Events[i].RetryCount++
-				}
-				billingService.Status.Events[i].State = string(BillingEventStateFailed)
+				billingService.Status.Events[i].State = string(BillingEventStateResend)
+				billingService.Status.Events[i].RetryCount++
 				changed = true
 			}
 		}
 	case ResendFailed:
 		for i := range billingService.Status.Events {
 			if billingService.Status.Events[i].State == string(BillingEventStateFailed) {
+				billingService.Status.Events[i].State = string(BillingEventStateResend)
 				billingService.Status.Events[i].RetryCount++
 				changed = true
 			}

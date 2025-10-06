@@ -12,11 +12,14 @@ type findEventOpts struct {
 	ProductID *string
 }
 
+// enqueueEvent prepends a new billing event to the list and updates the BillingService status.
 func enqueueEvent(ctx context.Context, b *BillingHandler, billingService *vshnv1.BillingService, event vshnv1.BillingEventStatus) error {
 	billingService.Status.Events = append([]vshnv1.BillingEventStatus{event}, billingService.Status.Events...)
 	return b.Status().Update(ctx, billingService)
 }
 
+// findEvent returns the oldest event matching the given findEventOpts.
+// It returns the event index, the event itself, and true if found. Otherwise it returns -1, empty, and false.
 func findEvent(billingService *vshnv1.BillingService, opts findEventOpts) (int, vshnv1.BillingEventStatus, bool) {
 	events := billingService.Status.Events
 	if len(events) == 0 {

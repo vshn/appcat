@@ -175,7 +175,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 	// https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml
 	values := map[string]any{
 		"cluster": map[string]any{
-			"instances": 1, // For the moment we only support single instance deployments
+			"instances": comp.Spec.Parameters.Instances,
 			"imageCatalogRef": map[string]string{
 				"kind": "ImageCatalog",
 				"name": comp.GetName() + "-cluster",

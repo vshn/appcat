@@ -98,10 +98,6 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      luksKeyName,
 				Namespace: comp.GetInstanceNamespace(),
-				Labels: map[string]string{
-					// Required for scaling
-					"appcat.vshn.io/webhook-allowdeletion": "true",
-				},
 			},
 			Data: map[string][]byte{
 				"luksKey": []byte(luksKey),

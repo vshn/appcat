@@ -1,0 +1,223 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        compositionRef:
+          name: vshnpostgrescnpg.vshn.appcat.vshn.io
+        parameters:
+          service:
+            majorVersion: "15"
+          instances: 1
+          backup:
+            enabled: true
+          maintenance:
+            schedule: 12 34 * * *
+        writeConnectionSecretToRef: {}
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+  namespace-conditions:
+    resource:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        labels:
+          appuio.io/organization: vshn
+          name.appuio.io/app-display-name: pgsql
+          name.appuio.io/app-instance: pgsql-gc9x4
+          name.appuio.io/app-name: postgresql
+          name.appuio.io/app-version: "15"
+          name.appuio.io/project-display-name: unit-test
+          postgresql.appcat.vshn.io/postgresql-name: pgsql-gc9x4
+        name: vshn-postgresql-pgsql-gc9x4
+      spec: {}
+  local-ca:
+    resource:
+      apiVersion: cert-manager.io/v1
+      kind: Issuer
+      metadata:
+        name: pgsql-gc9x4
+        namespace: vshn-postgresql-pgsql-gc9x4
+      spec:
+        selfSigned:
+          crlDistributionPoints: []
+  certificate:
+    resource:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: pgsql-gc9x4
+        namespace: vshn-postgresql-pgsql-gc9x4
+      spec:
+        dnsNames:
+        - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc.cluster.local
+        - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc
+        duration: 87600h0m0s
+        isCA: false
+        issuerRef:
+          group: cert-manager.io
+          kind: Issuer
+          name: pgsql-gc9x4
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 4096
+        renewBefore: 2400h0m0s
+        secretName: tls-certificate
+        subject:
+          organizations:
+          - vshn-appcat
+        usages:
+        - server auth
+        - client auth
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        annotations: null
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: unit-test
+        compositionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          service:
+            majorVersion: "15"
+          instances: 1
+          backup:
+            enabled: true
+            schedule: 44 20 * * *
+            retention: 6
+          maintenance:
+            dayOfWeek: wednesday
+            timeOfDay: '12:34:56'
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+  resources:
+    "pgsql-gc9x4-backup":
+      connection_details:
+          # Needs to be b64 encoded for LoadRuntimeFromFile()
+          AWS_ACCESS_KEY_ID: c2VjcmV0QWNjZXNzSWQ=         # secretAccessId
+          AWS_REGION: cm1h                                # rma
+          AWS_SECRET_ACCESS_KEY: c2VjcmV0QWNjZXNzS2V5     # secretAccessKey
+          BUCKET_NAME: YmFja3VwQnVja2V0                   # backupBucket
+          ENDPOINT: czMubWluaW8ubG9jYWw=                  # s3.minio.local
+          ENDPOINT_URL: aHR0cHM6Ly9zMy5taW5pby5sb2NhbC8=  # https://s3.minio.local/
+      resource:
+        apiVersion: appcat.vshn.io/v1
+        kind: XObjectBucket
+        metadata:
+          name: pgsql-gc9x4-backup
+          labels:
+            appuio.io/organization: vshn
+            crossplane.io/claim-name: pgsql
+            crossplane.io/claim-namespace: unit-test
+            crossplane.io/composite: pgsql-gc9x4
+        spec:
+          parameters:
+            bucketName: pgsql-gc9x4-rma-backup
+            providerRef:
+              name: s3
+            region: rma
+            security:
+              deletionProtection: false
+              allowAllNamespaces: false
+          writeConnectionSecretToRef:
+            name: pgsql-gc9x4
+            namespace: vshn-postgresql-pgsql-gc9x4
+        status:
+          conditions:
+          - lastTransitionTime: "2024-09-27T08:06:34Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+          - lastTransitionTime: "2024-09-26T14:37:37Z"
+            reason: Available
+            status: "True"
+            type: Ready
+          connectionDetails:
+            lastPublishedTime: "2024-09-26T14:37:37Z"
+input:
+  apiVersion: v1
+  data:
+    additionalMaintenanceClusterRole: role
+    defaultPlan: standard-1
+    controlNamespace: appcat-control
+    plans:
+      '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true,
+      "memory": "1Gi"}}}'
+    imageTag: master
+    initContainers: '{"clusterReconciliationCycle": {"limits": {"cpu": "300m",
+      "memory": "200Mi"}, "requests": {"cpu": "100m", "memory": "100Mi"}}, "pgbouncerAuthFile":
+      {"limits": {"cpu": "300m", "memory": "500Mi"}, "requests": {"cpu": "100m",
+      "memory": "100Mi"}}, "relocateBinaries": {"limits": {"cpu": "300m", "memory":
+      "500Mi"}, "requests": {"cpu": "100m", "memory": "100Mi"}}, "setDbopsRunning":
+      {"limits": {"cpu": "250m", "memory": "256Mi"}, "requests": {"cpu": "250m",
+      "memory": "256Mi"}}, "setupArbitraryUser": {"limits": {"cpu": "300m",
+      "memory": "500Mi"}, "requests": {"cpu": "100m", "memory": "500Mi"}}, "setupScripts":
+      {"limits": {"cpu": "300m", "memory": "500Mi"}, "requests": {"cpu": "100m",
+      "memory": "500Mi"}}}'
+    keepMetrics: '["pg_locks_count", "pg_postmaster_start_time_seconds", "pg_replication_lag",
+      "pg_settings_effective_cache_size_bytes", "pg_settings_maintenance_work_mem_bytes",
+      "pg_settings_max_connections", "pg_settings_max_parallel_workers", "pg_settings_max_wal_size_bytes",
+      "pg_settings_max_worker_processes", "pg_settings_shared_buffers_bytes",
+      "pg_settings_work_mem_bytes", "pg_stat_activity_count", "pg_stat_bgwriter_buffers_alloc_total",
+      "pg_stat_bgwriter_buffers_backend_fsync_total", "pg_stat_bgwriter_buffers_backend_total",
+      "pg_stat_bgwriter_buffers_checkpoint_total", "pg_stat_bgwriter_buffers_clean_total",
+      "pg_stat_database_blks_hit", "pg_stat_database_blks_read", "pg_stat_database_conflicts",
+      "pg_stat_database_deadlocks", "pg_stat_database_temp_bytes", "pg_stat_database_xact_commit",
+      "pg_stat_database_xact_rollback", "pg_static", "pg_up", "pgbouncer_show_stats_total_xact_count",
+      "pgbouncer_show_stats_totals_bytes_received", "pgbouncer_show_stats_totals_bytes_sent"]'
+    serviceName: postgresql
+    sgNamespace: stackgres
+    sideCars: '{"clusterController": {"limits": {"cpu": "32m", "memory": "256Mi"},
+      "requests": {"cpu": "32m", "memory": "128Mi"}}, "createBackup": {"limits":
+      {"cpu": "400m", "memory": "500Mi"}, "requests": {"cpu": "100m", "memory":
+      "64Mi"}}, "envoy": {"limits": {"cpu": "64m", "memory": "64Mi"}, "requests":
+      {"cpu": "32m", "memory": "64Mi"}}, "pgbouncer": {"limits": {"cpu": "32m",
+      "memory": "20Mi"}, "requests": {"cpu": "16m", "memory": "4Mi"}}, "postgresUtil":
+      {"limits": {"cpu": "20m", "memory": "20Mi"}, "requests": {"cpu": "10m",
+      "memory": "4Mi"}}, "prometheusPostgresExporter": {"limits": {"cpu": "150m",
+      "memory": "256Mi"}, "requests": {"cpu": "10m", "memory": "16Mi"}}, "runDbops":
+      {"limits": {"cpu": "250m", "memory": "256Mi"}, "requests": {"cpu": "100m",
+      "memory": "64Mi"}}, "setDbopsResult": {"limits": {"cpu": "250m", "memory":
+      "256Mi"}, "requests": {"cpu": "100m", "memory": "64Mi"}}}'
+    providerEnabled: "true"
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config

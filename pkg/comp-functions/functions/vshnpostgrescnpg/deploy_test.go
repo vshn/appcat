@@ -8,6 +8,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -19,6 +20,7 @@ func Test_deploy(t *testing.T) {
 	svc, comp := getSvcCompCnpg(t)
 	ctx := context.TODO()
 
+	comp.Spec.Parameters.Backup.Enabled = ptr.To(false)
 	assert.Nil(t, deployPostgresSQLUsingCNPG(ctx, comp, svc))
 }
 

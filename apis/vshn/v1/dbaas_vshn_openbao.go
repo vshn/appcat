@@ -9,13 +9,12 @@ import (
 
 // Workaround to make nested defaulting work.
 // kubebuilder is unable to set a {} default
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
-
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
 
 // +kubebuilder:object:root=true
 
@@ -69,7 +68,6 @@ type VSHNOpenBaoParameters struct {
 	// Security contains settings to control the security of a service.
 	Security Security `json:"security,omitempty"`
 
-
 	// Monitoring contains settings to control the monitoring of a service.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
@@ -118,8 +116,6 @@ type VSHNOpenBaoSizeSpec struct {
 	Plan string `json:"plan,omitempty"`
 }
 
-
-
 // VSHNOpenBaoStatus reflects the observed state of a VSHNOpenBao.
 type VSHNOpenBaoStatus struct {
 	NamespaceConditions         []Condition `json:"namespaceConditions,omitempty"`
@@ -147,7 +143,6 @@ func (v *VSHNOpenBao) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
 
-
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 
@@ -169,7 +164,7 @@ type XVSHNOpenBaoSpec struct {
 }
 
 type XVSHNOpenBaoStatus struct {
-	VSHNOpenBaoStatus     `json:",inline"`
+	VSHNOpenBaoStatus   `json:",inline"`
 	xpv1.ResourceStatus `json:",inline"`
 }
 
@@ -183,6 +178,7 @@ type XVSHNOpenBaoList struct {
 
 	Items []XVSHNOpenBao `json:"items"`
 }
+
 // GetMaintenanceDayOfWeek returns the currently set day of week
 func (v *VSHNOpenBao) GetMaintenanceDayOfWeek() string {
 	if v.Spec.Parameters.Maintenance.DayOfWeek != "" {
@@ -216,6 +212,7 @@ func (v *VSHNOpenBao) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleS
 	schedule.TimeOfDay = v.GetMaintenanceTimeOfDay()
 	return schedule
 }
+
 // GetBackupRetention returns the retention definition for this backup.
 func (v *VSHNOpenBao) GetBackupRetention() K8upRetentionPolicy {
 	return v.Spec.Parameters.Backup.Retention
@@ -232,7 +229,7 @@ func (v *VSHNOpenBao) GetBackupSchedule() string {
 // SetBackupSchedule overwrites the current backup schedule
 func (v *VSHNOpenBao) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
-}// GetServiceName returns the name of this service
+} // GetServiceName returns the name of this service
 func (v *VSHNOpenBao) GetServiceName() string {
 	return "openbao"
 }
@@ -241,9 +238,9 @@ func (v *VSHNOpenBao) GetServiceName() string {
 // it should match one unique label od pod running in instanceNamespace
 // without this, the PDB will match all pods
 func (v *VSHNOpenBao) GetPDBLabels() map[string]string {
-	return map[string]string{
-	}
+	return map[string]string{}
 }
+
 // GetAllowAllNamespaces returns the AllowAllNamespaces field of this service
 func (v *VSHNOpenBao) GetAllowAllNamespaces() bool {
 	return v.Spec.Parameters.Security.AllowAllNamespaces
@@ -257,7 +254,6 @@ func (v *VSHNOpenBao) GetAllowedNamespaces() []string {
 	return append(v.Spec.Parameters.Security.AllowedNamespaces, v.GetClaimNamespace())
 }
 
-
 func (v *VSHNOpenBao) GetSecurity() *Security {
 	return &v.Spec.Parameters.Security
 }
@@ -266,15 +262,13 @@ func (v *VSHNOpenBao) GetSize() VSHNSizeSpec {
 	return v.Spec.Parameters.Size
 }
 
-
 func (v *VSHNOpenBao) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
- 
+
 func (v *VSHNOpenBao) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }
-
 
 func (v *VSHNOpenBao) GetBillingName() string {
 	return "appcat-" + v.GetServiceName()

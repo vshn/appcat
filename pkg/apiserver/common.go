@@ -3,7 +3,7 @@ package apiserver
 import (
 	"context"
 	"errors"
-	v2 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	crossplane_v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"sync"
 
 	"github.com/vshn/appcat/v4/pkg"
@@ -163,7 +163,8 @@ func (k *KubeClient) GetDynKubeClient(ctx context.Context, instance client.Objec
 		return nil, err
 	}
 
-	if providerConfig.Spec.Credentials.Source == v2.CredentialsSourceInjectedIdentity {
+	// In case credentials source is InjectedIdentity then use the same in-cluster connection.
+	if providerConfig.Spec.Credentials.Source == crossplane_v1.CredentialsSourceInjectedIdentity {
 		return dynClient.NewForConfig(loopback.GetLoopbackMasterClientConfig())
 	}
 

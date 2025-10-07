@@ -30,6 +30,8 @@ import (
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;patch;update;delete
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;patch;update;delete
 
+//+kubebuilder:rbac:groups=postgresql.sql.crossplane.io,resources=providerconfigs,verbs=get;list;watch;
+
 const (
 	maxResourceNameLength = 30
 )

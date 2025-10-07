@@ -59,7 +59,6 @@ rules:
   verbs:
   - get
   - list
-  - watch
 - apiGroups:
   - syn.tools
   resources:
@@ -132,15 +131,3 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-    - cloudscale.crossplane.io
-    - kubernetes.crossplane.io
-    - helm.crossplane.io
-    - minio.crossplane.io
-    - postgresql.sql.crossplane.io
-  resources:
-    - providerconfigs
-  verbs:
-    - get
-    - list
-    - watch

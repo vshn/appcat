@@ -54,7 +54,7 @@ func init() {
 	ControllerCMD.Flags().StringVar(&c.certDir, "certdir", "/etc/webhook/certs", "Set the webhook certificate directory")
 	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
-	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", true, "Disable billing")
+	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", false, "Disable billing")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
 		viper.Set("PLANS_NAMESPACE", "syn-appcat")

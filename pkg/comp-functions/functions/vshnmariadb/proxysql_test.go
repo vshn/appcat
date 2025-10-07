@@ -53,7 +53,7 @@ func Test_createProxySQLConfig(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "empty.yaml")
 	comp := getComp()
 
-	expectedHash := "56e11403faab20eb54184eccef557c85"
+	expectedHash := "1bf00f243388da2aa7ba6b8d14bf7ad3"
 
 	hash, err := createProxySQLConfig(comp, svc, false)
 	assert.NoError(t, err)

@@ -33,11 +33,12 @@ var (
 )
 
 type proxySQLConfigParams struct {
-	CompName     string
-	RootPassword string
-	Namespace    string
-	TLS          int
-	Users        []proxySQLUsers
+	CompName       string
+	RootPassword   string
+	Namespace      string
+	TLS            int
+	Users          []proxySQLUsers
+	MariaDBVersion string
 }
 
 type proxySQLUsers struct {
@@ -119,11 +120,12 @@ func createProxySQLConfig(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime,
 	}
 
 	confParams := proxySQLConfigParams{
-		CompName:     comp.GetName(),
-		RootPassword: string(cd["MARIADB_PASSWORD"]),
-		Namespace:    comp.GetInstanceNamespace(),
-		Users:        userList,
-		TLS:          tls,
+		CompName:       comp.GetName(),
+		RootPassword:   string(cd["MARIADB_PASSWORD"]),
+		Namespace:      comp.GetInstanceNamespace(),
+		Users:          userList,
+		TLS:            tls,
+		MariaDBVersion: comp.Status.MariaDBVersion,
 	}
 
 	var buf bytes.Buffer

@@ -137,8 +137,13 @@ func (v *CodeyInstance) GetAllowedNamespaces() []string {
 func (v *CodeyInstance) GetBackupRetention() vshnv1.K8upRetentionPolicy {
 	return vshnv1.K8upRetentionPolicy{}
 }
+
 func (v *CodeyInstance) GetBackupSchedule() string {
 	return ""
+}
+
+func (v *CodeyInstance) IsBackupEnabled() bool {
+	return false
 }
 
 func (v *CodeyInstance) GetServiceName() string {

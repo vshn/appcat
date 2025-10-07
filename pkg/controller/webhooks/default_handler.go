@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
@@ -11,6 +12,7 @@ import (
 	appcatruntime "github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -19,6 +21,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
+
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;patch;update;delete
+//+kubebuilder:rbac:groups=cloudscale.crossplane.io;kubernetes.crossplane.io;helm.crossplane.io;minio.crossplane.io;postgresql.sql.crossplane.io,resources=providerconfigs,verbs=get;list;watch
 
 type DefaultWebhookHandler struct {
 	client    client.Client
@@ -94,8 +99,18 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
 	}
 
+	oldComp, ok := oldObj.(common.Composite)
+	if !ok {
+		return nil, fmt.Errorf("provided old manifest is not a valid " + r.gk.Kind + " object")
+	}
+
 	if comp.GetDeletionTimestamp() != nil {
 		return nil, nil
+	}
+
+	// Check for disk downsizing
+	if diskErr := r.ValidateDiskDownsizing(ctx, oldComp, comp, r.gk.Kind); diskErr != nil {
+		allErrs = append(allErrs, diskErr)
 	}
 
 	providerConfigErrs := r.ValidateProviderConfig(ctx, comp)
@@ -440,4 +455,96 @@ func (r *DefaultWebhookHandler) validateProviderConfigSecret(ctx context.Context
 	}
 
 	return nil
+}
+
+// ValidateDiskDownsizing checks if the disk size is being reduced and returns an error if so.
+// This is a global validation function that can be called by any AppCat service webhook.
+// It handles both explicit disk sizes and plan-based sizing.
+func (r *DefaultWebhookHandler) ValidateDiskDownsizing(ctx context.Context, oldComp, newComp common.Composite, serviceName string) *field.Error {
+	// Get the actual disk size from old configuration (plan or explicit)
+	oldDiskSize, err := r.getEffectiveDiskSize(ctx, oldComp, serviceName)
+	if err != nil {
+		// If we can't determine the old size, skip validation to avoid blocking legitimate changes
+		r.log.V(1).Info("Could not determine old disk size, skipping downsizing validation", "error", err)
+		return nil
+	}
+	if oldDiskSize == "" {
+		// No disk size configured, skip validation
+		return nil
+	}
+
+	// Get the actual disk size from new configuration (plan or explicit)
+	newDiskSize, err := r.getEffectiveDiskSize(ctx, newComp, serviceName)
+	if err != nil {
+		// Return error for invalid new configuration
+		return &field.Error{
+			Field:    "spec.parameters.size",
+			Detail:   fmt.Sprintf("invalid size configuration: %s", err.Error()),
+			BadValue: fmt.Sprintf("plan: %s, disk: %s", newComp.GetSize().Plan, newComp.GetSize().Disk),
+			Type:     field.ErrorTypeInvalid,
+		}
+	}
+	if newDiskSize == "" {
+		// No disk size in new config, allow it
+		return nil
+	}
+
+	// Parse both sizes as Kubernetes resource quantities
+	oldQuantity, err := resource.ParseQuantity(oldDiskSize)
+	if err != nil {
+		// If we can't parse the old size, skip validation
+		r.log.V(1).Info("Could not parse old disk size, skipping downsizing validation", "size", oldDiskSize, "error", err)
+		return nil
+	}
+
+	newQuantity, err := resource.ParseQuantity(newDiskSize)
+	if err != nil {
+		// Return error for invalid new size format
+		return &field.Error{
+			Field:    "spec.parameters.size.disk",
+			Detail:   fmt.Sprintf("invalid disk size format: %s", err.Error()),
+			BadValue: newDiskSize,
+			Type:     field.ErrorTypeInvalid,
+		}
+	}
+
+	// Check if the new size is smaller than the old size
+	if newQuantity.Cmp(oldQuantity) < 0 {
+		return &field.Error{
+			Field:    "spec.parameters.size",
+			Detail:   fmt.Sprintf("disk downsizing not allowed for %s. Current: %s, requested: %s", serviceName, oldDiskSize, newDiskSize),
+			BadValue: fmt.Sprintf("plan: %s, disk: %s", newComp.GetSize().Plan, newComp.GetSize().Disk),
+			Type:     field.ErrorTypeForbidden,
+		}
+	}
+
+	return nil
+}
+
+// getEffectiveDiskSize returns the actual disk size from either explicit disk parameter or plan.
+// Returns empty string if no disk size is configured.
+func (r *DefaultWebhookHandler) getEffectiveDiskSize(ctx context.Context, comp common.Composite, serviceName string) (string, error) {
+	size := comp.GetSize()
+
+	// If explicit disk size is set, use it
+	if size.Disk != "" {
+		return size.Disk, nil
+	}
+
+	// If plan is set, resolve the disk size from the plan
+	if size.Plan != "" {
+		planResources, err := utils.FetchPlansFromCluster(ctx, r.client, strings.ToLower(serviceName)+"plans", size.Plan)
+		if err != nil {
+			return "", fmt.Errorf("failed to fetch plan %s: %w", size.Plan, err)
+		}
+
+		if planResources.Disk.IsZero() {
+			return "", nil
+		}
+
+		return planResources.Disk.String(), nil
+	}
+
+	// No disk size configured
+	return "", nil
 }

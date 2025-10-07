@@ -9,6 +9,7 @@ rules:
   resources:
   - configmaps
   - namespaces
+  - secrets
   verbs:
   - delete
   - get
@@ -29,6 +30,18 @@ rules:
   - update
   - watch
 - apiGroups:
+  - cloudscale.crossplane.io
+  - helm.crossplane.io
+  - kubernetes.crossplane.io
+  - minio.crossplane.io
+  - postgresql.sql.crossplane.io
+  resources:
+  - providerconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - codey.io
   resources:
   - codeyinstances
@@ -46,6 +59,7 @@ rules:
   verbs:
   - get
   - list
+  - watch
 - apiGroups:
   - syn.tools
   resources:
@@ -69,6 +83,32 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - billingservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - billingservices/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - vshn.appcat.vshn.io
+  resources:
+  - billingservices/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:

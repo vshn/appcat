@@ -3,9 +3,10 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
-	"k8s.io/utils/ptr"
 	"sort"
 	"strings"
+
+	"k8s.io/utils/ptr"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"

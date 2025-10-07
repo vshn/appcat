@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	cpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,7 +37,8 @@ type VSHNPostgreSQL struct {
 // VSHNPostgreSQLSpec defines the desired state of a VSHNPostgreSQL.
 type VSHNPostgreSQLSpec struct {
 	// Parameters are the configurable fields of a VSHNPostgreSQL.
-	Parameters        VSHNPostgreSQLParameters `json:"parameters,omitempty"`
+	Parameters        VSHNPostgreSQLParameters  `json:"parameters,omitempty"`
+	CompositionRef    cpv1.CompositionReference `json:"compositionRef,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 

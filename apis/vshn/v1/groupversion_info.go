@@ -22,6 +22,9 @@ var (
 
 func init() {
 	SchemeBuilder.Register(
+		&BillingService{},
+		&BillingServiceList{},
+
 		&VSHNPostgreSQL{},
 		&VSHNPostgreSQLList{},
 		&XVSHNPostgreSQL{},

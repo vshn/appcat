@@ -9,11 +9,12 @@ admin_variables=
     cluster_password="{{ .RootPassword }}"
 }
 
-{{ if eq .TLS 1 }}
 mysql_variables = {
+    {{ if eq .TLS 1 }}
     ssl_p2s_ca = "/var/lib/proxysql/proxysql-ca.pem"
+    {{ end }}
+    server_version = "{{ .MariaDBVersion }}"
 }
-{{ end }}
 
 mysql_servers =
 (

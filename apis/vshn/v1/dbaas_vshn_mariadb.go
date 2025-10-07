@@ -145,6 +145,10 @@ type VSHNMariaDBStatus struct {
 	// CurrentInstances tracks the current amount of instances.
 	// Mainly used to detect if there was a change in instances
 	CurrentInstances int `json:"currentInstances,omitempty"`
+	// MariaDBVersion contains the current MariaDB server version
+	MariaDBVersion string `json:"mariadbVersion,omitempty"`
+	// InitialMaintenanceRan tracks if the initial maintenance job has been triggered
+	InitialMaintenanceRan bool `json:"initialMaintenanceRan,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 }

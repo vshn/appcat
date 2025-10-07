@@ -295,6 +295,7 @@ func (v *VSHNRedis) GetSize() VSHNSizeSpec {
 			Memory: v.Spec.Parameters.Size.MemoryRequests,
 		},
 		Disk: v.Spec.Parameters.Size.Disk,
+		Plan: v.Spec.Parameters.Size.Plan,
 	}
 }
 

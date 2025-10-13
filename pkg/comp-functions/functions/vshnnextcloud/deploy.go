@@ -624,29 +624,31 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"cronjob": map[string]any{
 			"enabled": true,
 			"type":    "cronjob",
-			"affinity": map[string]any{
-				"podAffinity": map[string]any{
-					"requiredDuringSchedulingIgnoredDuringExecution": []map[string]any{
-						{
-							"labelSelector": map[string]any{
-								"matchExpressions": []map[string]any{
-									{
-										"key":      "app.kubernetes.io/name",
-										"operator": "In",
-										"values": []string{
-											"nextcloud",
+			"cronjob": map[string]any{
+				"affinity": map[string]any{
+					"podAffinity": map[string]any{
+						"requiredDuringSchedulingIgnoredDuringExecution": []map[string]any{
+							{
+								"labelSelector": map[string]any{
+									"matchExpressions": []map[string]any{
+										{
+											"key":      "app.kubernetes.io/name",
+											"operator": "In",
+											"values": []string{
+												"nextcloud",
+											},
 										},
-									},
-									{
-										"key":      "app.kubernetes.io/component",
-										"operator": "In",
-										"values": []string{
-											"app",
+										{
+											"key":      "app.kubernetes.io/component",
+											"operator": "In",
+											"values": []string{
+												"app",
+											},
 										},
 									},
 								},
+								"topologyKey": "kubernetes.io/hostname",
 							},
-							"topologyKey": "kubernetes.io/hostname",
 						},
 					},
 				},

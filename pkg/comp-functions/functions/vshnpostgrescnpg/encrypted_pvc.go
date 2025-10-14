@@ -36,9 +36,7 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 
 	log.Info("Adding secret to composite")
 
-	pods := comp.GetInstances()
-
-	for i := 0; i < pods; i++ {
+	for i := range comp.GetInstances() {
 		index := i + 1 // i+1 because we are dealing with an STS
 		result := writeLuksSecret(svc, log, comp, index)
 		if result != nil {

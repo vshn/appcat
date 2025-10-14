@@ -116,8 +116,8 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 
-		if hasSentEvent(&billingService, BillingEventTypeDeleted, billingService.Spec.Odoo.ProductID, "") &&
-			controllerutil.ContainsFinalizer(&billingService, vshnv1.BillingServiceFinalizer) {
+		canRemoveFinalizer, requeueAfter := shouldRemoveFinalizer(&billingService)
+		if canRemoveFinalizer && controllerutil.ContainsFinalizer(&billingService, vshnv1.BillingServiceFinalizer) {
 			controllerutil.RemoveFinalizer(&billingService, vshnv1.BillingServiceFinalizer)
 			if err := b.Update(ctx, &billingService); err != nil {
 				return ctrl.Result{}, err
@@ -130,6 +130,10 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		if sent || hasBacklog(&billingService) {
 			return ctrl.Result{RequeueAfter: successDrainDelay}, nil
+		}
+
+		if requeueAfter != nil {
+			return ctrl.Result{RequeueAfter: *requeueAfter}, nil
 		}
 
 		return ctrl.Result{}, nil

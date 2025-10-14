@@ -1505,8 +1505,11 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 	observerObj := obj.DeepCopyObject().(client.Object)
 	observerObj.SetName(name)
 	observerObj.SetNamespace(fromNS)
+	objectExtraLabels := map[string]string{
+		ProviderConfigIgnoreLabel: "true",
+	}
 
-	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve); err != nil {
+	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAddLabels(objectExtraLabels)); err != nil {
 		return nil, err
 	}
 

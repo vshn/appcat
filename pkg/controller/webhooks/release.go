@@ -11,6 +11,7 @@ import (
 //+kubebuilder:rbac:groups=syn.tools,resources=compositeredisinstances/status,verbs=get;list;watch;patch;update
 //+kubebuilder:rbac:groups=syn.tools,resources=compositemariadbinstances,verbs=get;list;watch;patch;update
 //+kubebuilder:rbac:groups=syn.tools,resources=compositemariadbinstances/status,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=helm.crossplane.io,resources=providerconfigs,verbs=get;list;watch;
 
 // SetupReleaseDeletionProtectionHandlerWithManager registers the validation webhook with the manager.
 func SetupReleaseDeletionProtectionHandlerWithManager(mgr ctrl.Manager) error {

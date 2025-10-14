@@ -2,6 +2,7 @@ package vshnpostgrescnpg
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	// xfnv1alpha1 "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
@@ -72,6 +73,7 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 		assert.NoError(t, svc.GetObservedComposite(comp))
 
 		for _, v := range getLuksKeyNames(comp) {
+			t.Logf("Checking secret '%s'...", v)
 			kubeObject := &xkube.Object{}
 			assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, v))
 
@@ -82,15 +84,24 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 	})
 
 	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
-		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
+		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecretCnpg.yaml")
 
-		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
+		cnpgcomp := &vshnv1.VSHNPostgreSQL{
+			Spec: vshnv1.VSHNPostgreSQLSpec{
+				Parameters: vshnv1.VSHNPostgreSQLParameters{
+					Instances: 3,
+				},
+			},
+		}
+
+		r := AddPvcSecret(ctx, cnpgcomp, svc)
 		assert.Nil(t, r)
 
 		comp := &vshnv1.VSHNPostgreSQL{}
 		assert.NoError(t, svc.GetObservedComposite(comp))
 
 		for _, v := range getLuksKeyNames(comp) {
+			t.Logf("Checking secret '%s'...", v)
 			kubeObject := &xkube.Object{}
 			assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, v))
 
@@ -108,8 +119,11 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 }
 
 func getLuksKeyNames(comp *vshnv1.VSHNPostgreSQL) []string {
-	return []string{
-		comp.Name + "-cluster-1-luks-key",
-		comp.Name + "-cluster-1-wal-luks-key",
+	var out []string
+	for i := range comp.Spec.Parameters.Instances {
+		i++
+		out = append(out, fmt.Sprintf("%s-cluster-%d-luks-key", comp.Name, i))
+		out = append(out, fmt.Sprintf("%s-cluster-%d-wal-luks-key", comp.Name, i))
 	}
+	return out
 }

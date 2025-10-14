@@ -694,7 +694,7 @@ func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRunt
 	}
 	err = svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup", runtime.KubeOptionAllowDeletion)
 	if err != nil {
-		err = fmt.Errorf("cannot create sgBackup: %w", err)
+		err = fmt.Errorf("cannot create backup: %w", err)
 		return err
 	}
 

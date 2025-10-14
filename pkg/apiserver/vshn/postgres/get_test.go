@@ -7,6 +7,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/test/mocks"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	client "k8s.io/client-go/dynamic"
 
 	"github.com/stretchr/testify/assert"
@@ -16,48 +17,73 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
 
+var (
+	schemas = []schema.GroupVersionResource{
+		SGbackupGroupVersionResource,
+		CNPGbackupGroupVersionResource,
+	}
+)
+
 func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 	tests := map[string]struct {
 		name               string
 		postgresqls        *vshnv1.VSHNPostgreSQLList
-		backupInfo         *v1.SGBackupInfo
-		backupInfoCalls    func(mocks.MocksgbackupProvider, string)
+		backupInfo         *v1.BackupInfo
+		backupInfoCalls    func(mocks.MockbackupProvider, string)
 		vshnPostgresBackup *v1.VSHNPostgresBackup
 		err                error
 		client             *client.DynamicClient
 	}{
-		"GivenAListOfPostgresAndBackups_ThenVSHNPostgresBackup": {
+		"GivenAListOfPostgresAndBackups_ThenVSHNPostgresBackupStackGres": {
 			name:        "one",
 			postgresqls: vshnPostgreSQLInstances,
 			backupInfo:  backupInfoOne,
-			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
+			backupInfoCalls: func(provider mocks.MockbackupProvider, name string) {
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), name, "namespace-one", gomock.Nil()).
+					GetBackup(gomock.Any(), name, "namespace-one", SGbackupGroupVersionResource, gomock.Nil()).
 					Return(backupInfoOne, nil).
 					Times(1)
 
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), name, "namespace-two", gomock.Nil()).
+					GetBackup(gomock.Any(), name, "namespace-two", SGbackupGroupVersionResource, gomock.Nil()).
 					Return(nil, apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), name)).
 					Times(1)
-
 			},
 			vshnPostgresBackup: vshnBackupOne,
 			err:                nil,
 			client:             nil,
 		},
-		"GivenErrNotFound_ThenErrNotFound": {
+		"GivenAListOfPostgresAndBackups_ThenVSHNPostgresBackupCNPG": {
+			name:        "one",
+			postgresqls: vshnPostgreSQLInstancesCnpg,
+			backupInfo:  backupInfoOneCnpg,
+			backupInfoCalls: func(provider mocks.MockbackupProvider, name string) {
+				provider.EXPECT().
+					GetBackup(gomock.Any(), name, "namespace-one", CNPGbackupGroupVersionResource, gomock.Nil()).
+					Return(backupInfoOneCnpg, nil).
+					Times(1)
+
+				provider.EXPECT().
+					GetBackup(gomock.Any(), name, "namespace-two", CNPGbackupGroupVersionResource, gomock.Nil()).
+					Return(nil, apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), name)).
+					Times(1)
+			},
+			vshnPostgresBackup: vshnBackupOneCnpg,
+			err:                nil,
+			client:             nil,
+		},
+		"GivenErrNotFound_ThenErrNotFoundStackGres": {
 			name:        "one",
 			postgresqls: vshnPostgreSQLInstances,
 			backupInfo:  nil,
-			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
+			backupInfoCalls: func(provider mocks.MockbackupProvider, name string) {
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), name, "namespace-one", gomock.Nil()).
+					GetBackup(gomock.Any(), name, "namespace-one", SGbackupGroupVersionResource, gomock.Nil()).
 					Return(nil, apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), name)).
 					Times(1)
 
 				provider.EXPECT().
-					GetSGBackup(gomock.Any(), name, "namespace-two", gomock.Nil()).
+					GetBackup(gomock.Any(), name, "namespace-two", SGbackupGroupVersionResource, gomock.Nil()).
 					Return(nil, apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), name)).
 					Times(1)
 			},
@@ -69,10 +95,12 @@ func TestVSHNPostgresBackupStorage_Get(t *testing.T) {
 			name:        "one",
 			postgresqls: &vshnv1.VSHNPostgreSQLList{},
 			backupInfo:  nil,
-			backupInfoCalls: func(provider mocks.MocksgbackupProvider, name string) {
-				provider.EXPECT().
-					GetSGBackup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
-					Times(0)
+			backupInfoCalls: func(provider mocks.MockbackupProvider, name string) {
+				for _, s := range schemas {
+					provider.EXPECT().
+						GetBackup(gomock.Any(), gomock.Any(), gomock.Any(), s, gomock.Nil()).
+						Times(0)
+				}
 			},
 			vshnPostgresBackup: nil,
 			err:                apierrors.NewNotFound(v1.GetGroupResource(v1.ResourceBackup), "one"),

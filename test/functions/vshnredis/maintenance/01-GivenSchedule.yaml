@@ -1,0 +1,66 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNRedis
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: redis-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: redis
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: redis-gc9x4
+        name: redis-gc9x4
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}
+input:
+  apiVersion: v1
+  data:
+    imageTag: v4.1.0
+    controlNamespace: appcat-control
+    maintenanceSA: appcat-maintenance
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNRedis
+      metadata:
+        annotations: null
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: redis-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: redis
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: redis-gc9x4
+        name: redis-gc9x4
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNRedis
+          name: redis
+          namespace: unit-test
+        compositionRef:
+          name: vshnredis.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnredis.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          maintenance:
+            dayOfWeek: tuesday
+            timeOfDay: "23:32:00"

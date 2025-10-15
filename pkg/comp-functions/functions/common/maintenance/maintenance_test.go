@@ -211,7 +211,9 @@ func TestInitialMaintenanceJob(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Set initial maintenance status
-			comp.Status.InitialMaintenanceRan = tt.initialMaintenanceRan
+			if tt.initialMaintenanceRan {
+				comp.SetInitialMaintenanceStatus(metav1.Now().Format("2006-01-02T15:04:05Z07:00"), true)
+			}
 
 			in := "vshn-postgresql-" + comp.GetName()
 			m := New(comp, svc, comp.Spec.Parameters.Maintenance, in, "postgresql").
@@ -234,7 +236,7 @@ func TestInitialMaintenanceJob(t *testing.T) {
 			}
 
 			// Check if InitialMaintenanceRan was set
-			assert.Equal(t, tt.wantInitialMaintenanceRan, comp.Status.InitialMaintenanceRan)
+			assert.Equal(t, tt.wantInitialMaintenanceRan, comp.GetInitialMaintenanceRan())
 		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/blang/semver/v4"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -24,7 +25,8 @@ import (
 type MaintenanceResource interface {
 	client.Object
 	GetInitialMaintenanceRan() bool
-	SetInitialMaintenanceRan(bool)
+	GetInitialMaintenanceCompletedAt() string
+	SetInitialMaintenanceStatus(completedAt string, success bool)
 }
 
 // Maintenance contains data for maintenance k8s resource generation
@@ -155,18 +157,53 @@ func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 	}
 
 	// Handle initial maintenance job
-	// If this has allready ran, it's dropped from the desired state
+	// Keep the job in desired state until 30 minutes after completion
 	if !m.resource.GetInitialMaintenanceRan() {
+		// Job hasn't been created yet, create it
 		if err := m.createInitialMaintenanceJob(ctx); err != nil {
 			log.Error(err, "Failed to create initial maintenance job")
+			// Mark as failed
+			m.resource.SetInitialMaintenanceStatus(metav1.Now().Format("2006-01-02T15:04:05Z07:00"), false)
+			if statusErr := m.svc.SetDesiredCompositeStatus(m.resource); statusErr != nil {
+				log.Error(statusErr, "Failed to update InitialMaintenance status after failure")
+			}
 			return runtime.NewWarningResult(fmt.Sprintf("cannot create initial maintenance job: %v", err))
 		}
 
-		// Mark that initial maintenance has been triggered
-		m.resource.SetInitialMaintenanceRan(true)
+		// Mark that initial maintenance has been triggered successfully
+		m.resource.SetInitialMaintenanceStatus(metav1.Now().Format("2006-01-02T15:04:05Z07:00"), true)
 		if err := m.svc.SetDesiredCompositeStatus(m.resource); err != nil {
-			log.Error(err, "Failed to update InitialMaintenanceRan status")
-			return runtime.NewWarningResult(fmt.Sprintf("cannot update InitialMaintenanceRan status: %v", err))
+			log.Error(err, "Failed to update InitialMaintenance status")
+			return runtime.NewWarningResult(fmt.Sprintf("cannot update InitialMaintenance status: %v", err))
+		}
+	} else {
+		// Job has been created, check if 30 minutes have passed
+		completedAt := m.resource.GetInitialMaintenanceCompletedAt()
+		if completedAt != "" {
+			completedTime, err := time.Parse("2006-01-02T15:04:05Z07:00", completedAt)
+			if err != nil {
+				log.Error(err, "Failed to parse initial maintenance completion time, keeping job in desired state")
+				// If we can't parse the time, keep the job to be safe
+				if err := m.createInitialMaintenanceJob(ctx); err != nil {
+					log.Error(err, "Failed to maintain initial maintenance job in desired state")
+					return runtime.NewWarningResult(fmt.Sprintf("cannot maintain initial maintenance job: %v", err))
+				}
+			} else if time.Since(completedTime) > 30*time.Minute {
+				// 30 minutes have passed, remove from desired state by not creating it
+				log.Info("Initial maintenance job completed more than 30 minutes ago, removing from desired state",
+					"completedAt", completedAt,
+					"timeSince", time.Since(completedTime).String())
+			} else {
+				// Still within 30 minutes, keep in desired state
+				timeRemaining := 30*time.Minute - time.Since(completedTime)
+				log.Info("Keeping initial maintenance job in desired state",
+					"completedAt", completedAt,
+					"timeRemaining", timeRemaining.String())
+				if err := m.createInitialMaintenanceJob(ctx); err != nil {
+					log.Error(err, "Failed to maintain initial maintenance job in desired state")
+					return runtime.NewWarningResult(fmt.Sprintf("cannot maintain initial maintenance job: %v", err))
+				}
+			}
 		}
 	}
 

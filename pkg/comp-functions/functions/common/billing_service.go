@@ -6,9 +6,11 @@ import (
 	"strconv"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
@@ -20,11 +22,6 @@ const (
 )
 
 // CreateOrUpdateBillingService creates or updates a BillingService CR for the given service instance.
-// It handles:
-// - Creating a new BillingService CR when an instance is created
-// - Updating the BillingService when replica count changes (which changes the productID)
-// - Skipping billing for test instances (based on ignoreNamespaceForBilling config)
-// - The deletion is handled automatically by the billing controller when the service is deleted
 //
 // The SLA is determined by instance count:
 // - instances == 1: besteffort
@@ -37,6 +34,9 @@ const (
 func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Creating or updating BillingService", "service", comp.GetName())
+	if svc.Config.Data["billingEnabled"] == "false" {
+		return runtime.NewNormalResult(fmt.Sprintf("new billing not enabled, skipping... %s", comp.GetName()))
+	}
 
 	// Skip billing for test instances
 	if comp.GetClaimNamespace() == svc.Config.Data["ignoreNamespaceForBilling"] {
@@ -96,6 +96,7 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 				InstanceID:           comp.GetName(),
 				ProductID:            productID,
 				UnitID:               unitID,
+				Size:                 strconv.Itoa(comp.GetInstances()),
 				SalesOrderID:         salesOrder,
 				ItemGroupDescription: claim,
 				ItemDescription:      getItemDescription(isAPPUiOCloud, clusterName, namespace),
@@ -113,9 +114,27 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 		billingService.Spec.Odoo.Organization = org
 	}
 
+	kubeObj := &xkube.Object{}
+	ownerRefOption := func(obj *xkube.Object) {}
+	if err := svc.GetObservedComposedResource(kubeObj, comp.GetName()+"-billing-service"); err == nil {
+		// Create owner reference pointing to the Crossplane Object itself
+		ownerRef := metav1.OwnerReference{
+			APIVersion:         "kubernetes.crossplane.io/v1alpha1",
+			Kind:               "Object",
+			Name:               kubeObj.GetName(),
+			UID:                kubeObj.GetUID(),
+			Controller:         ptr.To(true),
+			BlockOwnerDeletion: ptr.To(false),
+		}
+		ownerRefOption = runtime.KubeOptionSetOwnerReferenceFromKubeObject(billingService, ownerRef)
+	}
+
 	// Set the BillingService as a desired kube object
 	err := svc.SetDesiredKubeObject(billingService, comp.GetName()+"-billing-service",
-		runtime.KubeOptionDeployOnControlPlane)
+		runtime.KubeOptionDeployOnControlPlane,
+		runtime.KubeOptionObserveCreateUpdate,
+		ownerRefOption,
+	)
 
 	if err != nil {
 		log.Error(err, "cannot set BillingService as desired object", "service", comp.GetName())

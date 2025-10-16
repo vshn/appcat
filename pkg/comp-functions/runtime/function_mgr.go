@@ -564,6 +564,13 @@ func KubeOptionObserveCreateUpdate(obj *xkube.Object) {
 	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionCreate, xpv1.ManagementActionUpdate, xpv1.ManagementActionObserve)
 }
 
+// KubeOptionSetOwnerReferenceFromKubeObject sets the owner reference from kube object to resource
+func KubeOptionSetOwnerReferenceFromKubeObject(res client.Object, ownerRef metav1.OwnerReference) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		res.SetOwnerReferences([]metav1.OwnerReference{ownerRef})
+	}
+}
+
 // KubeOptionObserve sets the object to only observe.
 func KubeOptionObserve(obj *xkube.Object) {
 	obj.Spec.ManagementPolicies = nil

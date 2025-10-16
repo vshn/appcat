@@ -52,7 +52,7 @@ var (
 
 type Maintenance interface {
 	DoMaintenance(ctx context.Context) error
-	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client) error
+	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client, minAge time.Duration) error
 }
 
 type service enumflag.Flag
@@ -169,7 +169,7 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 			if !enabled {
 				log.Info("release management disabled, skipping rollout of latest revisions")
 			}
-			return m.ReleaseLatest(ctx, enabled, maintClient)
+			return m.ReleaseLatest(ctx, enabled, maintClient, release.MinimumRevisionAge)
 		}(),
 		m.DoMaintenance(ctx),
 	); err != nil {

@@ -3,6 +3,7 @@ package release_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/crossplane/function-sdk-go/resource/composite"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
@@ -64,10 +65,13 @@ func TestLatestVersion_UpdateClaim(t *testing.T) {
 	claimObj.SetNamespace("default")
 	claimObj.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateManual))
 
+	oldTime := metav1.NewTime(time.Now().Add(-8 * 24 * time.Hour)) // 8 days ago
+
 	cr1 := &v1.CompositionRevision{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "revision-42",
-			Namespace: "default",
+			Name:              "revision-42",
+			Namespace:         "default",
+			CreationTimestamp: oldTime,
 			Labels: map[string]string{
 				"metadata.appcat.vshn.io/serviceID": "service-123",
 				"metadata.appcat.vshn.io/revision":  "42",
@@ -78,8 +82,9 @@ func TestLatestVersion_UpdateClaim(t *testing.T) {
 
 	cr2 := &v1.CompositionRevision{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "revision-43",
-			Namespace: "default",
+			Name:              "revision-43",
+			Namespace:         "default",
+			CreationTimestamp: oldTime,
 			Labels: map[string]string{
 				"metadata.appcat.vshn.io/serviceID": "service-123",
 				"metadata.appcat.vshn.io/revision":  "43",
@@ -479,4 +484,140 @@ func TestDisableReleaseManagment(t *testing.T) {
 	// Check if update policy and label selector were set
 	assert.Equal(t, xpv1.UpdateAutomatic, *updatedComposite.GetCompositionUpdatePolicy())
 	assert.Equal(t, "", updatedComposite.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"])
+}
+
+func TestRevisionAgeFiltering_SkipsNewRevisions(t *testing.T) {
+	// When: Set up a composite with multiple revisions, including some that are too new
+	comp := composite.New()
+	comp.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "XTestKind",
+	})
+	comp.SetName("composite")
+	comp.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateManual))
+
+	now := time.Now()
+	oldTime := metav1.NewTime(now.Add(-8 * 24 * time.Hour))       // 8 days ago
+	moderateTime := metav1.NewTime(now.Add(-10 * 24 * time.Hour)) // 10 days ago
+	recentTime := metav1.NewTime(now.Add(-3 * 24 * time.Hour))    // 3 days ago (too new!)
+
+	// Old revision (eligible)
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-42",
+			Namespace:         "default",
+			CreationTimestamp: oldTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "42",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 42},
+	}
+
+	// Moderate age revision (eligible, and the oldest)
+	cr2 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-40",
+			Namespace:         "default",
+			CreationTimestamp: moderateTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "40",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 40},
+	}
+
+	// Recent revision (NOT eligible - too new, even though it has the highest revision number)
+	cr3 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-45",
+			Namespace:         "default",
+			CreationTimestamp: recentTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "45",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 45},
+	}
+
+	fakeClient := setupFakeClient(comp, cr1, cr2, cr3)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		Composite: "composite",
+		Group:     "test.group",
+		Kind:      "XTestKind",
+		Version:   "v1",
+		ServiceID: "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient)
+
+	// Then
+	require.NoError(t, err)
+
+	// Verify composite was updated to revision 42 (highest eligible, not 45 which is too new)
+	updatedComposite := composite.New()
+	updatedComposite.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "XTestKind",
+	})
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "composite"}, updatedComposite)
+	require.NoError(t, err)
+
+	// Check if update policy and label selector were set to revision 42 (not 45)
+	assert.Equal(t, xpv1.UpdateAutomatic, *updatedComposite.GetCompositionUpdatePolicy())
+	assert.Equal(t, "42", updatedComposite.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"])
+}
+
+func TestRevisionAgeFiltering_AllRevisionsTooNew(t *testing.T) {
+	// When: All revisions are too new
+	comp := composite.New()
+	comp.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "XTestKind",
+	})
+	comp.SetName("composite")
+	comp.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateManual))
+
+	now := time.Now()
+	recentTime := metav1.NewTime(now.Add(-3 * 24 * time.Hour)) // 3 days ago (too new!)
+
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-42",
+			Namespace:         "default",
+			CreationTimestamp: recentTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "42",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 42},
+	}
+
+	fakeClient := setupFakeClient(comp, cr1)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		Composite: "composite",
+		Group:     "test.group",
+		Kind:      "XTestKind",
+		Version:   "v1",
+		ServiceID: "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient)
+
+	// Then: Should get an error since no revisions are old enough
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no composition revisions found that are at least")
 }

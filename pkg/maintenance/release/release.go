@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource/unstructured/claim"
@@ -23,6 +24,7 @@ const (
 	DefaultServiceIDLabel = "metadata.appcat.vshn.io/serviceID"
 	RevisionLabel         = "metadata.appcat.vshn.io/revision"
 	AutoUpdate            = "metadata.appcat.vshn.io/autoUpdate"
+	MinimumRevisionAge    = 7 * 24 * time.Hour // 1 week
 )
 
 // Interface for both Claim and Composite objects
@@ -141,15 +143,46 @@ func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.Com
 		return nil, errors.New("no composition revisions found")
 	}
 	vh.log.V(1).Info("Found", "composition revisions", crl.Items)
-	latestRevision := crl.Items[0]
-	for _, item := range crl.Items[1:] {
+
+	eligibleRevisions := vh.filterRevisionsByAge(crl.Items, MinimumRevisionAge)
+	if len(eligibleRevisions) == 0 {
+		return nil, fmt.Errorf("no composition revisions found that are at least %s old", MinimumRevisionAge)
+	}
+
+	latestRevision := eligibleRevisions[0]
+	for _, item := range eligibleRevisions[1:] {
 		if item.Spec.Revision > latestRevision.Spec.Revision {
 			latestRevision = item
 		}
 	}
-	vh.log.Info("Found latest resource", "composition revision", latestRevision.GetName(), RevisionLabel, latestRevision.GetLabels()[RevisionLabel])
+
+	age := time.Since(latestRevision.CreationTimestamp.Time)
+	vh.log.Info("Found latest eligible resource",
+		"composition revision", latestRevision.GetName(),
+		RevisionLabel, latestRevision.GetLabels()[RevisionLabel],
+		"age", age.Round(time.Hour))
 
 	return &latestRevision, nil
+}
+
+// filterRevisionsByAge filters composition revisions to only include those older than the specified minimum age
+func (vh *DefaultVersionHandler) filterRevisionsByAge(revisions []v1.CompositionRevision, minAge time.Duration) []v1.CompositionRevision {
+	now := time.Now()
+	var eligible []v1.CompositionRevision
+
+	for _, item := range revisions {
+		age := now.Sub(item.CreationTimestamp.Time)
+		if age >= minAge {
+			eligible = append(eligible, item)
+		} else {
+			vh.log.Info("Skipping revision that is too new",
+				"revision", item.GetName(),
+				"age", age.Round(time.Hour),
+				"minimumAge", minAge)
+		}
+	}
+
+	return eligible
 }
 
 func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision string, enabled bool) error {

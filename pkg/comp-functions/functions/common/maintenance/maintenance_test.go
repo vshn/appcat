@@ -2,6 +2,8 @@ package maintenance
 
 import (
 	"context"
+	"time"
+
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/stretchr/testify/assert"
 	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -173,6 +175,124 @@ func TestAddMaintenanceJob(t *testing.T) {
 				assert.Error(t, err)
 			}
 
+		})
+	}
+}
+
+func TestInitialMaintenanceJob(t *testing.T) {
+	tests := []struct {
+		name                      string
+		serviceType               string
+		initialMaintenanceRan     bool
+		wantInitialJob            bool
+		wantInitialMaintenanceRan bool
+		fileName                  string
+	}{
+		{
+			name:                      "GivenNewPostgreSQLInstance_ThenExpectInitialJob",
+			serviceType:               "postgresql",
+			initialMaintenanceRan:     false,
+			wantInitialJob:            true,
+			wantInitialMaintenanceRan: true,
+			fileName:                  "vshn-postgres/maintenance/01-GivenSchedule.yaml",
+		},
+		{
+			name:                      "GivenPostgreSQLInitialMaintenanceAlreadyRan_ThenExpectNoJob",
+			serviceType:               "postgresql",
+			initialMaintenanceRan:     true,
+			wantInitialJob:            false,
+			wantInitialMaintenanceRan: true,
+			fileName:                  "vshn-postgres/maintenance/01-GivenSchedule.yaml",
+		},
+		{
+			name:                      "GivenNewRedisInstance_ThenExpectInitialJob",
+			serviceType:               "redis",
+			initialMaintenanceRan:     false,
+			wantInitialJob:            true,
+			wantInitialMaintenanceRan: true,
+			fileName:                  "vshnredis/maintenance/01-GivenSchedule.yaml",
+		},
+		{
+			name:                      "GivenRedisInitialMaintenanceAlreadyRan_ThenExpectNoJob",
+			serviceType:               "redis",
+			initialMaintenanceRan:     true,
+			wantInitialJob:            false,
+			wantInitialMaintenanceRan: true,
+			fileName:                  "vshnredis/maintenance/01-GivenSchedule.yaml",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
+
+			svc := commontest.LoadRuntimeFromFile(t, tt.fileName)
+
+			if tt.serviceType == "postgresql" {
+				comp := &vshnv1.VSHNPostgreSQL{}
+				err := svc.GetObservedComposite(comp)
+				assert.NoError(t, err)
+
+				// Set initial maintenance status
+				if tt.initialMaintenanceRan {
+					// Set timestamp to 31 minutes ago so it's removed from desired state
+					pastTime := time.Now().Add(-31 * time.Minute)
+					comp.SetInitialMaintenanceStatus(pastTime.Format("2006-01-02T15:04:05Z07:00"), true)
+				}
+
+				in := "vshn-postgresql-" + comp.GetName()
+				m := New(comp, svc, comp.Spec.Parameters.Maintenance, in, "postgresql").
+					WithPolicyRules([]rbacv1.PolicyRule{}).
+					WithAdditionalClusterRoleBinding("cluster-role-binding").
+					WithRole("crossplane:appcat:job:postgres:maintenance").
+					WithExtraResources(createMaintenanceSecretTest(in, svc.Config.Data["sgNamespace"], comp.GetName()+"-maintenance-secret"))
+
+				result := m.Run(ctx)
+				assert.Nil(t, result)
+
+				// Check if initial maintenance job was created
+				initialJob := &batchv1.Job{}
+				err = svc.GetDesiredKubeObject(initialJob, comp.GetName()+"-initial-maintenance")
+
+				if tt.wantInitialJob {
+					assert.NoError(t, err, "Expected initial maintenance job to be created")
+				} else {
+					assert.Error(t, err, "Expected no initial maintenance job")
+				}
+
+				// Check if InitialMaintenanceRan was set
+				assert.Equal(t, tt.wantInitialMaintenanceRan, comp.GetInitialMaintenanceRan())
+			} else if tt.serviceType == "redis" {
+				comp := &vshnv1.VSHNRedis{}
+				err := svc.GetObservedComposite(comp)
+				assert.NoError(t, err)
+
+				// Set initial maintenance status
+				if tt.initialMaintenanceRan {
+					// Set timestamp to 31 minutes ago so it's removed from desired state
+					pastTime := time.Now().Add(-31 * time.Minute)
+					comp.SetInitialMaintenanceStatus(pastTime.Format("2006-01-02T15:04:05Z07:00"), true)
+				}
+
+				in := "vshn-redis-" + comp.GetName()
+				m := New(comp, svc, comp.Spec.Parameters.Maintenance, in, "redis").
+					WithHelmBasedService().
+					Run(ctx)
+
+				assert.Nil(t, m)
+
+				// Check if initial maintenance job was created
+				initialJob := &batchv1.Job{}
+				err = svc.GetDesiredKubeObject(initialJob, comp.GetName()+"-initial-maintenance")
+
+				if tt.wantInitialJob {
+					assert.NoError(t, err, "Expected initial maintenance job to be created")
+				} else {
+					assert.Error(t, err, "Expected no initial maintenance job")
+				}
+
+				// Check if InitialMaintenanceRan was set
+				assert.Equal(t, tt.wantInitialMaintenanceRan, comp.GetInitialMaintenanceRan())
+			}
 		})
 	}
 }

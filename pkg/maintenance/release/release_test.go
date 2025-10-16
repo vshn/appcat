@@ -253,6 +253,155 @@ func TestLatestVersion_MissingRevisionLabel(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestAutoUpdateLabel_UpdateClaim(t *testing.T) {
+	// When: Set up a claim with autoUpdate label and composition revisions
+	claimObj := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	claimObj.SetName("test-claim")
+	claimObj.SetNamespace("default")
+	claimObj.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateManual))
+	claimObj.SetLabels(map[string]string{
+		"metadata.appcat.vshn.io/autoUpdate": "true",
+	})
+
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "revision-42",
+			Namespace: "default",
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "42",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 42},
+	}
+
+	cr2 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "revision-43",
+			Namespace: "default",
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "43",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 43},
+	}
+
+	fakeClient := setupFakeClient(claimObj, cr1, cr2)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		Composite:      "composite",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "XTestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient)
+
+	// Then
+	require.NoError(t, err)
+
+	// Verify claim was updated with automatic policy and NO revision pinning
+	updatedClaim := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "test-claim", Namespace: "default"}, updatedClaim)
+	require.NoError(t, err)
+
+	// Check if update policy is automatic and NO revision pinning (gets latest automatically)
+	assert.Equal(t, xpv1.UpdateAutomatic, *updatedClaim.GetCompositionUpdatePolicy())
+	// When autoUpdate is true, the selector should be empty (no revision pinning)
+	selector := updatedClaim.GetCompositionRevisionSelector()
+	if selector != nil && selector.MatchLabels != nil {
+		assert.Equal(t, "", selector.MatchLabels["metadata.appcat.vshn.io/revision"])
+	}
+}
+
+func TestAutoUpdateLabel_UpdateComposite(t *testing.T) {
+	// When: Set up a composite with autoUpdate label and composition revisions
+	comp := composite.New()
+	comp.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "XTestKind",
+	})
+	comp.SetName("composite")
+	comp.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateManual))
+	comp.SetLabels(map[string]string{
+		"metadata.appcat.vshn.io/autoUpdate": "true",
+	})
+
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "revision-42",
+			Namespace: "default",
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "42",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 42},
+	}
+
+	cr2 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "revision-43",
+			Namespace: "default",
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "44",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 43},
+	}
+
+	fakeClient := setupFakeClient(comp, cr1, cr2)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		Composite: "composite",
+		Group:     "test.group",
+		Kind:      "XTestKind",
+		Version:   "v1",
+		ServiceID: "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient)
+
+	// Then
+	require.NoError(t, err)
+
+	// Verify composite was updated with automatic policy and NO revision pinning
+	updatedComposite := composite.New()
+	updatedComposite.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "XTestKind",
+	})
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "composite"}, updatedComposite)
+	require.NoError(t, err)
+
+	// Check if update policy is automatic and NO revision pinning (gets latest automatically)
+	assert.Equal(t, xpv1.UpdateAutomatic, *updatedComposite.GetCompositionUpdatePolicy())
+	// When autoUpdate is true, the selector should be empty (no revision pinning)
+	selector := updatedComposite.GetCompositionRevisionSelector()
+	if selector != nil && selector.MatchLabels != nil {
+		assert.Equal(t, "", selector.MatchLabels["metadata.appcat.vshn.io/revision"])
+	}
+}
+
 func TestDisableReleaseManagment(t *testing.T) {
 	// When: Set up a composite and composition revisions
 	comp := composite.New()

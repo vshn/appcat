@@ -285,6 +285,9 @@ type VSHNPostgreSQLStatus struct {
 	// Schedules keeps track of random generated schedules, is overwriten by
 	// schedules set in the service's spec.
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
+	// InitialMaintenance tracks the status of the initial maintenance job,
+	// including when it ran and whether it succeeded or failed.
+	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 }
@@ -395,6 +398,22 @@ func (v *VSHNPostgreSQL) GetInstanceNamespace() string {
 
 func (v *VSHNPostgreSQL) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
+func (v *VSHNPostgreSQL) GetInitialMaintenanceRan() bool {
+	return v.Status.InitialMaintenance.CompletedAt != nil
+}
+
+func (v *VSHNPostgreSQL) GetInitialMaintenanceCompletedAt() string {
+	if v.Status.InitialMaintenance.CompletedAt != nil {
+		return *v.Status.InitialMaintenance.CompletedAt
+	}
+	return ""
+}
+
+func (v *VSHNPostgreSQL) SetInitialMaintenanceStatus(completedAt string, success bool) {
+	v.Status.InitialMaintenance.CompletedAt = &completedAt
+	v.Status.InitialMaintenance.Success = &success
 }
 
 func (v *XVSHNPostgreSQL) GetInstanceNamespace() string {

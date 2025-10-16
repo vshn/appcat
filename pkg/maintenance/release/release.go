@@ -22,6 +22,7 @@ import (
 const (
 	DefaultServiceIDLabel = "metadata.appcat.vshn.io/serviceID"
 	RevisionLabel         = "metadata.appcat.vshn.io/revision"
+	AutoUpdate            = "metadata.appcat.vshn.io/autoUpdate"
 )
 
 // Interface for both Claim and Composite objects
@@ -165,7 +166,11 @@ func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision strin
 	}
 
 	if enabled {
-		vh.applyUpdatePolicy(c, revision)
+		if vh.hasAutoUpdateLabel(c) {
+			vh.setAutoPolicy(c)
+		} else {
+			vh.applyUpdatePolicy(c, revision)
+		}
 	} else {
 		vh.setAutoPolicy(c)
 	}
@@ -189,7 +194,11 @@ func (vh *DefaultVersionHandler) updateComposite(ctx context.Context, revision s
 	}
 
 	if enabled {
-		vh.applyUpdatePolicy(comp, revision)
+		if vh.hasAutoUpdateLabel(comp) {
+			vh.setAutoPolicy(comp)
+		} else {
+			vh.applyUpdatePolicy(comp, revision)
+		}
 	} else {
 		vh.setAutoPolicy(comp)
 	}
@@ -213,6 +222,16 @@ func (vh *DefaultVersionHandler) applyUpdatePolicy(obj compositionObject, revisi
 func (vh *DefaultVersionHandler) setAutoPolicy(obj compositionObject) {
 	obj.SetCompositionUpdatePolicy(UpdatePolicyPtr(xpv1.UpdateAutomatic))
 	obj.SetCompositionRevisionSelector(nil)
+}
+
+// Helper function to check if the autoUpdate label is set
+func (vh *DefaultVersionHandler) hasAutoUpdateLabel(obj client.Object) bool {
+	labels := obj.GetLabels()
+	if labels == nil {
+		return false
+	}
+	val, exists := labels[AutoUpdate]
+	return exists && val == "true"
 }
 
 // Helper function to get the GVK for claims

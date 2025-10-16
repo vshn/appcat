@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/blang/semver/v4"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -20,6 +21,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// MaintenanceResource combines client.Object with initial maintenance status tracking
+type MaintenanceResource interface {
+	client.Object
+	GetInitialMaintenanceRan() bool
+	GetInitialMaintenanceCompletedAt() string
+	SetInitialMaintenanceStatus(completedAt string, success bool)
+}
+
 // Maintenance contains data for maintenance k8s resource generation
 type Maintenance struct {
 	// instanceNamespace is the namespace where the service pod is running
@@ -33,7 +42,7 @@ type Maintenance struct {
 	// helmBasedService whether the maintenance is for a helm based service
 	helmBasedService bool
 	// resource object of this service
-	resource client.Object
+	resource MaintenanceResource
 	// svc is is the ServiceRuntime
 	svc *runtime.ServiceRuntime
 	// schedule is the schedule spec of the resource
@@ -69,7 +78,7 @@ var (
 )
 
 // New creates a Maintenance object with required attributes
-func New(r client.Object, svc *runtime.ServiceRuntime, schedule vshnv1.VSHNDBaaSMaintenanceScheduleSpec, instanceNamespace, service string) *Maintenance {
+func New(r MaintenanceResource, svc *runtime.ServiceRuntime, schedule vshnv1.VSHNDBaaSMaintenanceScheduleSpec, instanceNamespace, service string) *Maintenance {
 	return &Maintenance{
 		instanceNamespace: instanceNamespace,
 		service:           service,
@@ -147,6 +156,57 @@ func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 		return runtime.NewNormalResult("Maintenance schedule not yet populated")
 	}
 
+	// Handle initial maintenance job
+	// Keep the job in desired state until 30 minutes after completion
+	if !m.resource.GetInitialMaintenanceRan() {
+		// Job hasn't been created yet, create it
+		if err := m.createInitialMaintenanceJob(ctx); err != nil {
+			log.Error(err, "Failed to create initial maintenance job")
+			// Mark as failed
+			m.resource.SetInitialMaintenanceStatus(metav1.Now().Format("2006-01-02T15:04:05Z07:00"), false)
+			if statusErr := m.svc.SetDesiredCompositeStatus(m.resource); statusErr != nil {
+				log.Error(statusErr, "Failed to update InitialMaintenance status after failure")
+			}
+			return runtime.NewWarningResult(fmt.Sprintf("cannot create initial maintenance job: %v", err))
+		}
+
+		// Mark that initial maintenance has been triggered successfully
+		m.resource.SetInitialMaintenanceStatus(metav1.Now().Format("2006-01-02T15:04:05Z07:00"), true)
+		if err := m.svc.SetDesiredCompositeStatus(m.resource); err != nil {
+			log.Error(err, "Failed to update InitialMaintenance status")
+			return runtime.NewWarningResult(fmt.Sprintf("cannot update InitialMaintenance status: %v", err))
+		}
+	} else {
+		// Job has been created, check if 30 minutes have passed
+		completedAt := m.resource.GetInitialMaintenanceCompletedAt()
+		if completedAt != "" {
+			completedTime, err := time.Parse("2006-01-02T15:04:05Z07:00", completedAt)
+			if err != nil {
+				log.Error(err, "Failed to parse initial maintenance completion time, keeping job in desired state")
+				// If we can't parse the time, keep the job to be safe
+				if err := m.createInitialMaintenanceJob(ctx); err != nil {
+					log.Error(err, "Failed to maintain initial maintenance job in desired state")
+					return runtime.NewWarningResult(fmt.Sprintf("cannot maintain initial maintenance job: %v", err))
+				}
+			} else if time.Since(completedTime) > 30*time.Minute {
+				// 30 minutes have passed, remove from desired state by not creating it
+				log.Info("Initial maintenance job completed more than 30 minutes ago, removing from desired state",
+					"completedAt", completedAt,
+					"timeSince", time.Since(completedTime).String())
+			} else {
+				// Still within 30 minutes, keep in desired state
+				timeRemaining := 30*time.Minute - time.Since(completedTime)
+				log.Info("Keeping initial maintenance job in desired state",
+					"completedAt", completedAt,
+					"timeRemaining", timeRemaining.String())
+				if err := m.createInitialMaintenanceJob(ctx); err != nil {
+					log.Error(err, "Failed to maintain initial maintenance job in desired state")
+					return runtime.NewWarningResult(fmt.Sprintf("cannot maintain initial maintenance job: %v", err))
+				}
+			}
+		}
+	}
+
 	// Helm based services are having maintenance done in a control namespace therefore rbac rules are created
 	// once in the component
 	if !m.helmBasedService && m.mainRole != "" && m.additionalClusterRoleBinding != "" {
@@ -216,6 +276,33 @@ func (m *Maintenance) createMaintenanceJob(_ context.Context, cronSchedule strin
 		}
 	}
 
+	// Build the pod template spec for maintenance jobs
+	podTemplateSpec := m.buildMaintenancePodTemplateSpec(imageTag, sa)
+
+	job := &batchv1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      jobName,
+			Namespace: jobNamespace,
+		},
+		Spec: batchv1.CronJobSpec{
+			Schedule:                   cronSchedule,
+			SuccessfulJobsHistoryLimit: ptr.To(int32(1)),
+			JobTemplate: batchv1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: podTemplateSpec,
+				},
+			},
+		},
+	}
+
+	kubeOpts := append([]runtime.KubeObjectOption{runtime.KubeOptionAllowDeletion}, m.extraKubeOptions...)
+
+	return m.svc.SetDesiredKubeObject(job, m.resource.GetName()+"-maintenancejob", kubeOpts...)
+}
+
+// buildMaintenancePodTemplateSpec creates the pod template spec for maintenance jobs
+// This is shared between the CronJob and the initial one-time Job
+func (m *Maintenance) buildMaintenancePodTemplateSpec(imageTag, serviceAccount string) corev1.PodTemplateSpec {
 	envVars := []corev1.EnvVar{
 		{
 			Name:  "INSTANCE_NAMESPACE",
@@ -259,42 +346,24 @@ func (m *Maintenance) createMaintenanceJob(_ context.Context, cronSchedule strin
 		},
 	}
 
-	job := &batchv1.CronJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: jobNamespace,
-		},
-		Spec: batchv1.CronJobSpec{
-			Schedule:                   cronSchedule,
-			SuccessfulJobsHistoryLimit: ptr.To(int32(1)),
-			JobTemplate: batchv1.JobTemplateSpec{
-				Spec: batchv1.JobSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							ServiceAccountName: sa,
-							RestartPolicy:      corev1.RestartPolicyNever,
-							Containers: []corev1.Container{
-								{
-									Name:  "maintenancejob",
-									Image: "ghcr.io/vshn/appcat:" + imageTag,
-									Env:   append(envVars, m.extraEnvs...),
-									Args: []string{
-										"maintenance",
-										"--service",
-										m.service,
-									},
-								},
-							},
-						},
+	return corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			ServiceAccountName: serviceAccount,
+			RestartPolicy:      corev1.RestartPolicyNever,
+			Containers: []corev1.Container{
+				{
+					Name:  "maintenancejob",
+					Image: "ghcr.io/vshn/appcat:" + imageTag,
+					Env:   append(envVars, m.extraEnvs...),
+					Args: []string{
+						"maintenance",
+						"--service",
+						m.service,
 					},
 				},
 			},
 		},
 	}
-
-	kubeOpts := append([]runtime.KubeObjectOption{runtime.KubeOptionAllowDeletion}, m.extraKubeOptions...)
-
-	return m.svc.SetDesiredKubeObject(job, m.resource.GetName()+"-maintenancejob", kubeOpts...)
 }
 func (m *Maintenance) createMaintenanceClusterRoleBinding(_ context.Context) error {
 	name := m.svc.Config.Data["additionalMaintenanceClusterRole"]
@@ -383,6 +452,51 @@ func (m *Maintenance) parseCron() (string, error) {
 	}
 
 	return fmt.Sprintf("%s %s * * %d", timeSlice[2], timeSlice[1], cronDayOfWeek), nil
+}
+
+// helper function to return the name of the initial maintenance job
+func (m *Maintenance) getInitialMaintenanceJobName() string {
+	return m.resource.GetName() + "-initial-maintenance"
+}
+
+// createInitialMaintenanceJob creates a one-time Job that runs immediately on instance creation
+func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
+	imageTag := m.svc.Config.Data["imageTag"]
+	if imageTag == "" {
+		return fmt.Errorf("no imageTag field in composition function configuration")
+	}
+
+	sa := maintServiceAccountName
+	jobNamespace := m.instanceNamespace
+
+	// For helm based services create the job in the control namespace
+	if m.helmBasedService {
+		jobNamespace = m.svc.Config.Data["controlNamespace"]
+		if jobNamespace == "" {
+			return fmt.Errorf("no controlNamespace field in composition function configuration")
+		}
+		sa = m.svc.Config.Data["maintenanceSA"]
+		if sa == "" {
+			return fmt.Errorf("no maintenanceSA field in composition function configuration")
+		}
+	}
+
+	podTemplateSpec := m.buildMaintenancePodTemplateSpec(imageTag, sa)
+
+	// Create a one-time Job
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      m.getInitialMaintenanceJobName(),
+			Namespace: jobNamespace,
+		},
+		Spec: batchv1.JobSpec{
+			Template: podTemplateSpec,
+		},
+	}
+
+	kubeOpts := append([]runtime.KubeObjectOption{runtime.KubeOptionAllowDeletion}, m.extraKubeOptions...)
+
+	return m.svc.SetDesiredKubeObject(job, m.getInitialMaintenanceJobName(), kubeOpts...)
 }
 
 // SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function

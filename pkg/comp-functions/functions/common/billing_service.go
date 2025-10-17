@@ -18,7 +18,7 @@ const (
 	// BillingNamespace is the namespace where BillingService CRs are created
 	BillingNamespace = "syn-appcat"
 	// DefaultKeepAfterDeletion is the default number of days to keep billing records after deletion
-	// it si overwritten by the component value appcat.billing.customResourceDeletionAfter
+	// it is overwritten by the component value appcat.billing.customResourceDeletionAfter
 	DefaultKeepAfterDeletion = 365
 )
 
@@ -49,9 +49,9 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Creating or updating BillingService", "service", comp.GetName())
 
-	// Skip new billing if disabled
+	// Skip billing if disabled
 	if svc.Config.Data["billingEnabled"] == "false" {
-		return runtime.NewNormalResult(fmt.Sprintf("new billing not enabled, skipping... %s", comp.GetName()))
+		return runtime.NewNormalResult(fmt.Sprintf("billing not enabled, skipping... %s", comp.GetName()))
 	}
 
 	// Skip billing for test instances
@@ -64,7 +64,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	namespace := comp.GetClaimNamespace()
 	service := comp.GetServiceName()
 
-	// Form productID from service and number of replicas (or use override)
+	// Create productID from service and number of replicas (or use override)
 	productID := opts.ProductID
 	if productID == "" {
 		productID = getProductID(comp.GetInstances(), service)
@@ -146,9 +146,15 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	}
 
 	kubeObj := &xkube.Object{}
-	ownerRefOption := func(obj *xkube.Object) {}
 	observedResourceName := comp.GetName() + opts.ResourceNameSuffix
-	if err := svc.GetObservedComposedResource(kubeObj, observedResourceName); err == nil {
+	err := svc.GetObservedComposedResource(kubeObj, observedResourceName)
+	if err != nil && err != runtime.ErrNotFound {
+		log.Error(err, "cannot get billing service kube object", "service", comp.GetName())
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
+	}
+
+	var ownerRefOption func(obj *xkube.Object)
+	if err == nil {
 		// Create owner reference pointing to the Crossplane Object itself
 		ownerRef := metav1.OwnerReference{
 			APIVersion:         "kubernetes.crossplane.io/v1alpha1",
@@ -162,7 +168,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	}
 
 	// Set the BillingService as a desired kube object
-	err := svc.SetDesiredKubeObject(billingService, observedResourceName,
+	err = svc.SetDesiredKubeObject(billingService, observedResourceName,
 		runtime.KubeOptionDeployOnControlPlane,
 		runtime.KubeOptionObserveCreateUpdate,
 		ownerRefOption,

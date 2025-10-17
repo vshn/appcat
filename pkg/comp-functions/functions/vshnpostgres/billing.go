@@ -11,7 +11,7 @@ import (
 )
 
 // AddBilling enables billing for this service
-// It runs both the legacy Prometheus-based billing and the new BillingService CR-based billing
+// It runs both the legacy Prometheus-based billing and the BillingService CR-based billing
 func AddBilling(ctx context.Context, comp *v1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
@@ -20,24 +20,20 @@ func AddBilling(ctx context.Context, comp *v1.VSHNPostgreSQL, svc *runtime.Servi
 
 	// Keep the existing Prometheus-based billing
 	prometheusResult := common.CreateBillingRecord(ctx, svc, comp)
-	if prometheusResult != nil && prometheusResult.Severity == xfnproto.Severity_SEVERITY_FATAL {
+	if prometheusResult != nil && prometheusResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {
 		return prometheusResult
 	}
 
 	if comp.GetLabels()[runtime.OwnerCompositeAnnotation] != "" {
-		return runtime.NewNormalResult(fmt.Sprintf("Skipping new Billing as composite is a subservice %s", comp.GetName()))
+		return runtime.NewNormalResult(fmt.Sprintf("Skipping Billing as composite is a subservice %s", comp.GetName()))
 	}
 
-	// Add new BillingService CR-based billing
+	// Add BillingService CR-based billing
 	billingServiceResult := common.CreateOrUpdateBillingService(ctx, svc, comp)
 
-	if billingServiceResult != nil && billingServiceResult.Severity == xfnproto.Severity_SEVERITY_FATAL {
+	if billingServiceResult != nil && billingServiceResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {
 		return billingServiceResult
 	}
 
-	if billingServiceResult != nil {
-		return runtime.NewNormalResult(fmt.Sprintf("Billing enabled (Prometheus + BillingService) for instance %s", comp.GetName()))
-	}
-
-	return prometheusResult
+	return runtime.NewNormalResult(fmt.Sprintf("Billing enabled for instance %s", comp.GetName()))
 }

@@ -41,8 +41,8 @@ var (
 	serviceRegistry = map[string]any{}
 	// the default provider kubernetes name
 	providerConfigRefName = "kubernetes"
-	// ErrNotFound is the errur returned, if the requested resource is not in the
-	// the given function state (desired,observed).
+	// ErrNotFound is the error returned, if the requested resource is not in the
+	// given function state (desired,observed).
 	ErrNotFound = errors.New("not found")
 	scheme      = pkg.SetupScheme()
 )

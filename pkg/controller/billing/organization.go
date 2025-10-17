@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	// APPUiOControlSecretNamespace is the namespace where the APPUiO control plane secret is located
+	// APPUiOControlSecretNamespace is the namespace where the APPUiO control-plane secret is located
 	APPUiOControlSecretNamespace = "syn-appcat"
-	// APPUiOControlSecretName is the name of the secret containing kubeconfig for APPUiO control plane
+	// APPUiOControlSecretName is the name of the secret containing kubeconfig for APPUiO control-plane
 	APPUiOControlSecretName = "appuio-control-sa"
 )
 
@@ -83,7 +83,7 @@ func getSalesOrderFromOrganization(ctx context.Context, externalClient client.Cl
 	return salesOrderName, nil
 }
 
-// fetchSalesOrderFromAPPUiOControl fetches the sales order from the APPUiO control plane
+// fetchSalesOrderFromAPPUiOControl fetches the sales order from the APPUiO control-plane
 // It creates a client to the external cluster using a secret and queries the Organization CR
 func (b *BillingHandler) fetchSalesOrderFromAPPUiOControl(ctx context.Context, organizationName string) (string, error) {
 	externalClient, err := getExternalClusterClient(ctx, b.Client)

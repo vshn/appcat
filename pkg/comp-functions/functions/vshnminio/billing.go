@@ -3,6 +3,7 @@ package vshnminio
 import (
 	"context"
 	"fmt"
+
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	v1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
@@ -26,13 +27,10 @@ func AddBilling(ctx context.Context, comp *v1.VSHNMinio, svc *runtime.ServiceRun
 	// Add new BillingService CR-based billing
 	billingServiceResult := common.CreateOrUpdateBillingService(ctx, svc, comp)
 
-	// If BillingService creation fails with warning, log it but don't fail the step
-	// The Prometheus billing is still active
 	if billingServiceResult != nil && billingServiceResult.Severity == xfnproto.Severity_SEVERITY_FATAL {
 		return billingServiceResult
 	}
 
-	// Return combined result message
 	if billingServiceResult != nil {
 		return runtime.NewNormalResult(fmt.Sprintf("Billing enabled (Prometheus + BillingService) for instance %s", comp.GetName()))
 	}

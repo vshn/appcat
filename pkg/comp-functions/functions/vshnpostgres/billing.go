@@ -27,13 +27,10 @@ func AddBilling(ctx context.Context, comp *v1.VSHNPostgreSQL, svc *runtime.Servi
 	// Add new BillingService CR-based billing
 	billingServiceResult := common.CreateOrUpdateBillingService(ctx, svc, comp)
 
-	// If BillingService creation fails with warning, log it but don't fail the step
-	// The Prometheus billing is still active
 	if billingServiceResult != nil && billingServiceResult.Severity == xfnproto.Severity_SEVERITY_FATAL {
 		return billingServiceResult
 	}
 
-	// Return combined result message
 	if billingServiceResult != nil {
 		return runtime.NewNormalResult(fmt.Sprintf("Billing enabled (Prometheus + BillingService) for instance %s", comp.GetName()))
 	}

@@ -18,6 +18,7 @@ const (
 	// BillingNamespace is the namespace where BillingService CRs are created
 	BillingNamespace = "syn-appcat"
 	// DefaultKeepAfterDeletion is the default number of days to keep billing records after deletion
+	// it si overwritten by the component value appcat.billing.customResourceDeletionAfter
 	DefaultKeepAfterDeletion = 365
 )
 
@@ -34,6 +35,8 @@ const (
 func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Creating or updating BillingService", "service", comp.GetName())
+
+	// Skip new billing if disabled
 	if svc.Config.Data["billingEnabled"] == "false" {
 		return runtime.NewNormalResult(fmt.Sprintf("new billing not enabled, skipping... %s", comp.GetName()))
 	}
@@ -55,14 +58,14 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 	unitID := svc.Config.Data["billingUnitID"]
 	if unitID == "" {
 		log.Error(fmt.Errorf("missing billing unitID"), "UnitID missing in composition")
-		return runtime.NewNormalResult(fmt.Sprintf("no billing unit id set in composition for %s", comp.GetName()))
+		return runtime.NewWarningResult(fmt.Sprintf("no billing unit id set in composition for %s", comp.GetName()))
 	}
 
 	// Get clusterName from config
 	clusterName := svc.Config.Data["clusterName"]
 	if clusterName == "" {
 		log.Error(fmt.Errorf("missing billing clusterName"), "clusterName missing in composition")
-		return runtime.NewNormalResult(fmt.Sprintf("no clusterName set in composition for %s", comp.GetName()))
+		return runtime.NewWarningResult(fmt.Sprintf("no clusterName set in composition for %s", comp.GetName()))
 	}
 
 	// Get keepAfterDeletion from config
@@ -108,7 +111,7 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 	if isAPPUiOCloud {
 		org, err := getOrg(comp.GetName(), svc)
 		if err != nil {
-			log.Error(err, "billing sales order and organization is missing", "service", comp.GetName())
+			log.Error(err, "billing sales order and organization are missing", "service", comp.GetName())
 			return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
 		}
 		billingService.Spec.Odoo.Organization = org

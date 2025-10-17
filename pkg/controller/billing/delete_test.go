@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/stretchr/testify/assert"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

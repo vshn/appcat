@@ -24,6 +24,10 @@ func AddBilling(ctx context.Context, comp *v1.VSHNPostgreSQL, svc *runtime.Servi
 		return prometheusResult
 	}
 
+	if comp.GetLabels()[runtime.OwnerCompositeAnnotation] != "" {
+		return runtime.NewNormalResult(fmt.Sprintf("Skipping new Billing as composite is a subservice %s", comp.GetName()))
+	}
+
 	// Add new BillingService CR-based billing
 	billingServiceResult := common.CreateOrUpdateBillingService(ctx, svc, comp)
 

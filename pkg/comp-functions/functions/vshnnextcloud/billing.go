@@ -35,17 +35,31 @@ func AddBilling(ctx context.Context, comp *v1.VSHNNextcloud, svc *runtime.Servic
 	}
 
 	// Add new BillingService CR-based billing
-	// Note: BillingService doesn't currently support addons, so we only bill for the main service
-	// TODO: Add support for addons in BillingService or create separate BillingService for office addon
 	billingServiceResult := common.CreateOrUpdateBillingService(ctx, svc, comp)
 
 	if billingServiceResult != nil && billingServiceResult.Severity == xfnproto.Severity_SEVERITY_FATAL {
 		return billingServiceResult
 	}
 
-	if billingServiceResult != nil {
-		return runtime.NewNormalResult(fmt.Sprintf("Billing enabled (Prometheus + BillingService) for instance %s", comp.GetName()))
+	// Add new BillingService CR-based billing
+	if comp.Spec.Parameters.Service.Collabora.Enabled {
+		billingServiceAddOnResult := createOrUpdateBillingServiceCollabora(ctx, svc, comp)
+
+		if billingServiceAddOnResult != nil && billingServiceAddOnResult.Severity == xfnproto.Severity_SEVERITY_FATAL {
+			return billingServiceAddOnResult
+		}
 	}
 
-	return prometheusResult
+	return runtime.NewNormalResult(fmt.Sprintf("Billing enabled for instance %s", comp.GetName()))
+}
+
+func createOrUpdateBillingServiceCollabora(ctx context.Context, svc *runtime.ServiceRuntime, comp *v1.VSHNNextcloud) *xfnproto.Result {
+	return common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
+		ResourceNameSuffix: "-collabora-billing-service",
+		ProductID:          "appcat-vshn-nextcloud-office-besteffort",
+		Size:               "1",
+		AdditionalLabels: map[string]string{
+			"appcat.vshn.io/add-on": "true",
+		},
+	})
 }

@@ -22,17 +22,30 @@ const (
 	DefaultKeepAfterDeletion = 365
 )
 
+// BillingServiceOptions contains customization options for creating a BillingService CR
+type BillingServiceOptions struct {
+	// ResourceNameSuffix is appended to comp.GetName() to form the resource name (e.g., "-billing-service", "-addon-collabora")
+	ResourceNameSuffix string
+	// ProductID overrides the auto-generated productID based on service type and sla
+	ProductID string
+	// Size overrides the replica count for billing purposes
+	Size string
+	// AdditionalLabels are added to the BillingService CR labels
+	AdditionalLabels map[string]string
+}
+
 // CreateOrUpdateBillingService creates or updates a BillingService CR for the given service instance.
-//
-// The SLA is determined by instance count:
-// - instances == 1: besteffort
-// - instances > 1: guaranteed
-//
 // The salesOrder is populated from the composition for APPUiO Managed
 // The Organisation is populated from claim namespace for APPUiO Cloud
-//
 // The productID is constructed as: appcat-vshn-{service}-{sla}
 func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter) *xfnproto.Result {
+	return CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, BillingServiceOptions{
+		ResourceNameSuffix: "-billing-service",
+	})
+}
+
+// CreateOrUpdateBillingServiceWithOptions creates or updates a BillingService CR with custom options used for AddOns
+func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGetter, opts BillingServiceOptions) *xfnproto.Result {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.Info("Creating or updating BillingService", "service", comp.GetName())
 
@@ -51,8 +64,11 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 	namespace := comp.GetClaimNamespace()
 	service := comp.GetServiceName()
 
-	// Form productID from service and number of replicas
-	productID := getProductID(comp.GetInstances(), service)
+	// Form productID from service and number of replicas (or use override)
+	productID := opts.ProductID
+	if productID == "" {
+		productID = getProductID(comp.GetInstances(), service)
+	}
 
 	// Get unitID from config
 	unitID := svc.Config.Data["billingUnitID"]
@@ -82,16 +98,28 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 		isAPPUiOCloud = true
 	}
 
+	// Determine size (use override or instance count)
+	size := opts.Size
+	if size == "" {
+		size = strconv.Itoa(comp.GetInstances())
+	}
+
+	// Build labels
+	labels := map[string]string{
+		"appcat.vshn.io/claim-name":      claim,
+		"appcat.vshn.io/claim-namespace": namespace,
+		"appcat.vshn.io/service-name":    service,
+	}
+	for k, v := range opts.AdditionalLabels {
+		labels[k] = v
+	}
+
 	// Create BillingService CR
 	billingService := &vshnv1.BillingService{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName(),
+			Name:      comp.GetName() + opts.ResourceNameSuffix,
 			Namespace: BillingNamespace,
-			Labels: map[string]string{
-				"appcat.vshn.io/claim-name":      claim,
-				"appcat.vshn.io/claim-namespace": namespace,
-				"appcat.vshn.io/service-name":    service,
-			},
+			Labels:    labels,
 		},
 		Spec: vshnv1.BillingServiceSpec{
 			KeepAfterDeletion: keepAfterDeletion,
@@ -99,17 +127,17 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 				InstanceID:           comp.GetName(),
 				ProductID:            productID,
 				UnitID:               unitID,
-				Size:                 strconv.Itoa(comp.GetInstances()),
+				Size:                 size,
 				SalesOrderID:         salesOrder,
 				ItemGroupDescription: claim,
-				ItemDescription:      getItemDescription(isAPPUiOCloud, clusterName, namespace),
+				ItemDescription:      GetItemDescription(isAPPUiOCloud, clusterName, namespace),
 			},
 		},
 	}
 
 	// Get organization (APPUiO cloud)
 	if isAPPUiOCloud {
-		org, err := getOrg(comp.GetName(), svc)
+		org, err := GetOrg(comp.GetName(), svc)
 		if err != nil {
 			log.Error(err, "billing sales order and organization are missing", "service", comp.GetName())
 			return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
@@ -119,7 +147,8 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 
 	kubeObj := &xkube.Object{}
 	ownerRefOption := func(obj *xkube.Object) {}
-	if err := svc.GetObservedComposedResource(kubeObj, comp.GetName()+"-billing-service"); err == nil {
+	observedResourceName := comp.GetName() + opts.ResourceNameSuffix
+	if err := svc.GetObservedComposedResource(kubeObj, observedResourceName); err == nil {
 		// Create owner reference pointing to the Crossplane Object itself
 		ownerRef := metav1.OwnerReference{
 			APIVersion:         "kubernetes.crossplane.io/v1alpha1",
@@ -133,7 +162,7 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 	}
 
 	// Set the BillingService as a desired kube object
-	err := svc.SetDesiredKubeObject(billingService, comp.GetName()+"-billing-service",
+	err := svc.SetDesiredKubeObject(billingService, observedResourceName,
 		runtime.KubeOptionDeployOnControlPlane,
 		runtime.KubeOptionObserveCreateUpdate,
 		ownerRefOption,
@@ -147,7 +176,8 @@ func CreateOrUpdateBillingService(ctx context.Context, svc *runtime.ServiceRunti
 	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s", comp.GetName()))
 }
 
-func getItemDescription(isAPPUiOCloud bool, cluster, namespace string) string {
+// GetItemDescription returns item description with cluster and namespace name
+func GetItemDescription(isAPPUiOCloud bool, cluster, namespace string) string {
 	if isAPPUiOCloud {
 		return fmt.Sprintf("APPUiO Cloud - Cluster: %s / Namespace: %s", cluster, namespace)
 	}

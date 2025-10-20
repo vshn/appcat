@@ -18,6 +18,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,10 +40,13 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	}
 
 	l.Info("Bootstrapping instance namespace and rbac rules")
-	err = common.BootstrapInstanceNs(ctx, comp, "postgresql", namespaceResName, svc)
+	err = common.BootstrapInstanceNs(ctx, comp, "postgresql", namespaceResName, svc, map[string]string{
+		webhooks.ProtectionOverrideLabelStorage: "true",
+	})
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
+
 	l.Info("Set major version in status")
 	err = setMajorVersionStatus(comp, svc)
 	if err != nil {

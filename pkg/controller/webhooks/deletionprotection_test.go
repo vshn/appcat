@@ -142,3 +142,79 @@ func Test_checkManagedObject(t *testing.T) {
 	assert.Equal(t, compositeInfo{Exists: false, Name: "redis"}, compInfo)
 
 }
+
+func Test_unmanagedPvcDeletion(t *testing.T) {
+	const (
+		kind      = "XVSHNRedis"
+		composite = "redis"
+	)
+	labels := map[string]string{
+		runtime.OwnerKindAnnotation:      kind,
+		runtime.OwnerGroupAnnotation:     vshnv1.GroupVersion.Group,
+		runtime.OwnerVersionAnnotation:   vshnv1.GroupVersion.Version,
+		runtime.OwnerCompositeAnnotation: composite,
+	}
+
+	parents := []client.Object{
+		&vshnv1.XVSHNRedis{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       kind,
+				APIVersion: vshnv1.GroupVersion.Group + "/" + vshnv1.GroupVersion.Version,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: composite,
+			},
+			Spec: vshnv1.XVSHNRedisSpec{},
+		},
+	}
+
+	c := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(parents...).
+		Build()
+
+	// Given an unmanaged PVC
+	pvc := &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "PersistentVolumeClaim",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mypvc",
+			Namespace: "test",
+		},
+	}
+
+	err := c.Create(context.TODO(), pvc)
+	assert.NoError(t, err)
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "test",
+			Labels: labels,
+		},
+	}
+
+	err = c.Create(context.TODO(), ns)
+	assert.NoError(t, err)
+
+	// Expect TRUE compInfo.Exists given no namespace level override
+	compInfo, err := checkUnmanagedObject(context.TODO(), pvc, c, c, logr.Discard())
+	assert.NoError(t, err)
+	assert.True(t, compInfo.Exists)
+
+	// Expect FALSE compInfo.Exists given namespace level override
+	labels[ProtectionOverrideLabelStorage] = "true"
+	err = c.Update(context.TODO(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "test",
+			Labels: labels,
+		},
+	})
+	assert.NoError(t, err)
+
+	compInfo, err = checkUnmanagedObject(context.TODO(), pvc, c, c, logr.Discard())
+	assert.NoError(t, err)
+
+	t.Logf("compinfo 2: %v", compInfo)
+	assert.False(t, compInfo.Exists)
+}

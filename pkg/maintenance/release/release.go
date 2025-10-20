@@ -24,7 +24,6 @@ const (
 	DefaultServiceIDLabel = "metadata.appcat.vshn.io/serviceID"
 	RevisionLabel         = "metadata.appcat.vshn.io/revision"
 	AutoUpdate            = "metadata.appcat.vshn.io/autoUpdate"
-	MinimumRevisionAge    = 7 * 24 * time.Hour // 1 week
 )
 
 // Interface for both Claim and Composite objects

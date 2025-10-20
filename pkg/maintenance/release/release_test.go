@@ -21,6 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const testMinimumRevisionAge = 7 * 24 * time.Hour // 1 week
+
 func setupFakeClient(objects ...client.Object) client.Client {
 	scheme := runtime.NewScheme()
 	_ = v1.AddToScheme(scheme) // Register Crossplane APIs
@@ -47,7 +49,7 @@ func TestGetLatestRevision_NoRevisions(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 
 	// Then
 	assert.Error(t, err)
@@ -119,7 +121,7 @@ func TestLatestVersion_UpdateClaim(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 
 	// Then
 	require.NoError(t, err)
@@ -197,7 +199,7 @@ func TestLatestVersion_UpdateComposite(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 
 	// Then
 	require.NoError(t, err)
@@ -252,7 +254,7 @@ func TestLatestVersion_MissingRevisionLabel(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 
 	// Then: No error, but log message should indicate missing label
 	require.Error(t, err)
@@ -310,7 +312,7 @@ func TestAutoUpdateLabel_UpdateClaim(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 
 	// Then
 	require.NoError(t, err)
@@ -383,7 +385,7 @@ func TestAutoUpdateLabel_UpdateComposite(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 
 	// Then
 	require.NoError(t, err)
@@ -466,7 +468,7 @@ func TestDisableReleaseManagment(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), false, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), false, fakeClient, testMinimumRevisionAge)
 
 	// Then
 	require.NoError(t, err)
@@ -556,7 +558,7 @@ func TestRevisionAgeFiltering_SkipsNewRevisions(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 
 	// Then
 	require.NoError(t, err)
@@ -615,7 +617,7 @@ func TestRevisionAgeFiltering_AllRevisionsTooNew(t *testing.T) {
 	vh := release.NewDefaultVersionHandler(logger, opts)
 
 	// Do
-	err := vh.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 
 	// Then: Should fall back to newest revision when none meet grace period
 	require.NoError(t, err)
@@ -750,7 +752,7 @@ func TestHotfixerVsMaintenance_AgeBehavior(t *testing.T) {
 
 	// Test 1: Maintenance mode (7-day grace period) should select revision 40
 	vh1 := release.NewDefaultVersionHandler(logger, opts)
-	err := vh1.ReleaseLatest(context.Background(), true, fakeClient, release.MinimumRevisionAge)
+	err := vh1.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
 	require.NoError(t, err)
 
 	comp1 := composite.New()

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource/unstructured/claim"
@@ -33,7 +34,7 @@ type compositionObject interface {
 
 // VersionHandler is an interface for handling AppCat versions
 type VersionHandler interface {
-	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client) error
+	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client, minAge time.Duration) error
 }
 
 // DefaultVersionHandler handles AppCat version change for a claim using composition revisions.
@@ -77,7 +78,7 @@ func NewDefaultVersionHandler(l logr.Logger, opts ReleaserOpts) VersionHandler {
 }
 
 // ReleaseLatest function releases the latest AppCat version for a given claim via latest composition revision
-func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client) error {
+func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client, minAge time.Duration) error {
 	vh.log.Info("Releasing latest version of AppCat")
 
 	vh.client = kubeClient
@@ -85,7 +86,7 @@ func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool
 	revision := ""
 	if enabled {
 		// Get latest revision
-		rev, err := vh.getLatestRevisionLabel(ctx)
+		rev, err := vh.getLatestRevisionLabel(ctx, minAge)
 		if err != nil || rev == "" {
 			return err
 		}
@@ -114,8 +115,8 @@ func (vh *DefaultVersionHandler) ReleaseLatest(ctx context.Context, enabled bool
 }
 
 // Helper function to fetch the latest revision label
-func (vh *DefaultVersionHandler) getLatestRevisionLabel(ctx context.Context) (string, error) {
-	cr, err := vh.getLatestRevision(ctx)
+func (vh *DefaultVersionHandler) getLatestRevisionLabel(ctx context.Context, minAge time.Duration) (string, error) {
+	cr, err := vh.getLatestRevision(ctx, minAge)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch latest revision: %w", err)
 	}
@@ -128,7 +129,7 @@ func (vh *DefaultVersionHandler) getLatestRevisionLabel(ctx context.Context) (st
 	return revision, nil
 }
 
-func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.CompositionRevision, error) {
+func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context, minAge time.Duration) (*v1.CompositionRevision, error) {
 	vh.log.Info("Filtering composition revisions by service id", vh.serviceIDLabel, vh.serviceId)
 	crl := &v1.CompositionRevisionList{}
 	if err := vh.client.List(ctx, crl, client.MatchingLabelsSelector{
@@ -141,15 +142,48 @@ func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context) (*v1.Com
 		return nil, errors.New("no composition revisions found")
 	}
 	vh.log.V(1).Info("Found", "composition revisions", crl.Items)
-	latestRevision := crl.Items[0]
-	for _, item := range crl.Items[1:] {
+
+	eligibleRevisions := vh.filterRevisionsByAge(crl.Items, minAge)
+	if len(eligibleRevisions) == 0 {
+		vh.log.Info("No composition revisions found that meet the grace period, falling back to newest revision",
+			"minimumAge", minAge)
+		eligibleRevisions = crl.Items
+	}
+
+	latestRevision := eligibleRevisions[0]
+	for _, item := range eligibleRevisions[1:] {
 		if item.Spec.Revision > latestRevision.Spec.Revision {
 			latestRevision = item
 		}
 	}
-	vh.log.Info("Found latest resource", "composition revision", latestRevision.GetName(), RevisionLabel, latestRevision.GetLabels()[RevisionLabel])
+
+	age := time.Since(latestRevision.CreationTimestamp.Time)
+	vh.log.Info("Found latest eligible resource",
+		"composition revision", latestRevision.GetName(),
+		RevisionLabel, latestRevision.GetLabels()[RevisionLabel],
+		"age", age.Round(time.Hour))
 
 	return &latestRevision, nil
+}
+
+// filterRevisionsByAge filters composition revisions to only include those older than the specified minimum age
+func (vh *DefaultVersionHandler) filterRevisionsByAge(revisions []v1.CompositionRevision, minAge time.Duration) []v1.CompositionRevision {
+	now := time.Now()
+	var eligible []v1.CompositionRevision
+
+	for _, item := range revisions {
+		age := now.Sub(item.CreationTimestamp.Time)
+		if age >= minAge {
+			eligible = append(eligible, item)
+		} else {
+			vh.log.Info("Skipping revision that is too new",
+				"revision", item.GetName(),
+				"age", age.Round(time.Hour),
+				"minimumAge", minAge)
+		}
+	}
+
+	return eligible
 }
 
 func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision string, enabled bool) error {

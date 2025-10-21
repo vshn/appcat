@@ -134,5 +134,14 @@ func getConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreS
 		return nil, fmt.Errorf("connection details not (yet) populated")
 	}
 
-	return cd, nil
+	cdValue, exists := cd[ClusterInstanceCdField]
+	if !exists {
+		return nil, fmt.Errorf("cluster instances not known in connection details")
+	}
+
+	// cdValue will be a []byte of a literal string of an array such as "[a b c]", so we need to convert it into an actual []string first.
+	trimmed := strings.Trim(string(cdValue), "\n\r\t") // <- Unlikely to be present in the CD, but will accommodate tests.
+	trimmed = strings.Trim(trimmed, "[]")
+
+	return strings.Fields(trimmed), nil
 }

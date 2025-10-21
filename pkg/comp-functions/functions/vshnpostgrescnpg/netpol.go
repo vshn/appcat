@@ -14,6 +14,11 @@ import (
 
 // Create a network policy that permits ingress from the cnpg operator
 func createCnpgNetworkPolicy(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *v1.Result {
+	err := svc.GetObservedComposite(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot get observed composite: %w", err))
+	}
+
 	// Reference: https://cloudnative-pg.io/documentation/1.20/samples/networkpolicy-example.yaml
 	netPol := netv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -25,9 +30,9 @@ func createCnpgNetworkPolicy(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 				"Ingress",
 			},
 			PodSelector: metav1.LabelSelector{
-				//MatchLabels: map[string]string{
-				//	"cnpg.io/cluster": comp.GetName() + "-cluster",
-				//},
+				MatchLabels: map[string]string{
+					"cnpg.io/cluster": comp.GetName() + "-cluster",
+				},
 			},
 			Ingress: []netv1.NetworkPolicyIngressRule{
 				{

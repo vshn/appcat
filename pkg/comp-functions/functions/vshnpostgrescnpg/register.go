@@ -21,10 +21,6 @@ func init() {
 				Execute: createCnpgNetworkPolicy,
 			},
 			{
-				Name:    "connectiondetails",
-				Execute: AddConnectionDetails,
-			},
-			{
 				Name:    "user-alerting",
 				Execute: common.AddUserAlerting[*vshnv1.VSHNPostgreSQL],
 			},

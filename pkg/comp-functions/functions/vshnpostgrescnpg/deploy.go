@@ -155,8 +155,11 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 		return runtime.NewWarningResult(fmt.Sprintf("cannot set up backup: %v", err))
 	}
 
+	// Connection details
+	connectionDetails := generateConnectionDetailsForRelease(comp, svc)
+
 	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")
-	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg")
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg", connectionDetails...)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create release: %w", err))
 	}
@@ -165,7 +168,11 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	release.Spec.ForProvider.Chart.Repository = svc.Config.Data["cnpgClusterChartSource"]
 	release.Spec.ForProvider.Chart.Version = svc.Config.Data["cnpgClusterChartVersion"]
 	release.Spec.ForProvider.Chart.Name = svc.Config.Data["cnpgClusterChartName"]
-	release.Spec.ResourceSpec.WriteConnectionSecretToReference = nil
+
+	connectionSecretName := comp.GetName() + "-connection"
+	release.Spec.WriteConnectionSecretToReference.Name = connectionSecretName
+	release.Spec.WriteConnectionSecretToReference.Namespace = svc.GetCrossplaneNamespace()
+	//release.Spec.ResourceSpec.WriteConnectionSecretToReference = nil
 
 	err = svc.SetDesiredComposedResource(release)
 	if err != nil {

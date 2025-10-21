@@ -96,7 +96,9 @@ func getClusterInstancesReportedByCd(svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cluster instances not known in connection details")
 	}
 
-	// cdValue will be a []byte of a literal string of an array such as "[a b c]", so we need to convert it into an actual []string first
-	trimmed := strings.Trim(string(cdValue), "[]")
+	// cdValue will be a []byte of a literal string of an array such as "[a b c]", so we need to convert it into an actual []string first.
+	trimmed := strings.Trim(string(cdValue), "\n\r\t") // <- Unlikely to be present in the CD, but will accommodate tests.
+	trimmed = strings.Trim(trimmed, "[]")
+
 	return strings.Fields(trimmed), nil
 }

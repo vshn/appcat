@@ -21,7 +21,7 @@ import (
 // +kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=*,verbs=get;list;watch
 
 const (
-	ProtectionOverrideLabelStorage = "appcat.vshn.io/webhook-allowstoragedeletion" // Only respected on a namespace
+	ProtectionOverrideLabelStorage = "appcat.vshn.io/webhook-allowpvcdeletion" // Only respected on a namespace
 	ProtectionOverrideLabel        = "appcat.vshn.io/webhook-allowdeletion"
 	protectedMessage               = "%s is part of a VSHN AppCat service and protected from deletions. Either delete the the claim for composite %s or set this label on the object: 'appcat.vshn.io/webhook-allowdeletion: \"true\"'"
 )

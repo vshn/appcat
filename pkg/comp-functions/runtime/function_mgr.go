@@ -41,8 +41,8 @@ var (
 	serviceRegistry = map[string]any{}
 	// the default provider kubernetes name
 	providerConfigRefName = "kubernetes"
-	// ErrNotFound is the errur returned, if the requested resource is not in the
-	// the given function state (desired,observed).
+	// ErrNotFound is the error returned, if the requested resource is not in the
+	// given function state (desired,observed).
 	ErrNotFound = errors.New("not found")
 	scheme      = pkg.SetupScheme()
 )
@@ -562,6 +562,13 @@ func KubeOptionAddConnectionDetails(destNamespace string, cd ...xkube.Connection
 func KubeOptionObserveCreateUpdate(obj *xkube.Object) {
 	obj.Spec.ManagementPolicies = nil
 	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionCreate, xpv1.ManagementActionUpdate, xpv1.ManagementActionObserve)
+}
+
+// KubeOptionSetOwnerReferenceFromKubeObject sets the owner reference from kube object to resource
+func KubeOptionSetOwnerReferenceFromKubeObject(res client.Object, ownerRef metav1.OwnerReference) KubeObjectOption {
+	return func(obj *xkube.Object) {
+		res.SetOwnerReferences([]metav1.OwnerReference{ownerRef})
+	}
 }
 
 // KubeOptionObserve sets the object to only observe.

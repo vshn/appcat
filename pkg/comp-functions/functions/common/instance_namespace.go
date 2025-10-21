@@ -73,7 +73,7 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 	return nil
 }
 
-func getOrg(instance string, svc *runtime.ServiceRuntime) (string, error) {
+func GetOrg(instance string, svc *runtime.ServiceRuntime) (string, error) {
 	ns := &corev1.Namespace{}
 
 	err := svc.GetObservedKubeObject(ns, instance+claimNsObserverSuffix)
@@ -96,7 +96,7 @@ func createNamespaceObserver(claimNs string, instance string, svc *runtime.Servi
 // Create the namespace for the service instance
 func createInstanceNamespace(serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName, billingName string, svc *runtime.ServiceRuntime) error {
 
-	org, err := getOrg(compName, svc)
+	org, err := GetOrg(compName, svc)
 	if err != nil {
 		svc.Log.Info("cannot get claim namespace")
 		svc.AddResult(runtime.NewWarningResult("cannot get claim namespace"))
@@ -156,7 +156,7 @@ func createNamespacePermissions(instance string, instanceNs string, namespaceRes
 		}
 	}
 
-	org, err := getOrg(instance, svc)
+	org, err := GetOrg(instance, svc)
 	if err != nil {
 		return fmt.Errorf("cannot get claim namespace: %w", err)
 	}

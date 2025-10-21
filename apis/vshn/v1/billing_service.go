@@ -49,6 +49,9 @@ type OdooSpec struct {
 	// SalesOrderID identifies the sales order in Odoo
 	SalesOrderID string `json:"salesOrderID,omitempty"`
 
+	// Organization used to identify sales order
+	Organization string `json:"organization,omitempty"`
+
 	// UnitID defines the billing unit type in Odoo
 	UnitID string `json:"unitID"`
 

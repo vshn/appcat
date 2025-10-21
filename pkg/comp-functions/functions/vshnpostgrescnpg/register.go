@@ -17,6 +17,10 @@ func init() {
 				Execute: DeployPostgreSQL,
 			},
 			{
+				Name:    "netpol",
+				Execute: createCnpgNetworkPolicy,
+			},
+			{
 				Name:    "connectiondetails",
 				Execute: AddConnectionDetails,
 			},

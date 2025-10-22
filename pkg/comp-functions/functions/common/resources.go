@@ -115,7 +115,7 @@ func getRequest(req, limit, planRequests resource.Quantity) resource.Quantity {
 	finalReq := req
 
 	if req.IsZero() {
-		finalReq = planRequests
+		finalReq = limit
 	}
 
 	if limit.Cmp(finalReq) == -1 {

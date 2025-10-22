@@ -289,3 +289,9 @@ func (v *VSHNOpenBao) GetWorkloadName() string {
 func (v *VSHNOpenBao) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsManager {
 	return &StatefulSetManager{}
 }
+
+// IsBackupEnabled returns true if backups are enabled for this instance
+// MinIO doesn't currently support backups via K8up, so this always returns false
+func (v *VSHNOpenBao) IsBackupEnabled() bool {
+	return false
+}

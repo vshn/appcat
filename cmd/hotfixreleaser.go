@@ -196,7 +196,8 @@ func (h *hotfixer) handleComposite(ctx context.Context, comp unstructured.Unstru
 		return fmt.Errorf("cannot determine if release management is enabled: %w", err)
 	}
 
-	return r.ReleaseLatest(ctx, enabled, kubeClient)
+	// Hotfixer bypasses age filtering by passing 0 duration
+	return r.ReleaseLatest(ctx, enabled, kubeClient, 0)
 }
 
 func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, log logr.Logger, kubeClient client.Client, labels map[string]string, compName string) error {
@@ -227,5 +228,6 @@ func (h *hotfixer) handleClaimRef(ctx context.Context, ref map[string]string, lo
 		return fmt.Errorf("cannot determine if release management is enabled: %w", err)
 	}
 
-	return r.ReleaseLatest(ctx, enabled, kubeClient)
+	// Hotfixer bypasses age filtering by passing 0 duration
+	return r.ReleaseLatest(ctx, enabled, kubeClient, 0)
 }

@@ -8,6 +8,7 @@ import (
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/apiserver"
+	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/postgres"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,19 +45,21 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 			return nil, fmt.Errorf("error listing file backups: %w", err)
 		}
 
-		pgNamespace, pgCompName := v.getPostgreSQLNamespaceAndName(ctx, &instance)
+		pgNamespace, pgCompName, pgCompRefName := v.getPostgreSQLMetadata(ctx, &instance)
 
-		var sgBackups []appcatv1.SGBackupInfo
+		var backups []appcatv1.BackupInfo
 		if pgNamespace != "" {
 			dynClient, err := v.vshnNextcloud.GetDynKubeClient(ctx, &instance)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get dynamic kube client: %w", err)
 			}
-			sgBackupsList, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, dynClient, options)
+
+			schema := postgres.DetermineTargetSchema(pgCompRefName)
+			backupList, err := v.backup.ListBackup(ctx, pgNamespace, schema, dynClient, options)
 			if err != nil {
-				return nil, fmt.Errorf("error listing SGBackups: %w", err)
+				return nil, fmt.Errorf("error listing postgres backups: %w", err)
 			}
-			sgBackups = *sgBackupsList
+			backups = *backupList
 		}
 
 		isSharedDB := instance.Spec.Parameters.Service.UseExternalPostgreSQL &&
@@ -80,14 +83,14 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 				status.DatabaseBackupAvailable = false
 			} else {
 				status.DBType = appcatv1.Dedicated
-				if sgBackup, remaining := v.getClosestPGBackup(sgBackups, *snap.Spec.Date); sgBackup != nil {
+				if backup, remaining := v.getClosestPGBackup(backups, *snap.Spec.Date); backup != nil {
 					status.DatabaseBackupAvailable = true
 					status.DatabaseBackupStatus = appcatv1.VSHNPostgresBackupStatus{
-						BackupInformation: &sgBackup.BackupInformation,
-						Process:           &sgBackup.Process,
+						BackupInformation: &backup.BackupInformation,
+						Process:           &backup.Process,
 						DatabaseInstance:  pgCompName,
 					}
-					sgBackups = remaining
+					backups = remaining
 				}
 			}
 
@@ -102,9 +105,9 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 			continue
 		}
 
-		// Include remaining SGBackups that had no matching file backup
-		for _, sgBackup := range sgBackups {
-			backupMeta := sgBackup.ObjectMeta
+		// Include remaining PostgreSQL backups that had no matching file backup
+		for _, backup := range backups {
+			backupMeta := backup.ObjectMeta
 
 			nextcloudSnapshots.Items = append(nextcloudSnapshots.Items, appcatv1.VSHNNextcloudBackup{
 				ObjectMeta: backupMeta,
@@ -116,8 +119,8 @@ func (v *vshnNextcloudBackupStorage) List(ctx context.Context, options *metainte
 						Date:     backupMeta.CreationTimestamp,
 					},
 					DatabaseBackupStatus: appcatv1.VSHNPostgresBackupStatus{
-						BackupInformation: &sgBackup.BackupInformation,
-						Process:           &sgBackup.Process,
+						BackupInformation: &backup.BackupInformation,
+						Process:           &backup.Process,
 						DatabaseInstance:  pgCompName,
 					},
 				},
@@ -195,13 +198,14 @@ func (v *vshnNextcloudBackupStorage) Watch(ctx context.Context, options *metaint
 	}), nil
 }
 
-func (v *vshnNextcloudBackupStorage) getPostgreSQLNamespaceAndName(ctx context.Context, inst *vshnv1.VSHNNextcloud) (string, string) {
+// Get namespace, name and compositionReference (in that order) of a XVSHNPostgreSQL
+func (v *vshnNextcloudBackupStorage) getPostgreSQLMetadata(ctx context.Context, inst *vshnv1.VSHNNextcloud) (string, string, string) {
 	compName := inst.Spec.ResourceRef.Name
 	ncComp := vshnv1.XVSHNNextcloud{}
 
 	err := v.vshnNextcloud.Get(ctx, client.ObjectKey{Name: compName}, &ncComp)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 
 	pgName := ""
@@ -216,14 +220,14 @@ func (v *vshnNextcloudBackupStorage) getPostgreSQLNamespaceAndName(ctx context.C
 
 	err = v.vshnNextcloud.Get(ctx, client.ObjectKey{Name: pgName}, pgComp)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 
-	return pgComp.Status.InstanceNamespace, pgName
+	return pgComp.Status.InstanceNamespace, pgName, pgComp.Spec.CompositionRef.Name
 }
 
 // getClosestPGBackup gets the closest sgdbbackup to the given nextcloud backup, if it's available.
-func (v *vshnNextcloudBackupStorage) getClosestPGBackup(backups []appcatv1.SGBackupInfo, ts metav1.Time) (*appcatv1.SGBackupInfo, []appcatv1.SGBackupInfo) {
+func (v *vshnNextcloudBackupStorage) getClosestPGBackup(backups []appcatv1.BackupInfo, ts metav1.Time) (*appcatv1.BackupInfo, []appcatv1.BackupInfo) {
 
 	for i, backup := range backups {
 		if backup.CreationTimestamp.Sub(ts.Time).Abs() <= 1*time.Minute {

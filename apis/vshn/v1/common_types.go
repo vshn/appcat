@@ -182,11 +182,25 @@ type VSHNMonitoring struct {
 
 	// Email necessary to send alerts via email
 	Email string `json:"email,omitempty"`
-	// VSHNScheduleStatus keeps track of the maintenance and backup schedules.
-	// As of Crossplane 1.14 it's no longer allowed to change the composite.spec, so
-	// any generate
 }
 
+// InitialMaintenanceStatus tracks the status of the initial maintenance job.
+// It records when the job ran and whether it succeeded or failed.
+type InitialMaintenanceStatus struct {
+	// CompletedAt is the timestamp when the initial maintenance job completed.
+	// This field is set regardless of whether the job succeeded or failed.
+	// +optional
+	CompletedAt *string `json:"completedAt,omitempty"`
+
+	// Success indicates whether the initial maintenance job completed successfully.
+	// True if the job succeeded, false if it failed.
+	// +optional
+	Success *bool `json:"success,omitempty"`
+}
+
+// VSHNScheduleStatus keeps track of the maintenance and backup schedules.
+// As of Crossplane 1.14 it's no longer allowed to change the composite.spec, so
+// any generated schedules are stored in the status.
 type VSHNScheduleStatus struct {
 	// Maintenance keeps track of the maintenance schedule.
 	Maintenance VSHNDBaaSMaintenanceScheduleSpec `json:"maintenance,omitempty"`

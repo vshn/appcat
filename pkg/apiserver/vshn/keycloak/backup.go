@@ -24,7 +24,7 @@ var _ rest.Storage = &vshnKeycloakBackupStorage{}
 type vshnKeycloakBackupStorage struct {
 	snapshothandler k8up.Snapshothandler
 	vshnKeycloak    vshnKeycloakProvider
-	sgBackup        postgres.KubeSGBackupProvider
+	backup          postgres.KubeBackupProvider
 	noop.Noop
 }
 
@@ -55,7 +55,7 @@ func New() restbuilder.ResourceHandlerProvider {
 				ClientConfigurator: apiserver.New(c),
 			},
 			Noop: *noopImplementation,
-			sgBackup: postgres.KubeSGBackupProvider{
+			backup: postgres.KubeBackupProvider{
 				DynamicClient: dc.Resource(postgres.SGbackupGroupVersionResource),
 			},
 		}, nil

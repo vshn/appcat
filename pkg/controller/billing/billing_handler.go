@@ -6,6 +6,7 @@ package billing
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -87,6 +88,32 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
+	// Populate SalesOrderID from Organization CR if not already set
+	if billingService.Spec.Odoo.SalesOrderID == "" {
+		if billingService.Spec.Odoo.Organization == "" {
+			err := fmt.Errorf("sales order and/or organization missing %s", billingService.Name)
+			b.log.Error(err, "failed to fetch sales order from Organization",
+				"organization", billingService.Spec.Odoo.Organization,
+				"billingService", billingService.Name)
+			return ctrl.Result{}, err
+		}
+		salesOrder, err := b.fetchSalesOrderFromAPPUiOControl(ctx, billingService.Spec.Odoo.Organization)
+		if err != nil {
+			b.log.Error(err, "failed to fetch sales order from Organization",
+				"organization", billingService.Spec.Odoo.Organization,
+				"billingService", billingService.Name)
+			return ctrl.Result{}, fmt.Errorf("failed to fetch sales order for %s: %w", billingService.Name, err)
+		}
+		billingService.Spec.Odoo.SalesOrderID = salesOrder
+		if err := b.Update(ctx, &billingService); err != nil {
+			return ctrl.Result{}, err
+		}
+		b.log.Info("Updated SalesOrderID from Organization",
+			"organization", billingService.Spec.Odoo.Organization,
+			"salesOrder", salesOrder,
+			"billingService", billingService.Name)
+	}
+
 	if billingService.DeletionTimestamp.IsZero() && controllerutil.AddFinalizer(&billingService, vshnv1.BillingServiceFinalizer) {
 		if err := b.Update(ctx, &billingService); err != nil {
 			return ctrl.Result{}, err
@@ -116,8 +143,8 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 
-		if hasSentEvent(&billingService, BillingEventTypeDeleted, billingService.Spec.Odoo.ProductID, "") &&
-			controllerutil.ContainsFinalizer(&billingService, vshnv1.BillingServiceFinalizer) {
+		canRemoveFinalizer, requeueAfter := shouldRemoveFinalizer(&billingService)
+		if canRemoveFinalizer && controllerutil.ContainsFinalizer(&billingService, vshnv1.BillingServiceFinalizer) {
 			controllerutil.RemoveFinalizer(&billingService, vshnv1.BillingServiceFinalizer)
 			if err := b.Update(ctx, &billingService); err != nil {
 				return ctrl.Result{}, err
@@ -130,6 +157,10 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		if sent || hasBacklog(&billingService) {
 			return ctrl.Result{RequeueAfter: successDrainDelay}, nil
+		}
+
+		if requeueAfter != nil {
+			return ctrl.Result{RequeueAfter: *requeueAfter}, nil
 		}
 
 		return ctrl.Result{}, nil

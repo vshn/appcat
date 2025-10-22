@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/stretchr/testify/assert"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg"
@@ -13,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func Test_vshnKeycloakBackupStorage_getPostgreSQLNamespaceAndName(t *testing.T) {
+func Test_vshnKeycloakBackupStorage_getPostgreSQLMetadata(t *testing.T) {
 	fclient := fake.NewClientBuilder().WithScheme(pkg.SetupScheme()).
 		WithObjects().Build()
 
@@ -27,6 +28,11 @@ func Test_vshnKeycloakBackupStorage_getPostgreSQLNamespaceAndName(t *testing.T) 
 	comp := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
+		},
+		Spec: vshnv1.XVSHNPostgreSQLSpec{
+			CompositionRef: v1.CompositionReference{
+				Name: "vshnpostgres.vshn.appcat.io",
+			},
 		},
 		Status: vshnv1.XVSHNPostgreSQLStatus{
 			VSHNPostgreSQLStatus: vshnv1.VSHNPostgreSQLStatus{
@@ -62,9 +68,10 @@ func Test_vshnKeycloakBackupStorage_getPostgreSQLNamespaceAndName(t *testing.T) 
 	assert.NoError(t, fclient.Create(context.TODO(), kcComp))
 
 	// When
-	namespace, name := keycloakStorage.getPostgreSQLNamespaceAndName(context.TODO(), claim)
+	namespace, name, compRef := keycloakStorage.getPostgreSQLMetadata(context.TODO(), claim)
 
 	// Then
 	assert.Equal(t, "test", name)
 	assert.Equal(t, "test-ns", namespace)
+	assert.Equal(t, "vshnpostgres.vshn.appcat.io", compRef)
 }

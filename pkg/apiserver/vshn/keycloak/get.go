@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	appcatv1 "github.com/vshn/appcat/v4/apis/apiserver/v1"
+	"github.com/vshn/appcat/v4/pkg/apiserver/vshn/postgres"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,35 +29,37 @@ func (v *vshnKeycloakBackupStorage) Get(ctx context.Context, name string, _ *met
 	keycloakBackup := &appcatv1.VSHNKeycloakBackup{}
 
 	for _, instance := range instances.Items {
-		pgNamespace, pgName := v.getPostgreSQLNamespaceAndName(ctx, &instance)
+		pgNamespace, pgName, compRefName := v.getPostgreSQLMetadata(ctx, &instance)
 		dynClient, err := v.vshnKeycloak.GetDynKubeClient(ctx, &instance)
 		if err != nil {
 			return nil, err
 		}
-		sgBackups, err := v.sgBackup.ListSGBackup(ctx, pgNamespace, dynClient, &internalversion.ListOptions{})
+
+		schema := postgres.DetermineTargetSchema(compRefName)
+		backups, err := v.backup.ListBackup(ctx, pgNamespace, schema, dynClient, &internalversion.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
 
-		var sgBackup *appcatv1.SGBackupInfo
-		for _, backup := range *sgBackups {
-			if name == backup.GetName() {
-				sgBackup = &backup
+		var backup *appcatv1.BackupInfo
+		for _, back := range *backups {
+			if name == back.GetName() {
+				backup = &back
 				break
 			}
 		}
 
-		if sgBackup != nil {
+		if backup != nil {
 			status := appcatv1.VSHNKeycloakBackupStatus{
 				DatabaseBackupAvailable: true,
 				DatabaseBackupStatus: appcatv1.VSHNPostgresBackupStatus{
-					BackupInformation: &sgBackup.BackupInformation,
-					Process:           &sgBackup.Process,
+					BackupInformation: &backup.BackupInformation,
+					Process:           &backup.Process,
 					DatabaseInstance:  pgName,
 				},
 			}
 
-			backupMeta := sgBackup.ObjectMeta
+			backupMeta := backup.ObjectMeta
 			backupMeta.Namespace = instance.GetNamespace()
 
 			keycloakBackup = &appcatv1.VSHNKeycloakBackup{

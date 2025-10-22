@@ -52,7 +52,7 @@ var (
 
 type Maintenance interface {
 	DoMaintenance(ctx context.Context) error
-	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client) error
+	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client, minAge time.Duration) error
 }
 
 type service enumflag.Flag
@@ -169,7 +169,18 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 			if !enabled {
 				log.Info("release management disabled, skipping rollout of latest revisions")
 			}
-			return m.ReleaseLatest(ctx, enabled, maintClient)
+
+			// Parse minimum revision age from component, default to 7 days
+			minAge := 7 * 24 * time.Hour
+			if ageStr := viper.GetString("MINIMUM_REVISION_AGE"); ageStr != "" {
+				parsedAge, err := time.ParseDuration(ageStr)
+				if err != nil {
+					return fmt.Errorf("cannot parse MINIMUM_REVISION_AGE: %w", err)
+				}
+				minAge = parsedAge
+			}
+
+			return m.ReleaseLatest(ctx, enabled, maintClient, minAge)
 		}(),
 		m.DoMaintenance(ctx),
 	); err != nil {

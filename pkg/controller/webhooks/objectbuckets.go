@@ -17,6 +17,8 @@ import (
 )
 
 //+kubebuilder:webhook:verbs=delete;update,path=/validate-appcat-vshn-io-v1-objectbucket,mutating=false,failurePolicy=fail,groups=appcat.vshn.io,resources=objectbuckets,versions=v1,name=objectbuckets.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+//+kubebuilder:rbac:groups=cloudscale.crossplane.io,resources=providerconfigs,verbs=get;list;watch;
+//+kubebuilder:rbac:groups=exoscale.crossplane.io,resources=providerconfigs,verbs=get;list;watch;
 
 var _ webhook.CustomValidator = &ObjectbucketDeletionProtectionHandler{}
 

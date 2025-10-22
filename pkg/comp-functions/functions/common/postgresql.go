@@ -6,6 +6,7 @@ import (
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -158,6 +159,9 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		},
 		Spec: vshnv1.XVSHNPostgreSQLSpec{
 			Parameters: *params,
+			CompositionRef: v1.CompositionReference{
+				Name: a.svc.Config.Data["defaultPGComposition"],
+			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Name:      a.getPGSecretName(),

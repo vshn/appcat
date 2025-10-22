@@ -11,6 +11,7 @@ import (
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnminios,verbs=get;list;watch;patch;update
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnminios/status,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=minio.crossplane.io,resources=providerconfigs,verbs=get;list;watch;
 
 var (
 	minioGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNMinio"}

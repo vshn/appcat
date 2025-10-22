@@ -38,8 +38,9 @@ func New() restbuilder.ResourceHandlerProvider {
 		if err != nil {
 			return nil, err
 		}
+
 		return &vshnPostgresBackupStorage{
-			sgbackups: &KubeSGBackupProvider{
+			backups: &KubeBackupProvider{
 				DynamicClient: dc.Resource(SGbackupGroupVersionResource),
 			},
 			vshnpostgresql: &kubeVSHNPostgresqlProvider{
@@ -51,7 +52,7 @@ func New() restbuilder.ResourceHandlerProvider {
 }
 
 type vshnPostgresBackupStorage struct {
-	sgbackups      sgbackupProvider
+	backups        backupProvider
 	vshnpostgresql vshnPostgresqlProvider
 	noop.Noop
 }

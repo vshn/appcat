@@ -33,7 +33,7 @@ func CreateBillingRecord(ctx context.Context, svc *runtime.ServiceRuntime, comp 
 
 	expr := getVectorExpression(comp.GetInstances())
 
-	org, err := getOrg(comp.GetName(), svc)
+	org, err := GetOrg(comp.GetName(), svc)
 	if err != nil {
 		log.Error(err, "billing not working, cannot get organization", "service", comp.GetName())
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))

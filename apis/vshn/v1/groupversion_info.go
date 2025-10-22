@@ -56,5 +56,10 @@ func init() {
 		&XVSHNForgejoList{},
 		&VSHNForgejo{},
 		&VSHNForgejoList{},
+
+		&XVSHNOpenBao{},
+		&XVSHNOpenBaoList{},
+		&VSHNOpenBao{},
+		&VSHNOpenBaoList{},
 	)
 }

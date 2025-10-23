@@ -24,6 +24,22 @@ func Test_deploy(t *testing.T) {
 	assert.Nil(t, deployPostgresSQLUsingCNPG(ctx, comp, svc))
 }
 
+func Test_instances(t *testing.T) {
+	svc, comp := getSvcCompCnpg(t)
+	ctx := context.TODO()
+
+	for i := range 3 {
+		i++
+		comp.Spec.Parameters.Instances = i
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		assert.Equal(t, i, values["cluster"].(map[string]any)["instances"])
+	}
+}
+
 func Test_sizing(t *testing.T) {
 	svc, comp := getSvcCompCnpg(t)
 	ctx := context.TODO()

@@ -34,38 +34,51 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		return nil
 	}
 
-	log.Info("Adding secret to composite")
+	log.Info("Adding secrets to composite")
+	// Whenever CNPG scales, new instances won't reuse a previous index.
+	// Therefore, it's important to check what instances the Cluster CR is currently reporting.
+	// We are proxying this information through the releases connection details in order to save on provider-kubernetes objects.
+	clusterInstances, err := getClusterInstancesReportedByCd(svc, comp)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot set up LUKS: %v", err))
+	}
 
-	pods := comp.GetInstances()
+	luksKeyNames := getLuksKeyNames(clusterInstances)
+	result := writeLuksSecret(svc, log, comp, luksKeyNames)
+	if result != nil {
+		return result
+	}
 
-	for i := 0; i < pods; i++ {
-		index := i + 1 // i+1 because we are dealing with an STS
-		result := writeLuksSecret(svc, log, comp, index)
-		if result != nil {
-			return result
+	for _, luksKey := range luksKeyNames {
+		ready := svc.WaitForDesiredDependencies(comp.GetName(), luksKey)
+		if !ready {
+			return runtime.NewWarningResult(fmt.Sprintf("luks secret '%s' not yet ready", luksKey))
 		}
+	}
 
-		for _, luksKey := range getLuksKeyNamesArray(comp, index) {
-			ready := svc.WaitForDesiredDependencies(comp.GetName(), luksKey)
-			if !ready {
-				return runtime.NewWarningResult(fmt.Sprintf("luks secret '%s' not yet ready", luksKey))
-			}
-		}
+	// As we proxy that info through the connection details, we'd have to wait up to an hour for crossplane to reconcile the CD.
+	// By comparing the amount of instances vs what is reported in the CD, we can force an earlier reconcilation by setting the release unready.
+	// Why not just use an observer? Because that would take more time and require us to use an evil object.
+	svc.Log.Info("Checking for instances discrepancy",
+		"comp", comp.Spec.Parameters.Instances,
+		"reported", len(clusterInstances),
+		"verdict", comp.Spec.Parameters.Instances != len(clusterInstances),
+	)
+
+	if comp.Spec.Parameters.Instances != len(clusterInstances) {
+		svc.SetDesiredResourceReadiness(comp.GetName(), runtime.ResourceUnReady)
+		svc.Log.Info("discrepancy in comp instances vs reported instances in connection details found, encouraging early reconcilation...")
 	}
 
 	return nil
 }
 
-func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.VSHNPostgreSQL, i int) *xfnproto.Result {
-	// luksSecretResourceName is the resource name defined in the composition
-	// This name is different from metadata.name of the same resource
-	// The value is hardcoded in the composition for each resource and due to crossplane limitation
-	// it cannot be matched to the metadata.name
-	for _, luksSecretResourceName := range getLuksKeyNamesArray(comp, i) {
-		log.Info("Processing LUKS key...", "luksKey", luksSecretResourceName)
+func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.VSHNPostgreSQL, luksKeys []string) *xfnproto.Result {
+	for _, luksKeyName := range luksKeys {
+		log.Info("Processing LUKS key...", "luksKey", luksKeyName)
 
 		secret := &v1.Secret{}
-		err := svc.GetObservedKubeObject(secret, luksSecretResourceName)
+		err := svc.GetObservedKubeObject(secret, luksKeyName)
 		luksKey := ""
 		switch err {
 		case runtime.ErrNotFound:
@@ -83,14 +96,16 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 
 		secret = &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      luksSecretResourceName,
+				Name:      luksKeyName,
 				Namespace: comp.GetInstanceNamespace(),
 			},
 			Data: map[string][]byte{
 				"luksKey": []byte(luksKey),
 			},
 		}
-		err = svc.SetDesiredKubeObject(secret, luksSecretResourceName)
+
+		// Allow deletion is required for scaling
+		err = svc.SetDesiredKubeObject(secret, luksKeyName, runtime.KubeOptionAllowDeletion)
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("cannot add luks secret object: %w", err))
 		}
@@ -99,9 +114,15 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 	return nil
 }
 
-func getLuksKeyNamesArray(comp *vshnv1.VSHNPostgreSQL, index int) []string {
-	return []string{
-		fmt.Sprintf("%s-cluster-%d-luks-key", comp.Name, index),
-		fmt.Sprintf("%s-cluster-%d-wal-luks-key", comp.Name, index),
+// Generate LUKS key secret names based on an array of cluster instances
+func getLuksKeyNames(clusterInstances []string) []string {
+	var output []string
+	for _, instance := range clusterInstances {
+		output = append(output, []string{
+			instance + "-luks-key",
+			instance + "-wal-luks-key",
+		}...)
 	}
+
+	return output
 }

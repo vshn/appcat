@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -231,34 +231,19 @@ func (h *ImagePatcher) getVersions(imageURL string) (VersionLister, error) {
 func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, error) {
 	results := &RegistryResult{}
 
-	resp := &http.Response{}
+	resp, err := h.httpClient.Get(imageURL)
+	if err != nil {
+		return nil, fmt.Errorf("cannot access registry: %w", err)
+	}
 
-	if strings.Contains(imageURL, "ghcr") {
-		token, err := h.getGHCRToken(imageURL)
+	// if we're not allowed, let's try with a token
+	if resp.StatusCode == 401 {
+		authResp, err := h.listTagsWithToken(imageURL, resp.Header.Get("www-authenticate"))
 		if err != nil {
-			return nil, fmt.Errorf("cannot get GHCR token: %w", err)
+			return nil, fmt.Errorf("cannot list tags with token: %w", err)
 		}
 
-		req, err := http.NewRequest("GET", imageURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("cannot build GHCR request: %w", err)
-		}
-
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
-
-		tmpResp, err := h.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get GHCR image tags:%w", err)
-		}
-
-		resp = tmpResp
-
-	} else {
-		tmpResp, err := h.httpClient.Get(imageURL)
-		if err != nil {
-			return nil, fmt.Errorf("cannot access registry: %w", err)
-		}
-		resp = tmpResp
+		resp = authResp
 	}
 
 	if resp.StatusCode != 200 {
@@ -266,7 +251,7 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 		return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
 	}
 
-	err := json.NewDecoder(resp.Body).Decode(results)
+	err = json.NewDecoder(resp.Body).Decode(results)
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode docker registry results: %w", err)
 	}
@@ -274,20 +259,46 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 	return results, nil
 }
 
-func (h *ImagePatcher) getGHCRToken(imageURL string) (string, error) {
-	tokenURLTemplate := "https://ghcr.io/token?scope=repository:%s/%s:pull"
-
-	parsedURL, err := url.Parse(imageURL)
+// If the registry requires a token, but no authentication, then it will write the means how to
+// get said token via the `www-authenticate` header in the response
+func (h *ImagePatcher) listTagsWithToken(imageURL string, authHeader string) (*http.Response, error) {
+	token, err := h.getToken(imageURL, authHeader)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("cannot get GHCR token: %w", err)
 	}
 
-	fullPath := parsedURL.Path
+	req, err := http.NewRequest("GET", imageURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("cannot build GHCR request: %w", err)
+	}
 
-	// /v2/repositories/$repo/$image/tags/list
-	splitPath := strings.Split(fullPath, "/")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	tokenURL := fmt.Sprintf(tokenURLTemplate, splitPath[2], splitPath[3])
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get GHCR image tags:%w", err)
+	}
+
+	return resp, nil
+}
+
+func (h *ImagePatcher) getToken(imageURL string, authHeader string) (string, error) {
+
+	realmRegex := regexp.MustCompile(`realm="(.*?)"`)
+	scopeRegex := regexp.MustCompile(`scope="(.*?)"`)
+
+	foundRealms := realmRegex.FindStringSubmatch(authHeader)
+	foundScopes := scopeRegex.FindStringSubmatch(authHeader)
+
+	if len(foundRealms) != 2 {
+		return "", fmt.Errorf("error parsing the token endpoint to fetch token, no realm found")
+	}
+
+	if len(foundScopes) != 2 {
+		return "", fmt.Errorf("error parsing the token endpoint to fetch token, no scope found")
+	}
+
+	tokenURL := fmt.Sprintf("%s?scope=%s", foundRealms[1], foundScopes[1])
 
 	resp, err := h.httpClient.Get(tokenURL)
 	if err != nil {

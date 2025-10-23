@@ -1,11 +1,13 @@
 package vshnpostgrescnpg
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	// "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
@@ -16,7 +18,20 @@ const (
 	ClusterInstanceCdField = "clusterInstances"
 )
 
-func generateConnectionDetailsForRelease(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) []v1beta1.ConnectionDetail {
+func AddConnectionSecrets(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	err := svc.GetObservedComposite(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot get observed composite: %w", err))
+	}
+
+	if err := writeConnectionDetailsToSvc(svc, comp); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("Couldn't set connection details: %v", err))
+	}
+
+	return nil
+}
+
+func generateConnectionDetailInfoForRelease(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) []v1beta1.ConnectionDetail {
 	var connectionDetails []v1beta1.ConnectionDetail
 
 	// PSQL credentials
@@ -77,18 +92,24 @@ func generateConnectionDetailsForRelease(comp *vshnv1.VSHNPostgreSQL, svc *runti
 	return connectionDetails
 }
 
-// Get CNPG cluster instances as reported by the connection details of the release
-func getClusterInstancesReportedByCd(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) ([]string, error) {
-	// Whenever CNPG scales, new instances won't reuse a previous index.
-	// Therefore, it's important to check what instances the Cluster CR is reporting.
-	// We are proxying this field through the releases connection details in order to save on objects.
-	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName())
+func writeConnectionDetailsToSvc(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) error {
+	cd, err := getConnectionDetails(svc, comp)
 	if err != nil {
-		return nil, fmt.Errorf("could not get connection details: %w", err)
+		return fmt.Errorf("could not write connection details to svc: %w", err)
 	}
 
-	if len(cd) <= 0 {
-		return nil, fmt.Errorf("connection details not (yet) populated")
+	for k, v := range cd {
+		svc.SetConnectionDetail(k, v)
+	}
+
+	return nil
+}
+
+// Get CNPG cluster instances as reported by the connection details of the release
+func getClusterInstancesReportedByCd(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) ([]string, error) {
+	cd, err := getConnectionDetails(svc, comp)
+	if err != nil {
+		return nil, err
 	}
 
 	cdValue, exists := cd[ClusterInstanceCdField]
@@ -101,4 +122,17 @@ func getClusterInstancesReportedByCd(svc *runtime.ServiceRuntime, comp *vshnv1.V
 	trimmed = strings.Trim(trimmed, "[]")
 
 	return strings.Fields(trimmed), nil
+}
+
+func getConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (map[string][]byte, error) {
+	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName())
+	if err != nil {
+		return nil, fmt.Errorf("could not get connection details: %w", err)
+	}
+
+	if len(cd) <= 0 {
+		return nil, fmt.Errorf("connection details not (yet) populated")
+	}
+
+	return cd, nil
 }

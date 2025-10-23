@@ -35,6 +35,9 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 	}
 
 	log.Info("Adding secrets to composite")
+	// Whenever CNPG scales, new instances won't reuse a previous index.
+	// Therefore, it's important to check what instances the Cluster CR is currently reporting.
+	// We are proxying this information through the releases connection details in order to save on provider-kubernetes objects.
 	clusterInstances, err := getClusterInstancesReportedByCd(svc, comp)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot set up LUKS: %v", err))
@@ -53,7 +56,6 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		}
 	}
 
-	// Whenever the amount of instances changes, the Cluster CR will report the new instances in its status fields.
 	// As we proxy that info through the connection details, we'd have to wait up to an hour for crossplane to reconcile the CD.
 	// By comparing the amount of instances vs what is reported in the CD, we can force an earlier reconcilation by setting the release unready.
 	// Why not just use an observer? Because that would take more time and require us to use an evil object.

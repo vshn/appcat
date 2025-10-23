@@ -281,14 +281,24 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			return nil, err
 		}
 
+		sentinelTagMap := map[string]string{
+			"7": "7.2.5-debian-12-r5",
+			"6": "6.2.16-debian-12-r3",
+			"8": "8.2.1-debian-12-r0",
+		}
+
+		redisMajorVersion := comp.Spec.Parameters.Service.Version[0]
+
 		if err := common.SetNestedObjectValue(values, []string{"sentinel", "image"}, map[string]any{
 			"repository": fmt.Sprintf("%s/redis-sentinel", imageRepositoryPrefix),
+			"tag":        sentinelTagMap[string(redisMajorVersion)],
 		}); err != nil {
 			return nil, err
 		}
 
 		if err := common.SetNestedObjectValue(values, []string{"metrics", "image"}, map[string]any{
 			"repository": fmt.Sprintf("%s/redis-exporter", imageRepositoryPrefix),
+			"tag":        "1.76.0-debian-12-r0",
 		}); err != nil {
 			return nil, err
 		}

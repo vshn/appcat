@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -230,9 +231,34 @@ func (h *ImagePatcher) getVersions(imageURL string) (VersionLister, error) {
 func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, error) {
 	results := &RegistryResult{}
 
-	resp, err := h.httpClient.Get(imageURL)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access registry: %w", err)
+	resp := &http.Response{}
+
+	if strings.Contains(imageURL, "ghcr") {
+		token, err := h.getGHCRToken(imageURL)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get GHCR token: %w", err)
+		}
+
+		req, err := http.NewRequest("GET", imageURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("cannot build GHCR request: %w", err)
+		}
+
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+
+		tmpResp, err := h.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get GHCR image tags:%w", err)
+		}
+
+		resp = tmpResp
+
+	} else {
+		tmpResp, err := h.httpClient.Get(imageURL)
+		if err != nil {
+			return nil, fmt.Errorf("cannot access registry: %w", err)
+		}
+		resp = tmpResp
 	}
 
 	if resp.StatusCode != 200 {
@@ -240,12 +266,42 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 		return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(results)
+	err := json.NewDecoder(resp.Body).Decode(results)
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode docker registry results: %w", err)
 	}
 
 	return results, nil
+}
+
+func (h *ImagePatcher) getGHCRToken(imageURL string) (string, error) {
+	tokenURLTemplate := "https://ghcr.io/token?scope=repository:%s/%s:pull"
+
+	parsedURL, err := url.Parse(imageURL)
+	if err != nil {
+		return "", err
+	}
+
+	fullPath := parsedURL.Path
+
+	// /v2/repositories/$repo/$image/tags/list
+	splitPath := strings.Split(fullPath, "/")
+
+	tokenURL := fmt.Sprintf(tokenURLTemplate, splitPath[2], splitPath[3])
+
+	resp, err := h.httpClient.Get(tokenURL)
+	if err != nil {
+		return "", fmt.Errorf("cannot access registry: %w", err)
+	}
+
+	results := map[string]string{}
+
+	err = json.NewDecoder(resp.Body).Decode(&results)
+	if err != nil {
+		return "", fmt.Errorf("cannot decode docker registry results: %w", err)
+	}
+
+	return results["token"], nil
 }
 
 func (h *ImagePatcher) getHubVersions(imageURL string) (VersionLister, error) {

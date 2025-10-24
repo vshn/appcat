@@ -164,6 +164,14 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, err
 	}
 
+	tagMap := map[string]string{
+		"7": "7.2.11",
+		"6": "6.2.20",
+		"8": "8.0.4",
+	}
+
+	redisMajorVersion := string(comp.Spec.Parameters.Service.Version[0])
+
 	values := map[string]any{
 		"fullnameOverride": "redis",
 		"architecture":     "replication",
@@ -277,21 +285,14 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	if imageRepositoryPrefix := svc.Config.Data["imageRepositoryPrefix"]; imageRepositoryPrefix != "" {
 		if err := common.SetNestedObjectValue(values, []string{"image"}, map[string]any{
 			"repository": fmt.Sprintf("%s/redis", imageRepositoryPrefix),
+			"tag":        tagMap[redisMajorVersion],
 		}); err != nil {
 			return nil, err
 		}
 
-		sentinelTagMap := map[string]string{
-			"7": "7.2.11",
-			"6": "6.2.20",
-			"8": "8.0.4",
-		}
-
-		redisMajorVersion := comp.Spec.Parameters.Service.Version[0]
-
 		if err := common.SetNestedObjectValue(values, []string{"sentinel", "image"}, map[string]any{
 			"repository": fmt.Sprintf("%s/redis-sentinel", imageRepositoryPrefix),
-			"tag":        sentinelTagMap[string(redisMajorVersion)],
+			"tag":        tagMap[redisMajorVersion],
 		}); err != nil {
 			return nil, err
 		}

@@ -282,9 +282,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 
 		sentinelTagMap := map[string]string{
-			"7": "7.2.5-debian-12-r5",
-			"6": "6.2.16-debian-12-r3",
-			"8": "8.2.1-debian-12-r0",
+			"7": "7.2.11",
+			"6": "6.2.20",
+			"8": "8.0.4",
 		}
 
 		redisMajorVersion := comp.Spec.Parameters.Service.Version[0]

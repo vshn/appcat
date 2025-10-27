@@ -153,7 +153,10 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
 	}
 
-	var ownerRefOption func(obj *xkube.Object)
+	kubeOpts := []runtime.KubeObjectOption{
+		runtime.KubeOptionDeployOnControlPlane,
+		runtime.KubeOptionObserveCreateUpdate,
+	}
 	if err == nil {
 		// Create owner reference pointing to the Crossplane Object itself
 		ownerRef := metav1.OwnerReference{
@@ -164,14 +167,12 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 			Controller:         ptr.To(true),
 			BlockOwnerDeletion: ptr.To(false),
 		}
-		ownerRefOption = runtime.KubeOptionSetOwnerReferenceFromKubeObject(billingService, ownerRef)
+		kubeOpts = append(kubeOpts, runtime.KubeOptionSetOwnerReferenceFromKubeObject(billingService, ownerRef))
 	}
 
 	// Set the BillingService as a desired kube object
 	err = svc.SetDesiredKubeObject(billingService, observedResourceName,
-		runtime.KubeOptionDeployOnControlPlane,
-		runtime.KubeOptionObserveCreateUpdate,
-		ownerRefOption,
+		kubeOpts...,
 	)
 
 	if err != nil {

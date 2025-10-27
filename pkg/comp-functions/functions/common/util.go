@@ -1,7 +1,11 @@
 package common
 
 import (
+	"errors"
 	"fmt"
+
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // SetNestedObjectValue is necessary as unstructured can't handle anything except basic values and maps.
@@ -30,4 +34,17 @@ func SetNestedObjectValue(values map[string]interface{}, path []string, val inte
 	}
 
 	return SetNestedObjectValue(tmpVals, path[1:], val)
+}
+
+// ResourceExists checks if a resource exists in the observed state.
+// Returns true if the resource exists, false if it doesn't exist.
+func ResourceExists(svc *runtime.ServiceRuntime, obj client.Object, resourceName string) bool {
+	err := svc.GetObservedKubeObject(obj, resourceName)
+	if err != nil {
+		if errors.Is(err, runtime.ErrNotFound) {
+			return false
+		}
+		return false
+	}
+	return true
 }

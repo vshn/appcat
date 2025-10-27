@@ -4771,13 +4771,8 @@ spec:
                               - user
                             type: object
                           type: array
-                        dedicatedPatroniResources:
-                          default: false
-                          description: |-
-                            Set to true to reserve the specified CPU and memory exclusively for Patroni,
-                            with sidecar containers getting separate allocations.
-                            Leave as false (default) to let StackGres automatically distribute the
-                            specified resources across all containers.
+                        disableEnvoy:
+                          description: Disable envoy sidecar proxy
                           type: boolean
                         disablePgBouncer:
                           default: false

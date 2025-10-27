@@ -25,6 +25,10 @@ BIN_FILENAME ?= $(PROJECT_DIR)/appcat
 STACKGRES_VERSION ?= 1.14.2
 STACKGRES_CRD_URL ?= https://gitlab.com/ongresinc/stackgres/-/raw/${STACKGRES_VERSION}/stackgres-k8s/src/common/src/main/resources/crds
 
+## CNPG CRD
+CNPG_VERSION ?= 1.27.1
+CNPG_CRD_URL ?= https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v${CNPG_VERSION}/cnpg-${CNPG_VERSION}.yaml
+
 ## BUILD:go
 go_bin ?= $(PWD)/.work/bin
 $(go_bin):
@@ -71,7 +75,7 @@ protobuf-gen: $(protoc_bin)
 
 .PHONY: generate
 generate: export PATH := $(go_bin):$(PATH)
-generate:  get-crds generate-stackgres-crds protobuf-gen ## Generate code with controller-gen and protobuf.
+generate:  get-crds generate-stackgres-crds generate-cnpg-crds protobuf-gen ## Generate code with controller-gen and protobuf.
 	go version
 	rm -rf apis/generated
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="{./apis/v1/..., ./apis/vshn/..., ./apis/exoscale/..., ./apis/apiserver/..., ./apis/syntools/..., ./apis/codey/...}" object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
@@ -122,6 +126,19 @@ generate-stackgres-crds:
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1/...
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1beta1/...
 	rm apis/stackgres/v1/*_crd.yaml
+
+.PHONY: generate-cnpg-crds
+generate-cnpg-crds:
+	curl -L ${CNPG_CRD_URL} > apis/cnpg/v1/all_crd.yaml
+
+    # Image Catalogs
+	cat apis/cnpg/v1/all_crd.yaml | yq 'select(.kind == "CustomResourceDefinition") | select(.metadata.name == "imagecatalogs.postgresql.cnpg.io")' > apis/cnpg/v1/imagecatalogs_crd.yaml
+	yq -i e apis/cnpg/v1/imagecatalogs.yaml --expression ".components.schemas.ImageCatalogSpec=load(\"apis/cnpg/v1/imagecatalogs_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/cnpg/v1/imagecatalogs.gen.go apis/cnpg/v1/imagecatalogs.yaml
+	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/cnpg/v1/imagecatalogs.gen.go
+
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/cnpg/v1/...
+	rm apis/cnpg/v1/*_crd.yaml
 
 .PHONY: generate-with-diff-check
 generate-with-diff-check: generate ## Generate code with controller-gen and diff check

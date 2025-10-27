@@ -30,6 +30,9 @@ const (
 	mariadbPort = "3306"
 	mariadbUser = "root"
 	extraConfig = "extra.cnf"
+	vshnConfig  = "extra-vshn.cnf"
+	// Default VSHN MariaDB configuration for character set and collation
+	defaultVSHNSettings = "[mysqld]\ncharacter-set-server=utf8mb4\ncollation-server=utf8mb4_unicode_ci\n"
 )
 
 // DeployMariadb will deploy the objects to provision mariadb instance
@@ -96,10 +99,10 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Errorf("cannot get connection details: %w", err).Error())
 	}
 
-	l.Info("Observe default release secret in case of custom MariaDB settings")
-	if rSecretValues := getReleaseSecretValue(svc, comp); len(rSecretValues) > 0 && comp.Spec.Parameters.Service.MariadbSettings != "" {
+	l.Info("Manage MariaDB configuration settings")
+	if rSecretValues := getReleaseSecretValue(svc, comp); len(rSecretValues) > 0 {
 		if err = manageCustomDBSettings(svc, comp, rSecretValues); err != nil {
-			return runtime.NewWarningResult(fmt.Errorf("cannot set custom MariaDB settings: %w", err).Error())
+			return runtime.NewWarningResult(fmt.Errorf("cannot manage MariaDB settings: %w", err).Error())
 		}
 	}
 
@@ -186,9 +189,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"allowInsecureImages": true,
 			},
 		},
-		"existingSecret":   secretName,
-		"fullnameOverride": comp.GetName(),
-		"replicaCount":     comp.GetInstances(),
+		"existingSecret":       secretName,
+		"fullnameOverride":     comp.GetName(),
+		"replicaCount":         comp.GetInstances(),
+		"mariadbConfiguration": defaultVSHNSettings,
 		"resources": map[string]interface{}{
 			"requests": map[string]interface{}{
 				"memory": res.ReqMem.String(),
@@ -309,16 +313,27 @@ func getReleaseVersion(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) st
 	}
 }
 
-// createUserSettingsConfigMap create a config map from the custom customer MariaDB settings
-func createUserSettingsConfigMap(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) error {
+// createMariaDBSettingsConfigMap creates a single config map with both VSHN defaults and user settings
+func createMariaDBSettingsConfigMap(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) error {
+	configData := map[string]string{
+		vshnConfig: defaultVSHNSettings, // Always include VSHN defaults
+	}
+
+	// Add user settings or set to empty string to clear stale data
+	// Crossplane's Kubernetes provider uses server-side apply which doesn't remove omitted keys.
+	// Setting to empty string ensures stale user settings are cleared from the ConfigMap.
+	if comp.Spec.Parameters.Service.MariadbSettings != "" {
+		configData[extraConfig] = "[mysqld]\n" + comp.Spec.Parameters.Service.MariadbSettings
+	} else {
+		configData[extraConfig] = ""
+	}
+
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-extra-mariadb-settings",
 			Namespace: comp.Status.InstanceNamespace,
 		},
-		Data: map[string]string{
-			extraConfig: "[mysqld]\n" + comp.Spec.Parameters.Service.MariadbSettings,
-		},
+		Data: configData,
 	}
 
 	return svc.SetDesiredKubeObject(cm, comp.GetName()+"-extra-mariadb-settings")
@@ -326,12 +341,13 @@ func createUserSettingsConfigMap(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNM
 
 // manageCustomDBSettings will manage custom MariaDB Settings set by the user.
 // User settings cannot override the existing MariaDB settings for Galera but can complement it.
-// To manage the MariaDB settings first we observe the release secret which has the Helm default settings for Galera.
-// Then we explicitly set the default settings with the custom settings provided by the customer via include directive
+// To manage the MariaDB settings we observe the release secret which has the Bitnami Helm default settings for Galera.
+// Then we add VSHN utf8mb4 defaults, and finally the custom settings provided by the customer via include directives
 func manageCustomDBSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB, rSecretValues []byte) error {
-	if err := createUserSettingsConfigMap(svc, comp); err != nil {
-		return fmt.Errorf("cannot create mariadb user settings config map: %w", err)
+	if err := createMariaDBSettingsConfigMap(svc, comp); err != nil {
+		return fmt.Errorf("cannot create mariadb settings config map: %w", err)
 	}
+
 	decodedSecretValues, err := base64.StdEncoding.DecodeString(string(rSecretValues))
 	if err != nil {
 		return fmt.Errorf("cannot decode release secret: %w", err)
@@ -345,7 +361,8 @@ func manageCustomDBSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaD
 		return fmt.Errorf("cannot extract current default mariadb settings from release: %w", err)
 	}
 
-	adjustedSettings := adjustSettings(settings)
+	hasUserSettings := comp.Spec.Parameters.Service.MariadbSettings != ""
+	adjustedSettings := adjustSettings(settings, hasUserSettings)
 
 	r := &xhelmbeta1.Release{}
 	err = svc.GetDesiredComposedResourceByName(r, comp.GetName()+"-release")
@@ -359,40 +376,71 @@ func manageCustomDBSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaD
 		return fmt.Errorf("cannot unmarshall release values: %w", err)
 	}
 
-	// reset default settings with include directive
-	err = unstructured.SetNestedField(values, adjustedSettings, "mariadbConfiguration")
-	if err != nil {
+	if err = unstructured.SetNestedField(values, adjustedSettings, "mariadbConfiguration"); err != nil {
 		return fmt.Errorf("cannot set updated mariadb settings: %w", err)
 	}
-	// set extra volume for custom user settings
+
 	vm := []interface{}{
 		corev1.VolumeMount{
+			Name:      "vshn-conf",
+			MountPath: "/bitnami/conf/" + vshnConfig,
+			SubPath:   vshnConfig,
+		},
+	}
+
+	if hasUserSettings {
+		vm = append(vm, corev1.VolumeMount{
 			Name:      "extra-conf",
 			MountPath: "/bitnami/conf/" + extraConfig,
 			SubPath:   extraConfig,
-		},
+		})
 	}
-	err = common.SetNestedObjectValue(values, []string{"extraVolumeMounts"}, vm)
-	if err != nil {
+
+	if err = common.SetNestedObjectValue(values, []string{"extraVolumeMounts"}, vm); err != nil {
 		return fmt.Errorf("cannot set extraVolumeMounts in release: %w", err)
 	}
 
-	// configure extra volume for custom user settings
 	v := []interface{}{
 		corev1.Volume{
-			Name: "extra-conf",
+			Name: "vshn-conf",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: comp.GetName() + "-extra-mariadb-settings",
+					},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  vshnConfig,
+							Path: vshnConfig,
+						},
 					},
 					DefaultMode: ptr.To(int32(420)),
 				},
 			},
 		},
 	}
-	err = common.SetNestedObjectValue(values, []string{"extraVolumes"}, v)
-	if err != nil {
+
+	if hasUserSettings {
+		v = append(v, corev1.Volume{
+			Name: "extra-conf",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: comp.GetName() + "-extra-mariadb-settings",
+					},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  extraConfig,
+							Path: extraConfig,
+						},
+					},
+					DefaultMode: ptr.To(int32(420)),
+				},
+			},
+		})
+	}
+
+	if err = common.SetNestedObjectValue(values, []string{"extraVolumes"}, v); err != nil {
 		return fmt.Errorf("cannot set extraVolumes in release: %w", err)
 	}
 
@@ -402,31 +450,34 @@ func manageCustomDBSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaD
 	}
 	r.Spec.ForProvider.Values.Raw = marshalledValues
 
-	err = svc.SetDesiredComposedResourceWithName(r, comp.Name+"-release")
-	if err != nil {
-		return fmt.Errorf("cannot set desired release: %w", err)
+	return svc.SetDesiredComposedResourceWithName(r, comp.Name+"-release")
+}
+
+// adjustSettings adds the VSHN config and optionally user extra configuration files to the Bitnami defaults
+// Order: Bitnami defaults -> extra-vshn.cnf (VSHN utf8mb4 settings) -> extra.cnf (user settings, if present)
+func adjustSettings(settings string, hasUserSettings bool) string {
+	result := settings + "\n" + "!include /bitnami/conf/" + vshnConfig
+
+	if hasUserSettings {
+		result += "\n" + "!include /bitnami/conf/" + extraConfig
 	}
-	return nil
+
+	return result
 }
 
-// adjustSettings adds the extra configuration file to the default configuration file
-func adjustSettings(settings string) string {
-	return settings + "\n" + "!include /bitnami/conf/" + extraConfig
-}
-
-// extractDefaultSettings get the default settings of the Helm Chart
+// extractDefaultSettings get the default settings from the Bitnami Helm Chart
 func extractDefaultSettings(releaseConfig string) (string, error) {
 	var releaseConfigObj map[string]interface{}
 	if err := json.Unmarshal([]byte(releaseConfig), &releaseConfigObj); err != nil {
 		return "", fmt.Errorf("cannot unmarshall release config: %w", err)
 	}
 
-	defaultMariadbSettings, _, err := unstructured.NestedString(releaseConfigObj, "chart", "values", "mariadbConfiguration")
+	defaultBitnamiSettings, _, err := unstructured.NestedString(releaseConfigObj, "chart", "values", "mariadbConfiguration")
 	if err != nil {
-		return "", fmt.Errorf("cannot extract default mariadb settings: %w", err)
+		return "", fmt.Errorf("cannot extract default Bitnami settings: %w", err)
 	}
 
-	return defaultMariadbSettings, nil
+	return defaultBitnamiSettings, nil
 }
 
 func unzip(source string) (string, error) {

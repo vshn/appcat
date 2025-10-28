@@ -75,7 +75,7 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 	}
 
 	icName := instanceCluster.Spec.ImageCatalogRef.Name
-	imageCatalog, err := p.getImageCatalogInUseByCluster(ctx, icName)
+	imageCatalog, err := p.getImageCatalog(ctx, icName)
 	if err != nil {
 		return fmt.Errorf("couldn't get image catalog '%s': %w", icName, err)
 	}
@@ -96,8 +96,8 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 	}
 
 	// EOL
-	p.log.Info("Determining EOL...")
 	if isEol := p.isEOL(claim.Spec.Parameters.Service.MajorVersion, versionList); isEol {
+		p.log.Info("Setting EOL on calim")
 		if err := p.setEOLStatus(ctx); err != nil {
 			return fmt.Errorf("couldn't set EOL status on claim: %w", err)
 		}
@@ -117,6 +117,7 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 		}
 	}
 
+	p.log.Info("Instance maintenance is done")
 	return nil
 }
 
@@ -193,6 +194,7 @@ func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog) (boo
 			return false, fmt.Errorf("couldn't get latest minor version: %w", err)
 		}
 
+		p.log.Info("Comparing latest version vs this version", "thisVersion", thisVersion, "newVersion", version)
 		if thisVersion != version {
 			haveMadeChanges = true
 			result := fmt.Sprintf("%s:%s", vshnpostgrescnpg.PsqlContainerRegistry, version)
@@ -231,9 +233,9 @@ func (p *PostgreSQLCNPG) getConnectionUri(ctx context.Context) (string, error) {
 	return uri, nil
 }
 
-func (p *PostgreSQLCNPG) getImageCatalogInUseByCluster(ctx context.Context, which string) (*cnpgv1.ImageCatalog, error) {
+func (p *PostgreSQLCNPG) getImageCatalog(ctx context.Context, name string) (*cnpgv1.ImageCatalog, error) {
 	imageCatalog := &cnpgv1.ImageCatalog{}
-	err := p.k8sClient.Get(ctx, client.ObjectKey{Namespace: p.instanceNamespace, Name: which}, imageCatalog)
+	err := p.k8sClient.Get(ctx, client.ObjectKey{Namespace: p.instanceNamespace, Name: name}, imageCatalog)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +287,6 @@ func (p *PostgreSQLCNPG) getLatestMinorVersion(vers string, versionList []string
 	for _, newVersion := range versionList {
 		tmpVersion, err := version.NewVersion(newVersion)
 		if err != nil {
-			p.log.Info("DEBUG: version string was not processed", "version", newVersion, "error", err.Error())
 			continue
 		}
 		if tmpVersion.Segments()[0] == current.Segments()[0] {

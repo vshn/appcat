@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	psqlContainerRegistry = "ghcr.io/cloudnative-pg/postgresql"
+	PsqlContainerRegistry = "ghcr.io/cloudnative-pg/postgresql"
 	certificateSecretName = "tls-certificate"
 	namespaceResName      = "namespace-conditions"
 	encryptedPvcSc        = "ssd-encrypted"
@@ -337,5 +337,5 @@ func getPsqlImage(version string) string {
 		version = after
 	}
 
-	return psqlContainerRegistry + ":" + version
+	return PsqlContainerRegistry + ":" + version
 }

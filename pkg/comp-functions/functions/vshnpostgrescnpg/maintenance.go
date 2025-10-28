@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +25,7 @@ var (
 			},
 			Resources: []string{
 				"imagecatalogs",
+				"clusters",
 			},
 			Verbs: []string{
 				"delete",
@@ -36,10 +37,10 @@ var (
 		},
 		{
 			APIGroups: []string{
-				"postgresql.cnpg.io",
+				"",
 			},
 			Resources: []string{
-				"clusters",
+				"secrets",
 			},
 			Verbs: []string{
 				"get",
@@ -48,7 +49,6 @@ var (
 			},
 		},
 	}
-
 	extraEnvVars = []corev1.EnvVar{}
 )
 
@@ -59,27 +59,14 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
+	common.SetRandomMaintenanceSchedule(comp)
 	instanceNamespace := comp.GetInstanceNamespace()
 	schedule := comp.GetFullMaintenanceSchedule()
-
-	cd, err := getConnectionDetails(svc, comp)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot set up maintenance yet: %v", err.Error()))
-	}
-
-	uri := string(cd["POSTGRESQL_URL"])
-	if strings.HasSuffix(uri, "*") {
-		uri = fmt.Sprintf("%s%s", strings.TrimSuffix(uri, "*"), string(cd["POSTGRESQL_DB"]))
-	}
 
 	additionalVars := append(extraEnvVars, []corev1.EnvVar{
 		{
 			Name:  "VACUUM_ENABLED",
 			Value: strconv.FormatBool(comp.Spec.Parameters.Service.VacuumEnabled),
-		},
-		{
-			Name:  "PSQL_URI",
-			Value: uri,
 		},
 	}...)
 
@@ -88,6 +75,5 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		WithAdditionalClusterRoleBinding(fmt.Sprintf("%s:%s", maintRolename, comp.GetName())).
 		WithPolicyRules(policyRules).
 		WithExtraEnvs(additionalVars...).
-		//WithExtraResources(createMaintenanceSecret(instanceNamespace, sgNamespace, comp.GetName()+"-maintenance-secret", comp.GetName())).
 		Run(ctx)
 }

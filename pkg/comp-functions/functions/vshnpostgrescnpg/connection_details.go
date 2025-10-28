@@ -124,7 +124,8 @@ func getClusterInstancesReportedByCd(svc *runtime.ServiceRuntime, comp *vshnv1.V
 	return strings.Fields(trimmed), nil
 }
 
-func getConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) ([]string, error) {
+// Get connection details from CNPG release
+func getConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (map[string][]byte, error) {
 	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName())
 	if err != nil {
 		return nil, fmt.Errorf("could not get connection details: %w", err)

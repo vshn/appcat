@@ -236,8 +236,10 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 		return nil, fmt.Errorf("cannot access registry: %w", err)
 	}
 
+	defer resp.Body.Close()
+
 	// if we're not allowed, let's try with a token
-	if resp.StatusCode == 401 {
+	if resp.StatusCode == http.StatusUnauthorized {
 		authResp, err := h.listTagsWithToken(imageURL, resp.Header.Get("www-authenticate"))
 		if err != nil {
 			return nil, fmt.Errorf("cannot list tags with token: %w", err)
@@ -246,7 +248,7 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 		resp = authResp
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
 	}
@@ -262,9 +264,9 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 // If the registry requires a token, but no authentication, then it will write the means how to
 // get said token via the `www-authenticate` header in the response
 func (h *ImagePatcher) listTagsWithToken(imageURL string, authHeader string) (*http.Response, error) {
-	token, err := h.getToken(imageURL, authHeader)
+	token, err := h.getToken(authHeader)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get GHCR token: %w", err)
+		return nil, fmt.Errorf("cannot get token: %w", err)
 	}
 
 	req, err := http.NewRequest("GET", imageURL, nil)
@@ -282,7 +284,7 @@ func (h *ImagePatcher) listTagsWithToken(imageURL string, authHeader string) (*h
 	return resp, nil
 }
 
-func (h *ImagePatcher) getToken(imageURL string, authHeader string) (string, error) {
+func (h *ImagePatcher) getToken(authHeader string) (string, error) {
 
 	realmRegex := regexp.MustCompile(`realm="(.*?)"`)
 	scopeRegex := regexp.MustCompile(`scope="(.*?)"`)

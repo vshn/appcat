@@ -22,6 +22,8 @@ var (
 
 func init() {
 	SchemeBuilder.Register(
+		&Cluster{},
+		&ClusterList{},
 		&ImageCatalog{},
 		&ImageCatalogList{},
 	)

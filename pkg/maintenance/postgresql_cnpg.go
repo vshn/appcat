@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/jackc/pgx/v5"
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgrescnpg"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
@@ -38,6 +39,7 @@ type PostgreSQLCNPG struct {
 	claimNamespace    string
 	claimName         string
 	vacuum            string
+	psqlUri           string
 	//repack          unavailable
 }
 
@@ -53,6 +55,7 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 		claimNamespace:    viper.GetString("CLAIM_NAMESPACE"),
 		claimName:         viper.GetString("CLAIM_NAME"),
 		vacuum:            viper.GetString("VACUUM_ENABLED"),
+		psqlUri:           viper.GetString("PSQL_URI"),
 	}
 }
 
@@ -127,13 +130,69 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 		}
 	}
 
-	//if p.vacuum == "true" {
-	//	p.log.Info("Vacuuming databases...")
-	//	err = p.createVacuum(ctx, sgCluster.GetName())
-	//	if err != nil {
-	//		return fmt.Errorf("cannot create vacuum: %v", err)
-	//	}
-	//}
+	if p.vacuum == "true" {
+		p.log.Info("Vacuuming databases...")
+		err = p.doVacuum(ctx)
+		if err != nil {
+			return fmt.Errorf("vacuum failed: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func (p *PostgreSQLCNPG) doVacuum(ctx context.Context) error {
+	if p.psqlUri == "" {
+		return fmt.Errorf("no 'PSQL_URI' set")
+	}
+
+	conn, err := pgx.Connect(context.Background(), p.psqlUri)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer conn.Close(ctx)
+
+	rows, err := conn.Query(ctx, "SELECT datname FROM pg_database WHERE datistemplate = false AND datallowconn = true")
+	if err != nil {
+		return fmt.Errorf("failed to list databases: %w", err)
+	}
+	defer rows.Close()
+
+	var dbs []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return fmt.Errorf("failed to scan database name: %w", err)
+		}
+		dbs = append(dbs, name)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("error iterating database rows: %w", err)
+	}
+
+	for _, db := range dbs {
+		p.log.Info("Vacuuming database...", "database", db)
+
+		cfg, err := pgx.ParseConfig(p.psqlUri)
+		if err != nil {
+			return fmt.Errorf("failed to parse psql uri: %w", err)
+		}
+		cfg.Database = db
+
+		dbConn, err := pgx.ConnectConfig(context.Background(), cfg)
+		if err != nil {
+			return fmt.Errorf("failed to connect to database %s: %w", db, err)
+		}
+
+		if _, err := dbConn.Exec(ctx, "VACUUM"); err != nil {
+			_ = dbConn.Close(ctx)
+			return fmt.Errorf("failed to execute VACUUM on %s: %w", db, err)
+		}
+
+		if err := dbConn.Close(ctx); err != nil {
+			p.log.Info("warning: failed to close connection", "database", db, "err", err)
+		}
+	}
 
 	return nil
 }

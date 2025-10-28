@@ -25,11 +25,25 @@ var (
 			},
 			Resources: []string{
 				"imagecatalogs",
-				"clusters",
 			},
 			Verbs: []string{
 				"delete",
 				"create",
+				"update",
+				"patch",
+				"get",
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"postgresql.cnpg.io",
+			},
+			Resources: []string{
+				"clusters",
+			},
+			Verbs: []string{
 				"get",
 				"list",
 				"watch",

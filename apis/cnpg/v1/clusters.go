@@ -16,6 +16,9 @@ type Cluster struct {
 
 	// Spec defines the desired state of a Cluster.
 	Spec ClusterSpec `json:"spec"`
+
+	// Status defines the status of a Cluster.
+	Status ClusterStatus `json:"status"`
 }
 
 // +kubebuilder:object:root=true
@@ -55,4 +58,9 @@ type ClusterSpecImageCatalogRef struct {
 
 	// Name is the name of resource being referenced
 	Name string `json:"name"`
+}
+
+type ClusterStatus struct {
+	Instances      int `json:"instances"`
+	ReadyInstances int `json:"readyInstances"`
 }

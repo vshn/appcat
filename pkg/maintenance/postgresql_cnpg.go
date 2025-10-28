@@ -20,6 +20,7 @@ import (
 	"github.com/go-logr/logr"
 	cnpgv1 "github.com/vshn/appcat/v4/apis/cnpg/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -39,7 +40,6 @@ type PostgreSQLCNPG struct {
 	claimNamespace    string
 	claimName         string
 	vacuum            string
-	psqlUri           string
 	//repack          unavailable
 }
 
@@ -55,7 +55,6 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 		claimNamespace:    viper.GetString("CLAIM_NAMESPACE"),
 		claimName:         viper.GetString("CLAIM_NAME"),
 		vacuum:            viper.GetString("VACUUM_ENABLED"),
-		psqlUri:           viper.GetString("PSQL_URI"),
 	}
 }
 
@@ -132,6 +131,11 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 
 	if p.vacuum == "true" {
 		p.log.Info("Vacuuming databases...")
+
+		if claimCluster.Status.ReadyInstances == 0 {
+			return fmt.Errorf("claim cluster reports no ready instances")
+		}
+
 		err = p.doVacuum(ctx)
 		if err != nil {
 			return fmt.Errorf("vacuum failed: %v", err)
@@ -142,11 +146,12 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 }
 
 func (p *PostgreSQLCNPG) doVacuum(ctx context.Context) error {
-	if p.psqlUri == "" {
-		return fmt.Errorf("no 'PSQL_URI' set")
+	uri, err := p.getConnectionUri(ctx)
+	if err != nil {
+		return fmt.Errorf("couldn't get psql connection uri: %w", err)
 	}
 
-	conn, err := pgx.Connect(context.Background(), p.psqlUri)
+	conn, err := pgx.Connect(context.Background(), uri)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -173,7 +178,7 @@ func (p *PostgreSQLCNPG) doVacuum(ctx context.Context) error {
 	for _, db := range dbs {
 		p.log.Info("Vacuuming database...", "database", db)
 
-		cfg, err := pgx.ParseConfig(p.psqlUri)
+		cfg, err := pgx.ParseConfig(uri)
 		if err != nil {
 			return fmt.Errorf("failed to parse psql uri: %w", err)
 		}
@@ -222,6 +227,33 @@ func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog) (boo
 	}
 
 	return haveMadeChanges, nil
+}
+
+// Get PSQL connection URI directly from the connection secret
+func (p *PostgreSQLCNPG) getConnectionUri(ctx context.Context) (string, error) {
+	secret := &corev1.Secret{}
+	secretName := p.claimName + "-connection"
+	if err := p.k8sClient.Get(ctx, client.ObjectKey{
+		Namespace: p.instanceNamespace,
+		Name:      secretName,
+	}, secret); err != nil {
+		return "", fmt.Errorf("couldn't get secret '%s': %w", secretName, err)
+	}
+
+	uri := string(secret.Data[vshnpostgrescnpg.PostgresqlURL])
+	if uri == "" {
+		return "", fmt.Errorf("connection secret has empty '%s", vshnpostgrescnpg.PostgresqlURL)
+	}
+
+	if strings.HasSuffix(uri, "*") {
+		db := string(secret.Data[vshnpostgrescnpg.PostgresqlDb])
+		if db == "" {
+			return "", fmt.Errorf("connection secret has empty '%s'", vshnpostgrescnpg.PostgresqlDb)
+		}
+		uri = fmt.Sprintf("%s%s", strings.TrimSuffix(uri, "*"), db)
+	}
+
+	return uri, nil
 }
 
 func (p *PostgreSQLCNPG) listImageCatalogsInNamespace(ctx context.Context) (*cnpgv1.ImageCatalogList, error) {

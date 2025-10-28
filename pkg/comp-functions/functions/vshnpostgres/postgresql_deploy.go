@@ -469,7 +469,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 					Size: res.Disk.String(),
 				},
 				Resources: &sgv1.SGClusterSpecPodsResources{
-					DisableResourcesRequestsSplitFromTotal: ptr.To(true),
+					DisableResourcesRequestsSplitFromTotal: ptr.To(comp.Spec.Parameters.Service.DedicatedPatroniResources),
 					EnableClusterLimitsRequirements:        ptr.To(true),
 				},
 				Scheduling: &sgv1.SGClusterSpecPodsScheduling{

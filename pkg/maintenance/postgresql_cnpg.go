@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -188,7 +189,7 @@ func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog) (boo
 	versions := v.GetVersions()
 	for i, image := range ic.Spec.Images {
 		thisVersion := strings.Split(image.Image, ":")[1]
-		version, err := getLatestMinorVersion(thisVersion, versions)
+		version, err := p.getLatestMinorVersion(thisVersion, versions)
 		if err != nil {
 			return false, fmt.Errorf("couldn't get latest minor version: %w", err)
 		}
@@ -271,7 +272,11 @@ func (p *PostgreSQLCNPG) setEOLStatus(ctx context.Context) error {
 }
 
 // getLatestMinorVersion determines the most current minor version
-func getLatestMinorVersion(vers string, versionList []string) (string, error) {
+func (p *PostgreSQLCNPG) getLatestMinorVersion(vers string, versionList []string) (string, error) {
+	// The psql registry contains a few labels that can trip up version.NewVersion.
+	// This regex ensures a pure PSQL version.
+	re := regexp.MustCompile(`^\d+\\.\d+\.\d+$`)
+
 	if len(versionList) == 0 {
 		return vers, nil
 	}
@@ -283,6 +288,11 @@ func getLatestMinorVersion(vers string, versionList []string) (string, error) {
 
 	validVersions := make([]*version.Version, 0)
 	for _, newVersion := range versionList {
+		if !re.MatchString(newVersion) {
+			p.log.Info("DEBUG: version string did not pass regex", "version", newVersion)
+			continue
+		}
+
 		tmpVersion, err := version.NewVersion(newVersion)
 		if err != nil {
 			return "", err

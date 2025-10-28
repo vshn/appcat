@@ -131,6 +131,18 @@ generate-stackgres-crds:
 generate-cnpg-crds:
 	curl -L ${CNPG_CRD_URL} > apis/cnpg/v1/all_crd.yaml
 
+    # Clusters - Broken, but still kept for reference
+	#cat apis/cnpg/v1/all_crd.yaml | yq 'select(.kind == "CustomResourceDefinition") | select(.metadata.name == "clusters.postgresql.cnpg.io")' > apis/cnpg/v1/clusters_crd.yaml
+	#yq -i e apis/cnpg/v1/clusters.yaml --expression ".components.schemas.ClusterSpec=load(\"apis/cnpg/v1/clusters_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	#go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/cnpg/v1/clusters.gen.go apis/cnpg/v1/clusters.yaml
+	#perl -i -0pe '
+	#s/\*struct\s\{\n\s+AdditionalProperties\smap\[string\]string\s`json:"-"`\n\s+\}/map\[string\]string/gms;
+	#s/\*struct\s\{\n\s+AdditionalProperties\smap\[string\]\[\]string\s`json:"-"`\n\s+\}/map\[string\]\[\]string/gms;
+	#s/\*struct\s\{\n\s+AdditionalProperties\smap\[string\]time\.Time\s`json:"-"`\n\s+\}/map\[string\]time\.Time/gms;
+	#s/\*struct\s\{\n\s+AdditionalProperties\s(map\[string\]struct\s\{[\s\S]*?\})\s`json:"-"`\n\s+\}/\1/gms;
+	#s/\*struct\s\{\n\s+AdditionalProperties\smap\[string\]struct\s\{\n\s+AdditionalProperties\s(map\[string\][^\s`]+)\s`json:"-"`\n\s+\}\s`json:"-"`\n\s+\}/map\[string\]\1/gms;
+	#' apis/cnpg/v1/clusters.gen.go
+
     # Image Catalogs
 	cat apis/cnpg/v1/all_crd.yaml | yq 'select(.kind == "CustomResourceDefinition") | select(.metadata.name == "imagecatalogs.postgresql.cnpg.io")' > apis/cnpg/v1/imagecatalogs_crd.yaml
 	yq -i e apis/cnpg/v1/imagecatalogs.yaml --expression ".components.schemas.ImageCatalogSpec=load(\"apis/cnpg/v1/imagecatalogs_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"

@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	apiUrl = "https://ghcr.io/v2/cloudnative-pg/postgresql/tags/list"
+	apiUrl = "https://ghcr.io/v2/cloudnative-pg/postgresql/tags/list?n=1000"
 )
 
 // PostgreSQLCNPG handles the maintenance of postgresql services
@@ -105,7 +105,7 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 
 	// Vacuum
 	if p.vacuum == "true" {
-		p.log.Info("Vacuuming databases...")
+		p.log.Info("Starting vacuum")
 
 		if instanceCluster.Status.ReadyInstances == 0 {
 			return fmt.Errorf("instance cluster reports no ready instances")
@@ -187,6 +187,7 @@ func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog) (boo
 
 	var haveMadeChanges bool
 	versions := v.GetVersions()
+
 	for i, image := range ic.Spec.Images {
 		thisVersion := strings.Split(image.Image, ":")[1]
 		version, err := p.getLatestMinorVersion(thisVersion, versions)
@@ -194,11 +195,10 @@ func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog) (boo
 			return false, fmt.Errorf("couldn't get latest minor version: %w", err)
 		}
 
-		p.log.Info("Comparing latest version vs this version", "thisVersion", thisVersion, "newVersion", version)
 		if thisVersion != version {
 			haveMadeChanges = true
 			result := fmt.Sprintf("%s:%s", vshnpostgrescnpg.PsqlContainerRegistry, version)
-			p.log.Info("Setting new version", "newVersion", version, "origImage", image.Image, "newImage", result, "major", image.Major)
+			p.log.Info("Setting new version", "major", image.Major, "oldVersion", thisVersion, "newVersion", version, "oldImage", image.Image, "newImage", result)
 			ic.Spec.Images[i].Image = result
 		}
 	}
@@ -303,8 +303,9 @@ func (p *PostgreSQLCNPG) getLatestMinorVersion(vers string, versionList []string
 	return current.Original(), nil
 }
 
-// Temp
+// Temp AI slop func
 func (p *PostgreSQLCNPG) getRegistryVersions(imageURL string) (helm.VersionLister, error) {
+	p.log.Info("Retrieving registry tags...", "imageURL", imageURL)
 	results := &helm.RegistryResult{}
 
 	token, err := getGhcrToken()
@@ -325,11 +326,80 @@ func (p *PostgreSQLCNPG) getRegistryVersions(imageURL string) (helm.VersionListe
 		return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(results)
-	if err != nil {
-		return nil, fmt.Errorf("cannot decode registry results: %w", err)
+	// handle possible pagination via Link header
+	nextURL := imageURL
+	for nextURL != "" {
+		req, _ := http.NewRequest("GET", nextURL, nil)
+		req.Header.Add("Authorization", "Bearer "+token)
+
+		resp, err := p.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("cannot access registry: %w", err)
+		}
+
+		if resp.StatusCode != 200 {
+			b, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
+		}
+
+		var page helm.RegistryResult
+		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("cannot decode registry results: %w", err)
+		}
+		// close body for this page
+		resp.Body.Close()
+
+		// merge page results into cumulative results
+		// assume Tags is the field containing versions (matches registry /tags/list)
+		results.Tags = append(results.Tags, page.Tags...)
+
+		// parse Link header for next page
+		linkHdr := resp.Header.Get("Link")
+		nextURL = ""
+		if linkHdr != "" {
+			parts := strings.Split(linkHdr, ",")
+			for _, part := range parts {
+				part = strings.TrimSpace(part)
+				// split into "<url>" and "rel=..."
+				seg := strings.SplitN(part, ";", 2)
+				if len(seg) < 2 {
+					continue
+				}
+				urlPart := strings.Trim(seg[0], " <>")
+				relPart := strings.TrimSpace(seg[1])
+				if strings.Contains(relPart, `rel="next"`) {
+					// make URL absolute if it's relative
+					if strings.HasPrefix(urlPart, "/") {
+						// derive scheme and host from the original imageURL
+						parts := strings.SplitN(imageURL, "://", 2)
+						if len(parts) == 2 {
+							scheme := parts[0]
+							rest := parts[1]
+							host := strings.SplitN(rest, "/", 2)[0]
+							urlPart = scheme + "://" + host + urlPart
+						} else {
+							urlPart = "https://" + strings.TrimPrefix(urlPart, "/")
+						}
+					} else if !strings.HasPrefix(urlPart, "http") {
+						// best-effort: prefix host if missing
+						parts := strings.SplitN(imageURL, "://", 2)
+						if len(parts) == 2 {
+							scheme := parts[0]
+							rest := parts[1]
+							host := strings.SplitN(rest, "/", 2)[0]
+							urlPart = scheme + "://" + host + "/" + strings.TrimLeft(urlPart, "/")
+						}
+					}
+					nextURL = urlPart
+					break
+				}
+			}
+		}
 	}
 
+	p.log.Info("Done retrieving registry tags", "tags", len(results.Tags))
 	return results, nil
 }
 

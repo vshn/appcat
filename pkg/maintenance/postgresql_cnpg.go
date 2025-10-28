@@ -39,6 +39,7 @@ type PostgreSQLCNPG struct {
 	instanceNamespace string
 	claimNamespace    string
 	claimName         string
+	compName          string
 	vacuum            string
 	//repack          unavailable
 }
@@ -54,6 +55,7 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 		instanceNamespace: viper.GetString("INSTANCE_NAMESPACE"),
 		claimNamespace:    viper.GetString("CLAIM_NAMESPACE"),
 		claimName:         viper.GetString("CLAIM_NAME"),
+		compName:          viper.GetString("COMPOSITE_NAME"),
 		vacuum:            viper.GetString("VACUUM_ENABLED"),
 	}
 }
@@ -62,66 +64,38 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 	p.log.Info("Starting maintenance on postgresql instance")
 
-	imageCatalogs, err := p.listImageCatalogsInNamespace(ctx)
-	if err != nil {
-		return err
-	}
-	if len(imageCatalogs.Items) == 0 {
-		p.log.Info("No image catalogs found in namespace, skipping maintenance")
-		return nil
-	}
-
-	clusters, err := p.listClustersInNamespace(ctx)
-	if err != nil {
-		return err
-	}
-	if len(clusters.Items) == 0 {
-		p.log.Info("No clusters found in namespace, skipping maintenance")
-		return nil
-	}
-
 	claim := &vshnv1.VSHNPostgreSQL{}
-	if err = p.k8sClient.Get(ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim); err != nil {
+	if err := p.k8sClient.Get(ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim); err != nil {
 		return fmt.Errorf("couldn't get claim: %w", err)
 	}
 
-	// Get specifically our cluster
-	claimCluster := cnpgv1.Cluster{}
-	for _, cluster := range clusters.Items {
-		verdict := cluster.Name == claim.GetName()+"-cluster"
-		p.log.Info("processing cluster", "clusterName", cluster.Name, "verdict", verdict)
-		if verdict {
-			claimCluster = cluster
-			break
-		}
+	instanceCluster, err := p.getCompositeCluster(ctx)
+	if err != nil {
+		return fmt.Errorf("couldn't get instance cluster: %w", err)
 	}
 
-	// Uppdate image catalogs, but only the one in use by our cluster
+	icName := instanceCluster.Spec.ImageCatalogRef.Name
+	imageCatalog, err := p.getImageCatalogInUseByCluster(ctx, icName)
+	if err != nil {
+		return fmt.Errorf("couldn't get image catalog '%s': %w", icName, err)
+	}
+
 	var versionList []string
-	p.log.Info("Updating image catalogs...", "amount", len(imageCatalogs.Items))
-	for _, imageCatalog := range imageCatalogs.Items {
-		if claimCluster.Spec.ImageCatalogRef.Name != imageCatalog.Name {
-			p.log.Info("Skipping this ImageCatalog (not in use by claim cluster)", "name", imageCatalog.Name)
-			continue
-		}
+	for _, image := range imageCatalog.Spec.Images {
+		versionList = append(versionList, fmt.Sprintf("%d", image.Major))
+	}
 
-		p.log.Info("Upgrading ImageCatalog...", "imageCatalog", imageCatalog.Name)
-		changed, err := p.setLatestVersionInCatalog(&imageCatalog)
-		if err != nil {
-			return fmt.Errorf("couldn't upgrade catalog: %w", err)
-		}
-
-		for _, image := range imageCatalog.Spec.Images {
-			versionList = append(versionList, fmt.Sprintf("%d", image.Major))
-		}
-
-		if changed {
-			if err := p.k8sClient.Update(ctx, &imageCatalog); err != nil {
-				return fmt.Errorf("could't update ImageCatalog in cluster: %w", err)
-			}
+	// Update image catalog
+	p.log.Info("Updating image catalog...", "imageCatalog", icName)
+	if changed, err := p.setLatestVersionInCatalog(imageCatalog); err != nil {
+		return fmt.Errorf("couldn't upgrade catalog: %w", err)
+	} else if changed {
+		if err := p.k8sClient.Update(ctx, imageCatalog); err != nil {
+			return fmt.Errorf("could't update ImageCatalog in cluster: %w", err)
 		}
 	}
 
+	// EOL
 	p.log.Info("Determining EOL...")
 	if isEol := p.isEOL(claim.Spec.Parameters.Service.MajorVersion, versionList); isEol {
 		if err := p.setEOLStatus(ctx); err != nil {
@@ -129,11 +103,12 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 		}
 	}
 
+	// Vacuum
 	if p.vacuum == "true" {
 		p.log.Info("Vacuuming databases...")
 
-		if claimCluster.Status.ReadyInstances == 0 {
-			return fmt.Errorf("claim cluster reports no ready instances")
+		if instanceCluster.Status.ReadyInstances == 0 {
+			return fmt.Errorf("instance cluster reports no ready instances")
 		}
 
 		err = p.doVacuum(ctx)
@@ -232,7 +207,7 @@ func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog) (boo
 // Get PSQL connection URI directly from the connection secret
 func (p *PostgreSQLCNPG) getConnectionUri(ctx context.Context) (string, error) {
 	secret := &corev1.Secret{}
-	secretName := p.claimName + "-connection"
+	secretName := p.compName + "-connection"
 	if err := p.k8sClient.Get(ctx, client.ObjectKey{
 		Namespace: p.instanceNamespace,
 		Name:      secretName,
@@ -256,24 +231,27 @@ func (p *PostgreSQLCNPG) getConnectionUri(ctx context.Context) (string, error) {
 	return uri, nil
 }
 
-func (p *PostgreSQLCNPG) listImageCatalogsInNamespace(ctx context.Context) (*cnpgv1.ImageCatalogList, error) {
-	imageCatalogs := &cnpgv1.ImageCatalogList{}
-	err := p.k8sClient.List(ctx, imageCatalogs, &client.ListOptions{Namespace: p.instanceNamespace})
+func (p *PostgreSQLCNPG) getImageCatalogInUseByCluster(ctx context.Context, which string) (*cnpgv1.ImageCatalog, error) {
+	imageCatalog := &cnpgv1.ImageCatalog{}
+	err := p.k8sClient.Get(ctx, client.ObjectKey{Namespace: p.instanceNamespace, Name: which}, imageCatalog)
 	if err != nil {
 		return nil, err
 	}
 
-	return imageCatalogs, nil
+	return imageCatalog, nil
 }
 
-func (p *PostgreSQLCNPG) listClustersInNamespace(ctx context.Context) (*cnpgv1.ClusterList, error) {
-	clusters := &cnpgv1.ClusterList{}
-	err := p.k8sClient.List(ctx, clusters, &client.ListOptions{Namespace: p.instanceNamespace})
+func (p *PostgreSQLCNPG) getCompositeCluster(ctx context.Context) (*cnpgv1.Cluster, error) {
+	cluster := &cnpgv1.Cluster{}
+	err := p.k8sClient.Get(ctx, client.ObjectKey{
+		Namespace: p.instanceNamespace,
+		Name:      p.compName + "-cluster",
+	}, cluster)
 	if err != nil {
 		return nil, err
 	}
 
-	return clusters, nil
+	return cluster, nil
 }
 
 func (p *PostgreSQLCNPG) isEOL(currentVersion string, versionList []string) bool {
@@ -282,7 +260,6 @@ func (p *PostgreSQLCNPG) isEOL(currentVersion string, versionList []string) bool
 
 func (p *PostgreSQLCNPG) setEOLStatus(ctx context.Context) error {
 	claim := &vshnv1.VSHNPostgreSQL{}
-
 	err := p.k8sClient.Get(ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim)
 	if err != nil {
 		return err

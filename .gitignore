@@ -8,6 +8,7 @@ appcat
 # But don't ignore the appcat APIS!
 !apis/appcat
 !pkg/apiserver/appcat
+result
 
 # temp file, editor and IDE paraphernalia
 .idea

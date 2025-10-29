@@ -156,8 +156,16 @@ type VSHNPostgreSQLServiceSpec struct {
 	// +kubebuilder:default=false
 	DisablePgBouncer bool `json:"disablePgBouncer,omitempty"`
 
-	// Disable envoy sidecar proxy
-	DisableEnvoy *bool `json:"disableEnvoy,omitempty"`
+	// Set to true to reserve the specified CPU and memory exclusively for Patroni,
+	// with sidecar containers getting separate allocations.
+	// Leave as false (default) to let StackGres automatically distribute the
+	// specified resources across all containers.
+	// +kubebuilder:default=false
+	DedicatedPatroniResources bool `json:"dedicatedPatroniResources,omitempty"`
+
+	// Enable envoy sidecar proxy
+	// +kubebuilder:default=false
+	EnableEnvoy bool `json:"enableEnvoy,omitempty"`
 
 	// +kubebuilder:default=true
 	// This is default option if neither repack or vacuum are selected

@@ -1634,11 +1634,6 @@ func (in *VSHNPostgreSQLServiceSpec) DeepCopyInto(out *VSHNPostgreSQLServiceSpec
 		*out = new(stackgresv1.SGPoolingConfigSpecPgBouncerPgbouncerIni)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.DisableEnvoy != nil {
-		in, out := &in.DisableEnvoy, &out.DisableEnvoy
-		*out = new(bool)
-		**out = **in
-	}
 	if in.Access != nil {
 		in, out := &in.Access, &out.Access
 		*out = make([]VSHNAccess, len(*in))

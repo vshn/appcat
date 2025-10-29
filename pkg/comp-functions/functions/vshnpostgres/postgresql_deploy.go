@@ -394,27 +394,6 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 
 	l := svc.Log
 
-	// Determine whether this is a new instance by checking for the existence of SGCluster
-	isNewInstance := common.ResourceExists(svc, &sgv1.SGCluster{}, "cluster")
-
-	var disableEnvoy *bool
-
-	if comp.Spec.Parameters.Service.DisableEnvoy != nil {
-		// User explicitly set the value, use it
-		disableEnvoy = comp.Spec.Parameters.Service.DisableEnvoy
-	} else {
-		// Check if there's an existing SGCluster to preserve its setting
-		observedCluster := &sgv1.SGCluster{}
-		err := svc.GetObservedKubeObject(observedCluster, "cluster")
-		if err == nil && observedCluster.Spec.Pods.DisableEnvoy != nil {
-			// Preserve existing value from observed cluster
-			disableEnvoy = observedCluster.Spec.Pods.DisableEnvoy
-		} else if isNewInstance {
-			// New instance should disable envoy by default
-			disableEnvoy = ptr.To(true)
-		}
-	}
-
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
 
 	resources, err := utils.FetchPlansFromConfig(ctx, svc, plan)
@@ -497,7 +476,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 					NodeSelector: nodeSelector,
 				},
 				DisableConnectionPooling: ptr.To(comp.Spec.Parameters.Service.DisablePgBouncer),
-				DisableEnvoy:             disableEnvoy,
+				DisableEnvoy:             ptr.To(!comp.Spec.Parameters.Service.EnableEnvoy),
 			},
 			NonProductionOptions: &sgv1.SGClusterSpecNonProductionOptions{
 				EnableSetPatroniCpuRequests:    ptr.To(true),

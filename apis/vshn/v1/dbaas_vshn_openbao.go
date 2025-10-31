@@ -75,7 +75,7 @@ type VSHNOpenBaoParameters struct {
 	Instances int `json:"instances,omitempty"`
 }
 
-// VSHNOpenBaoServiceSpec contains OpenBao DBaaS specific properties
+// VSHNOpenBaoServiceSpec contains OpenBao specific properties
 type VSHNOpenBaoServiceSpec struct {
 	// +kubebuilder:validation:Enum=<TBD>
 	// +kubebuilder:default=<TBD>
@@ -85,13 +85,31 @@ type VSHNOpenBaoServiceSpec struct {
 	Version string `json:"version,omitempty"`
 
 	// OpenBaoSettings contains additional OpenBao settings.
-	OpenBaoSettings string `json:"openBaoSettings,omitempty"`
+	OpenBaoSettings VSHNOpenBaoSettings `json:"openBaoSettings,omitempty"`
 
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
 	// +kubebuilder:default="besteffort"
 
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
+}
+
+// VSHNOpenBaoSettings contains OpenBao settings
+type VSHNOpenBaoSettings struct {
+	// AutoUnseal configures various auto unseal methods.
+	AutoUnseal VSHNOpenBaoSettingsAutoUnseal `json:"version,omitempty"`
+}
+
+// VSHNOpenBaoSettingsAutoUnseal contains OpenBao auto-unseal configuration
+type VSHNOpenBaoSettingsAutoUnseal struct {
+	// AWSKmsSecretRef references to secret containing AWS KMS credentials and configuration
+	AWSKmsSecretRef LocalObjectReference `json:"awsKmsSecretRef,omitempty"`
+	// AzureKeyVaultSecretRef references to secret containing Azure Key Vault credentials and configuration
+	AzureKeyVaultSecretRef LocalObjectReference `json:"azureKeyVaultSecretRef,omitempty"`
+	// GCPKmsSecretRef references to secret containing GCP KMS credentials and configuration
+	GCPKmsSecretRef LocalObjectReference `json:"gcpKmsSecretRef,omitempty"`
+	// TransitSecretRef references to secret containing Transit auto-unseal configuration
+	TransitSecretRef LocalObjectReference `json:"transitSecretRef,omitempty"`
 }
 
 // VSHNOpenBaoSizeSpec contains settings to control the sizing of a service.

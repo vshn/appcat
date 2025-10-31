@@ -163,6 +163,10 @@ type VSHNPostgreSQLServiceSpec struct {
 	// +kubebuilder:default=false
 	DedicatedPatroniResources bool `json:"dedicatedPatroniResources,omitempty"`
 
+	// Enable envoy sidecar proxy
+	// +kubebuilder:default=false
+	EnableEnvoy bool `json:"enableEnvoy,omitempty"`
+
 	// +kubebuilder:default=true
 	// This is default option if neither repack or vacuum are selected
 	RepackEnabled bool `json:"repackEnabled,omitempty"`

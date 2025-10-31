@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
@@ -20,8 +21,9 @@ import (
 // +kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=*,verbs=get;list;watch
 
 const (
-	ProtectionOverrideLabel = "appcat.vshn.io/webhook-allowdeletion"
-	protectedMessage        = "%s is part of a VSHN AppCat service and protected from deletions. Either Delete the the claim for composite %s or set this label on the object: 'appcat.vshn.io/webhook-allowdeletion: \"true\"'"
+	ProtectionOverrideLabelStorage = "appcat.vshn.io/webhook-allowpvcdeletion" // Only respected on a namespace
+	ProtectionOverrideLabel        = "appcat.vshn.io/webhook-allowdeletion"
+	protectedMessage               = "%s is part of a VSHN AppCat service and protected from deletions. Either delete the the claim for composite %s or set this label on the object: 'appcat.vshn.io/webhook-allowdeletion: \"true\"'"
 )
 
 var (
@@ -131,6 +133,17 @@ func checkUnmanagedObject(ctx context.Context, obj client.Object, c client.Clien
 			return compositeInfo{Exists: false}, nil
 		}
 		return compositeInfo{Exists: false}, err
+	}
+
+	// If this is a PV / PVC and its namespace has a storage protection override label, disengage protection.
+	// This is helpful in cases where, for example, we have a Helm release that creates an object that also manages PVs/PVCs for which
+	// protection overrides (or rather, labels) cannot be set in an easy way.
+	if strings.HasPrefix(obj.GetObjectKind().GroupVersionKind().Kind, "PersistentVolume") {
+		if v, ok := namespace.GetLabels()[ProtectionOverrideLabelStorage]; ok {
+			if v == "true" {
+				return compositeInfo{Exists: false}, nil
+			}
+		}
 	}
 
 	compInfo, err := checkManagedObject(ctx, namespace, c, cpClient, l)

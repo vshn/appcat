@@ -63,15 +63,26 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("GivenEncryptionEnabled_ThenExpectOutput", func(t *testing.T) {
-		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParams.yaml")
+		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsCnpg.yaml")
 
 		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
-		assert.Equal(t, r, runtime.NewWarningResult("luks secret 'psql-cluster-1-luks-key' not yet ready"))
+		assert.Equal(t, runtime.NewWarningResult("luks secret 'psql-cluster-1-luks-key' not yet ready"), r)
 
 		comp := &vshnv1.VSHNPostgreSQL{}
 		assert.NoError(t, svc.GetObservedComposite(comp))
 
-		for _, v := range getLuksKeyNames(comp) {
+		t.Logf("comp get name: %s", comp.GetName())
+
+		instances, err := getClusterInstancesReportedByCd(svc, comp)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(instances))
+
+		luksKeyNames := getLuksKeyNames(instances)
+		assert.Equal(t, 4, len(luksKeyNames))
+		// 2 * amount of instances, as each instance gets 2 PVCs (data and WAL)
+
+		for _, v := range getLuksKeyNames(instances) {
+			t.Logf("Checking secret '%s'...", v)
 			kubeObject := &xkube.Object{}
 			assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, v))
 
@@ -82,15 +93,29 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 	})
 
 	t.Run("GivenEncryptionEnabledExistingSecret_ThenExpectOutput", func(t *testing.T) {
-		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecret.yaml")
+		svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/enc_pvc/03-GivenEncryptionParamsExistingSecretCnpg.yaml")
 
-		r := AddPvcSecret(ctx, &vshnv1.VSHNPostgreSQL{}, svc)
+		cnpgcomp := &vshnv1.VSHNPostgreSQL{
+			Spec: vshnv1.VSHNPostgreSQLSpec{
+				Parameters: vshnv1.VSHNPostgreSQLParameters{
+					Instances: 3,
+				},
+			},
+		}
+
+		r := AddPvcSecret(ctx, cnpgcomp, svc)
 		assert.Nil(t, r)
 
 		comp := &vshnv1.VSHNPostgreSQL{}
 		assert.NoError(t, svc.GetObservedComposite(comp))
 
-		for _, v := range getLuksKeyNames(comp) {
+		instances, err := getClusterInstancesReportedByCd(svc, comp)
+		assert.NoError(t, err)
+
+		t.Logf("Got the following cluster instances: %v", instances)
+
+		for _, v := range getLuksKeyNames(instances) {
+			t.Logf("Checking secret '%s'...", v)
 			kubeObject := &xkube.Object{}
 			assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, v))
 
@@ -105,11 +130,4 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 		assert.NotNil(t, values)
 		assert.Equal(t, "ssd-encrypted", values["cluster"].(map[string]any)["storage"].(map[string]any)["storageClass"])
 	})
-}
-
-func getLuksKeyNames(comp *vshnv1.VSHNPostgreSQL) []string {
-	return []string{
-		comp.Name + "-cluster-1-luks-key",
-		comp.Name + "-cluster-1-wal-luks-key",
-	}
 }

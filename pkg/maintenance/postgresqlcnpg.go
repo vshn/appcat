@@ -85,9 +85,14 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 		versionList = append(versionList, fmt.Sprintf("%d", image.Major))
 	}
 
+	v, err := p.getRegistryVersions(apiUrl)
+	if err != nil {
+		return fmt.Errorf("couldn't get latest versions from registry: %w", err)
+	}
+
 	// Update image catalog
-	p.log.Info("Updating image catalog...", "imageCatalog", icName)
-	if changed, err := p.setLatestVersionInCatalog(imageCatalog); err != nil {
+	p.log.Info("Checking image catalog...", "imageCatalog", icName)
+	if changed, err := p.setLatestVersionInCatalog(imageCatalog, v); err != nil {
 		return fmt.Errorf("couldn't upgrade catalog: %w", err)
 	} else if changed {
 		if err := p.k8sClient.Update(ctx, imageCatalog); err != nil {
@@ -107,13 +112,13 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 	if p.vacuum == "true" {
 		p.log.Info("Starting vacuum")
 
-		if instanceCluster.Status.ReadyInstances == 0 {
-			return fmt.Errorf("instance cluster reports no ready instances")
-		}
-
-		err = p.doVacuum(ctx)
-		if err != nil {
-			return fmt.Errorf("vacuum failed: %v", err)
+		if instanceCluster.Status.ReadyInstances > 0 {
+			err = p.doVacuum(ctx)
+			if err != nil {
+				return fmt.Errorf("vacuum failed: %v", err)
+			}
+		} else {
+			p.log.Error(fmt.Errorf("the cluster is reporting no ready instances"), "vacuuming skipped")
 		}
 	}
 
@@ -179,14 +184,9 @@ func (p *PostgreSQLCNPG) doVacuum(ctx context.Context) error {
 }
 
 // Upgrade every minor version in an image catalog. Return true if anything was updated.
-func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog) (bool, error) {
-	v, err := p.getRegistryVersions(apiUrl)
-	if err != nil {
-		return false, fmt.Errorf("couldn't get latest versions from registry: %w", err)
-	}
-
+func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog, versionLister helm.VersionLister) (bool, error) {
 	var haveMadeChanges bool
-	versions := v.GetVersions()
+	versions := versionLister.GetVersions()
 
 	for i, image := range ic.Spec.Images {
 		thisVersion := strings.Split(image.Image, ":")[1]
@@ -303,12 +303,11 @@ func (p *PostgreSQLCNPG) getLatestMinorVersion(vers string, versionList []string
 	return current.Original(), nil
 }
 
-// Temp AI slop func
 func (p *PostgreSQLCNPG) getRegistryVersions(imageURL string) (helm.VersionLister, error) {
 	p.log.Info("Retrieving registry tags...", "imageURL", imageURL)
 	results := &helm.RegistryResult{}
 
-	token, err := getGhcrToken()
+	token, err := p.getGhcrToken()
 	if err != nil {
 		return nil, err
 	}
@@ -321,12 +320,13 @@ func (p *PostgreSQLCNPG) getRegistryVersions(imageURL string) (helm.VersionListe
 		return nil, fmt.Errorf("cannot access registry: %w", err)
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
 	}
 
-	// handle possible pagination via Link header
+	// ghcr.io returns 1000 tags at most.
+	// The psql repo has way more than that, so we'll have to handle pagination.
 	nextURL := imageURL
 	for nextURL != "" {
 		req, _ := http.NewRequest("GET", nextURL, nil)
@@ -337,7 +337,7 @@ func (p *PostgreSQLCNPG) getRegistryVersions(imageURL string) (helm.VersionListe
 			return nil, fmt.Errorf("cannot access registry: %w", err)
 		}
 
-		if resp.StatusCode != 200 {
+		if resp.StatusCode != http.StatusOK {
 			b, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
@@ -348,80 +348,61 @@ func (p *PostgreSQLCNPG) getRegistryVersions(imageURL string) (helm.VersionListe
 			resp.Body.Close()
 			return nil, fmt.Errorf("cannot decode registry results: %w", err)
 		}
-		// close body for this page
 		resp.Body.Close()
 
-		// merge page results into cumulative results
-		// assume Tags is the field containing versions (matches registry /tags/list)
 		results.Tags = append(results.Tags, page.Tags...)
 
-		// parse Link header for next page
-		linkHdr := resp.Header.Get("Link")
-		nextURL = ""
-		if linkHdr != "" {
-			parts := strings.Split(linkHdr, ",")
-			for _, part := range parts {
-				part = strings.TrimSpace(part)
-				// split into "<url>" and "rel=..."
-				seg := strings.SplitN(part, ";", 2)
-				if len(seg) < 2 {
-					continue
+		var found bool
+		found, nextURL = parseGhcrLinkHeader(resp.Header)
+		if !found {
+			break
+		}
+	}
+
+	p.log.Info("Done retrieving tags", "tags", len(results.Tags), "repository", vshnpostgrescnpg.PsqlContainerRegistry)
+	return results, nil
+}
+
+// Parse ghcr.io registry API link header. Return true and next URL if found, false and "" if not.
+// Only supports headers whose rel is "next".
+func parseGhcrLinkHeader(header http.Header) (bool, string) {
+	if link := header.Get("Link"); link != "" {
+		// ghcr.io API v2 returns this sort of header:
+		// </v2/cloudnative-pg/postgresql/tags/list?last=13.16&n=1000>; rel="next"
+		parts := strings.Split(link, ",")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			seg := strings.SplitN(part, ";", 2)
+			if len(seg) < 2 {
+				continue
+			}
+			urlPart := strings.Trim(seg[0], " <>")
+			relPart := strings.TrimSpace(seg[1])
+			if strings.Contains(relPart, `rel="next"`) {
+				if strings.HasPrefix(urlPart, "/") {
+					urlPart = "https://ghcr.io" + urlPart
+				} else if !strings.HasPrefix(urlPart, "http") {
+					urlPart = "https://" + urlPart
 				}
-				urlPart := strings.Trim(seg[0], " <>")
-				relPart := strings.TrimSpace(seg[1])
-				if strings.Contains(relPart, `rel="next"`) {
-					// make URL absolute if it's relative
-					if strings.HasPrefix(urlPart, "/") {
-						// derive scheme and host from the original imageURL
-						parts := strings.SplitN(imageURL, "://", 2)
-						if len(parts) == 2 {
-							scheme := parts[0]
-							rest := parts[1]
-							host := strings.SplitN(rest, "/", 2)[0]
-							urlPart = scheme + "://" + host + urlPart
-						} else {
-							urlPart = "https://" + strings.TrimPrefix(urlPart, "/")
-						}
-					} else if !strings.HasPrefix(urlPart, "http") {
-						// best-effort: prefix host if missing
-						parts := strings.SplitN(imageURL, "://", 2)
-						if len(parts) == 2 {
-							scheme := parts[0]
-							rest := parts[1]
-							host := strings.SplitN(rest, "/", 2)[0]
-							urlPart = scheme + "://" + host + "/" + strings.TrimLeft(urlPart, "/")
-						}
-					}
-					nextURL = urlPart
-					break
-				}
+				return true, urlPart
 			}
 		}
 	}
 
-	p.log.Info("Done retrieving registry tags", "tags", len(results.Tags))
-	return results, nil
+	return false, ""
 }
 
-// Temp slop func
-func getGhcrToken() (string, error) {
-	registry := vshnpostgrescnpg.PsqlContainerRegistry
-	parts := strings.SplitN(registry, "/", 2)
-	if len(parts) < 2 {
-		return "", fmt.Errorf("invalid registry format: %s", registry)
-	}
-
-	host := parts[0]
-	repo := parts[1]
-	tokenURL := fmt.Sprintf("https://%s/token?scope=repository:%s:pull", host, repo)
+// Obtain anonymous GHCR registry token
+func (p *PostgreSQLCNPG) getGhcrToken() (string, error) {
+	repo := strings.TrimPrefix(vshnpostgrescnpg.PsqlContainerRegistry, "ghcr.io/")
+	tokenURL := fmt.Sprintf("https://ghcr.io/token?scope=repository:%s:pull", repo)
 
 	req, err := http.NewRequest("GET", tokenURL, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error during GET on %s: %w", tokenURL, err)
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("cannot access token endpoint: %w", err)
 	}

@@ -40,6 +40,22 @@ func Test_instances(t *testing.T) {
 	}
 }
 
+func Test_version(t *testing.T) {
+	svc, comp := getSvcCompCnpg(t)
+	ctx := context.TODO()
+
+	for _, v := range []string{
+		"15", "16", "17",
+	} {
+		comp.Spec.Parameters.Service.MajorVersion = v
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		assert.Equal(t, v, values["version"].(map[string]string)["postgresql"])
+	}
+}
+
 func Test_sizing(t *testing.T) {
 	svc, comp := getSvcCompCnpg(t)
 	ctx := context.TODO()

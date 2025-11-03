@@ -1533,3 +1533,35 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 
 	return instObj, nil
 }
+
+// IsResourceReady checks if a resource exists in observed state with Ready=True condition.
+func (s *ServiceRuntime) IsResourceReady(resourceName string) (bool, error) {
+	observed, err := s.GetAllObserved()
+	if err != nil {
+		return false, fmt.Errorf("cannot get observed resources: %w", err)
+	}
+
+	res, ok := observed[resource.Name(resourceName)]
+	if !ok {
+		return false, fmt.Errorf("resource %s not in observed state", resourceName)
+	}
+
+	cond := res.Resource.GetCondition(xpv1.TypeReady)
+	if cond.Status != corev1.ConditionTrue {
+		return false, fmt.Errorf("resource %s is not ready: %s", resourceName, cond.Reason)
+	}
+
+	return true, nil
+}
+
+// ResourceExistsInObserved checks if a resource exists in observed state.
+// Useful for preventing deletion when dependencies become temporarily unavailable.
+func (s *ServiceRuntime) ResourceExistsInObserved(resourceName string) bool {
+	observed, err := s.GetAllObserved()
+	if err != nil {
+		return false
+	}
+
+	_, ok := observed[resource.Name(resourceName)]
+	return ok
+}

@@ -86,7 +86,7 @@ func Test_addGrants(t *testing.T) {
 }
 
 func TestUserManagement(t *testing.T) {
-	// given with empty accesss object
+	// given with empty access object
 	svc := commontest.LoadRuntimeFromFile(t, "vshnmariadb/usermanagement/01-emptyaccess.yaml")
 
 	// when applied
@@ -99,7 +99,7 @@ func TestUserManagement(t *testing.T) {
 	db := &my1alpha1.Database{}
 	assert.Error(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
 
-	// when adding an user
+	// when adding a user
 	comp.Spec.Parameters.Service.Access = []vshnv1.VSHNAccess{
 		{
 			User: ptr.To("prod"),
@@ -111,9 +111,13 @@ func TestUserManagement(t *testing.T) {
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
 	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNMariaDB{}, svc))
 
-	// then expect database
+	// then expect user to be created but not database yet (sequencing: user must be ready first)
+	user := &my1alpha1.User{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(user, fmt.Sprintf("%s-%s-role", comp.GetName(), "prod")))
+
+	// Database should not be created yet since user is not in observed state
 	db = &my1alpha1.Database{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
+	assert.Error(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
 
 	// when adding user pointing to same db
 	comp.Spec.Parameters.Service.Access = append(comp.Spec.Parameters.Service.Access, vshnv1.VSHNAccess{
@@ -126,9 +130,15 @@ func TestUserManagement(t *testing.T) {
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
 	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNMariaDB{}, svc))
 
-	// then expect database
+	// then expect both users but still no database (dependencies not ready)
+	user = &my1alpha1.User{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(user, fmt.Sprintf("%s-%s-role", comp.GetName(), "prod")))
+	user2 := &my1alpha1.User{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(user2, fmt.Sprintf("%s-%s-role", comp.GetName(), "another")))
+
+	// Database still not created since users are not in observed state
 	db = &my1alpha1.Database{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
+	assert.Error(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
 
 	// When deleting user pointing to same db
 	comp.Spec.Parameters.Service.Access = []vshnv1.VSHNAccess{
@@ -140,9 +150,9 @@ func TestUserManagement(t *testing.T) {
 
 	assert.NoError(t, setObservedComposition(svc, comp))
 
-	// then expect database
-	db = &my1alpha1.Database{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
+	// then expect the other user to still be in desired
+	user = &my1alpha1.User{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(user, fmt.Sprintf("%s-%s-role", comp.GetName(), "another")))
 }
 
 func setObservedComposition(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB) error {

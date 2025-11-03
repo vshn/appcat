@@ -283,7 +283,7 @@ func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateCreate(ctx, nextcloudCollaboraEmpty)
 	assert.Error(t, err, "Collabora enabled with empty FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("FQDN  is not a valid DNS name"), err)
+	assert.Equal(t, fmt.Errorf("Collabora FQDN is required when Collabora is enabled"), err)
 }
 
 func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
@@ -369,7 +369,7 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudEnableEmpty)
 	assert.Error(t, err, "Enabling Collabora with empty FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("FQDN  is not a valid DNS name"), err)
+	assert.Equal(t, fmt.Errorf("Collabora FQDN is required when Collabora is enabled"), err)
 
 	// Test 5: Update Collabora FQDN to another valid one - should pass
 	nextcloudWithCollabora := &vshnv1.VSHNNextcloud{

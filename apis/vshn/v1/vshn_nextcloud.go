@@ -227,7 +227,6 @@ type CollaboraSpec struct {
 	//+kubebuilder:default=false
 	Enabled bool `json:"enabled"`
 	// FQDN contains the FQDN of the Collabora server. This is used to configure the Collabora server URL in Your Nextcloud instance.
-	//+kubebuilder:validation:Required
 	FQDN string `json:"fqdn,omitempty"`
 	// Version defines the Collabora version to use.
 	Version string `json:"version,omitempty"`

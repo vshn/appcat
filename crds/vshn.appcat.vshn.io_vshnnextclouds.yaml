@@ -4631,7 +4631,6 @@ spec:
                               type: string
                           required:
                             - enabled
-                            - fqdn
                           type: object
                         existingPGConnectionSecret:
                           description: |-

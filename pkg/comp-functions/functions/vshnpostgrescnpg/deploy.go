@@ -18,6 +18,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,10 +40,13 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	}
 
 	l.Info("Bootstrapping instance namespace and rbac rules")
-	err = common.BootstrapInstanceNs(ctx, comp, "postgresql", namespaceResName, svc)
+	err = common.BootstrapInstanceNs(ctx, comp, "postgresql", namespaceResName, svc, map[string]string{
+		webhooks.ProtectionOverrideLabelStorage: "true",
+	})
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
+
 	l.Info("Set major version in status")
 	err = setMajorVersionStatus(comp, svc)
 	if err != nil {
@@ -141,7 +145,6 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 
 // Deploy PostgresQL using the CNPG cluster helm chart
 func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	// Deploy
 	values, err := createCnpgHelmValues(ctx, svc, comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create helm values: %w", err))
@@ -151,8 +154,11 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 		return runtime.NewWarningResult(fmt.Sprintf("cannot set up backup: %v", err))
 	}
 
+	// Connection details
+	connectionDetails := generateConnectionDetailInfoForRelease(comp, svc)
+
 	svc.Log.Info("Creating Helm release for CNPG PostgreSQL")
-	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg")
+	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-cnpg", connectionDetails...)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create release: %w", err))
 	}
@@ -161,7 +167,6 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	release.Spec.ForProvider.Chart.Repository = svc.Config.Data["cnpgClusterChartSource"]
 	release.Spec.ForProvider.Chart.Version = svc.Config.Data["cnpgClusterChartVersion"]
 	release.Spec.ForProvider.Chart.Name = svc.Config.Data["cnpgClusterChartName"]
-	release.Spec.ResourceSpec.WriteConnectionSecretToReference = nil
 
 	err = svc.SetDesiredComposedResource(release)
 	if err != nil {
@@ -175,7 +180,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 	// https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml
 	values := map[string]any{
 		"cluster": map[string]any{
-			"instances": 1, // For the moment we only support single instance deployments
+			"instances": comp.Spec.Parameters.Instances,
 			"imageCatalogRef": map[string]string{
 				"kind": "ImageCatalog",
 				"name": comp.GetName() + "-cluster",
@@ -223,7 +228,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 			},
 		},
 		"version": map[string]string{
-			"postgres": comp.Spec.Parameters.Service.MajorVersion,
+			"postgresql": comp.Spec.Parameters.Service.MajorVersion,
 		},
 	}
 

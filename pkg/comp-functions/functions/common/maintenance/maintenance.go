@@ -501,6 +501,7 @@ func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
 
 // SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
 // It will return the concrete observed version as well.
+// If the desired values contain a higher version than either the observed or the comp version, it will take precedence.
 func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string) (string, error) {
 	l := controllerruntime.LoggerFrom(ctx)
 
@@ -509,10 +510,22 @@ func SetReleaseVersion(ctx context.Context, version string, desiredValues map[st
 		return "", fmt.Errorf("cannot get image tag from values in release: %v", err)
 	}
 
-	desiredVersion, err := semver.ParseTolerant(version)
+	compVersion, err := semver.ParseTolerant(version)
 	if err != nil {
 		l.Info("failed to parse desired service version", "version", version)
 		return "", fmt.Errorf("invalid service version %q", version)
+	}
+
+	desiredValueVersion, _, err := unstructured.NestedString(desiredValues, fields...)
+	if err != nil {
+		return "", fmt.Errorf("cannot get image tag from values in release: %v", err)
+	}
+
+	desiredVersion, err := semver.ParseTolerant(desiredValueVersion)
+	if err != nil {
+		l.Info("failed to parse observed service version", "version", tag)
+		// If the observed version is not parsable, e.g. if it's empty, update to the desired version
+		return version, unstructured.SetNestedField(desiredValues, version, fields...)
 	}
 
 	observedVersion, err := semver.ParseTolerant(tag)
@@ -522,10 +535,15 @@ func SetReleaseVersion(ctx context.Context, version string, desiredValues map[st
 		return version, unstructured.SetNestedField(desiredValues, version, fields...)
 	}
 
-	if observedVersion.GTE(desiredVersion) {
+	if desiredVersion.GTE(observedVersion) {
+		return desiredValueVersion, nil
+	}
+
+	if observedVersion.GTE(compVersion) {
 		// In case the overved tag is valid and greater than the desired version, keep the observed version
 		return tag, unstructured.SetNestedField(desiredValues, tag, fields...)
 	}
+
 	// In case the observed tag is smaller than the desired version,  then set the version from the claim
 	return version, unstructured.SetNestedField(desiredValues, version, fields...)
 }

@@ -25,32 +25,32 @@ func TestResources(t *testing.T) {
 		expResult      Resources
 	}{
 		{
-			name:           "GivenDefaultPlanNoResources",
+			name:           "GivenDefaultPlanNoResources_ThenRequestsEqualLimits",
 			claimResources: vshnv1.VSHNSizeSpec{},
 			expResult: Resources{
-				ReqMem: planResources.MemoryRequests,
-				ReqCPU: planResources.CPURequests,
+				ReqMem: planResources.MemoryLimits,
+				ReqCPU: planResources.CPULimits,
 				Mem:    planResources.MemoryLimits,
 				CPU:    planResources.CPULimits,
 				Disk:   planResources.Disk,
 			},
 		},
 		{
-			name: "GivenDefaultPlanCustomLimitHigherThanPlan",
+			name: "GivenCustomLimitsOnly_ThenRequestsEqualLimits_QoSGuaranteed",
 			claimResources: vshnv1.VSHNSizeSpec{
 				Memory: "2Gi",
 				CPU:    "500m",
 			},
 			expResult: Resources{
-				ReqMem: planResources.MemoryRequests,
-				ReqCPU: planResources.CPURequests,
+				ReqMem: resource.MustParse("2Gi"),
+				ReqCPU: resource.MustParse("500m"),
 				Mem:    resource.MustParse("2Gi"),
 				CPU:    resource.MustParse("500m"),
 				Disk:   planResources.Disk,
 			},
 		},
 		{
-			name: "GivenDefaultPlanCustomMemoryLimitLowerThanPlan",
+			name: "GivenCustomLimitsLowerThanPlan_ThenRequestsEqualLimits_QoSGuaranteed",
 			claimResources: vshnv1.VSHNSizeSpec{
 				Memory: "100Mi",
 				CPU:    "100m",
@@ -64,7 +64,7 @@ func TestResources(t *testing.T) {
 			},
 		},
 		{
-			name: "GivenDefaultPlanCustomMemoryRequestsHigherThanPlan",
+			name: "GivenExplicitRequestsOnly_ThenRequestsAsSpecified_LimitsFromRequests",
 			claimResources: vshnv1.VSHNSizeSpec{
 				Requests: vshnv1.VSHNDBaaSSizeRequestsSpec{
 					Memory: "2Gi",
@@ -80,7 +80,7 @@ func TestResources(t *testing.T) {
 			},
 		},
 		{
-			name: "GivenDefaultPlanCustomMemoryRequestsHigherThanLimit",
+			name: "GivenRequestsHigherThanLimits_ThenLimitsRaisedToMatchRequests",
 			claimResources: vshnv1.VSHNSizeSpec{
 				Requests: vshnv1.VSHNDBaaSSizeRequestsSpec{
 					Memory: "2Gi",
@@ -95,6 +95,37 @@ func TestResources(t *testing.T) {
 				Mem:    resource.MustParse("2Gi"),
 				CPU:    resource.MustParse("1"),
 				Disk:   planResources.Disk,
+			},
+		},
+		{
+			name: "GivenLimitsAndRequestsBothSet_ThenSeparateRequestsAndLimits_QoSBurstable",
+			claimResources: vshnv1.VSHNSizeSpec{
+				Memory: "3Gi",
+				CPU:    "800m",
+				Requests: vshnv1.VSHNDBaaSSizeRequestsSpec{
+					Memory: "1Gi",
+					CPU:    "400m",
+				},
+			},
+			expResult: Resources{
+				ReqMem: resource.MustParse("1Gi"),
+				ReqCPU: resource.MustParse("400m"),
+				Mem:    resource.MustParse("3Gi"),
+				CPU:    resource.MustParse("800m"),
+				Disk:   planResources.Disk,
+			},
+		},
+		{
+			name: "GivenCustomDisk_ThenDiskOverridesPlan",
+			claimResources: vshnv1.VSHNSizeSpec{
+				Disk: "50Gi",
+			},
+			expResult: Resources{
+				ReqMem: planResources.MemoryLimits,
+				ReqCPU: planResources.CPULimits,
+				Mem:    planResources.MemoryLimits,
+				CPU:    planResources.CPULimits,
+				Disk:   resource.MustParse("50Gi"),
 			},
 		},
 	}

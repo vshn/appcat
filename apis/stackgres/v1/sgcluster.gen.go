@@ -2225,6 +2225,9 @@ type SGClusterSpecPodsPersistentVolume struct {
 
 // SGClusterSpecPodsResources defines model for SGClusterSpecPodsResources.
 type SGClusterSpecPodsResources struct {
+	// When set to true the resources requests values in fields SGInstanceProfile.spec.requests.cpu and SGInstanceProfile.spec.requests.memory will represent the resources requests of the patroni container and the total resources requests calculated by adding the resources requests of all the containers (including the patroni container).
+	DisableResourcesRequestsSplitFromTotal *bool `json:"disableResourcesRequestsSplitFromTotal,omitempty"`
+
 	// When enabled resource limits for containers other than the patroni container wil be set just like for patroni contianer as specified in the SGInstanceProfile.
 	EnableClusterLimitsRequirements *bool `json:"enableClusterLimitsRequirements,omitempty"`
 }

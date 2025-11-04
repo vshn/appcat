@@ -22,7 +22,7 @@ const (
 	disableBillingCMKey   = "billingDisabled"
 )
 
-func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, namespaceResName string, svc *runtime.ServiceRuntime) error {
+func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, namespaceResName string, svc *runtime.ServiceRuntime, labels ...map[string]string) error {
 	l := svc.Log
 
 	claimNs := comp.GetClaimNamespace()
@@ -41,7 +41,7 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 	}
 
 	l.Info("Creating namespace for " + serviceName + " instance")
-	err = createInstanceNamespace(serviceName, compositionName, claimNs, instanceNs, namespaceResName, claimName, billingName, svc)
+	err = createInstanceNamespace(serviceName, compositionName, claimNs, instanceNs, namespaceResName, claimName, billingName, svc, labels...)
 	if err != nil {
 		return fmt.Errorf("cannot create %s namespace: %w", serviceName, err)
 	}
@@ -94,7 +94,7 @@ func createNamespaceObserver(claimNs string, instance string, svc *runtime.Servi
 }
 
 // Create the namespace for the service instance
-func createInstanceNamespace(serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName, billingName string, svc *runtime.ServiceRuntime) error {
+func createInstanceNamespace(serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName, billingName string, svc *runtime.ServiceRuntime, labels ...map[string]string) error {
 
 	org, err := GetOrg(compName, svc)
 	if err != nil {
@@ -107,19 +107,33 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 		mode = svc.Config.Data["mode"]
 	}
 
-	ns := &corev1.Namespace{
+	nsLabels := map[string]string{
+		"appcat.vshn.io/servicename":      serviceName + "-" + mode,
+		"appcat.vshn.io/claim-namespace":  claimNamespace,
+		"appcat.vshn.io/claim-name":       claimName,
+		"appuio.io/no-rbac-creation":      "true",
+		"appuio.io/billing-name":          billingName,
+		"appuio.io/organization":          org,
+		"openshift.io/cluster-monitoring": "false",
+	}
 
+	// Add argument labels to nsLabels, but do not override the ones found in nsLabels
+	if len(labels) > 0 {
+		svc.Log.Info("Adding additional labels to instance namespace", "labels", labels)
+	}
+
+	for _, labelMap := range labels {
+		for k, v := range labelMap {
+			if _, exists := nsLabels[k]; !exists {
+				nsLabels[k] = v
+			}
+		}
+	}
+
+	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: instanceNamespace,
-			Labels: map[string]string{
-				"appcat.vshn.io/servicename":      serviceName + "-" + mode,
-				"appcat.vshn.io/claim-namespace":  claimNamespace,
-				"appcat.vshn.io/claim-name":       claimName,
-				"appuio.io/no-rbac-creation":      "true",
-				"appuio.io/billing-name":          billingName,
-				"appuio.io/organization":          org,
-				"openshift.io/cluster-monitoring": "false",
-			},
+			Name:   instanceNamespace,
+			Labels: nsLabels,
 		},
 	}
 

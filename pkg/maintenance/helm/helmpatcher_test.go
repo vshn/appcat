@@ -148,6 +148,7 @@ func Test_compareSemanticVersion(t *testing.T) {
 		expectedVer       string
 		expectedNew       bool
 		expectedErr       string
+		ignoreBuild       bool
 	}{
 		{
 			name:              "WhenNewVersionFromReleases_ThenGetNewVersion",
@@ -186,6 +187,7 @@ func Test_compareSemanticVersion(t *testing.T) {
 				getResult("7.0.14%alpa", "active", "image"),
 			},
 			expectedVer: semver.MustParse("7.0.13").String(),
+			ignoreBuild: true,
 		},
 		{
 			name:              "WhenNoNewVersion_ThenReleaseNoNewVersion",
@@ -212,6 +214,7 @@ func Test_compareSemanticVersion(t *testing.T) {
 				getResult("7.0.0", "active", "image"),
 			},
 			expectedVer: defaultV,
+			ignoreBuild: true,
 		},
 		{
 			name:              "WhenNoResult_ThenReleaseNoNewVersion",
@@ -235,6 +238,7 @@ func Test_compareSemanticVersion(t *testing.T) {
 			},
 			results:     []Result{},
 			expectedVer: defaultV,
+			ignoreBuild: true,
 		},
 		{
 			name:              "WhenCurrentVersionWrong_ThenError",
@@ -258,6 +262,33 @@ func Test_compareSemanticVersion(t *testing.T) {
 			},
 			results:     []Result{},
 			expectedErr: "current version miss of release is not sem ver: Invalid character(s) found in major number \"0miss\"",
+			ignoreBuild: true,
+		},
+		{
+			name:              "WhenNotIgnoringBuild_ThenDontDowngrade",
+			instanceNamespace: "test-namespace",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+				Spec: v1beta1.ReleaseSpec{
+					ForProvider: v1beta1.ReleaseParameters{
+						ValuesSpec: v1beta1.ValuesSpec{
+							Values: runtime.RawExtension{
+								Raw: []byte("{\"image\":{\"tag\":\"7.2.11\"}}"),
+								Object: &runtime.Unknown{
+									Raw: []byte("{\"image\":{\"tag\":\"7.2.11\"}}"),
+								},
+							},
+						},
+					},
+				},
+			},
+			results: []Result{
+				getResult("7.2.5-debian-12-r6", "active", "image"),
+			},
+			expectedVer: semver.MustParse("7.2.11").String(),
+			ignoreBuild: false,
 		},
 	}
 	for _, tt := range tests {
@@ -272,7 +303,7 @@ func Test_compareSemanticVersion(t *testing.T) {
 			// WHEN
 			tag, err := r.getCurrentTagFromRelease(tt.release, []string{"image", "tag"})
 			assert.NoError(t, err)
-			version, err := SemVerPatchesOnly(true)(&Payload{Results: tt.results}, tag)
+			version, err := SemVerPatchesOnly(tt.ignoreBuild)(&Payload{Results: tt.results}, tag)
 
 			// THEN
 			if tt.expectedErr != "" {

@@ -64,6 +64,9 @@ func (n *NextcloudWebhookHandler) ValidateCreate(ctx context.Context, obj runtim
 	}
 
 	if nx.Spec.Parameters.Service.Collabora.Enabled {
+		if nx.Spec.Parameters.Service.Collabora.FQDN == "" {
+			return nil, fmt.Errorf("Collabora FQDN is required when Collabora is enabled")
+		}
 		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
 			return nil, err
 		}
@@ -93,6 +96,9 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 	}
 
 	if nx.Spec.Parameters.Service.Collabora.Enabled {
+		if nx.Spec.Parameters.Service.Collabora.FQDN == "" {
+			return nil, fmt.Errorf("Collabora FQDN is required when Collabora is enabled")
+		}
 		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
 			return nil, err
 		}

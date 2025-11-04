@@ -3,167 +3,136 @@ package vshnpostgrescnpg
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	// "github.com/crossplane/crossplane/apis/apiextensions/fn/io/v1alpha1"
 
-	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	v1 "github.com/crossplane/function-sdk-go/proto/v1"
-	xkubev1 "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
+	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	// PostgresqlHost is env variable in the connection secret
-	PostgresqlHost = "POSTGRESQL_HOST"
-	// PostgresqlUser is env variable in the connection secret
-	PostgresqlUser = "POSTGRESQL_USER"
-	// PostgresqlPassword is env variable in the connection secret
-	PostgresqlPassword = "POSTGRESQL_PASSWORD"
-	// PostgresqlPort is env variable in the connection secret
-	PostgresqlPort = "POSTGRESQL_PORT"
-	// PostgresqlDb is env variable in the connection secret
-	PostgresqlDb = "POSTGRESQL_DB"
-	// PostgresqlURL is env variable in the connection secret
-	PostgresqlURL       = "POSTGRESQL_URL"
-	defaultUser         = "postgres"
-	defaultPort         = "5432"
-	defaultDB           = "postgres"
-	rootPwOserverSuffix = "-root-pw-observer"
+	ClusterInstanceCdField = "clusterInstances"
 )
 
-// AddConnectionDetails changes the desired state of a FunctionIO
-func AddConnectionDetails(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *v1.Result {
+func AddConnectionSecrets(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
+		return runtime.NewFatalResult(fmt.Errorf("cannot get observed composite: %w", err))
 	}
 
-	svcName := comp.GetName() + "-cluster-rw"
-
-	rootPw, err := getPGRootPassword(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult("cannot observe root password: " + err.Error())
-	}
-
-	obj := &xkubev1.Object{}
-	err = svc.GetDesiredComposedResourceByName(obj, "certificate")
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get the certificate object: %s", err))
-	}
-	err = addConnectionDetailsToObject(obj, comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot expose connection details on certificate: %s", err))
-	}
-
-	host := fmt.Sprintf("%s.vshn-postgresql-%s.svc.cluster.local", svcName, comp.GetName())
-	url := getPostgresURL(host, rootPw)
-
-	svc.SetConnectionDetail(PostgresqlURL, []byte(url))
-	svc.SetConnectionDetail(PostgresqlDb, []byte(defaultDB))
-	svc.SetConnectionDetail(PostgresqlPort, []byte(defaultPort))
-	svc.SetConnectionDetail(PostgresqlPassword, []byte(rootPw))
-	svc.SetConnectionDetail(PostgresqlUser, []byte(defaultUser))
-	svc.SetConnectionDetail(PostgresqlHost, []byte(host))
-
-	err = svc.AddObservedConnectionDetails("certificate")
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot add connection details to composite: %s", err))
+	if err := writeConnectionDetailsToSvc(svc, comp); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("Couldn't set connection details: %v", err))
 	}
 
 	return nil
 }
 
-func getPostgresURL(host, pw string) string {
-	return getPostgresURLCustomUser(host, defaultUser, pw, defaultDB)
+func generateConnectionDetailInfoForRelease(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) []v1beta1.ConnectionDetail {
+	var connectionDetails []v1beta1.ConnectionDetail
+
+	// PSQL credentials
+	for secretKey, toCdField := range map[string]string{
+		"uri":      "POSTGRESQL_URL",
+		"user":     "POSTGRESQL_DB",
+		"password": "POSTGRESQL_PASSWORD",
+		"port":     "POSTGRESQL_PORT",
+		"username": "POSTGRESQL_USER",
+		"host":     "POSTGRESQL_HOST",
+	} {
+		connectionDetails = append(connectionDetails, v1beta1.ConnectionDetail{
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Name:       comp.GetName() + "-cluster-superuser",
+				Namespace:  comp.GetInstanceNamespace(),
+				FieldPath:  fmt.Sprintf("data.%s", secretKey),
+			},
+			ToConnectionSecretKey:  toCdField,
+			SkipPartOfReleaseCheck: true,
+			// This secret gets created by the Cluster CR and is not templated by the release
+		})
+	}
+
+	// Certificate
+	for _, secretKey := range []string{
+		"ca.crt",
+		"tls.crt",
+		"tls.key",
+	} {
+		connectionDetails = append(connectionDetails, v1beta1.ConnectionDetail{
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Name:       "tls-certificate",
+				Namespace:  comp.GetInstanceNamespace(),
+				FieldPath:  fmt.Sprintf("data[%s]", secretKey),
+			},
+			ToConnectionSecretKey:  secretKey,
+			SkipPartOfReleaseCheck: true,
+			// This secret gets created by a custom Certificate CR
+		})
+	}
+
+	// Cluster watch
+	connectionDetails = append(connectionDetails, v1beta1.ConnectionDetail{
+		ObjectReference: corev1.ObjectReference{
+			APIVersion: "postgresql.cnpg.io/v1",
+			Kind:       "Cluster",
+			Name:       comp.GetName() + "-cluster",
+			Namespace:  comp.GetInstanceNamespace(),
+			FieldPath:  "status.instanceNames",
+		},
+		ToConnectionSecretKey: ClusterInstanceCdField,
+	})
+
+	return connectionDetails
 }
 
-func getPostgresURLCustomUser(host, userName, pw, db string) string {
-	// The values are still missing, wait for the next reconciliation
-	if pw == "" {
-		return ""
-	}
-
-	return "postgres://" + userName + ":" + pw + "@" + host + ":" + defaultPort + "/" + db
-}
-
-func addConnectionDetailsToObject(obj *xkubev1.Object, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
-	certSecretName := "tls-certificate"
-	obj.Spec.ConnectionDetails = []xkubev1.ConnectionDetail{
-		{
-			ToConnectionSecretKey: "ca.crt",
-			ObjectReference: corev1.ObjectReference{
-				APIVersion: "v1",
-				Kind:       "Secret",
-				Namespace:  comp.GetInstanceNamespace(),
-				Name:       certSecretName,
-				FieldPath:  "data[ca.crt]",
-			},
-		},
-		{
-			ToConnectionSecretKey: "tls.crt",
-			ObjectReference: corev1.ObjectReference{
-				APIVersion: "v1",
-				Kind:       "Secret",
-				Namespace:  comp.GetInstanceNamespace(),
-				Name:       certSecretName,
-				FieldPath:  "data[tls.crt]",
-			},
-		},
-		{
-			ToConnectionSecretKey: "tls.key",
-			ObjectReference: corev1.ObjectReference{
-				APIVersion: "v1",
-				Kind:       "Secret",
-				Namespace:  comp.GetInstanceNamespace(),
-				Name:       certSecretName,
-				FieldPath:  "data[tls.key]",
-			},
-		},
-	}
-
-	obj.Spec.WriteConnectionSecretToReference = &commonv1.SecretReference{
-		Name:      comp.GetName() + "-connection",
-		Namespace: svc.GetCrossplaneNamespace(),
-	}
-
-	err := svc.SetDesiredComposedResourceWithName(obj, "certificate")
+func writeConnectionDetailsToSvc(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) error {
+	cd, err := getConnectionDetails(svc, comp)
 	if err != nil {
-		return fmt.Errorf("cannot deploy postgresql connection details: %w", err)
+		return fmt.Errorf("could not write connection details to svc: %w", err)
+	}
+
+	for k, v := range cd {
+		svc.SetConnectionDetail(k, v)
 	}
 
 	return nil
 }
 
-// getPGRootPassword will deploy an observer for CNPGs generated secret and return the password for the root user.
-// This is necessary, because provider-kubernetes can hang during de-provisioning, if the secret is used as a connectiondetails
-// reference. During deletion, if the secret gets removed before the kube-object gets removed, the kube-object will get stuck
-// with observation errors, as it can't resolve the connectiondetails anymore. This is a bug in provider-kubernetes itself.
-// To avoid this, we deploy a separate observer for that secret and get the value directly that way.
-func getPGRootPassword(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) (string, error) {
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + "-cluster-superuser",
-			Namespace: comp.GetInstanceNamespace(),
-		},
-	}
-
-	err := svc.SetDesiredKubeObject(secret, comp.GetName()+rootPwOserverSuffix, runtime.KubeOptionObserve)
+// Get CNPG cluster instances as reported by the connection details of the release
+func getClusterInstancesReportedByCd(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) ([]string, error) {
+	cd, err := getConnectionDetails(svc, comp)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	err = svc.GetObservedKubeObject(secret, comp.GetName()+rootPwOserverSuffix)
+	cdValue, exists := cd[ClusterInstanceCdField]
+	if !exists {
+		return nil, fmt.Errorf("cluster instances not known in connection details")
+	}
+
+	// cdValue will be a []byte of a literal string of an array such as "[a b c]", so we need to convert it into an actual []string first.
+	trimmed := strings.Trim(string(cdValue), "\n\r\t") // <- Unlikely to be present in the CD, but will accommodate tests.
+	trimmed = strings.Trim(trimmed, "[]")
+
+	return strings.Fields(trimmed), nil
+}
+
+func getConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (map[string][]byte, error) {
+	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName())
 	if err != nil {
-		if err == runtime.ErrNotFound {
-			return "", nil
-		}
-		return "", err
+		return nil, fmt.Errorf("could not get connection details: %w", err)
 	}
 
-	pw := secret.Data["password"]
+	if len(cd) <= 0 {
+		return nil, fmt.Errorf("connection details not (yet) populated")
+	}
 
-	return string(pw), nil
+	return cd, nil
 }

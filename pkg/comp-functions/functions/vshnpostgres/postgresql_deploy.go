@@ -469,13 +469,14 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 					Size: res.Disk.String(),
 				},
 				Resources: &sgv1.SGClusterSpecPodsResources{
-					EnableClusterLimitsRequirements: ptr.To(true),
+					DisableResourcesRequestsSplitFromTotal: ptr.To(comp.Spec.Parameters.Service.DedicatedPatroniResources),
+					EnableClusterLimitsRequirements:        ptr.To(true),
 				},
 				Scheduling: &sgv1.SGClusterSpecPodsScheduling{
 					NodeSelector: nodeSelector,
 				},
 				DisableConnectionPooling: ptr.To(comp.Spec.Parameters.Service.DisablePgBouncer),
-				DisableEnvoy:             ptr.To(false),
+				DisableEnvoy:             ptr.To(!comp.Spec.Parameters.Service.EnableEnvoy),
 			},
 			NonProductionOptions: &sgv1.SGClusterSpecNonProductionOptions{
 				EnableSetPatroniCpuRequests:    ptr.To(true),

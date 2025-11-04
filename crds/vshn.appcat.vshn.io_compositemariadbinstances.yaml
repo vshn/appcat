@@ -78,6 +78,15 @@ spec:
                   - '*'
                   type: string
                 type: array
+              parameters:
+                properties:
+                  requireTLS:
+                    description: Enforce TLS on this instance. Needs tls to be true.
+                    type: boolean
+                  tls:
+                    description: Enable or disable TLS for this instance.
+                    type: boolean
+                type: object
               providerConfigRef:
                 default:
                   name: default

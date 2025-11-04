@@ -21,6 +21,14 @@ type CompositeMariaDBInstanceStatus struct {
 
 type CompositeMariaDBInstanceSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
+	Parameters        CompositeMariadbInstanceParameters `json:"parameters,omitempty"`
+}
+
+type CompositeMariadbInstanceParameters struct {
+	// Enable or disable TLS for this instance.
+	TLS bool `json:"tls,omitempty"`
+	// Enforce TLS on this instance. Needs tls to be true.
+	RequireTLS bool `json:"requireTLS,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

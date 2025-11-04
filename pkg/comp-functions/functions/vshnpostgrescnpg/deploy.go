@@ -228,7 +228,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 			},
 		},
 		"version": map[string]string{
-			"postgres": comp.Spec.Parameters.Service.MajorVersion,
+			"postgresql": comp.Spec.Parameters.Service.MajorVersion,
 		},
 	}
 

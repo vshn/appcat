@@ -344,6 +344,10 @@ func (m *Maintenance) buildMaintenancePodTemplateSpec(imageTag, serviceAccount s
 			Name:  "MAINTENANCE_URL",
 			Value: m.svc.Config.Data["maintenanceURL"],
 		},
+		{
+			Name:  "MINIMUM_REVISION_AGE",
+			Value: m.svc.Config.Data["minimumRevisionAge"],
+		},
 	}
 
 	return corev1.PodTemplateSpec{

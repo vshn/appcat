@@ -10,6 +10,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Backup bucket connection details
@@ -32,6 +33,12 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 	common.SetRandomBackupSchedule(comp, &maintTime)
 
 	if comp.IsBackupEnabled() {
+		// Create barman-cloud ObjectStore resource
+		if err := createBarmanCloudObjectStore(svc, comp); err != nil {
+			return fmt.Errorf("cannot create barman-cloud ObjectStore: %w", err)
+		}
+
+		// Keep the old helm values for now (for backward compatibility)
 		if err := insertBackupValues(svc, comp, values); err != nil {
 			return err
 		}
@@ -106,4 +113,53 @@ func getBackupBucketConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.
 // https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format
 func transformSchedule(thisSchedule string) string {
 	return fmt.Sprintf("0 %s", thisSchedule)
+}
+
+// Create barmancloud ObjectStore resource
+func createBarmanCloudObjectStore(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) error {
+	connectionDetails, err := getBackupBucketConnectionDetails(svc, comp)
+	if err != nil {
+		return err
+	}
+
+	objectStoreName := comp.GetName() + "-barman-object-store"
+
+	// Construct the destination path (S3 bucket path)
+	destinationPath := fmt.Sprintf("s3://%s/", connectionDetails.bucket)
+
+	// Secret created by the helm chart
+	backupSecretName := comp.GetName() + "-cluster-backup-s3-creds"
+
+	// Create the ObjectStore as an unstructured resource
+	objectStore := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "barmancloud.cnpg.io/v1",
+			"kind":       "ObjectStore",
+			"metadata": map[string]interface{}{
+				"name":      comp.GetName() + "-store",
+				"namespace": comp.GetInstanceNamespace(),
+			},
+			"spec": map[string]interface{}{
+				"configuration": map[string]interface{}{
+					"destinationPath": destinationPath,
+					"endpointURL":     connectionDetails.endpoint,
+					"s3Credentials": map[string]interface{}{
+						"accessKeyId": map[string]interface{}{
+							"name": backupSecretName,
+							"key":  "ACCESS_KEY_ID",
+						},
+						"secretAccessKey": map[string]interface{}{
+							"name": backupSecretName,
+							"key":  "ACCESS_SECRET_KEY",
+						},
+					},
+					"wal": map[string]interface{}{
+						"compression": "gzip",
+					},
+				},
+			},
+		},
+	}
+
+	return svc.SetDesiredKubeObject(objectStore, objectStoreName, runtime.KubeOptionAllowDeletion)
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Backup bucket connection details
@@ -33,12 +32,7 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 	common.SetRandomBackupSchedule(comp, &maintTime)
 
 	if comp.IsBackupEnabled() {
-		// Create barman-cloud ObjectStore resource
-		if err := createBarmanCloudObjectStore(svc, comp); err != nil {
-			return fmt.Errorf("cannot create barman-cloud ObjectStore: %w", err)
-		}
-
-		// Keep the old helm values for now (for backward compatibility)
+		// Configure barman cloud plugin via helm values
 		if err := insertBackupValues(svc, comp, values); err != nil {
 			return err
 		}
@@ -59,32 +53,36 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 		retentionDays = 6
 	}
 
+	// Configure backups using the barman cloud plugin
 	maps.Copy(values, map[string]any{
 		"backups": map[string]any{
 			"enabled":         true,
+			"method":          "plugin",
 			"endpointURL":     connectionDetails.endpoint,
 			"retentionPolicy": fmt.Sprintf("%dd", retentionDays),
-			"scheduledBackups": []map[string]string{{
-				"name":                 "default",
-				"method":               "barmanObjectStore",
-				"schedule":             transformSchedule(comp.GetBackupSchedule()),
-				"backupOwnerReference": "self",
-			}},
-			"data": map[string]string{
-				"encryption": "",
-			},
-			"wal": map[string]string{
-				"encryption": "",
-			},
-			"s3": map[string]string{
+			"s3": map[string]any{
 				"bucket":    connectionDetails.bucket,
 				"region":    connectionDetails.region,
 				"accessKey": connectionDetails.accessId,
 				"secretKey": connectionDetails.accessKey,
-				// The S3 secret MUST have the keys ACCESS_KEY_ID and ACCESS_SECRET_KEY.
-				// This is currently hardcoded in the chart, and as the CD secret does not have those keys in verbatim,
-				// we are forced to pass those values to the chart and letting it create its own secret instead.
 			},
+			"wal": map[string]any{
+				"compression": "gzip",
+				"encryption":  "",
+			},
+			"data": map[string]any{
+				"compression": "",
+				"encryption":  "",
+			},
+			"plugin": map[string]any{
+				"isWALArchiver":     true,
+				"createObjectStore": true,
+			},
+			"scheduledBackups": []map[string]any{{
+				"name":      "default",
+				"schedule":  transformSchedule(comp.GetBackupSchedule()),
+				"immediate": false,
+			}},
 		},
 	})
 
@@ -113,53 +111,4 @@ func getBackupBucketConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.
 // https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format
 func transformSchedule(thisSchedule string) string {
 	return fmt.Sprintf("0 %s", thisSchedule)
-}
-
-// Create barmancloud ObjectStore resource
-func createBarmanCloudObjectStore(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) error {
-	connectionDetails, err := getBackupBucketConnectionDetails(svc, comp)
-	if err != nil {
-		return err
-	}
-
-	objectStoreName := comp.GetName() + "-barman-object-store"
-
-	// Construct the destination path (S3 bucket path)
-	destinationPath := fmt.Sprintf("s3://%s/", connectionDetails.bucket)
-
-	// Secret created by the helm chart
-	backupSecretName := comp.GetName() + "-cluster-backup-s3-creds"
-
-	// Create the ObjectStore as an unstructured resource
-	objectStore := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "barmancloud.cnpg.io/v1",
-			"kind":       "ObjectStore",
-			"metadata": map[string]interface{}{
-				"name":      comp.GetName() + "-store",
-				"namespace": comp.GetInstanceNamespace(),
-			},
-			"spec": map[string]interface{}{
-				"configuration": map[string]interface{}{
-					"destinationPath": destinationPath,
-					"endpointURL":     connectionDetails.endpoint,
-					"s3Credentials": map[string]interface{}{
-						"accessKeyId": map[string]interface{}{
-							"name": backupSecretName,
-							"key":  "ACCESS_KEY_ID",
-						},
-						"secretAccessKey": map[string]interface{}{
-							"name": backupSecretName,
-							"key":  "ACCESS_SECRET_KEY",
-						},
-					},
-					"wal": map[string]interface{}{
-						"compression": "gzip",
-					},
-				},
-			},
-		},
-	}
-
-	return svc.SetDesiredKubeObject(objectStore, objectStoreName, runtime.KubeOptionAllowDeletion)
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver/v4"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource/unstructured/claim"
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
@@ -30,6 +31,7 @@ const (
 type compositionObject interface {
 	SetCompositionUpdatePolicy(*xpv1.UpdatePolicy)
 	SetCompositionRevisionSelector(*metav1.LabelSelector)
+	GetCompositionRevisionSelector() *metav1.LabelSelector
 }
 
 // VersionHandler is an interface for handling AppCat versions
@@ -178,7 +180,7 @@ func (vh *DefaultVersionHandler) filterRevisionsByAge(revisions []v1.Composition
 		} else {
 			vh.log.Info("Skipping revision that is too new",
 				"revision", item.GetName(),
-				"age", age.Round(time.Hour),
+				"age", age,
 				"minimumAge", minAge)
 		}
 	}
@@ -203,6 +205,13 @@ func (vh *DefaultVersionHandler) updateClaim(ctx context.Context, revision strin
 		if vh.hasAutoUpdateLabel(c) {
 			vh.setAutoPolicy(c)
 		} else {
+			// Check if target revision is lower than current revision
+			if shouldSkipUpdate := vh.shouldSkipRevisionUpdate(c, revision); shouldSkipUpdate {
+				vh.log.Info("Skipping revision update: target revision is not higher than current revision",
+					"current", getCurrentRevisionLabel(c),
+					"target", revision)
+				return nil
+			}
 			vh.applyUpdatePolicy(c, revision)
 		}
 	} else {
@@ -231,6 +240,13 @@ func (vh *DefaultVersionHandler) updateComposite(ctx context.Context, revision s
 		if vh.hasAutoUpdateLabel(comp) {
 			vh.setAutoPolicy(comp)
 		} else {
+			// Check if target revision is lower than current revision
+			if shouldSkipUpdate := vh.shouldSkipRevisionUpdate(comp, revision); shouldSkipUpdate {
+				vh.log.Info("Skipping revision update: target revision is not higher than current revision",
+					"current", getCurrentRevisionLabel(comp),
+					"target", revision)
+				return nil
+			}
 			vh.applyUpdatePolicy(comp, revision)
 		}
 	} else {
@@ -292,4 +308,74 @@ func UpdatePolicyPtr(s xpv1.UpdatePolicy) *xpv1.UpdatePolicy {
 
 func removeLeadingX(s string) string {
 	return strings.TrimLeft(s, "Xx")
+}
+
+// parseRevisionLabel extracts and parses the first part of the revision label.
+// For example, "v3.60.1-v4.173.1" returns the parsed semver for "v3.60.1".
+// Returns an error if the label format is invalid or cannot be parsed as semver.
+func parseRevisionLabel(revisionLabel string) (semver.Version, error) {
+	if revisionLabel == "" {
+		return semver.Version{}, errors.New("revision label is empty")
+	}
+
+	// Split by dash and take the first part
+	parts := strings.Split(revisionLabel, "-")
+	firstPart := parts[0]
+
+	// Parse as semver
+	version, err := semver.ParseTolerant(firstPart)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to parse revision label %q: %w", firstPart, err)
+	}
+
+	return version, nil
+}
+
+// getCurrentRevisionLabel extracts the current revision label from a claim or composite.
+// Returns an empty string if no revision selector is set (e.g., first deployment, test instance).
+func getCurrentRevisionLabel(obj compositionObject) string {
+	selector := obj.GetCompositionRevisionSelector()
+	if selector == nil || selector.MatchLabels == nil {
+		return ""
+	}
+
+	return selector.MatchLabels[RevisionLabel]
+}
+
+// shouldSkipRevisionUpdate determines if a revision update should be skipped
+// because the target revision is not higher than the current revision.
+// Returns false (proceed with update) if:
+// - No current revision is set (test deployment)
+// - Target revision is higher than current revision
+// Returns true (skip update) if:
+// - Target revision is lower than or equal to current revision
+func (vh *DefaultVersionHandler) shouldSkipRevisionUpdate(obj compositionObject, targetRevision string) bool {
+	currentRevisionLabel := getCurrentRevisionLabel(obj)
+
+	// If no current revision is set, then it is a test instance, update
+	if currentRevisionLabel == "" {
+		return false
+	}
+
+	// Parse both revisions
+	currentVersion, err := parseRevisionLabel(currentRevisionLabel)
+	if err != nil {
+		vh.log.Error(err, "Failed to parse current revision label, proceeding with update",
+			"currentRevisionLabel", currentRevisionLabel)
+		return false
+	}
+
+	targetVersion, err := parseRevisionLabel(targetRevision)
+	if err != nil {
+		vh.log.Error(err, "Failed to parse target revision label, proceeding with update",
+			"targetRevision", targetRevision)
+		return false
+	}
+
+	// Compare versions: skip update if target <= current
+	if targetVersion.LTE(currentVersion) {
+		return true
+	}
+
+	return false
 }

@@ -801,3 +801,375 @@ func TestHotfixerVsMaintenance_AgeBehavior(t *testing.T) {
 	assert.Equal(t, "45", updatedComp2.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"],
 		"Hotfixer mode should select the newest revision (45) immediately")
 }
+
+func TestRevisionComparison_SkipLowerRevision(t *testing.T) {
+	// When: Claim is already on revision v3.60.1, but latest eligible revision is v3.59.0
+	claimObj := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	claimObj.SetName("test-claim")
+	claimObj.SetNamespace("default")
+	claimObj.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateAutomatic))
+	claimObj.SetCompositionRevisionSelector(&metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"metadata.appcat.vshn.io/revision": "v3.60.1-v4.173.1",
+		},
+	})
+
+	oldTime := metav1.NewTime(time.Now().Add(-8 * 24 * time.Hour))
+
+	// Latest eligible revision is v3.59.0 (lower than current v3.60.1)
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-59",
+			Namespace:         "default",
+			CreationTimestamp: oldTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "v3.59.0-v4.172.0",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 59},
+	}
+
+	fakeClient := setupFakeClient(claimObj, cr1)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "XTestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
+
+	// Then: Should succeed but not update the claim
+	require.NoError(t, err)
+
+	updatedClaim := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "test-claim", Namespace: "default"}, updatedClaim)
+	require.NoError(t, err)
+
+	// Verify claim still has the original higher revision
+	assert.Equal(t, "v3.60.1-v4.173.1", updatedClaim.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"],
+		"Claim should keep higher revision v3.60.1 and not downgrade to v3.59.0")
+}
+
+func TestRevisionComparison_AllowHigherRevision(t *testing.T) {
+	// When: Claim is on revision v3.60.1, and latest eligible revision is v3.61.0
+	claimObj := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	claimObj.SetName("test-claim")
+	claimObj.SetNamespace("default")
+	claimObj.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateAutomatic))
+	claimObj.SetCompositionRevisionSelector(&metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"metadata.appcat.vshn.io/revision": "v3.60.1-v4.173.1",
+		},
+	})
+
+	oldTime := metav1.NewTime(time.Now().Add(-8 * 24 * time.Hour))
+
+	// Latest eligible revision is v3.61.0 (higher than current v3.60.1)
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-61",
+			Namespace:         "default",
+			CreationTimestamp: oldTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "v3.61.0-v4.174.0",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 61},
+	}
+
+	fakeClient := setupFakeClient(claimObj, cr1)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "XTestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
+
+	// Then
+	require.NoError(t, err)
+
+	updatedClaim := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "test-claim", Namespace: "default"}, updatedClaim)
+	require.NoError(t, err)
+
+	// Verify claim was updated to higher revision
+	assert.Equal(t, "v3.61.0-v4.174.0", updatedClaim.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"],
+		"Claim should upgrade to higher revision v3.61.0")
+}
+
+func TestRevisionComparison_TestInstanceDeployment(t *testing.T) {
+	// When: Claim has no revision selector set (test instance deployment)
+	claimObj := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	claimObj.SetName("test-claim")
+	claimObj.SetNamespace("default")
+	claimObj.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateManual))
+
+	oldTime := metav1.NewTime(time.Now().Add(-8 * 24 * time.Hour))
+
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-60",
+			Namespace:         "default",
+			CreationTimestamp: oldTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "v3.60.0",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 60},
+	}
+
+	fakeClient := setupFakeClient(claimObj, cr1)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "XTestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
+
+	// Then
+	require.NoError(t, err)
+
+	updatedClaim := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "test-claim", Namespace: "default"}, updatedClaim)
+	require.NoError(t, err)
+
+	// Verify claim was assigned the revision
+	assert.Equal(t, "v3.60.0", updatedClaim.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"],
+		"Test deployment should set the revision")
+}
+
+func TestRevisionComparison_SkipEqualRevision(t *testing.T) {
+	// When: Claim is already on the same revision as the target
+	claimObj := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	claimObj.SetName("test-claim")
+	claimObj.SetNamespace("default")
+	claimObj.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateAutomatic))
+	claimObj.SetCompositionRevisionSelector(&metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"metadata.appcat.vshn.io/revision": "v3.60.1",
+		},
+	})
+
+	oldTime := metav1.NewTime(time.Now().Add(-8 * 24 * time.Hour))
+
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-60",
+			Namespace:         "default",
+			CreationTimestamp: oldTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "v3.60.1-v4.173.1",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 60},
+	}
+
+	fakeClient := setupFakeClient(claimObj, cr1)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "XTestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
+
+	// Then: Should succeed but not update
+	require.NoError(t, err)
+
+	updatedClaim := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "test-claim", Namespace: "default"}, updatedClaim)
+	require.NoError(t, err)
+
+	// Verify claim kept the same revision
+	assert.Equal(t, "v3.60.1", updatedClaim.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"],
+		"Claim should keep the same revision when target equals current")
+}
+
+func TestRevisionComparison_CompositeSkipLowerRevision(t *testing.T) {
+	// When: Composite is already on revision v3.60.1, but latest eligible revision is v3.59.0
+	comp := composite.New()
+	comp.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "XTestKind",
+	})
+	comp.SetName("composite")
+	comp.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateAutomatic))
+	comp.SetCompositionRevisionSelector(&metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"metadata.appcat.vshn.io/revision": "v3.60.1",
+		},
+	})
+
+	oldTime := metav1.NewTime(time.Now().Add(-8 * 24 * time.Hour))
+
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-59",
+			Namespace:         "default",
+			CreationTimestamp: oldTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "v3.59.0",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 59},
+	}
+
+	fakeClient := setupFakeClient(comp, cr1)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		Composite: "composite",
+		Group:     "test.group",
+		Kind:      "XTestKind",
+		Version:   "v1",
+		ServiceID: "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
+
+	// Then
+	require.NoError(t, err)
+
+	updatedComp := composite.New()
+	updatedComp.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "XTestKind",
+	})
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "composite"}, updatedComp)
+	require.NoError(t, err)
+
+	// Verify composite still has the original higher revision
+	assert.Equal(t, "v3.60.1", updatedComp.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"],
+		"Composite should keep higher revision v3.60.1 and not downgrade to v3.59.0")
+}
+
+func TestRevisionComparison_AllRevisionsTooNew_ButStillLower(t *testing.T) {
+	// Edge case: Claim is on v3.60.1, all revisions are too new (within grace period),
+	// but when falling back to newest revision, it's still v3.59.0 (lower than current).
+	// This should still prevent the downgrade.
+	claimObj := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	claimObj.SetName("test-claim")
+	claimObj.SetNamespace("default")
+	claimObj.SetCompositionUpdatePolicy(release.UpdatePolicyPtr(xpv1.UpdateAutomatic))
+	claimObj.SetCompositionRevisionSelector(&metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"metadata.appcat.vshn.io/revision": "v3.60.1",
+		},
+	})
+
+	// This revision is too new (only 3 days old, minAge is 7 days)
+	recentTime := metav1.NewTime(time.Now().Add(-3 * 24 * time.Hour))
+
+	cr1 := &v1.CompositionRevision{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "revision-59",
+			Namespace:         "default",
+			CreationTimestamp: recentTime,
+			Labels: map[string]string{
+				"metadata.appcat.vshn.io/serviceID": "service-123",
+				"metadata.appcat.vshn.io/revision":  "v3.59.0",
+			},
+		},
+		Spec: v1.CompositionRevisionSpec{Revision: 59},
+	}
+
+	fakeClient := setupFakeClient(claimObj, cr1)
+	logger := testr.New(t)
+	opts := release.ReleaserOpts{
+		ClaimName:      "test-claim",
+		ClaimNamespace: "default",
+		Group:          "test.group",
+		Kind:           "XTestKind",
+		Version:        "v1",
+		ServiceID:      "service-123",
+	}
+	vh := release.NewDefaultVersionHandler(logger, opts)
+
+	// Do - all revisions are too new, will fall back to newest (v3.59.0)
+	err := vh.ReleaseLatest(context.Background(), true, fakeClient, testMinimumRevisionAge)
+
+	// Then: Should succeed but not downgrade
+	require.NoError(t, err)
+
+	updatedClaim := claim.New(claim.WithGroupVersionKind(schema.GroupVersionKind{
+		Group:   "test.group",
+		Version: "v1",
+		Kind:    "TestKind",
+	}))
+	err = fakeClient.Get(context.Background(), client.ObjectKey{Name: "test-claim", Namespace: "default"}, updatedClaim)
+	require.NoError(t, err)
+
+	// Verify claim still has the original higher revision despite fallback
+	assert.Equal(t, "v3.60.1", updatedClaim.GetCompositionRevisionSelector().MatchLabels["metadata.appcat.vshn.io/revision"],
+		"Claim should keep higher revision v3.60.1 even when falling back to newest revision v3.59.0")
+}

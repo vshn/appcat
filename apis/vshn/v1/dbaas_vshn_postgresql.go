@@ -431,6 +431,10 @@ func (v *XVSHNPostgreSQL) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-postgresql-%s", v.GetName())
 }
 
+func (v *XVSHNPostgreSQL) GetCompositionName() string {
+	return v.Spec.CompositionRef.Name
+}
+
 // GetBackupRetention returns the retention definition for this backup.
 func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
 	return K8upRetentionPolicy{}

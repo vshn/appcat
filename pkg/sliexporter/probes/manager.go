@@ -44,6 +44,7 @@ type ProbeInfo struct {
 	Organization      string
 	HighAvailable     bool
 	ServiceLevel      string
+	CompositionName   string
 }
 
 func NewProbeInfo(serviceKey string, nn types.NamespacedName, o client.Object) ProbeInfo {
@@ -75,7 +76,7 @@ func NewManager(l logr.Logger, maintenanceStatus maintenancecontroller.Maintenan
 		Name:    "appcat_probes_seconds",
 		Help:    "Latency of probes to appact services",
 		Buckets: []float64{0.001, 0.002, 0.003, 0.004, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1, .5, 1},
-	}, []string{"service", "claim_namespace", "instance_namespace", "name", "reason", "organization", "ha", "sla", "maintenance"})
+	}, []string{"service", "claim_namespace", "instance_namespace", "name", "reason", "organization", "ha", "sla", "maintenance", "composition"})
 
 	return Manager{
 		hist:              hist,
@@ -158,6 +159,7 @@ func (m Manager) sendProbe(ctx context.Context, p Prober) {
 		"ha":                 strconv.FormatBool(pi.HighAvailable),
 		"sla":                pi.ServiceLevel,
 		"maintenance":        strconv.FormatBool(m.maintenanceStatus.IsMaintenanceRunning()),
+		"composition":        pi.CompositionName,
 	})
 	if err != nil {
 		l.Error(err, "failed to instanciate prometheus histogram")

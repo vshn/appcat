@@ -33,7 +33,7 @@ type VSHNMinioReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	MinioDialer        func(service, name, claimNamespace, instanceNamespace, organization, sla, endpointURL string, ha bool, opts minio.Options) (*probes.VSHNMinio, error)
+	MinioDialer        func(service, name, claimNamespace, instanceNamespace, organization, sla, compositionName, endpointURL string, ha bool, opts minio.Options) (*probes.VSHNMinio, error)
 	ScClient           client.Client
 }
 
@@ -91,6 +91,8 @@ func (r VSHNMinioReconciler) getMinioProber(ctx context.Context, obj slireconcil
 		ha = true
 	}
 
+	compositionName := inst.Spec.CompositionRef.Name
+
 	prober, err = r.MinioDialer(
 		vshnMinioServiceKey,
 		inst.Name,
@@ -98,6 +100,7 @@ func (r VSHNMinioReconciler) getMinioProber(ctx context.Context, obj slireconcil
 		instanceNamespace,
 		inst.GetLabels()[utils.OrgLabelName],
 		string(sla),
+		compositionName,
 		string(creds.Data["ENDPOINT"]),
 		ha,
 		minio.Options{

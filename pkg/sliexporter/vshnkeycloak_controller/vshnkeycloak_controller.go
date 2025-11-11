@@ -101,7 +101,9 @@ func (r VSHNKeycloakReconciler) getKeycloakProber(ctx context.Context, obj slire
 	claimNamespace := inst.GetLabels()[slireconciler.ClaimNamespaceLabel]
 	instanceNamespace := inst.Status.InstanceNamespace
 
-	return probes.NewHTTP(url, true, cert, vshnKeycloakServiceKey, inst.GetName(), claimNamespace, instanceNamespace, org, string(sla), ha), nil
+	compositionName := inst.Spec.CompositionRef.Name
+
+	return probes.NewHTTP(url, true, cert, vshnKeycloakServiceKey, inst.GetName(), claimNamespace, instanceNamespace, org, string(sla), compositionName, ha), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

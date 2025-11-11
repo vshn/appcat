@@ -47,7 +47,7 @@ func TestPostgreSQL_Probe(t *testing.T) {
 				res.GetPort("5432/tcp"),
 				db,
 			),
-			"test", "besteffort", false,
+			"test", "vshnpostgrescnpg.vshn.appcat.vshn.io", "besteffort", false,
 		)
 		return err == nil
 	}, 2*time.Second, 500*time.Millisecond)

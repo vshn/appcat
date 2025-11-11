@@ -2191,6 +2191,7 @@ func (in *XVSHNKeycloakList) DeepCopyObject() runtime.Object {
 func (in *XVSHNKeycloakSpec) DeepCopyInto(out *XVSHNKeycloakSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.CompositionRef = in.CompositionRef
 	if in.ResourceRefs != nil {
 		in, out := &in.ResourceRefs, &out.ResourceRefs
 		*out = make([]commonv1.TypedReference, len(*in))
@@ -2289,6 +2290,7 @@ func (in *XVSHNMariaDBList) DeepCopyObject() runtime.Object {
 func (in *XVSHNMariaDBSpec) DeepCopyInto(out *XVSHNMariaDBSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.CompositionRef = in.CompositionRef
 	in.ResourceSpec.DeepCopyInto(&out.ResourceSpec)
 }
 
@@ -2382,6 +2384,7 @@ func (in *XVSHNMinioList) DeepCopyObject() runtime.Object {
 func (in *XVSHNMinioSpec) DeepCopyInto(out *XVSHNMinioSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.CompositionRef = in.CompositionRef
 	in.ResourceSpec.DeepCopyInto(&out.ResourceSpec)
 }
 
@@ -2667,6 +2670,7 @@ func (in *XVSHNRedisList) DeepCopyObject() runtime.Object {
 func (in *XVSHNRedisSpec) DeepCopyInto(out *XVSHNRedisSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.CompositionRef = in.CompositionRef
 	in.ResourceSpec.DeepCopyInto(&out.ResourceSpec)
 }
 

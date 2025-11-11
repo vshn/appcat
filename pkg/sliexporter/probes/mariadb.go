@@ -24,6 +24,7 @@ type MariaDB struct {
 	Organization      string
 	HighAvailable     bool
 	ServiceLevel      string
+	CompositionName   string
 }
 
 // Close closes open connections to the MariaDB server.
@@ -44,6 +45,7 @@ func (p MariaDB) GetInfo() ProbeInfo {
 		Organization:      p.Organization,
 		HighAvailable:     p.HighAvailable,
 		ServiceLevel:      p.ServiceLevel,
+		CompositionName:   p.CompositionName,
 	}
 }
 
@@ -58,7 +60,7 @@ func (p MariaDB) Probe(ctx context.Context) error {
 }
 
 // NewMariaDB connects to the provided dsn and returns a prober
-func NewMariaDB(service, name, claimNamespace, instanceNamespace, dsn, organization, caCRT, serviceLevel string, ha, TLSEnabled bool) (*MariaDB, error) {
+func NewMariaDB(service, name, claimNamespace, instanceNamespace, dsn, organization, caCRT, serviceLevel, compositionName string, ha, TLSEnabled bool) (*MariaDB, error) {
 	// regardless of the TLS setting, ca.crt is present in connection secret, therefore, it's safe to keep self-signed cert in a pool
 	rootCAs := x509.NewCertPool()
 	// open connection to MariaDB
@@ -88,6 +90,7 @@ func NewMariaDB(service, name, claimNamespace, instanceNamespace, dsn, organizat
 		Organization:      organization,
 		HighAvailable:     ha,
 		ServiceLevel:      serviceLevel,
+		CompositionName:   compositionName,
 	}, nil
 }
 

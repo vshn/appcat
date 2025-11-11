@@ -16,7 +16,7 @@ func TestHTTP_Probe(t *testing.T) {
 
 	defer server.Close()
 
-	httpProbe := NewHTTP(server.URL, false, nil, "mockservice", "unittest", "unittest", "unittest", "unittest", "unittest", false)
+	httpProbe := NewHTTP(server.URL, false, nil, "service-1", "name-1", "namespace-1", "instance-1", "vshn", "besteffort", "cnpg", false)
 
 	assert.NoError(t, httpProbe.Probe(context.TODO()))
 }
@@ -28,7 +28,7 @@ func TestHTTP_Probe_TLS(t *testing.T) {
 
 	defer server.Close()
 
-	httpProbe := NewHTTP(server.URL, true, server.Certificate(), "mockservice", "unittest", "unittest", "unittest", "unittest", "unittest", false)
+	httpProbe := NewHTTP(server.URL, true, server.Certificate(), "mockservice", "name-1", "namespace-1", "instance-1", "vshn", "besteffort", "cnpg", false)
 
 	assert.NoError(t, httpProbe.Probe(context.TODO()))
 }

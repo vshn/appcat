@@ -36,7 +36,7 @@ type VSHNMariaDBReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	MariaDBDialer      func(service, name, claimNamespace, instanceNamespace, dsn, organization, serviceLevel, caCRT string, ha, TLSEnabled bool) (*probes.MariaDB, error)
+	MariaDBDialer      func(service, name, claimNamespace, instanceNamespace, dsn, organization, caCRT, serviceLevel, compositionName string, ha, TLSEnabled bool) (*probes.MariaDB, error)
 	ScClient           client.Client
 }
 
@@ -100,9 +100,11 @@ func (r VSHNMariaDBReconciler) fetchProberFor(ctx context.Context, obj slireconc
 	}
 	ha := inst.Spec.Parameters.Instances > 1
 
+	compositionName := inst.Spec.CompositionRef.Name
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", credSecret.Data["MARIADB_USERNAME"], credSecret.Data["MARIADB_PASSWORD"], credSecret.Data["MARIADB_HOST"], credSecret.Data["MARIADB_PORT"], "mysql")
 
-	probe, err := r.MariaDBDialer(vshnMariadbServiceKey, inst.Name, claimNamespace, instanceNamespace, dsn, org, string(credSecret.Data["ca.crt"]), string(sla), ha, inst.Spec.Parameters.TLS.TLSEnabled)
+	probe, err := r.MariaDBDialer(vshnMariadbServiceKey, inst.Name, claimNamespace, instanceNamespace, dsn, org, string(credSecret.Data["ca.crt"]), string(sla), compositionName, ha, inst.Spec.Parameters.TLS.TLSEnabled)
 	if err != nil {
 		return nil, err
 	}

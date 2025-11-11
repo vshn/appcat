@@ -24,6 +24,7 @@ type PostgreSQL struct {
 	HighAvailable     bool
 	TLSEnabled        bool
 	ServiceLevel      string
+	CompositionName   string
 }
 
 // Close closes open connections to the PostgreSQL server.
@@ -44,6 +45,7 @@ func (p PostgreSQL) GetInfo() ProbeInfo {
 		Organization:      p.Organization,
 		HighAvailable:     p.HighAvailable,
 		ServiceLevel:      p.ServiceLevel,
+		CompositionName:   p.CompositionName,
 	}
 }
 
@@ -58,7 +60,7 @@ func (p PostgreSQL) Probe(ctx context.Context) error {
 }
 
 // NewPostgreSQL connects to the provided dsn and returns a prober
-func NewPostgreSQL(service, name, claimNamespace, instanceNamespace, dsn, organization, sla string, ha bool, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
+func NewPostgreSQL(service, name, claimNamespace, instanceNamespace, dsn, organization, sla, compositionName string, ha bool, ops ...func(*pgxpool.Config) error) (*PostgreSQL, error) {
 	conf, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, err
@@ -87,6 +89,7 @@ func NewPostgreSQL(service, name, claimNamespace, instanceNamespace, dsn, organi
 		Organization:      organization,
 		HighAvailable:     ha,
 		ServiceLevel:      sla,
+		CompositionName:   compositionName,
 	}, nil
 }
 

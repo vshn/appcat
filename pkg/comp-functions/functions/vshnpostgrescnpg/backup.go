@@ -31,6 +31,10 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 	maintTime := common.SetRandomMaintenanceSchedule(comp)
 	common.SetRandomBackupSchedule(comp, &maintTime)
 
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+		return fmt.Errorf("failed to set composite status: %w", err)
+	}
+
 	if comp.IsBackupEnabled() {
 		// Configure barman cloud plugin via helm values
 		if err := insertBackupValues(svc, comp, values); err != nil {

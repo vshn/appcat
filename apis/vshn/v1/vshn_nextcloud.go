@@ -117,10 +117,13 @@ type VSHNNextcloudServiceSpec struct {
 	// +kubebuilder:default="/"
 	RelativePath string `json:"relativePath,omitempty"`
 
+	// +kubebuilder:validation:Pattern=`^[0-9]+(\.[0-9]+)?$`
 	// +kubebuilder:default="31"
 
 	// Version contains supported version of nextcloud.
 	// Multiple versions are supported. The latest version 31 is the default version.
+	// Only major (e.g., "31") or major.minor (e.g., "31.0") versions are allowed.
+	// Patch versions (e.g., "31.0.4") are not allowed as they break maintenance.
 	Version string `json:"version,omitempty"`
 
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
@@ -228,7 +231,10 @@ type CollaboraSpec struct {
 	Enabled bool `json:"enabled"`
 	// FQDN contains the FQDN of the Collabora server. This is used to configure the Collabora server URL in Your Nextcloud instance.
 	FQDN string `json:"fqdn,omitempty"`
+	// +kubebuilder:validation:Pattern=`^[0-9]+(\.[0-9]+)?$`
 	// Version defines the Collabora version to use.
+	// Only major (e.g., "24") or major.minor (e.g., "24.04") versions are allowed.
+	// Patch versions (e.g., "24.04.3") are not allowed as they break maintenance.
 	Version string `json:"version,omitempty"`
 }
 

@@ -1,0 +1,15 @@
+name: Add /merge comment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  merge-instructions:
+    runs-on: ubuntu-latest
+    name: Merge button disabled
+    steps:
+      - name: Instructions
+        run: |
+          echo "✅ To merge this PR, comment: /merge"
+          echo "The merge button is intentionally disabled"

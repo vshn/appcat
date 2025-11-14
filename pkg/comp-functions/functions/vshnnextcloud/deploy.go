@@ -507,14 +507,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 					"value": "/opt/pg-certs/ca.crt",
 				},
 				{
-					"name":  "PGSSLCERT",
-					"value": "/opt/pg-certs/tls.crt",
-				},
-				{
-					"name":  "PGSSLKEY",
-					"value": "/opt/pg-certs/tls.key",
-				},
-				{
 					"name":  "PGSSLMODE",
 					"value": "require",
 				},

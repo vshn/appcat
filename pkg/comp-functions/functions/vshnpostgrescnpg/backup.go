@@ -57,35 +57,58 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 		retentionDays = 6
 	}
 
+	// Enable the barman-cloud plugin in the cluster configuration
+	clusterPlugins := []map[string]any{{
+		"name":         "barman-cloud.cloudnative-pg.io",
+		"enabled":      true,
+		"isWALArchiver": true,
+		"parameters": map[string]any{
+			"barmanObjectName": comp.GetName() + "-cluster-object-store",
+			"serverName":       "",
+		},
+	}}
+
+	// Get existing cluster config or create it
+	cluster, ok := values["cluster"].(map[string]any)
+	if !ok {
+		cluster = map[string]any{}
+		values["cluster"] = cluster
+	}
+	cluster["plugins"] = clusterPlugins
+
 	// Configure backups using the barman cloud plugin
 	maps.Copy(values, map[string]any{
 		"backups": map[string]any{
 			"enabled":         true,
-			"method":          "plugin",
+			"provider":        "s3",
 			"endpointURL":     connectionDetails.endpoint,
 			"retentionPolicy": fmt.Sprintf("%dd", retentionDays),
 			"s3": map[string]any{
 				"bucket":    connectionDetails.bucket,
 				"region":    connectionDetails.region,
+				"path":      "/",
 				"accessKey": connectionDetails.accessId,
 				"secretKey": connectionDetails.accessKey,
 			},
 			"wal": map[string]any{
 				"compression": "gzip",
-				"encryption":  "",
+				"encryption":  "AES256",
+				"maxParallel": 1,
 			},
 			"data": map[string]any{
-				"compression": "",
-				"encryption":  "",
+				"compression": "gzip",
+				"encryption":  "AES256",
+				"jobs":        2,
 			},
-			"plugin": map[string]any{
-				"isWALArchiver":     true,
-				"createObjectStore": true,
+			"secret": map[string]any{
+				"create": true,
+				"name":   "",
 			},
 			"scheduledBackups": []map[string]any{{
-				"name":      "default",
-				"schedule":  transformSchedule(comp.GetBackupSchedule()),
-				"immediate": false,
+				"name":                 "default",
+				"schedule":             transformSchedule(comp.GetBackupSchedule()),
+				"backupOwnerReference": "self",
+				"method":               "barmanObjectStore",
 			}},
 		},
 	})

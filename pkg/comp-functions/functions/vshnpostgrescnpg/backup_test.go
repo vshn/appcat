@@ -41,7 +41,7 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 
 	// Check backup configuration
 	assert.True(t, backupValues["enabled"].(bool))
-	assert.Equal(t, "plugin", backupValues["method"])
+	assert.Equal(t, "s3", backupValues["provider"])
 	assert.Equal(t, "6d", backupValues["retentionPolicy"])
 
 	// Bucket configuration
@@ -58,29 +58,46 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	s3Config := backupValues["s3"].(map[string]any)
 	assert.Equal(t, cd.bucket, s3Config["bucket"])
 	assert.Equal(t, cd.region, s3Config["region"])
+	assert.Equal(t, "/", s3Config["path"])
 	assert.Equal(t, cd.accessId, s3Config["accessKey"])
 	assert.Equal(t, cd.accessKey, s3Config["secretKey"])
 
 	// Check WAL and data configuration
 	walConfig := backupValues["wal"].(map[string]any)
 	assert.Equal(t, "gzip", walConfig["compression"])
-	assert.Equal(t, "", walConfig["encryption"])
+	assert.Equal(t, "AES256", walConfig["encryption"])
+	assert.Equal(t, 1, walConfig["maxParallel"])
 
 	dataConfig := backupValues["data"].(map[string]any)
-	assert.Equal(t, "", dataConfig["compression"])
-	assert.Equal(t, "", dataConfig["encryption"])
+	assert.Equal(t, "gzip", dataConfig["compression"])
+	assert.Equal(t, "AES256", dataConfig["encryption"])
+	assert.Equal(t, 2, dataConfig["jobs"])
 
-	// Check plugin configuration
-	pluginConfig := backupValues["plugin"].(map[string]any)
-	assert.True(t, pluginConfig["isWALArchiver"].(bool))
-	assert.True(t, pluginConfig["createObjectStore"].(bool))
+	// Check secret configuration
+	secretConfig := backupValues["secret"].(map[string]any)
+	assert.True(t, secretConfig["create"].(bool))
+	assert.Equal(t, "", secretConfig["name"])
+
+	// Check cluster plugins configuration
+	assert.NotNil(t, values["cluster"])
+	clusterConfig := values["cluster"].(map[string]any)
+	assert.NotNil(t, clusterConfig["plugins"])
+	plugins := clusterConfig["plugins"].([]map[string]any)
+	assert.Len(t, plugins, 1)
+	assert.Equal(t, "barman-cloud.cloudnative-pg.io", plugins[0]["name"])
+	assert.True(t, plugins[0]["enabled"].(bool))
+	assert.True(t, plugins[0]["isWALArchiver"].(bool))
+	pluginParams := plugins[0]["parameters"].(map[string]any)
+	assert.Equal(t, comp.GetName()+"-cluster-object-store", pluginParams["barmanObjectName"])
+	assert.Equal(t, "", pluginParams["serverName"])
 
 	// Check scheduled backups
 	scheduledBackups := backupValues["scheduledBackups"].([]map[string]any)
 	assert.Len(t, scheduledBackups, 1)
 	assert.Equal(t, "default", scheduledBackups[0]["name"])
 	assert.Equal(t, transformSchedule(comp.GetBackupSchedule()), scheduledBackups[0]["schedule"])
-	assert.False(t, scheduledBackups[0]["immediate"].(bool))
+	assert.Equal(t, "self", scheduledBackups[0]["backupOwnerReference"])
+	assert.Equal(t, "barmanObjectStore", scheduledBackups[0]["method"])
 
 	bucketName := comp.GetName() + "-backup"
 	err = svc.GetDesiredComposedResourceByName(&appcatv1.XObjectBucket{}, bucketName)

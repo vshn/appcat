@@ -47,7 +47,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate ingress: %s", err))
 	}
 
-	err = common.CreateIngresses(comp, svc, []*netv1.Ingress{ingress})
+	err = common.CreateIngresses(comp, svc, []*netv1.Ingress{ingress}, runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create ingress: %s", err))
 	}

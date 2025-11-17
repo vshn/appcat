@@ -165,9 +165,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	tagMap := map[string]string{
-		"7": "7.2.11",
-		"6": "6.2.20",
-		"8": "8.0.4",
+		"7": "7.2.12",
+		"6": "6.2.21",
+		"8": "8.0.5",
 	}
 
 	redisMajorVersion := string(comp.Spec.Parameters.Service.Version[0])

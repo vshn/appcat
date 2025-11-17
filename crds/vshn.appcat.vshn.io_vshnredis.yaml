@@ -4624,7 +4624,6 @@ spec:
                             Version contains supported version of Redis.
                             Multiple versions are supported. The latest version "7.2" is the default version.
                           enum:
-                            - "7.0"
                             - "7.2"
                             - "8.0"
                           type: string

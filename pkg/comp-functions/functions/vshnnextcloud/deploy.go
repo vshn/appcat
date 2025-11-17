@@ -419,7 +419,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"hostKey":     "POSTGRESQL_HOST",
 				"databaseKey": "POSTGRESQL_DB",
 			},
-			"host":     string(cd[vshnpostgres.PostgresqlHost]) + ":" + string(cd[vshnpostgres.PostgresqlPort]),
+			"host":     string(cd[vshnpostgres.PostgresqlHost]) + ":" + string(cd[vshnpostgres.PostgresqlPort]) + " sslmode=require sslrootcert=/opt/pg-certs/ca.crt",
 			"database": string(cd[vshnpostgres.PostgresqlDb]),
 			"user":     string(cd[vshnpostgres.PostgresqlUser]),
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
@@ -501,14 +501,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				{
 					"name":  "SKIP_MAINTENANCE",
 					"value": strconv.FormatBool(comp.Spec.Parameters.Backup.SkipMaintenance),
-				},
-				{
-					"name":  "PGSSLROOTCERT",
-					"value": "/opt/pg-certs/ca.crt",
-				},
-				{
-					"name":  "PGSSLMODE",
-					"value": "require",
 				},
 			},
 			"extraInitContainers": extraInitContainers,

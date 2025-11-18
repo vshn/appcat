@@ -1556,10 +1556,13 @@ func (s *ServiceRuntime) IsResourceReady(resourceName string) (bool, error) {
 
 // ResourceExistsInObserved checks if a resource exists in observed state.
 // Useful for preventing deletion when dependencies become temporarily unavailable.
+// If GetAllObserved fails, returns true (safer default) and adds a fatal result to halt composition.
 func (s *ServiceRuntime) ResourceExistsInObserved(resourceName string) bool {
 	observed, err := s.GetAllObserved()
 	if err != nil {
-		return false
+		s.Log.Error(err, "Failed to get observed resources, halting composition", "resourceName", resourceName)
+		s.AddResult(NewFatalResult(fmt.Errorf("cannot get observed resources to check if %s exists: %w", resourceName, err)))
+		return true
 	}
 
 	_, ok := observed[resource.Name(resourceName)]

@@ -339,7 +339,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 		ns, db, instns,
 		cred,
 	)
-	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla, compositionName string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 
 		assert.Equal(t, "VSHNRedis", service)
 		assert.Equal(t, "foo", name)
@@ -356,7 +356,7 @@ func TestVSHNRedis_PassCerdentials(t *testing.T) {
 			RootCAs:      x509.NewCertPool(),
 		}
 
-		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", false, redis.Options{
+		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", compositionName, false, redis.Options{
 			Addr:      string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
 			Username:  string(cred.Data["REDIS_USERNAME"]),
 			Password:  string(cred.Data["REDIS_PASSWORD"]),
@@ -402,7 +402,7 @@ func TestVSHNRedis_Tls(t *testing.T) {
 		ns, db, instns,
 		cred,
 	)
-	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla, compositionName string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 		certPair, err := tls.X509KeyPair(cred.Data["tls.crt"], cred.Data["tls.key"])
 		if err != nil {
 			return nil, err
@@ -415,7 +415,7 @@ func TestVSHNRedis_Tls(t *testing.T) {
 			RootCAs:      x509.NewCertPool(),
 		}
 
-		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", false, redis.Options{
+		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", compositionName, false, redis.Options{
 			Addr:      string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
 			Username:  string(cred.Data["REDIS_USERNAME"]),
 			Password:  string(cred.Data["REDIS_PASSWORD"]),
@@ -461,11 +461,11 @@ func TestVSHNRedis_NoTls(t *testing.T) {
 		ns, db, instns,
 		cred,
 	)
-	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+	r.RedisDialer = func(service, name, claimNamespace, instanceNamespace, organization, sla, compositionName string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 
 		assert.Nil(t, opts.TLSConfig, "TLS config MUST be nil")
 
-		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", false, redis.Options{
+		return fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, "besteffort", compositionName, false, redis.Options{
 			Addr:     string(cred.Data["REDIS_HOST"]) + ":" + string(cred.Data["REDIS_PORT"]),
 			Username: string(cred.Data["REDIS_USERNAME"]),
 			Password: string(cred.Data["REDIS_PASSWORD"]),
@@ -493,7 +493,7 @@ func TestVSHNRedis_NoTls(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
-func fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
+func fakeRedisDialer(service, name, claimNamespace, instanceNamespace, organization, sla, compositionName string, ha bool, opts redis.Options) (*probes.VSHNRedis, error) {
 	p := &probes.VSHNRedis{
 		Service:           service,
 		Name:              name,

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	cpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -156,11 +157,15 @@ func (v *XVSHNMinio) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-minio-%s", v.GetName())
 }
 
+func (v *XVSHNMinio) GetCompositionName() string {
+	return v.Spec.CompositionRef.Name
+}
+
 // XVSHNMinioSpec defines the desired state of a VSHNMinio.
 type XVSHNMinioSpec struct {
 	// Parameters are the configurable fields of a VSHNMinio.
-	Parameters VSHNMinioParameters `json:"parameters,omitempty"`
-
+	Parameters        VSHNMinioParameters       `json:"parameters,omitempty"`
+	CompositionRef    cpv1.CompositionReference `json:"compositionRef,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	cpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -183,11 +184,15 @@ func (v *XVSHNRedis) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-redis-%s", v.GetName())
 }
 
+func (v *XVSHNRedis) GetCompositionName() string {
+	return v.Spec.CompositionRef.Name
+}
+
 // XVSHNRedisSpec defines the desired state of a VSHNRedis.
 type XVSHNRedisSpec struct {
 	// Parameters are the configurable fields of a VSHNRedis.
-	Parameters VSHNRedisParameters `json:"parameters,omitempty"`
-
+	Parameters        VSHNRedisParameters       `json:"parameters,omitempty"`
+	CompositionRef    cpv1.CompositionReference `json:"compositionRef,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 

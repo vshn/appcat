@@ -49,7 +49,7 @@ type VSHNPostgreSQLReconciler struct {
 
 	ProbeManager       probeManager
 	StartupGracePeriod time.Duration
-	PostgreDialer      func(service, name, claimNamespace, instanceNamespace, dsn, organization, serviceLevel string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
+	PostgreDialer      func(service, name, claimNamespace, instanceNamespace, dsn, organization, serviceLevel, compositionName string, ha bool, ops ...func(*pgxpool.Config) error) (*probes.PostgreSQL, error)
 	ScClient           client.Client
 }
 
@@ -115,6 +115,8 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, obj slirec
 
 	ha := inst.Spec.Parameters.Instances > 1
 
+	compositionName := inst.Spec.CompositionRef.Name
+
 	sslmode := "verify-ca"
 	if !inst.Spec.Parameters.Service.TLS.Enabled {
 		sslmode = "disable"
@@ -129,7 +131,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, obj slirec
 			credSecret.Data["POSTGRESQL_PORT"],
 			credSecret.Data["POSTGRESQL_DB"],
 			sslmode,
-		), org, string(sla), ha,
+		), org, string(sla), compositionName, ha,
 		probes.PGWithCA(credSecret.Data["ca.crt"], inst.Spec.Parameters.Service.TLS.Enabled),
 	)
 	if err != nil {

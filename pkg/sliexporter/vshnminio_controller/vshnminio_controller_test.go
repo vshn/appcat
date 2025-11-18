@@ -200,7 +200,7 @@ func setupVSHNMinioTest(t *testing.T, objs ...client.Object) (VSHNMinioReconcile
 	return r, manager, client
 }
 
-func fakeMinioDialer(service, name, claimNamespace, instanceNamespace, organization, sla, endpointURL string, ha bool, opts minio.Options) (*probes.VSHNMinio, error) {
+func fakeMinioDialer(service, name, claimNamespace, instanceNamespace, organization, sla, compositionName, endpointURL string, ha bool, opts minio.Options) (*probes.VSHNMinio, error) {
 	p := &probes.VSHNMinio{
 		Service:           service,
 		Name:              name,

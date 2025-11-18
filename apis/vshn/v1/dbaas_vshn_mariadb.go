@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	cpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -202,11 +203,15 @@ func (v *XVSHNMariaDB) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-mariadb-%s", v.GetName())
 }
 
+func (v *XVSHNMariaDB) GetCompositionName() string {
+	return v.Spec.CompositionRef.Name
+}
+
 // XVSHNMariaDBSpec defines the desired state of a VSHNMariaDB.
 type XVSHNMariaDBSpec struct {
 	// Parameters are the configurable fields of a VSHNMariaDB.
-	Parameters VSHNMariaDBParameters `json:"parameters,omitempty"`
-
+	Parameters        VSHNMariaDBParameters     `json:"parameters,omitempty"`
+	CompositionRef    cpv1.CompositionReference `json:"compositionRef,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 

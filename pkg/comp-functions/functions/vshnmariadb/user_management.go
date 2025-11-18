@@ -31,6 +31,8 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.
 
 	for _, access := range comp.Spec.Parameters.Service.Access {
 
+		// We don't have a dependency for the user
+		// Checking for existence of the helm release does not mean that mariadb is ready to accept connections
 		userPasswordRef := addUser(comp, svc, *access.User)
 
 		dbname := *access.User
@@ -38,9 +40,32 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.
 			dbname = *access.Database
 		}
 
-		addDatabase(comp, svc, dbname)
+		userName := fmt.Sprintf("%s-%s-role", comp.GetName(), *access.User)
+		dbName := fmt.Sprintf("%s-%s-database", comp.GetName(), dbname)
+		grantName := fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), *access.User, dbname)
 
-		addGrants(comp, svc, *access.User, dbname, access.Privileges)
+		// Only add database if user is ready
+		// We also check for self-existence to prevent deletion when the depending resource turns unready
+		userReady, userErr := svc.IsResourceReady(userName)
+		if (userErr == nil && userReady) || svc.ResourceExistsInObserved(dbName) {
+			addDatabase(comp, svc, dbname)
+		} else if userErr != nil {
+			svc.Log.Info("User not yet ready, skipping database creation", "user", userName, "error", userErr.Error())
+		}
+
+		// Only add grants if both user and database are ready
+		// We also check for self-existence to prevent deletion when the depending resource turns unready
+		dbReady, dbErr := svc.IsResourceReady(dbName)
+		if (userErr == nil && userReady && dbErr == nil && dbReady) || svc.ResourceExistsInObserved(grantName) {
+			addGrants(comp, svc, *access.User, dbname, access.Privileges)
+		} else {
+			if userErr != nil {
+				svc.Log.Info("User not yet ready, skipping grant creation", "user", userName, "error", userErr.Error())
+			}
+			if dbErr != nil {
+				svc.Log.Info("Database not yet ready, skipping grant creation", "database", dbName, "error", dbErr.Error())
+			}
+		}
 
 		addConnectionDetail(comp, svc, userPasswordRef, *access.User, dbname, access.WriteConnectionSecretToReference)
 	}

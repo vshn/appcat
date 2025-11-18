@@ -68,7 +68,7 @@ func TestProbe(t *testing.T) {
 		t.Logf("Bucket '%s' created successfully\n", bucketName)
 	}
 
-	minio, err := NewMinio("VSHNMinio", "VSHNMinio", "default", "default", "VSHNMinio", "besteffort", endpoint, false, minio.Options{
+	minio, err := NewMinio("VSHNMinio", "VSHNMinio", "default", "default", "VSHNMinio", "besteffort", "minio", endpoint, false, minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
 	})

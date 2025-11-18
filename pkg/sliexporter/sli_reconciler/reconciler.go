@@ -110,7 +110,6 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		res.Requeue = true
 		res.RequeueAfter = 30 * time.Second
 
-		// Create a pobe that will always fail
 		probe, err = probes.NewFailingProbe(r.serviceKey, r.inst.GetName(), claimNamespace, instanceNamespace, err)
 		if err != nil {
 			return ctrl.Result{}, err

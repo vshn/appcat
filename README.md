@@ -171,14 +171,18 @@ Creating a PostgreSQL or Redis instance will now go through the Webhook instance
 ## SLI Exporter
 ### Metrics
 
-The exporter exposes a histogram `appcat_probes_seconds` with five labels
+The exporter exposes a histogram `appcat_probes_seconds` with the following labels:
 
 * `service`, the service type that was probed (e.g. `VSHNPostgreSQL`)
-* `namespace`, the namespace of the claim that was monitored
+* `claim_namespace`, the namespace of the claim that was monitored
+* `instance_namespace`, the namespace where the instance is deployed
 * `name`, the name of the claim that was monitored
-* `sla`, the service level. Can either be `besteffort` or `guaranteed`
-* `high_available`, whether this instance is high available (1 or more nodes)
 * `reason`, if the probe was successful. Can either be `success`, `fail-timeout`, or `fail-unkown`
+* `organization`, the organization label from the namespace
+* `ha`, whether this instance is high available (true or false)
+* `sla`, the service level. Can either be `besteffort` or `guaranteed`
+* `maintenance`, whether maintenance is currently running (true or false)
+* `composition`, the name of the composition being used (e.g. `vshnpostgrescnpg.vshn.appcat.vshn.io`)
 
 #### Adding a Prober
 

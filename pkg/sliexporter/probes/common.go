@@ -30,14 +30,14 @@ func (p FailingProbe) GetInfo() ProbeInfo {
 	}
 }
 
-// Will always return error, as this is a failing probe.
+// Probe Will always return error, as this is a failing probe.
 func (p FailingProbe) Probe(ctx context.Context) error {
 	return p.Error
 }
 
-// NewFailing creates a prober that will fail.
+// NewFailingProbe creates a prober that will fail.
 // Can be used if the controller can't access valid credentials.
-func NewFailingProbe(service, name, claimNamespace string, instanceNamespace string, err error) (*FailingProbe, error) {
+func NewFailingProbe(service, name, claimNamespace, instanceNamespace string, err error) (*FailingProbe, error) {
 	return &FailingProbe{
 		Service:           service,
 		Name:              name,

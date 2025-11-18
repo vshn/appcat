@@ -40,6 +40,11 @@ type InstanceNamespaceGetter interface {
 	GetInstanceNamespace() string
 }
 
+// CompositionNameGetter returns the composition name of the given object
+type CompositionNameGetter interface {
+	GetCompositionName() string
+}
+
 // Composite can get and set the relevant information on a given composite.
 type Composite interface {
 	InfoGetter

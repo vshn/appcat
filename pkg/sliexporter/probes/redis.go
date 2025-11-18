@@ -39,9 +39,10 @@ type VSHNRedis struct {
 	HighAvailable     bool
 	Organization      string
 	ServiceLevel      string
+	CompositionName   string
 }
 
-func NewRedis(service, name, claimNamespace, instanceNamespace, organization, sla string, ha bool, opts redis.Options) (*VSHNRedis, error) {
+func NewRedis(service, name, claimNamespace, instanceNamespace, organization, sla, compositionName string, ha bool, opts redis.Options) (*VSHNRedis, error) {
 	client := redis.NewClient(&opts)
 	r := &VSHNRedis{
 		redisClient:       client,
@@ -52,6 +53,7 @@ func NewRedis(service, name, claimNamespace, instanceNamespace, organization, sl
 		HighAvailable:     ha,
 		Organization:      organization,
 		ServiceLevel:      sla,
+		CompositionName:   compositionName,
 	}
 
 	if ha {
@@ -109,6 +111,7 @@ func (redis *VSHNRedis) GetInfo() ProbeInfo {
 		HighAvailable:     redis.HighAvailable,
 		Organization:      redis.Organization,
 		ServiceLevel:      redis.ServiceLevel,
+		CompositionName:   redis.CompositionName,
 	}
 }
 

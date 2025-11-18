@@ -16,6 +16,7 @@ type VSHNMinio struct {
 	HighAvailable     bool
 	Organization      string
 	ServiceLevel      string
+	CompositionName   string
 }
 
 func (minio VSHNMinio) Close() error {
@@ -31,6 +32,7 @@ func (minio VSHNMinio) GetInfo() ProbeInfo {
 		HighAvailable:     minio.HighAvailable,
 		Organization:      minio.Organization,
 		ServiceLevel:      minio.ServiceLevel,
+		CompositionName:   minio.CompositionName,
 	}
 }
 
@@ -46,7 +48,7 @@ func (minio VSHNMinio) Probe(ctx context.Context) error {
 	return nil
 }
 
-func NewMinio(service, name, claimNamespace, instanceNamespace, organization, sla, endpointURL string, ha bool, opts miniolib.Options) (*VSHNMinio, error) {
+func NewMinio(service, name, claimNamespace, instanceNamespace, organization, sla, compositionName, endpointURL string, ha bool, opts miniolib.Options) (*VSHNMinio, error) {
 
 	client, err := miniolib.New(endpointURL, &opts)
 	if err != nil {
@@ -62,5 +64,6 @@ func NewMinio(service, name, claimNamespace, instanceNamespace, organization, sl
 		HighAvailable:     ha,
 		Organization:      organization,
 		ServiceLevel:      sla,
+		CompositionName:   compositionName,
 	}, nil
 }

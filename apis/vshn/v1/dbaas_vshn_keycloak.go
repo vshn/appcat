@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	cpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -250,6 +251,10 @@ func (v *XVSHNKeycloak) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-keycloak-%s", v.GetName())
 }
 
+func (v *XVSHNKeycloak) GetCompositionName() string {
+	return v.Spec.CompositionRef.Name
+}
+
 func (v *VSHNKeycloak) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }
@@ -301,10 +306,9 @@ type XVSHNKeycloak struct {
 // XVSHNKeycloakSpec defines the desired state of a VSHNKeycloak.
 type XVSHNKeycloakSpec struct {
 	// Parameters are the configurable fields of a VSHNKeycloak.
-	Parameters VSHNKeycloakParameters `json:"parameters,omitempty"`
-
-	ResourceRefs []xpv1.TypedReference `json:"resourceRefs,omitempty"`
-
+	Parameters        VSHNKeycloakParameters    `json:"parameters,omitempty"`
+	CompositionRef    cpv1.CompositionReference `json:"compositionRef,omitempty"`
+	ResourceRefs      []xpv1.TypedReference     `json:"resourceRefs,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 

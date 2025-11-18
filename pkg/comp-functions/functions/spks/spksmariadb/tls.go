@@ -18,7 +18,7 @@ import (
 func HandleTLS(ctx context.Context, comp *spksv1alpha1.CompositeMariaDBInstance, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot get composite for spks redis: %w", err))
+		return runtime.NewFatalResult(fmt.Errorf("cannot get composite for spks mariadb: %w", err))
 	}
 
 	if !comp.Spec.Parameters.TLS {
@@ -33,7 +33,7 @@ func HandleTLS(ctx context.Context, comp *spksv1alpha1.CompositeMariaDBInstance,
 
 	cd, err := svc.GetObservedComposedResourceConnectionDetails("galera-cluster")
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot get connection details of haproxy: %s", err.Error()))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot get connection details of mariadb: %s", err.Error()))
 	}
 
 	tlsOpts := &common.TLSOptions{
@@ -88,7 +88,7 @@ func enableTLS(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeMariaDBI
 
 	err := svc.GetDesiredComposedResourceByName(galeraCluster, "galera-cluster")
 	if err != nil {
-		return fmt.Errorf("cannot get desired galera cluster relase")
+		return fmt.Errorf("cannot get desired galera cluster release")
 	}
 
 	values, err := common.GetReleaseValues(galeraCluster)
@@ -97,11 +97,6 @@ func enableTLS(svc *runtime.ServiceRuntime, comp *spksv1alpha1.CompositeMariaDBI
 	}
 
 	err = unstructured.SetNestedField(values, comp.Spec.Parameters.TLS, "tls", "enabled")
-	if err != nil {
-		return fmt.Errorf("cannot enable TLS: %s", err)
-	}
-
-	err = unstructured.SetNestedField(values, comp.Spec.Parameters.RequireTLS, "tls", "required")
 	if err != nil {
 		return fmt.Errorf("cannot enable TLS: %s", err)
 	}

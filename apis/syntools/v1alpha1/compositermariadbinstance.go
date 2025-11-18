@@ -27,8 +27,6 @@ type CompositeMariaDBInstanceSpec struct {
 type CompositeMariadbInstanceParameters struct {
 	// Enable or disable TLS for this instance.
 	TLS bool `json:"tls,omitempty"`
-	// Enforce TLS on this instance. Needs tls to be true.
-	RequireTLS bool `json:"requireTLS,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

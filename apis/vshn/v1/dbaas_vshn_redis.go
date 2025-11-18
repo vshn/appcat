@@ -87,7 +87,7 @@ type VSHNRedisParameters struct {
 
 // VSHNRedisServiceSpec contains Redis DBaaS specific properties
 type VSHNRedisServiceSpec struct {
-	// +kubebuilder:validation:Enum="7.2";"8.0"
+	// +kubebuilder:validation:Enum="7.0";"7.2";"8.0"
 	// +kubebuilder:default="7.2"
 
 	// Version contains supported version of Redis.

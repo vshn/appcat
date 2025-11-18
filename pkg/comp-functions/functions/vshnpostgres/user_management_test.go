@@ -122,7 +122,7 @@ func Test_addGrants(t *testing.T) {
 }
 
 func TestUserManagement(t *testing.T) {
-	// given with empty accesss object
+	// given with empty access object
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/usermanagement/01-emptyaccess.yaml")
 
 	// when applied
@@ -135,7 +135,7 @@ func TestUserManagement(t *testing.T) {
 	db := &pgv1alpha1.Database{}
 	assert.Error(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
 
-	// when adding an user
+	// when adding a user
 	comp.Spec.Parameters.Service.Access = []vshnv1.VSHNAccess{
 		{
 			User: ptr.To("prod"),
@@ -147,9 +147,13 @@ func TestUserManagement(t *testing.T) {
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
 	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
 
-	// then expect database
+	// then expect role to be created but not database yet (sequencing: role must be ready first)
+	role := &pgv1alpha1.Role{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(role, fmt.Sprintf("%s-%s-role", comp.GetName(), "prod")))
+
+	// Database should not be created yet since role is not in observed state
 	db = &pgv1alpha1.Database{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
+	assert.Error(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
 
 	// when adding user pointing to same db
 	comp.Spec.Parameters.Service.Access = append(comp.Spec.Parameters.Service.Access, vshnv1.VSHNAccess{
@@ -162,9 +166,15 @@ func TestUserManagement(t *testing.T) {
 	assert.NoError(t, svc.SetDesiredCompositeStatus(comp))
 	assert.Nil(t, UserManagement(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
 
-	// then expect database
+	// then expect both roles but still no database (dependencies not ready)
+	role = &pgv1alpha1.Role{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(role, fmt.Sprintf("%s-%s-role", comp.GetName(), "prod")))
+	role2 := &pgv1alpha1.Role{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(role2, fmt.Sprintf("%s-%s-role", comp.GetName(), "another")))
+
+	// Database still not created since roles are not in observed state
 	db = &pgv1alpha1.Database{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
+	assert.Error(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
 
 	// When deleting user pointing to same db
 	comp.Spec.Parameters.Service.Access = []vshnv1.VSHNAccess{
@@ -176,9 +186,9 @@ func TestUserManagement(t *testing.T) {
 
 	assert.NoError(t, setObservedComposition(svc, comp))
 
-	// then expect database
-	db = &pgv1alpha1.Database{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "prod")))
+	// then expect the other role to still be in desired
+	role = &pgv1alpha1.Role{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(role, fmt.Sprintf("%s-%s-role", comp.GetName(), "another")))
 }
 
 func setObservedComposition(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) error {

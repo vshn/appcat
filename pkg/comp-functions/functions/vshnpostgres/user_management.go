@@ -38,6 +38,8 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 
 	for _, access := range comp.Spec.Parameters.Service.Access {
 
+		// We don't have a dependency for the user
+		// Checking for existence of sgcluster does not mean that postgres is ready to accept connections
 		userPasswordRef := addUser(comp, svc, *access.User)
 
 		dbuser := *access.User
@@ -46,9 +48,32 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 			dbname = *access.Database
 		}
 
-		addDatabase(comp, svc, dbuser, dbname)
+		roleName := fmt.Sprintf("%s-%s-role", comp.GetName(), dbuser)
+		dbName := fmt.Sprintf("%s-%s-database", comp.GetName(), dbname)
+		grantName := fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), dbuser, dbname)
 
-		addGrants(comp, svc, dbuser, dbname, access.Privileges)
+		// Only add database if role is ready
+		// We also check for self-existence to prevent deletion when the depending resource turns unready
+		roleReady, roleErr := svc.IsResourceReady(roleName)
+		if (roleErr == nil && roleReady) || svc.ResourceExistsInObserved(dbName) {
+			addDatabase(comp, svc, dbuser, dbname)
+		} else if roleErr != nil {
+			svc.Log.Info("Role not yet ready, skipping database creation", "role", roleName, "error", roleErr.Error())
+		}
+
+		// Only add grants if both role and database are ready
+		// We also check for self-existence to prevent deletion when the depending resource turns unready
+		dbReady, dbErr := svc.IsResourceReady(dbName)
+		if (roleErr == nil && roleReady && dbErr == nil && dbReady) || svc.ResourceExistsInObserved(grantName) {
+			addGrants(comp, svc, dbuser, dbname, access.Privileges)
+		} else {
+			if roleErr != nil {
+				svc.Log.Info("Role not yet ready, skipping grant creation", "role", roleName, "error", roleErr.Error())
+			}
+			if dbErr != nil {
+				svc.Log.Info("Database not yet ready, skipping grant creation", "database", dbName, "error", dbErr.Error())
+			}
+		}
 
 		err := addConnectionDetail(comp, svc, userPasswordRef, *access.User, dbname, access.WriteConnectionSecretToReference)
 		if err != nil {

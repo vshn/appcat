@@ -10,6 +10,10 @@ func init() {
 	runtime.RegisterService("redis-k8s", runtime.Service[*v1alpha1.CompositeRedisInstance]{
 		Steps: []runtime.Step[*v1alpha1.CompositeRedisInstance]{
 			{
+				Name:    "haproxyMetrics",
+				Execute: HaproxyMetrics,
+			},
+			{
 				Name:    "resizePVC",
 				Execute: ResizeSpksPVCs,
 			},

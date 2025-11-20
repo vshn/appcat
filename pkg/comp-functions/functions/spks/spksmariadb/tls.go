@@ -80,6 +80,13 @@ func HandleTLS(ctx context.Context, comp *spksv1alpha1.CompositeMariaDBInstance,
 
 	svc.AddObservedConnectionDetails(comp.GetName() + "-server-cert")
 
+	// If the certificate is not yet populated in the connection details
+	// we're not ready yet and need to reconcile more often
+	compcd := svc.GetObservedConnectionDetails()
+	if string(compcd["ca.crt"]) == "" || string(compcd["ca.crt"]) == "N/A" {
+		svc.SetDesiredResourceReadiness("galera-cluster", runtime.ResourceUnReady)
+	}
+
 	return nil
 }
 

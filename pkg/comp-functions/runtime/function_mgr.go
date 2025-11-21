@@ -772,10 +772,15 @@ func (s *ServiceRuntime) SetConnectionDetail(name string, value []byte) {
 	s.connectionDetails[name] = value
 }
 
-// GetConnectionDetails returns all current connection details for the current
+// GetConnectionDetails returns all desired connection details for the current
 // composite.
 func (s *ServiceRuntime) GetConnectionDetails() map[string][]byte {
 	return s.connectionDetails
+}
+
+// GetObservedConnectionDetails returns the observed connection details of the composite.
+func (s *ServiceRuntime) GetObservedConnectionDetails() map[string][]byte {
+	return s.req.Observed.Composite.ConnectionDetails
 }
 
 // GetObservedComposedResourceConnectionDetails returns the observed connection details of the given

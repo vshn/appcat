@@ -10,8 +10,8 @@ func init() {
 	runtime.RegisterService("mariadb-k8s", runtime.Service[*v1alpha1.CompositeMariaDBInstance]{
 		Steps: []runtime.Step[*v1alpha1.CompositeMariaDBInstance]{
 			{
-				Name:    "resizePVC",
-				Execute: ResizeSpksPVCs,
+				Name:    "HandleTLS",
+				Execute: HandleTLS,
 			},
 			// This one should be the last step to call!
 			{

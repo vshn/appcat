@@ -61,6 +61,7 @@ type ClusterSpecImageCatalogRef struct {
 }
 
 type ClusterStatus struct {
-	Instances      int `json:"instances"`
-	ReadyInstances int `json:"readyInstances"`
+	Instances      int    `json:"instances"`
+	ReadyInstances int    `json:"readyInstances"`
+	Image          string `json:"image"`
 }

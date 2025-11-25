@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,17 +17,13 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgrescnpg"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
+	"gopkg.in/yaml.v2"
 
 	"github.com/go-logr/logr"
 	cnpgv1 "github.com/vshn/appcat/v4/apis/cnpg/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	apiUrl = "https://ghcr.io/v2/cloudnative-pg/postgresql/tags/list?n=1000"
 )
 
 // PostgreSQLCNPG handles the maintenance of postgresql services
@@ -41,7 +38,8 @@ type PostgreSQLCNPG struct {
 	claimName         string
 	compName          string
 	vacuum            string
-	//repack          unavailable
+	catalogURL        string
+	// repack          unavailable
 }
 
 // NewPostgreSQL returns a new PostgreSQL maintenance job runner
@@ -57,6 +55,7 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 		claimName:         viper.GetString("CLAIM_NAME"),
 		compName:          viper.GetString("COMPOSITE_NAME"),
 		vacuum:            viper.GetString("VACUUM_ENABLED"),
+		catalogURL:        viper.GetString("MAINTENANCE_URL"),
 	}
 }
 
@@ -74,34 +73,31 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 		return fmt.Errorf("couldn't get instance cluster: %w", err)
 	}
 
-	icName := instanceCluster.Spec.ImageCatalogRef.Name
-	imageCatalog, err := p.getImageCatalog(ctx, icName)
+	version, err := strconv.Atoi(claim.Spec.Parameters.Service.MajorVersion)
 	if err != nil {
-		return fmt.Errorf("couldn't get image catalog '%s': %w", icName, err)
+		return fmt.Errorf("cannot parse postgresql major version: %w", err)
 	}
 
-	var versionList []string
-	for _, image := range imageCatalog.Spec.Images {
-		versionList = append(versionList, fmt.Sprintf("%d", image.Major))
-	}
-
-	v, err := p.getRegistryVersions(apiUrl)
+	latestCatalog, err := p.getLatestImageCatalog(ctx, p.catalogURL)
 	if err != nil {
-		return fmt.Errorf("couldn't get latest versions from registry: %w", err)
+		return fmt.Errorf("cannot get the latest image catalog: %w", err)
 	}
 
-	// Update image catalog
-	p.log.Info("Checking image catalog...", "imageCatalog", icName)
-	if changed, err := p.setLatestVersionInCatalog(imageCatalog, v); err != nil {
-		return fmt.Errorf("couldn't upgrade catalog: %w", err)
-	} else if changed {
-		if err := p.k8sClient.Update(ctx, imageCatalog); err != nil {
-			return fmt.Errorf("could't update ImageCatalog in cluster: %w", err)
+	err = p.applyImageCatalog(ctx, latestCatalog, instanceCluster)
+	if err != nil {
+		return fmt.Errorf("cannot apply new image catalog: %w", err)
+	}
+
+	p.log.Info(fmt.Sprintf("Current image: %s", instanceCluster.Status.Image))
+	for _, i := range latestCatalog.Spec.Images {
+		if i.Major == version {
+			p.log.Info(fmt.Sprintf("Latest image: %s", i.Image))
 		}
 	}
 
-	// EOL
-	if isEol := p.isEOL(claim.Spec.Parameters.Service.MajorVersion, versionList); isEol {
+	// EOL handling
+
+	if isEol := p.isEOL(version, latestCatalog); isEol {
 		p.log.Info("Setting EOL on calim")
 		if err := p.setEOLStatus(ctx); err != nil {
 			return fmt.Errorf("couldn't set EOL status on claim: %w", err)
@@ -183,29 +179,6 @@ func (p *PostgreSQLCNPG) doVacuum(ctx context.Context) error {
 	return nil
 }
 
-// Upgrade every minor version in an image catalog. Return true if anything was updated.
-func (p *PostgreSQLCNPG) setLatestVersionInCatalog(ic *cnpgv1.ImageCatalog, versionLister helm.VersionLister) (bool, error) {
-	var haveMadeChanges bool
-	versions := versionLister.GetVersions()
-
-	for i, image := range ic.Spec.Images {
-		thisVersion := strings.Split(image.Image, ":")[1]
-		version, err := p.getLatestMinorVersion(thisVersion, versions)
-		if err != nil {
-			return false, fmt.Errorf("couldn't get latest minor version: %w", err)
-		}
-
-		if thisVersion != version {
-			haveMadeChanges = true
-			result := fmt.Sprintf("%s:%s", vshnpostgrescnpg.PsqlContainerRegistry, version)
-			p.log.Info("Setting new version", "major", image.Major, "oldVersion", thisVersion, "newVersion", version, "oldImage", image.Image, "newImage", result)
-			ic.Spec.Images[i].Image = result
-		}
-	}
-
-	return haveMadeChanges, nil
-}
-
 // Get PSQL connection URI directly from the connection secret
 func (p *PostgreSQLCNPG) getConnectionUri(ctx context.Context) (string, error) {
 	secret := &corev1.Secret{}
@@ -233,14 +206,39 @@ func (p *PostgreSQLCNPG) getConnectionUri(ctx context.Context) (string, error) {
 	return uri, nil
 }
 
-func (p *PostgreSQLCNPG) getImageCatalog(ctx context.Context, name string) (*cnpgv1.ImageCatalog, error) {
+// getLatestImageCatalog fetches the imagecatalog from the given maintenanceURL
+func (p *PostgreSQLCNPG) getLatestImageCatalog(ctx context.Context, catalogURL string) (*cnpgv1.ImageCatalog, error) {
 	imageCatalog := &cnpgv1.ImageCatalog{}
-	err := p.k8sClient.Get(ctx, client.ObjectKey{Namespace: p.instanceNamespace, Name: name}, imageCatalog)
+
+	resp, err := p.httpClient.Get(catalogURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot fetch latest cnpg catalog: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("cannot fetch latest cnpg catalog, got status code: %s", resp.Status)
+	}
+
+	bodyDecoder := yaml.NewDecoder(resp.Body)
+	err = bodyDecoder.Decode(imageCatalog)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode image catalog: %w", err)
 	}
 
 	return imageCatalog, nil
+}
+
+func (p *PostgreSQLCNPG) applyImageCatalog(ctx context.Context, newCatalog *cnpgv1.ImageCatalog, instanceCluster *cnpgv1.Cluster) error {
+	currentCatalog := &cnpgv1.ImageCatalog{}
+
+	err := p.k8sClient.Get(ctx, client.ObjectKey{Name: instanceCluster.Spec.ImageCatalogRef.Name, Namespace: p.instanceNamespace}, currentCatalog)
+	if err != nil {
+		return fmt.Errorf("cannot get current catalog: %w", err)
+	}
+
+	currentCatalog.Spec.Images = newCatalog.Spec.Images
+
+	return p.k8sClient.Update(ctx, currentCatalog)
 }
 
 func (p *PostgreSQLCNPG) getCompositeCluster(ctx context.Context) (*cnpgv1.Cluster, error) {
@@ -256,8 +254,13 @@ func (p *PostgreSQLCNPG) getCompositeCluster(ctx context.Context) (*cnpgv1.Clust
 	return cluster, nil
 }
 
-func (p *PostgreSQLCNPG) isEOL(currentVersion string, versionList []string) bool {
-	return !slices.Contains(versionList, currentVersion)
+func (p *PostgreSQLCNPG) isEOL(currentVersion int, imageCatalog *cnpgv1.ImageCatalog) bool {
+	for _, i := range imageCatalog.Spec.Images {
+		if i.Major == currentVersion {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *PostgreSQLCNPG) setEOLStatus(ctx context.Context) error {

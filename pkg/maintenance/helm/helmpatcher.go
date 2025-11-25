@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -228,6 +229,9 @@ func (h *ImagePatcher) getVersions(imageURL string) (VersionLister, error) {
 	return h.getRegistryVersions(imageURL)
 }
 
+// get registry versions will try to get the first page of the tag without fetching
+// a token. If that fails it fetches a token.
+// After getting the first page it will paginate through the remaining tag, to make sure we get them all.getRegistryVersions
 func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, error) {
 	results := &RegistryResult{}
 
@@ -238,13 +242,15 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 
 	defer resp.Body.Close()
 
+	token := ""
 	// if we're not allowed, let's try with a token
 	if resp.StatusCode == http.StatusUnauthorized {
-		authResp, err := h.listTagsWithToken(imageURL, resp.Header.Get("www-authenticate"))
+		authResp, authToken, err := h.listTagsWithToken(imageURL, resp.Header.Get("www-authenticate"))
 		if err != nil {
 			return nil, fmt.Errorf("cannot list tags with token: %w", err)
 		}
 
+		token = authToken
 		resp = authResp
 	}
 
@@ -258,30 +264,99 @@ func (h *ImagePatcher) getRegistryVersions(imageURL string) (VersionLister, erro
 		return nil, fmt.Errorf("cannot decode docker registry results: %w", err)
 	}
 
+	nextPath := h.parseLinkHeader(resp.Header)
+	parsedImageURL, err := url.Parse(imageURL)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse maintenanceURL: %w", err)
+	}
+
+	// get all other pages as well
+	for nextPath != "" {
+		if !strings.HasPrefix(nextPath, "/") {
+			nextPath = "/" + nextPath
+		}
+
+		nextURL := fmt.Sprintf("%s://%s%s", parsedImageURL.Scheme, parsedImageURL.Host, nextPath)
+
+		req, _ := http.NewRequest("GET", nextURL, nil)
+		if token != "" {
+			req.Header.Add("Authorization", "Bearer "+token)
+		}
+
+		resp, err := h.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("cannot access registry: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			b, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
+		}
+
+		var page RegistryResult
+		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("cannot decode registry results: %w", err)
+		}
+		resp.Body.Close()
+
+		results.Tags = append(results.Tags, page.Tags...)
+
+		nextPath = h.parseLinkHeader(resp.Header)
+		if nextPath == "" {
+			break
+		}
+	}
+
 	return results, nil
+}
+
+// Parse registry v2 API link header. Return the next URL if found, and "" if not.
+// Only supports headers whose rel is "next".
+func (h *ImagePatcher) parseLinkHeader(header http.Header) string {
+	if link := header.Get("Link"); link != "" {
+		// registry API v2 returns this sort of header:
+		// </v2/cloudnative-pg/postgresql/tags/list?last=13.16&n=1000>; rel="next"
+		parts := strings.Split(link, ",")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			seg := strings.SplitN(part, ";", 2)
+			if len(seg) < 2 {
+				continue
+			}
+			urlPart := strings.Trim(seg[0], " <>")
+			relPart := strings.TrimSpace(seg[1])
+			if strings.Contains(relPart, `rel="next"`) {
+				return urlPart
+			}
+		}
+	}
+
+	return ""
 }
 
 // If the registry requires a token, but no authentication, then it will write the means how to
 // get said token via the `www-authenticate` header in the response
-func (h *ImagePatcher) listTagsWithToken(imageURL string, authHeader string) (*http.Response, error) {
+func (h *ImagePatcher) listTagsWithToken(imageURL string, authHeader string) (*http.Response, string, error) {
 	token, err := h.getToken(authHeader)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get token: %w", err)
+		return nil, "", fmt.Errorf("cannot get token: %w", err)
 	}
 
 	req, err := http.NewRequest("GET", imageURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("cannot build GHCR request: %w", err)
+		return nil, "", fmt.Errorf("cannot build GHCR request: %w", err)
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	resp, err := h.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get GHCR image tags:%w", err)
+		return nil, "", fmt.Errorf("cannot get GHCR image tags:%w", err)
 	}
 
-	return resp, nil
+	return resp, token, nil
 }
 
 func (h *ImagePatcher) getToken(authHeader string) (string, error) {

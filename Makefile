@@ -129,7 +129,7 @@ generate-stackgres-crds:
 
 .PHONY: generate-cnpg-crds
 generate-cnpg-crds:
-	curl -L ${CNPG_CRD_URL} > apis/cnpg/v1/all_crd.yaml
+	# curl -L ${CNPG_CRD_URL} > apis/cnpg/v1/all_crd.yaml
 
     # Clusters - Broken, but still kept for reference
 	#cat apis/cnpg/v1/all_crd.yaml | yq 'select(.kind == "CustomResourceDefinition") | select(.metadata.name == "clusters.postgresql.cnpg.io")' > apis/cnpg/v1/clusters_crd.yaml
@@ -143,14 +143,14 @@ generate-cnpg-crds:
 	#s/\*struct\s\{\n\s+AdditionalProperties\smap\[string\]struct\s\{\n\s+AdditionalProperties\s(map\[string\][^\s`]+)\s`json:"-"`\n\s+\}\s`json:"-"`\n\s+\}/map\[string\]\1/gms;
 	#' apis/cnpg/v1/clusters.gen.go
 
-    # Image Catalogs
-	cat apis/cnpg/v1/all_crd.yaml | yq 'select(.kind == "CustomResourceDefinition") | select(.metadata.name == "imagecatalogs.postgresql.cnpg.io")' > apis/cnpg/v1/imagecatalogs_crd.yaml
-	yq -i e apis/cnpg/v1/imagecatalogs.yaml --expression ".components.schemas.ImageCatalogSpec=load(\"apis/cnpg/v1/imagecatalogs_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
-	go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/cnpg/v1/imagecatalogs.gen.go apis/cnpg/v1/imagecatalogs.yaml
-	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/cnpg/v1/imagecatalogs.gen.go
+    # Image Catalogs also broken
+	# cat apis/cnpg/v1/all_crd.yaml | yq 'select(.kind == "CustomResourceDefinition") | select(.metadata.name == "imagecatalogs.postgresql.cnpg.io")' > apis/cnpg/v1/imagecatalogs_crd.yaml
+	# yq -i e apis/cnpg/v1/imagecatalogs.yaml --expression ".components.schemas.ImageCatalogSpec=load(\"apis/cnpg/v1/imagecatalogs_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	# go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/cnpg/v1/imagecatalogs.gen.go apis/cnpg/v1/imagecatalogs.yaml
+	# perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/cnpg/v1/imagecatalogs.gen.go
 
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/cnpg/v1/...
-	rm apis/cnpg/v1/*_crd.yaml
+	# go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/cnpg/v1/...
+	# rm apis/cnpg/v1/*_crd.yaml
 
 .PHONY: generate-with-diff-check
 generate-with-diff-check: generate ## Generate code with controller-gen and diff check
@@ -270,4 +270,3 @@ setup-kindev: ## Setup kindev in the .kind folder, will always create a new inst
 	cd .kind && \
 	make clean && \
 	make vshnall
-

@@ -2,20 +2,15 @@ package maintenance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-version"
 	"github.com/jackc/pgx/v5"
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgrescnpg"
-	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"gopkg.in/yaml.v2"
 
@@ -273,158 +268,4 @@ func (p *PostgreSQLCNPG) setEOLStatus(ctx context.Context) error {
 	claim.Status.IsEOL = true
 
 	return p.k8sClient.Update(ctx, claim)
-}
-
-// getLatestMinorVersion determines the most current minor version
-func (p *PostgreSQLCNPG) getLatestMinorVersion(vers string, versionList []string) (string, error) {
-	if len(versionList) == 0 {
-		return vers, nil
-	}
-
-	current, err := version.NewVersion(vers)
-	if err != nil {
-		return "", err
-	}
-
-	validVersions := make([]*version.Version, 0)
-	for _, newVersion := range versionList {
-		tmpVersion, err := version.NewVersion(newVersion)
-		if err != nil {
-			continue
-		}
-		if tmpVersion.Segments()[0] == current.Segments()[0] {
-			validVersions = append(validVersions, tmpVersion)
-		}
-	}
-
-	sort.Sort(sort.Reverse(version.Collection(validVersions)))
-
-	if len(validVersions) != 0 && current.LessThan(validVersions[0]) {
-		return validVersions[0].Original(), nil
-	}
-
-	return current.Original(), nil
-}
-
-func (p *PostgreSQLCNPG) getRegistryVersions(imageURL string) (helm.VersionLister, error) {
-	p.log.Info("Retrieving registry tags...", "imageURL", imageURL)
-	results := &helm.RegistryResult{}
-
-	token, err := p.getGhcrToken()
-	if err != nil {
-		return nil, err
-	}
-
-	req, _ := http.NewRequest("GET", imageURL, nil)
-	req.Header.Add("Authorization", "Bearer "+token)
-
-	resp, err := p.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access registry: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
-	}
-
-	// ghcr.io returns 1000 tags at most.
-	// The psql repo has way more than that, so we'll have to handle pagination.
-	nextURL := imageURL
-	for nextURL != "" {
-		req, _ := http.NewRequest("GET", nextURL, nil)
-		req.Header.Add("Authorization", "Bearer "+token)
-
-		resp, err := p.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("cannot access registry: %w", err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			b, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			return nil, fmt.Errorf("registry returned bad status code (%d): %s", resp.StatusCode, string(b))
-		}
-
-		var page helm.RegistryResult
-		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
-			resp.Body.Close()
-			return nil, fmt.Errorf("cannot decode registry results: %w", err)
-		}
-		resp.Body.Close()
-
-		results.Tags = append(results.Tags, page.Tags...)
-
-		var found bool
-		found, nextURL = parseGhcrLinkHeader(resp.Header)
-		if !found {
-			break
-		}
-	}
-
-	p.log.Info("Done retrieving tags", "tags", len(results.Tags), "repository", vshnpostgrescnpg.PsqlContainerRegistry)
-	return results, nil
-}
-
-// Parse ghcr.io registry API link header. Return true and next URL if found, false and "" if not.
-// Only supports headers whose rel is "next".
-func parseGhcrLinkHeader(header http.Header) (bool, string) {
-	if link := header.Get("Link"); link != "" {
-		// ghcr.io API v2 returns this sort of header:
-		// </v2/cloudnative-pg/postgresql/tags/list?last=13.16&n=1000>; rel="next"
-		parts := strings.Split(link, ",")
-		for _, part := range parts {
-			part = strings.TrimSpace(part)
-			seg := strings.SplitN(part, ";", 2)
-			if len(seg) < 2 {
-				continue
-			}
-			urlPart := strings.Trim(seg[0], " <>")
-			relPart := strings.TrimSpace(seg[1])
-			if strings.Contains(relPart, `rel="next"`) {
-				if strings.HasPrefix(urlPart, "/") {
-					urlPart = "https://ghcr.io" + urlPart
-				} else if !strings.HasPrefix(urlPart, "http") {
-					urlPart = "https://" + urlPart
-				}
-				return true, urlPart
-			}
-		}
-	}
-
-	return false, ""
-}
-
-// Obtain anonymous GHCR registry token
-func (p *PostgreSQLCNPG) getGhcrToken() (string, error) {
-	repo := strings.TrimPrefix(vshnpostgrescnpg.PsqlContainerRegistry, "ghcr.io/")
-	tokenURL := fmt.Sprintf("https://ghcr.io/token?scope=repository:%s:pull", repo)
-
-	req, err := http.NewRequest("GET", tokenURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("error during GET on %s: %w", tokenURL, err)
-	}
-
-	resp, err := p.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("cannot access token endpoint: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("token endpoint returned status %d: %s", resp.StatusCode, string(b))
-	}
-
-	var tr struct {
-		Token string `json:"token"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
-		return "", fmt.Errorf("cannot decode token response: %w", err)
-	}
-	if tr.Token == "" {
-		return "", fmt.Errorf("empty token in response")
-	}
-
-	return tr.Token, nil
 }

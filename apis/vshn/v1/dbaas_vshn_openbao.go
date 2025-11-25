@@ -9,16 +9,17 @@ import (
 
 // Workaround to make nested defaulting work.
 // kubebuilder is unable to set a {} default
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 
-//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
 
 // +kubebuilder:object:root=true
 
 // VSHNOpenBao is the API for creating OpenBao instances.
+// +kubebuilder:resource:path=vshnopenbaos
 type VSHNOpenBao struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -165,6 +166,7 @@ func (v *VSHNOpenBao) SetInstanceNamespaceStatus() {
 // +kubebuilder:object:root=true
 
 // XVSHNOpenBao represents the internal composite of this claim
+// +kubebuilder:resource:path=xvshnopenbaos
 type XVSHNOpenBao struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

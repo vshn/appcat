@@ -509,7 +509,7 @@ func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
 func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string) (string, error) {
 	l := controllerruntime.LoggerFrom(ctx)
 
-	tag, _, err := unstructured.NestedString(observedValues, fields...)
+	observedValueVersion, _, err := unstructured.NestedString(observedValues, fields...)
 	if err != nil {
 		return "", fmt.Errorf("cannot get image tag from values in release: %v", err)
 	}
@@ -527,14 +527,24 @@ func SetReleaseVersion(ctx context.Context, version string, desiredValues map[st
 
 	desiredVersion, err := semver.ParseTolerant(desiredValueVersion)
 	if err != nil {
-		l.Info("failed to parse observed service version", "version", tag)
-		// If the observed version is not parsable, e.g. if it's empty, update to the desired version
-		return version, unstructured.SetNestedField(desiredValues, version, fields...)
+		l.Info("failed to parse desired values version, comparing composite and observed", "version", desiredValueVersion)
+
+		observedVersion, err := semver.ParseTolerant(observedValueVersion)
+		if err != nil {
+			l.Info("failed to parse observed service version, using composite version", "version", version)
+			return version, unstructured.SetNestedField(desiredValues, version, fields...)
+		}
+
+		// Return the higher of composite or observed version
+		if compVersion.GTE(observedVersion) {
+			return version, unstructured.SetNestedField(desiredValues, version, fields...)
+		}
+		return observedValueVersion, unstructured.SetNestedField(desiredValues, observedValueVersion, fields...)
 	}
 
-	observedVersion, err := semver.ParseTolerant(tag)
+	observedVersion, err := semver.ParseTolerant(observedValueVersion)
 	if err != nil {
-		l.Info("failed to parse observed service version", "version", tag)
+		l.Info("failed to parse observed service version, using composite version", "version", version)
 		// If the observed version is not parsable, e.g. if it's empty, update to the desired version
 		return version, unstructured.SetNestedField(desiredValues, version, fields...)
 	}
@@ -544,10 +554,10 @@ func SetReleaseVersion(ctx context.Context, version string, desiredValues map[st
 	}
 
 	if observedVersion.GTE(compVersion) {
-		// In case the overved tag is valid and greater than the desired version, keep the observed version
-		return tag, unstructured.SetNestedField(desiredValues, tag, fields...)
+		// In case the observed tag is valid and greater than the desired version, keep the observed version
+		return observedValueVersion, unstructured.SetNestedField(desiredValues, observedValueVersion, fields...)
 	}
 
-	// In case the observed tag is smaller than the desired version,  then set the version from the claim
+	// In case the observed tag is smaller than the desired version, then set the version from the claim
 	return version, unstructured.SetNestedField(desiredValues, version, fields...)
 }

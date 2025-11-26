@@ -28,14 +28,6 @@ func TestDeployOpenBao(t *testing.T) {
 
 	var values map[string]interface{}
 	assert.NoError(t, json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values))
-
-	assert.Contains(t, values, "image")
-	image := values["image"].(map[string]interface{})
-
-	assert.Contains(t, image, "registry")
-	imageRegistry := image["registry"].(string)
-
-	assert.Equal(t, svc.Config.Data["imageRegistry"], imageRegistry)
 }
 
 func getOpenBaoTestComp(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNOpenBao) {

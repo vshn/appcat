@@ -1,6 +1,7 @@
 package vshnopenbao
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -53,41 +54,38 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 		return err
 	}
 
-	reqMem := comp.Spec.Parameters.Size.Requests.Memory
-	reqCPU := comp.Spec.Parameters.Size.Requests.CPU
-	mem := comp.Spec.Parameters.Size.Memory
-	cpu := comp.Spec.Parameters.Size.CPU
-	disk := comp.Spec.Parameters.Size.Disk
-
-	if reqMem == "" {
-		reqMem = resouces.MemoryRequests.String()
-	}
-	if reqCPU == "" {
-		reqCPU = resouces.CPURequests.String()
-	}
-	if mem == "" {
-		mem = resouces.MemoryLimits.String()
-	}
-	if cpu == "" {
-		cpu = resouces.CPULimits.String()
-	}
-	if disk == "" {
-		disk = resouces.Disk.String()
-	}
-
-	imageRegistry := svc.Config.Data["imageRegistry"]
-
-	// Information like image registry and tag, can be stored as part of Components AppCat configuration
-	// It can differ from customer to customer.
-	if imageRegistry == "" {
-		err = fmt.Errorf("cannot fetch imageRegistry from the composition config, maybe they are not set: %w", err)
-		return err
-	}
+	reqMem := cmp.Or(comp.Spec.Parameters.Size.Requests.Memory, resouces.MemoryRequests.String())
+	reqCPU := cmp.Or(comp.Spec.Parameters.Size.Requests.CPU, resouces.CPURequests.String())
+	mem := cmp.Or(comp.Spec.Parameters.Size.Memory, resouces.MemoryLimits.String())
+	cpu := cmp.Or(comp.Spec.Parameters.Size.CPU, resouces.CPULimits.String())
+	disk := cmp.Or(comp.Spec.Parameters.Size.Disk, resouces.Disk.String())
 
 	values := map[string]interface{}{
 		"fullnameOverride": comp.GetName(),
-		"image": map[string]interface{}{
-			"registry": imageRegistry,
+		"agent": map[string]any{
+			"enabled": false,
+		},
+		"injector": map[string]any{
+			"enabled": false,
+		},
+		"server": map[string]any{
+			"authDelegator": map[string]any{
+				"enabled": false,
+			},
+			"resources": map[string]any{
+				"requests": map[string]any{
+					"memory": reqMem,
+					"cpu":    reqCPU,
+				},
+				"limits": map[string]any{
+					"memory": mem,
+					"cpu":    cpu,
+				},
+			},
+			"dataStorage": map[string]any{
+				"enabled": true,
+				"size":    disk,
+			},
 		},
 	}
 

@@ -25,6 +25,10 @@ func init() {
 				Execute: AddConnectionSecrets,
 			},
 			{
+				Name:    "maintenance",
+				Execute: addSchedules,
+			},
+			{
 				Name:    "user-alerting",
 				Execute: common.AddUserAlerting[*vshnv1.VSHNPostgreSQL],
 			},

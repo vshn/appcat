@@ -245,21 +245,18 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 
 	if envFrom != nil {
 		var envFromData []byte
-		var envFromFailed bool
-
 		for _, ef := range *envFrom {
 			if ef.SecretRef != nil {
 				sec := &corev1.Secret{}
 				obj, err := svc.CopyKubeResource(ctx, sec, comp.GetName()+"-env-secret-"+ef.SecretRef.Name, ef.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 				if err != nil {
 					l.Error(err, "cannot copy envFrom Secret", "secretName", ef.SecretRef.Name)
-					envFromFailed = true
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy envFrom Secret %q: %s", ef.SecretRef.Name, err)))
 					continue
 				}
 				dataBytes, err := json.Marshal(obj.(*corev1.Secret).Data)
 				if err != nil {
 					l.Error(err, "cannot marshal Secret data for hashing", "secretName", ef.SecretRef.Name)
-					envFromFailed = true
 					continue
 				}
 				envFromData = append(envFromData, dataBytes...)
@@ -269,25 +266,17 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 				obj, err := svc.CopyKubeResource(ctx, cm, comp.GetName()+"-env-cm-"+ef.ConfigMapRef.Name, ef.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
 				if err != nil {
 					l.Error(err, "cannot copy envFrom ConfigMap", "configMapName", ef.ConfigMapRef.Name)
-					envFromFailed = true
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy envFrom ConfigMap %q: %s", ef.ConfigMapRef.Name, err)))
 					continue
 				}
 				dataBytes, err := json.Marshal(obj.(*corev1.ConfigMap).Data)
 				if err != nil {
 					l.Error(err, "cannot marshal ConfigMap data for hashing", "configMapName", ef.ConfigMapRef.Name)
-					envFromFailed = true
 					continue
 				}
 				envFromData = append(envFromData, dataBytes...)
 			}
 		}
-
-		if envFromFailed {
-			// envFrom refs might not exist on the first reconcile, warn and requeue.
-			svc.AddResult(runtime.NewWarningResult("one or more envFrom resources could not be copied"))
-			return nil
-		}
-
 		if len(envFromData) > 0 {
 			envFromHash := fmt.Sprintf("%x", md5.Sum(envFromData))
 			if currentEnvHash != "" {

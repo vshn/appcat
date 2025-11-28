@@ -93,7 +93,7 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 	// EOL handling
 
 	if isEol := p.isEOL(version, latestCatalog); isEol {
-		p.log.Info("Setting EOL on calim")
+		p.log.Info("Setting EOL on claim")
 		if err := p.setEOLStatus(ctx); err != nil {
 			return fmt.Errorf("couldn't set EOL status on claim: %w", err)
 		}

@@ -1154,6 +1154,12 @@ func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) e
 						},
 					},
 				},
+				{
+					Port:     "http",
+					Path:     "/realms/master/metrics",
+					Interval: "15s",
+					Scheme:   "http",
+				},
 			},
 		},
 	}

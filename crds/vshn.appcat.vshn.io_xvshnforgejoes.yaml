@@ -119,6 +119,7 @@ spec:
                     type: object
                   instances:
                     description: Instances defines the number of instances to run.
+                    minimum: 0
                     type: integer
                   maintenance:
                     description: Maintenance contains settings to control the maintenance

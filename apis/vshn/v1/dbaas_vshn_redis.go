@@ -80,7 +80,7 @@ type VSHNRedisParameters struct {
 	Security Security `json:"security,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Enum=1;3;
+	// +kubebuilder:validation:Enum=0;1;3;
 
 	// Instances configures the number of Redis instances for the cluster.
 	Instances int `json:"instances,omitempty"`

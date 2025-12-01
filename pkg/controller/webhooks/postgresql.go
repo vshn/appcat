@@ -264,7 +264,9 @@ func parseResource(childPath *field.Path, value, errMessage string) (resource.Qu
 
 func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
 	allErrs := field.ErrorList{}
-	if pg.Spec.Parameters.Service.ServiceLevel == "guaranteed" && pg.Spec.Parameters.Instances < 2 {
+	// Allow instances=0 (suspended) regardless of service level
+	// Only enforce guaranteed availability (>=2 instances) when service is running (instances > 0)
+	if pg.Spec.Parameters.Service.ServiceLevel == "guaranteed" && pg.Spec.Parameters.Instances > 0 && pg.Spec.Parameters.Instances < 2 {
 		allErrs = append(allErrs, field.Invalid(
 			field.NewPath("spec.parameters.instances"),
 			pg.Spec.Parameters.Instances,

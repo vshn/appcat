@@ -87,7 +87,7 @@ type VSHNKeycloakParameters struct {
 	Security Security `json:"security,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=3
 
 	// Instances configures the number of Keycloak instances for the cluster.

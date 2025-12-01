@@ -75,7 +75,7 @@ type VSHNPostgreSQLParameters struct {
 	UpdateStrategy VSHNPostgreSQLUpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=3
 
 	// Instances configures the number of PostgreSQL instances for the cluster.

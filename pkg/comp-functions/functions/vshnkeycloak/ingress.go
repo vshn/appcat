@@ -107,5 +107,5 @@ func addOpenShiftCa(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) erro
 		},
 	}
 
-	return svc.SetDesiredKubeObject(secret, comp.GetName()+"-route-ca")
+	return svc.SetDesiredKubeObject(secret, comp.GetName()+"-route-ca", runtime.KubeOptionAllowDeletion)
 }

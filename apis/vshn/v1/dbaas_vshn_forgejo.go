@@ -70,7 +70,9 @@ type VSHNForgejoParameters struct {
 	// Monitoring contains settings to control the monitoring of a service.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
+	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=1
 
 	// Instances defines the number of instances to run.
 	Instances int `json:"instances,omitempty"`

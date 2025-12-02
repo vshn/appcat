@@ -1521,7 +1521,7 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 		ProviderConfigIgnoreLabel: "true",
 	}
 
-	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAddLabels(objectExtraLabels)); err != nil {
+	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAllowDeletion, KubeOptionAddLabels(objectExtraLabels)); err != nil {
 		return nil, err
 	}
 
@@ -1532,7 +1532,7 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 	instObj := obj.DeepCopyObject().(client.Object)
 	instObj.SetNamespace(toNS)
 
-	if err := s.SetDesiredKubeObject(instObj, resourceName); err != nil {
+	if err := s.SetDesiredKubeObject(instObj, resourceName, KubeOptionAllowDeletion); err != nil {
 		return nil, err
 	}
 

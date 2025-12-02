@@ -37,7 +37,40 @@ func Test_instances(t *testing.T) {
 		assert.NotNil(t, values)
 
 		assert.Equal(t, i, values["cluster"].(map[string]any)["instances"])
+		// When instances > 0, hibernation should be off
+		assert.Equal(t, "off", values["cluster"].(map[string]any)["annotations"].(map[string]string)["cnpg.io/hibernation"])
 	}
+}
+
+func Test_hibernation(t *testing.T) {
+	svc, comp := getSvcCompCnpg(t)
+	ctx := context.TODO()
+
+	t.Run("instances=0 enables hibernation", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 0
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		// CNPG doesn't support instances=0, so it should be set to 1
+		assert.Equal(t, 1, values["cluster"].(map[string]any)["instances"])
+		// Hibernation annotation should be on
+		assert.Equal(t, "on", values["cluster"].(map[string]any)["annotations"].(map[string]string)["cnpg.io/hibernation"])
+	})
+
+	t.Run("instances>0 disables hibernation", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 2
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		// Instances should match spec
+		assert.Equal(t, 2, values["cluster"].(map[string]any)["instances"])
+		// Hibernation annotation should be off
+		assert.Equal(t, "off", values["cluster"].(map[string]any)["annotations"].(map[string]string)["cnpg.io/hibernation"])
+	})
 }
 
 func Test_version(t *testing.T) {

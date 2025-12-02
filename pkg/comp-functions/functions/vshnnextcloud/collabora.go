@@ -156,6 +156,11 @@ func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) er
 
 	image := fmt.Sprintf("%s:%s", collaboraBaseImage, defaultImageTag)
 
+	replicas := int32(1)
+	if comp.GetInstances() == 0 {
+		replicas = 0
+	}
+
 	sts := &v1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
@@ -165,7 +170,7 @@ func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) er
 			},
 		},
 		Spec: v1.StatefulSetSpec{
-			Replicas: ptr.To[int32](1),
+			Replicas: ptr.To[int32](replicas),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": comp.GetName() + "-collabora-code"},
 			},

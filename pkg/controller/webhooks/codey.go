@@ -116,7 +116,7 @@ func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) error {
 	}
 
 	if compositeName != "" {
-		reqComposite, err := labels.NewRequirement("crossplane.io/composite", selection.NotEquals, []string{compositeName})
+		reqComposite, err := labels.NewRequirement("appcat.vshn.io/ownercomposite", selection.NotEquals, []string{compositeName})
 		if err != nil {
 			return err
 		}

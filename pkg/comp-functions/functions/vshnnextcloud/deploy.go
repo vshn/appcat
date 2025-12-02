@@ -485,6 +485,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	updatedNextcloudConfig := setBackgroundJobMaintenance(*comp.GetMaintenanceTimeOfDay(), nextcloudConfig)
 	values = map[string]any{
+		"replicaCount": comp.GetInstances(),
 		"nextcloud": map[string]any{
 			"host":           comp.Spec.Parameters.Service.FQDN[0],
 			"trustedDomains": trustedDomain,

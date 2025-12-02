@@ -32,6 +32,19 @@ func GetReleaseValues(r *xhelmv1.Release) (map[string]interface{}, error) {
 	return values, nil
 }
 
+func SetReleaseValues(r *xhelmv1.Release, values map[string]any) error {
+	vb, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+
+	r.Spec.ForProvider.Values = k8sruntime.RawExtension{
+		Raw: vb,
+	}
+
+	return nil
+}
+
 // GetObservedReleaseValues returns the observed releaseValues for the given release name.
 func GetObservedReleaseValues(svc *runtime.ServiceRuntime, releaseName string) (map[string]interface{}, error) {
 	r, err := getObservedRelease(svc, releaseName)

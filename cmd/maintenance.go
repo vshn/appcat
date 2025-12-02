@@ -60,6 +60,7 @@ type service enumflag.Flag
 const (
 	noDefault service = iota
 	postgresql
+	postgresqlCnpg
 	redis
 	minio
 	mariadb
@@ -69,13 +70,14 @@ const (
 )
 
 var maintenanceServices = map[service][]string{
-	postgresql: {"postgresql"},
-	redis:      {"redis"},
-	minio:      {"minio"},
-	mariadb:    {"mariadb"},
-	keycloak:   {"keycloak"},
-	nextcloud:  {"nextcloud"},
-	forgejo:    {"forgejo"},
+	postgresql:     {"postgresql"},
+	postgresqlCnpg: {"postgresql_cnpg"},
+	redis:          {"redis"},
+	minio:          {"minio"},
+	mariadb:        {"mariadb"},
+	keycloak:       {"keycloak"},
+	nextcloud:      {"nextcloud"},
+	forgejo:        {"forgejo"},
 }
 
 var serviceName service
@@ -135,6 +137,9 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		if m, err = initPostgreSQL(kubeClient, vh, log); err != nil {
 			return fmt.Errorf("failed to initialize postgresql: %w", err)
 		}
+	case postgresqlCnpg:
+		m = maintenance.NewPostgreSQLCNPG(kubeClient, getHTTPClient(), vh, log)
+
 	case redis:
 		m = maintenance.NewRedis(kubeClient, getHTTPClient(), vh, log)
 

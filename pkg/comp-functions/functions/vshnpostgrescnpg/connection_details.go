@@ -16,6 +16,18 @@ import (
 
 const (
 	ClusterInstanceCdField = "clusterInstances"
+	// PostgresqlHost is env variable in the connection secret
+	PostgresqlHost = "POSTGRESQL_HOST"
+	// PostgresqlUser is env variable in the connection secret
+	PostgresqlUser = "POSTGRESQL_USER"
+	// PostgresqlPassword is env variable in the connection secret
+	PostgresqlPassword = "POSTGRESQL_PASSWORD"
+	// PostgresqlPort is env variable in the connection secret
+	PostgresqlPort = "POSTGRESQL_PORT"
+	// PostgresqlDb is env variable in the connection secret
+	PostgresqlDb = "POSTGRESQL_DB"
+	// PostgresqlURL is env variable in the connection secret
+	PostgresqlURL = "POSTGRESQL_URL"
 )
 
 func AddConnectionSecrets(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
@@ -36,12 +48,12 @@ func generateConnectionDetailInfoForRelease(comp *vshnv1.VSHNPostgreSQL, svc *ru
 
 	// PSQL credentials
 	for secretKey, toCdField := range map[string]string{
-		"uri":      "POSTGRESQL_URL",
-		"user":     "POSTGRESQL_DB",
-		"password": "POSTGRESQL_PASSWORD",
-		"port":     "POSTGRESQL_PORT",
-		"username": "POSTGRESQL_USER",
-		"host":     "POSTGRESQL_HOST",
+		"uri":      PostgresqlURL,
+		"user":     PostgresqlDb,
+		"password": PostgresqlPassword,
+		"port":     PostgresqlPort,
+		"username": PostgresqlUser,
+		"host":     PostgresqlHost,
 	} {
 		connectionDetails = append(connectionDetails, v1beta1.ConnectionDetail{
 			ObjectReference: corev1.ObjectReference{

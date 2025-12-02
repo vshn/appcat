@@ -197,8 +197,9 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	l := svc.Log
 	customConfigurationRef := comp.Spec.Parameters.Service.CustomConfigurationRef
 	customEnvVariablesRef := comp.Spec.Parameters.Service.CustomEnvVariablesRef
+	envFrom := comp.Spec.Parameters.Service.EnvFrom
 
-	if customConfigurationRef == nil && customEnvVariablesRef == nil {
+	if customConfigurationRef == nil && customEnvVariablesRef == nil && envFrom == nil {
 		return nil
 	}
 
@@ -240,6 +241,50 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 			return nil
 		}
 		currentEnvHash = fmt.Sprintf("%x", md5.Sum(dataBytes))
+	}
+
+	if envFrom != nil {
+		var envFromData []byte
+		for _, ef := range *envFrom {
+			if ef.SecretRef != nil {
+				sec := &corev1.Secret{}
+				obj, err := svc.CopyKubeResource(ctx, sec, comp.GetName()+"-env-secret-"+ef.SecretRef.Name, ef.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					l.Error(err, "cannot copy envFrom Secret", "secretName", ef.SecretRef.Name)
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy envFrom Secret %q: %s", ef.SecretRef.Name, err)))
+					continue
+				}
+				dataBytes, err := json.Marshal(obj.(*corev1.Secret).Data)
+				if err != nil {
+					l.Error(err, "cannot marshal Secret data for hashing", "secretName", ef.SecretRef.Name)
+					continue
+				}
+				envFromData = append(envFromData, dataBytes...)
+			}
+			if ef.ConfigMapRef != nil {
+				cm := &corev1.ConfigMap{}
+				obj, err := svc.CopyKubeResource(ctx, cm, comp.GetName()+"-env-cm-"+ef.ConfigMapRef.Name, ef.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					l.Error(err, "cannot copy envFrom ConfigMap", "configMapName", ef.ConfigMapRef.Name)
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy envFrom ConfigMap %q: %s", ef.ConfigMapRef.Name, err)))
+					continue
+				}
+				dataBytes, err := json.Marshal(obj.(*corev1.ConfigMap).Data)
+				if err != nil {
+					l.Error(err, "cannot marshal ConfigMap data for hashing", "configMapName", ef.ConfigMapRef.Name)
+					continue
+				}
+				envFromData = append(envFromData, dataBytes...)
+			}
+		}
+		if len(envFromData) > 0 {
+			envFromHash := fmt.Sprintf("%x", md5.Sum(envFromData))
+			if currentEnvHash != "" {
+				currentEnvHash = fmt.Sprintf("%x", md5.Sum([]byte(currentEnvHash+envFromHash)))
+			} else {
+				currentEnvHash = envFromHash
+			}
+		}
 	}
 
 	lastConfigHash := comp.GetLastConfigHash()
@@ -798,25 +843,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
-	if comp.Spec.Parameters.Service.EnvFrom != nil {
-		for _, r := range *comp.Spec.Parameters.Service.EnvFrom {
-			if r.SecretRef != nil {
-				obj := &corev1.Secret{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+r.SecretRef.Name, r.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
-				}
-			}
-			if r.ConfigMapRef != nil {
-				obj := &corev1.ConfigMap{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-cm-"+r.ConfigMapRef.Name, r.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
-				}
-			}
-		}
-	}
-
 	values, err := newValues(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return nil, err
@@ -1153,6 +1179,12 @@ func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) e
 							InsecureSkipVerify: true,
 						},
 					},
+				},
+				{
+					Port:     "http",
+					Path:     "/realms/master/metrics",
+					Interval: "15s",
+					Scheme:   "http",
 				},
 			},
 		},

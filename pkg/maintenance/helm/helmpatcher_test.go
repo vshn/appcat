@@ -3,6 +3,7 @@ package helm
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -631,4 +632,32 @@ func Test_minorVersionUpgrades(t *testing.T) {
 			assert.Equal(t, tt.expectedVer, version)
 		})
 	}
+}
+
+func Test_ParseGhcrLinkHeader(t *testing.T) {
+	r := ImagePatcher{
+		log:               logr.Logger{},
+		instanceNamespace: "my-ns",
+	}
+
+	// Normal link header
+	linkHeader := getMockLinkHeader("/v2/cloudnative-pg/postgresql/tags/list?last=13.16&n=1000", "next")
+	nextURL := r.parseLinkHeader(linkHeader)
+	assert.Equal(t, "/v2/cloudnative-pg/postgresql/tags/list?last=13.16&n=1000", nextURL)
+
+	// No link header
+	linkHeader.Del("Link")
+	nextURL = r.parseLinkHeader(linkHeader)
+	assert.Empty(t, nextURL)
+
+	// Link header with unhandled rel
+	linkHeader = getMockLinkHeader("/v2/cloudnative-pg/postgresql/tags/list?last=13.16&n=1000", "prev")
+	nextURL = r.parseLinkHeader(linkHeader)
+	assert.Empty(t, nextURL)
+}
+
+func getMockLinkHeader(ref string, rel string) http.Header {
+	hd := http.Header{}
+	hd.Add("Link", fmt.Sprintf(`<%s>; rel="%s"`, ref, rel))
+	return hd
 }

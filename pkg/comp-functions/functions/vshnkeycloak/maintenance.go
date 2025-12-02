@@ -14,8 +14,12 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	if err := svc.GetObservedComposite(comp); err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("can't get desired composite: %w", err))
+	// Try desired first but fall back to observed.
+	// Config hash updates were observed to be dropped when only reading the observed composite.
+	if err := svc.GetDesiredComposite(comp); err != nil {
+		if err := svc.GetObservedComposite(comp); err != nil {
+			return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+		}
 	}
 
 	maintTime := common.SetRandomMaintenanceSchedule(comp)

@@ -772,10 +772,15 @@ func (s *ServiceRuntime) SetConnectionDetail(name string, value []byte) {
 	s.connectionDetails[name] = value
 }
 
-// GetConnectionDetails returns all current connection details for the current
+// GetConnectionDetails returns all desired connection details for the current
 // composite.
 func (s *ServiceRuntime) GetConnectionDetails() map[string][]byte {
 	return s.connectionDetails
+}
+
+// GetObservedConnectionDetails returns the observed connection details of the composite.
+func (s *ServiceRuntime) GetObservedConnectionDetails() map[string][]byte {
+	return s.req.Observed.Composite.ConnectionDetails
 }
 
 // GetObservedComposedResourceConnectionDetails returns the observed connection details of the given
@@ -1516,7 +1521,7 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 		ProviderConfigIgnoreLabel: "true",
 	}
 
-	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAddLabels(objectExtraLabels)); err != nil {
+	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAllowDeletion, KubeOptionAddLabels(objectExtraLabels)); err != nil {
 		return nil, err
 	}
 
@@ -1527,7 +1532,7 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 	instObj := obj.DeepCopyObject().(client.Object)
 	instObj.SetNamespace(toNS)
 
-	if err := s.SetDesiredKubeObject(instObj, resourceName); err != nil {
+	if err := s.SetDesiredKubeObject(instObj, resourceName, KubeOptionAllowDeletion); err != nil {
 		return nil, err
 	}
 

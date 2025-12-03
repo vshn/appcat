@@ -15,6 +15,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var managementPoliciesWithoutDelete = xpv1.ManagementPolicies{
+	xpv1.ManagementActionCreate,
+	xpv1.ManagementActionLateInitialize,
+	xpv1.ManagementActionObserve,
+	xpv1.ManagementActionUpdate,
+}
+
 func UserManagement(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
 	err := svc.GetObservedComposite(comp)
@@ -103,6 +110,7 @@ func addUser(comp common.Composite, svc *runtime.ServiceRuntime, username string
 				},
 			},
 			ResourceSpec: xpv1.ResourceSpec{
+				ManagementPolicies: managementPoliciesWithoutDelete,
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
 				},
@@ -296,6 +304,7 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, name string
 		Spec: my1alpha1.DatabaseSpec{
 			ForProvider: my1alpha1.DatabaseParameters{},
 			ResourceSpec: xpv1.ResourceSpec{
+				ManagementPolicies: managementPoliciesWithoutDelete,
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
 				},
@@ -339,6 +348,7 @@ func addGrants(comp common.Composite, svc *runtime.ServiceRuntime, username, dbn
 				ProviderConfigReference: &xpv1.Reference{
 					Name: comp.GetName(),
 				},
+				ManagementPolicies: managementPoliciesWithoutDelete,
 			},
 		},
 	}

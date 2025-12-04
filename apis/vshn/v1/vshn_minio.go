@@ -161,6 +161,10 @@ func (v *XVSHNMinio) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
 }
 
+func (v *XVSHNMinio) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}
+
 // XVSHNMinioSpec defines the desired state of a VSHNMinio.
 type XVSHNMinioSpec struct {
 	// Parameters are the configurable fields of a VSHNMinio.

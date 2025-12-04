@@ -188,6 +188,10 @@ func (v *XVSHNRedis) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
 }
 
+func (v *XVSHNRedis) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}
+
 // XVSHNRedisSpec defines the desired state of a VSHNRedis.
 type XVSHNRedisSpec struct {
 	// Parameters are the configurable fields of a VSHNRedis.

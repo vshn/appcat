@@ -255,6 +255,10 @@ func (v *XVSHNKeycloak) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
 }
 
+func (v *XVSHNKeycloak) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}
+
 func (v *VSHNKeycloak) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
 }

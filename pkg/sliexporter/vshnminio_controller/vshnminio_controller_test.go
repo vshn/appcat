@@ -145,6 +145,71 @@ func TestVSHNMinio_NoRef_Dont_Probe(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
+func TestVSHNMinio_Suspended_Dont_Probe(t *testing.T) {
+	minio, ns := giveMeMinio(bucketName, claimNamespace)
+	minio.Spec.Parameters.Instances = 0
+
+	ct := metav1.Now().Add(-20 * time.Minute)
+	minio.CreationTimestamp = metav1.Time{Time: ct}
+
+	r, manager, _ := setupVSHNMinioTest(t,
+		minio, ns,
+		newTestVSHNMinioCred(bucketName, claimNamespace),
+	)
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      bucketName,
+			Namespace: claimNamespace,
+		},
+	}
+
+	pi := probes.ProbeInfo{
+		Service: "VSHNMinio",
+		Name:    bucketName,
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNMinio_Suspended_Stop_Running_Probe(t *testing.T) {
+	minio, ns := giveMeMinio(bucketName, claimNamespace)
+
+	ct := metav1.Now().Add(-20 * time.Minute)
+	minio.CreationTimestamp = metav1.Time{Time: ct}
+
+	r, manager, client := setupVSHNMinioTest(t,
+		minio, ns,
+		newTestVSHNMinioCred(bucketName, claimNamespace),
+	)
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      bucketName,
+			Namespace: claimNamespace,
+		},
+	}
+
+	pi := probes.ProbeInfo{
+		Service: "VSHNMinio",
+		Name:    bucketName,
+	}
+
+	// Start with instances=4, probe should start
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	// Scale down to instances=0, probe should stop
+	minio.Spec.Parameters.Instances = 0
+	require.NoError(t, client.Update(context.TODO(), minio))
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
 func giveMeMinio(bucketName string, namespace string) (*vshnv1.XVSHNMinio, *corev1.Namespace) {
 	claim := &vshnv1.XVSHNMinio{
 		TypeMeta: metav1.TypeMeta{

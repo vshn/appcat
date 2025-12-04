@@ -435,6 +435,10 @@ func (v *XVSHNPostgreSQL) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
 }
 
+func (v *XVSHNPostgreSQL) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}
+
 // GetBackupRetention returns the retention definition for this backup.
 func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
 	return K8upRetentionPolicy{}

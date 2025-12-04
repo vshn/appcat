@@ -208,6 +208,10 @@ func (v *XVSHNMariaDB) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
 }
 
+func (v *XVSHNMariaDB) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}
+
 // XVSHNMariaDBSpec defines the desired state of a VSHNMariaDB.
 type XVSHNMariaDBSpec struct {
 	// Parameters are the configurable fields of a VSHNMariaDB.

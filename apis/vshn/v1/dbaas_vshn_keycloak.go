@@ -87,7 +87,7 @@ type VSHNKeycloakParameters struct {
 	Security Security `json:"security,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=3
 
 	// Instances configures the number of Keycloak instances for the cluster.
@@ -253,6 +253,10 @@ func (v *XVSHNKeycloak) GetInstanceNamespace() string {
 
 func (v *XVSHNKeycloak) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
+}
+
+func (v *XVSHNKeycloak) GetInstances() int {
+	return v.Spec.Parameters.Instances
 }
 
 func (v *VSHNKeycloak) SetInstanceNamespaceStatus() {

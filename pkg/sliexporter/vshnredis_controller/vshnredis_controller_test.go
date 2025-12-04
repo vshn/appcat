@@ -302,6 +302,47 @@ func TestVSHNRedis_NoRef_Dont_Probe(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
+func TestVSHNRedis_Suspended_Dont_Probe(t *testing.T) {
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
+	db.Spec.Parameters.Instances = 0
+	r, manager, _ := setupVSHNRedisTest(t,
+		ns, db, claim, instns,
+		newTestVSHNRedisCred("bar", "creds"),
+	)
+	pi := probes.ProbeInfo{
+		Service: "VSHNRedis",
+		Name:    "foo",
+	}
+
+	_, err := r.Reconcile(context.TODO(), recReq("", "foo"))
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNRedis_Suspended_Stop_Running_Probe(t *testing.T) {
+	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
+	r, manager, client := setupVSHNRedisTest(t,
+		ns, db, claim, instns,
+		newTestVSHNRedisCred("bar", "creds"),
+	)
+	pi := probes.ProbeInfo{
+		Service: "VSHNRedis",
+		Name:    "foo",
+	}
+
+	// Start with instances=1, probe should start
+	_, err := r.Reconcile(context.TODO(), recReq("", "foo"))
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	// Scale down to instances=0, probe should stop
+	db.Spec.Parameters.Instances = 0
+	require.NoError(t, client.Update(context.TODO(), db))
+	_, err = r.Reconcile(context.TODO(), recReq("", "foo"))
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
 func TestVSHNRedis_Started_NoCreds_Probe_Failure(t *testing.T) {
 	ns, db, claim, instns := newTestVSHNRedis("bar", "foo", "creds", true)
 	db.SetCreationTimestamp(metav1.Time{Time: time.Now().Add(-1 * time.Hour)})
@@ -574,6 +615,7 @@ func newTestVSHNRedis(namespace, name, cred string, tlsEnabled bool) (*corev1.Na
 		},
 		Spec: vshnv1.XVSHNRedisSpec{
 			Parameters: vshnv1.VSHNRedisParameters{
+				Instances: 1,
 				TLS: vshnv1.VSHNRedisTLSSpec{
 					TLSEnabled:     tlsEnabled,
 					TLSAuthClients: tlsEnabled,

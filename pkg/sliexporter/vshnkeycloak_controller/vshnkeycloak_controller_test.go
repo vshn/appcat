@@ -77,6 +77,61 @@ func TestVSHNKeycloakReconciler_Reconcile(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
+func TestVSHNKeycloak_Suspended_Dont_Probe(t *testing.T) {
+	keycloak, ns := newTestVSHNKeycloak("bar", "foo", "cred")
+	keycloak.Spec.Parameters.Instances = 0
+
+	r, manager, _ := setupVSHNKeycloakTest(t,
+		keycloak, ns,
+		newTestVSHNKeycloakCred("bar", "cred"))
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "bar",
+			Name:      "foo",
+		},
+	}
+	pi := probes.ProbeInfo{
+		Service: "VSHNKeycloak",
+		Name:    "foo",
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNKeycloak_Suspended_Stop_Running_Probe(t *testing.T) {
+	keycloak, ns := newTestVSHNKeycloak("bar", "foo", "cred")
+
+	r, manager, client := setupVSHNKeycloakTest(t,
+		keycloak, ns,
+		newTestVSHNKeycloakCred("bar", "cred"))
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "bar",
+			Name:      "foo",
+		},
+	}
+	pi := probes.ProbeInfo{
+		Service: "VSHNKeycloak",
+		Name:    "foo",
+	}
+
+	// Start with instances=1, probe should start
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	// Scale down to instances=0, probe should stop
+	keycloak.Spec.Parameters.Instances = 0
+	require.NoError(t, client.Update(context.TODO(), keycloak))
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
 func setupVSHNKeycloakTest(t *testing.T, objs ...client.Object) (VSHNKeycloakReconciler, *fakeProbeManager, client.Client) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
@@ -105,7 +160,9 @@ func newTestVSHNKeycloak(namespace, name, cred string) (*vshnv1.XVSHNKeycloak, *
 			Namespace: namespace,
 		},
 		Spec: vshnv1.XVSHNKeycloakSpec{
-			Parameters: vshnv1.VSHNKeycloakParameters{},
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Instances: 1,
+			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Name:      cred,

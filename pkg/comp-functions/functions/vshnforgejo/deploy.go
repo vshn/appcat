@@ -86,6 +86,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	values := map[string]any{
+		"replicaCount": comp.GetInstances(),
 		"gitea": map[string]any{
 			"admin": map[string]any{
 				"email":          "forgejo@local.domain",

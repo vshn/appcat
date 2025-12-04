@@ -75,7 +75,7 @@ type VSHNPostgreSQLParameters struct {
 	UpdateStrategy VSHNPostgreSQLUpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=3
 
 	// Instances configures the number of PostgreSQL instances for the cluster.
@@ -433,6 +433,10 @@ func (v *XVSHNPostgreSQL) GetInstanceNamespace() string {
 
 func (v *XVSHNPostgreSQL) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
+}
+
+func (v *XVSHNPostgreSQL) GetInstances() int {
+	return v.Spec.Parameters.Instances
 }
 
 // GetBackupRetention returns the retention definition for this backup.

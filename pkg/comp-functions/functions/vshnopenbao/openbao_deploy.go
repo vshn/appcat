@@ -32,6 +32,13 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Sprintf("cannot bootstrap instance namespace: %s", err))
 	}
 
+	svc.Log.Info("Creating HCL Configuration and saving it as a Secret")
+	err = writeHCLConfig(comp, svc)
+	if err != nil {
+		err = fmt.Errorf("cannot create HCL Config: %w", err)
+		return runtime.NewFatalResult(err)
+	}
+
 	svc.Log.Info("Creating helm release for OpenBao instance")
 	err = createObjectHelmRelease(ctx, comp, svc)
 	if err != nil {

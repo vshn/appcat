@@ -73,8 +73,8 @@ input:
   apiVersion: v1
   data:
     defaultPlan: standard-1
-    openBaoChartRepo: https://openbao.github.io/openbao-helm
-    openBaoChartVersion: 0.4.0
+    chartRepository: https://openbao.github.io/openbao-helm
+    chartVersion: 0.4.0
     controlNamespace: appcat-control
     plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true, "memory": "1Gi"}}}'
     imageRegistry: ghcr.io/openbao

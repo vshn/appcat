@@ -57,6 +57,10 @@ const (
 	// quotaResourceMemoryLimits resource for the memory limit quota
 	quotaResourceMemoryLimits = "limits.memory"
 
+	// Exoscale-specific storage classes
+	exoscaleRBDStorageClass    = "rbd-storagepool-cluster.storageclass.storage.k8s.io/requests.storage"
+	exoscaleCephFSStorageClass = "cephfs-fspool-cluster.storageclass.storage.k8s.io/requests.storage"
+
 	// Message snippets
 	contactSupportMessage = "Please reduce the resources and then contact VSHN support to increase the quota for the instance support@vshn.ch."
 )
@@ -68,6 +72,7 @@ var (
 	MemoryRequestAnnotation    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
 	MemoryLimitAnnotation      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
 	DiskAnnotation             = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
+	StorageClassesAnnotation   = fmt.Sprintf("%s%s.storageclasses", quotaAnnotationPrefix, resourceQuotaNameObjects)
 	CpuRequestTerminationQuota = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceCPURequests)
 
 	ErrNSLimitReached = fmt.Errorf("creating a new instance will violate the namespace quota." +
@@ -298,4 +303,13 @@ func GetDefaultResources(kind string, s *Sidecars) *Resources {
 		r.AddPsqlSidecarResources(s, int64(2))
 	}
 	return r
+}
+
+// GetExoscaleStorageClassQuota returns the JSON-formatted storage class quota for Exoscale.
+// It splits the total default disk quota equally between RBD and CephFS storage classes.
+func GetExoscaleStorageClassQuota() string {
+	quotaPerClass := "100Gi"
+	return fmt.Sprintf(`{"%s": "%s", "%s": "%s"}`,
+		exoscaleRBDStorageClass, quotaPerClass,
+		exoscaleCephFSStorageClass, quotaPerClass)
 }

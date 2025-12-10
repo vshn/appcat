@@ -63,7 +63,8 @@ func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common
 		}
 	}
 
-	if comp.IsBackupEnabled() {
+	// Remove the backup schedule for suspended instances
+	if comp.IsBackupEnabled() && comp.GetInstances() != 0 {
 		l.Info("Creating backup schedule - backups enabled")
 		err = createK8upSchedule(ctx, comp, svc)
 		if err != nil {

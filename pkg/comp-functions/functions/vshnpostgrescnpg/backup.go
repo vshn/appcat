@@ -31,7 +31,7 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 	maintTime := common.SetRandomMaintenanceSchedule(comp)
 	common.SetRandomBackupSchedule(comp, &maintTime)
 
-	if comp.IsBackupEnabled() {
+	if comp.IsBackupEnabled() && comp.GetInstances() != 0 {
 		if err := insertBackupValues(svc, comp, values); err != nil {
 			return err
 		}

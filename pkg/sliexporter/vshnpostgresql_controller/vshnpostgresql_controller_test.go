@@ -169,6 +169,46 @@ func TestVSHNPostgreSQL_NoRef_Dont_Probe(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
+func TestVSHNPostgreSQL_Suspended_Dont_Probe(t *testing.T) {
+	db, ns := newTestVSHNPostgres("bar", "foo", "creds", 0)
+	r, manager, _ := setupVSHNPostgreTest(t,
+		db, ns,
+		newTestVSHNPostgresCred("bar", "creds"),
+	)
+	pi := probes.ProbeInfo{
+		Service: "VSHNPostgreSQL",
+		Name:    "foo",
+	}
+
+	_, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNPostgreSQL_Suspended_Stop_Running_Probe(t *testing.T) {
+	db, ns := newTestVSHNPostgres("bar", "foo", "creds", 1)
+	r, manager, client := setupVSHNPostgreTest(t,
+		db, ns,
+		newTestVSHNPostgresCred("bar", "creds"),
+	)
+	pi := probes.ProbeInfo{
+		Service: "VSHNPostgreSQL",
+		Name:    "foo",
+	}
+
+	// Start with instances=1, probe should start
+	_, err := r.Reconcile(context.TODO(), recReq("bar", "foo"))
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	// Scale down to instances=0, probe should stop
+	db.Spec.Parameters.Instances = 0
+	require.NoError(t, client.Update(context.TODO(), db))
+	_, err = r.Reconcile(context.TODO(), recReq("bar", "foo"))
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
 func TestVSHNPostgreSQL_Started_NoCreds_Probe_Failure(t *testing.T) {
 	db, ns := newTestVSHNPostgres("bar", "foo", "creds", 1)
 	db.SetCreationTimestamp(metav1.Time{Time: time.Now().Add(-1 * time.Hour)})

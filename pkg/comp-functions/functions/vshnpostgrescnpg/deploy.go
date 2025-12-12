@@ -178,9 +178,22 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 // Generate CNPG cluster helm chart values
 func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (map[string]any, error) {
 	// https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml
+
+	// Handle hibernation for instances=0
+	// CNPG doesn't support instances=0, use hibernation annotation instead
+	instances := comp.Spec.Parameters.Instances
+	hibernation := "off"
+	if instances == 0 {
+		instances = 1 // CNPG requires at least 1 instance
+		hibernation = "on"
+	}
+
 	values := map[string]any{
 		"cluster": map[string]any{
-			"instances": comp.Spec.Parameters.Instances,
+			"instances": instances,
+			"annotations": map[string]string{
+				"cnpg.io/hibernation": hibernation,
+			},
 			"imageCatalogRef": map[string]string{
 				"kind": "ImageCatalog",
 				"name": comp.GetName() + "-cluster",

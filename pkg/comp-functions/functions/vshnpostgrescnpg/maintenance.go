@@ -77,10 +77,13 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 	instanceNamespace := comp.GetInstanceNamespace()
 	schedule := comp.GetFullMaintenanceSchedule()
 
+	// Disable vacuum for suspended instances
+	vacuumEnabled := comp.Spec.Parameters.Service.VacuumEnabled && comp.Spec.Parameters.Instances != 0
+
 	additionalVars := append(extraEnvVars, []corev1.EnvVar{
 		{
 			Name:  "VACUUM_ENABLED",
-			Value: strconv.FormatBool(comp.Spec.Parameters.Service.VacuumEnabled),
+			Value: strconv.FormatBool(vacuumEnabled),
 		},
 	}...)
 

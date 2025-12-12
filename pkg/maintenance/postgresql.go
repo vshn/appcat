@@ -3,10 +3,11 @@ package maintenance
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
-	"time"
 
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -78,9 +79,15 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
 	if len(sgclusters.Items) == 0 {
 		p.log.Info("No sgcluster found in namespace, skipping maintenance")
+		return nil
 	}
 
+	// Check if cluster is suspended (instances == 0)
 	sgCluster := sgclusters.Items[0]
+	if sgCluster.Spec.Instances == 0 {
+		p.log.Info("Cluster is suspended (instances=0), skipping all database maintenance operations")
+		return nil
+	}
 	currentVersion := sgclusters.Items[0].Spec.Postgres.Version
 
 	p.log.Info("Checking for pending upgrades...")

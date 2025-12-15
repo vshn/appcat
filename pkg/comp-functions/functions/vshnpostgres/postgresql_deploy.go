@@ -205,6 +205,16 @@ func createStackgresObjects(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, sv
 	return nil
 }
 
+// Returns true only when user explicitly specifies equal limits and requests for both CPU and memory.
+func isQoSGuaranteed(comp *vshnv1.VSHNPostgreSQL, res common.Resources) bool {
+	return comp.Spec.Parameters.Size.Requests.CPU != "" &&
+		comp.Spec.Parameters.Size.Requests.Memory != "" &&
+		comp.Spec.Parameters.Size.CPU != "" &&
+		comp.Spec.Parameters.Size.Memory != "" &&
+		res.CPU.Cmp(res.ReqCPU) == 0 &&
+		res.Mem.Cmp(res.ReqMem) == 0
+}
+
 func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 	l := svc.Log
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
@@ -255,20 +265,14 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 	if len(errs) != 0 {
 		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
 	}
-	containersRequests := generateContainers(*containers, sideCarMap, false)
 
-	containersRequestsBytes, err := json.Marshal(containersRequests)
-	if err != nil {
-		return err
-	}
+	guaranteedQoS := isQoSGuaranteed(comp, res)
+
+	// Determine resource configuration based on whether limits == requests
+	var containersRequestsBytes, initContainersRequestsBytes []byte
+
 	containersLimits := generateContainers(*containers, sideCarMap, true)
 	containersLimitsBytes, err := json.Marshal(containersLimits)
-	if err != nil {
-		return err
-	}
-
-	initContainersRequests := generateContainers(*initContainers, initContainerMap, false)
-	initContainersRequestsBytes, err := json.Marshal(initContainersRequests)
 	if err != nil {
 		return err
 	}
@@ -277,6 +281,30 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 	initContainersLimitsBytes, err := json.Marshal(initContainersLimits)
 	if err != nil {
 		return err
+	}
+
+	// Configure requests based on whether limits == requests
+	var reqCPU, reqMem string
+	if guaranteedQoS {
+		// For QoS Guaranteed: requests = limits for all containers
+		reqCPU = res.CPU.String()
+		reqMem = res.Mem.String()
+		containersRequestsBytes = containersLimitsBytes
+		initContainersRequestsBytes = initContainersLimitsBytes
+	} else {
+		// Default behavior: separate requests and limits
+		reqCPU = res.ReqCPU.String()
+		reqMem = res.ReqMem.String()
+		containersRequests := generateContainers(*containers, sideCarMap, false)
+		containersRequestsBytes, err = json.Marshal(containersRequests)
+		if err != nil {
+			return err
+		}
+		initContainersRequests := generateContainers(*initContainers, initContainerMap, false)
+		initContainersRequestsBytes, err = json.Marshal(initContainersRequests)
+		if err != nil {
+			return err
+		}
 	}
 
 	sgInstanceProfile := &sgv1.SGInstanceProfile{
@@ -288,8 +316,8 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 			Cpu:    res.CPU.String(),
 			Memory: res.Mem.String(),
 			Requests: &sgv1.SGInstanceProfileSpecRequests{
-				Cpu:    ptr.To(res.ReqCPU.String()),
-				Memory: ptr.To(res.ReqMem.String()),
+				Cpu:    ptr.To(reqCPU),
+				Memory: ptr.To(reqMem),
 				Containers: k8sruntime.RawExtension{
 					Raw: containersRequestsBytes,
 				},
@@ -407,6 +435,9 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 	if len(errs) != 0 {
 		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
 	}
+
+	guaranteedQoS := isQoSGuaranteed(comp, res)
+
 	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
 
 	if err != nil {
@@ -470,7 +501,9 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 					Size: res.Disk.String(),
 				},
 				Resources: &sgv1.SGClusterSpecPodsResources{
-					DisableResourcesRequestsSplitFromTotal: ptr.To(comp.Spec.Parameters.Service.DedicatedPatroniResources),
+					// When limits == requests (QoS Guaranteed), disable split to use exact values from SGInstanceProfile
+					// Otherwise use DedicatedPatroniResources setting
+					DisableResourcesRequestsSplitFromTotal: ptr.To(guaranteedQoS || comp.Spec.Parameters.Service.DedicatedPatroniResources),
 					EnableClusterLimitsRequirements:        ptr.To(true),
 				},
 				Scheduling: &sgv1.SGClusterSpecPodsScheduling{
@@ -480,8 +513,10 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 				DisableEnvoy:             ptr.To(!comp.Spec.Parameters.Service.EnableEnvoy),
 			},
 			NonProductionOptions: &sgv1.SGClusterSpecNonProductionOptions{
-				EnableSetPatroniCpuRequests:    ptr.To(true),
-				EnableSetPatroniMemoryRequests: ptr.To(true),
+				// When limits == requests (QoS Guaranteed), disable automatic request calculation
+				// Otherwise enable it to allow StackGres to calculate proportional requests
+				EnableSetPatroniCpuRequests:    ptr.To(!guaranteedQoS),
+				EnableSetPatroniMemoryRequests: ptr.To(!guaranteedQoS),
 				EnableSetClusterCpuRequests:    ptr.To(true),
 				EnableSetClusterMemoryRequests: ptr.To(true),
 			},

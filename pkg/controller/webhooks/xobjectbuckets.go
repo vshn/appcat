@@ -176,22 +176,22 @@ func (p *XObjectbucketDeletionProtectionHandler) getRetentionDays(ctx context.Co
 // getCompositeByName tries to get the composite object using owner labels from the bucket
 func (p *XObjectbucketDeletionProtectionHandler) getCompositeByName(ctx context.Context, bucket client.Object, l logr.Logger) (client.Object, error) {
 	// Use the owner labels from the bucket to determine the composite type
-	ownerName, ok := bucket.GetLabels()[appcatruntime.OwnerCompositeAnnotation]
+	ownerName, ok := bucket.GetLabels()[appcatruntime.OwnerCompositeLabel]
 	if !ok || ownerName == "" {
 		return nil, fmt.Errorf("owner composite label not found on bucket")
 	}
 
-	ownerKind, ok := bucket.GetLabels()[appcatruntime.OwnerKindAnnotation]
+	ownerKind, ok := bucket.GetLabels()[appcatruntime.OwnerKindLabel]
 	if !ok || ownerKind == "" {
 		return nil, fmt.Errorf("owner kind label not found on bucket")
 	}
 
-	ownerVersion, ok := bucket.GetLabels()[appcatruntime.OwnerVersionAnnotation]
+	ownerVersion, ok := bucket.GetLabels()[appcatruntime.OwnerVersionLabel]
 	if !ok || ownerVersion == "" {
 		return nil, fmt.Errorf("owner version label not found on bucket")
 	}
 
-	ownerGroup, ok := bucket.GetLabels()[appcatruntime.OwnerGroupAnnotation]
+	ownerGroup, ok := bucket.GetLabels()[appcatruntime.OwnerGroupLabel]
 	if !ok || ownerGroup == "" {
 		return nil, fmt.Errorf("owner group label not found on bucket")
 	}

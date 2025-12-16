@@ -148,7 +148,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 			if tt.instanceNS != nil {
 				s := &utils.Sidecars{}
 				assert.NoError(t, err)
-				AddInitalNamespaceQuotas(ctx, ns, s, gk.Kind)
+				AddInitalNamespaceQuotas(ctx, ns, s, gk.Kind, "")
 				assert.NoError(t, fclient.Create(ctx, tt.instanceNS))
 			}
 

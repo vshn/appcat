@@ -86,7 +86,8 @@ type VSHNMariaDBParameters struct {
 	Security Security `json:"security,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Enum=1;3;
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Enum=0;1;3;
 
 	// Instances configures the number of MariaDB instances for the cluster.
 	// Each instance contains one MariaDB server.
@@ -205,6 +206,10 @@ func (v *XVSHNMariaDB) GetInstanceNamespace() string {
 
 func (v *XVSHNMariaDB) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
+}
+
+func (v *XVSHNMariaDB) GetInstances() int {
+	return v.Spec.Parameters.Instances
 }
 
 // XVSHNMariaDBSpec defines the desired state of a VSHNMariaDB.

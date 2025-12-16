@@ -58,8 +58,10 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 
 	disableProtection := comp.Status.CurrentInstances != 0 && comp.GetInstances() != comp.Status.CurrentInstances
 
-	if comp.GetInstances() == 1 && !disableProtection {
+	if comp.GetInstances() <= 1 && !disableProtection {
 		// nothing else to do here
+		// instances=0: suspended, no ProxySQL needed
+		// instances=1: single instance, no ProxySQL needed
 		return nil
 	}
 

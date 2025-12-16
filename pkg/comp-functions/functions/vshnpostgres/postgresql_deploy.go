@@ -438,8 +438,8 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		Backups:          nil, // Explicitly initialize as nil
 	}
 
-	// Only add backup configuration if backups are enabled
-	if comp.Spec.Parameters.Backup.IsEnabled() {
+	// Only add backup configuration if backups are enabled and instance is not suspended
+	if comp.Spec.Parameters.Backup.IsEnabled() && comp.GetInstances() != 0 {
 		l.Info("Backup is enabled - adding backup configuration to SGCluster")
 		configurations.Backups = &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
 			{

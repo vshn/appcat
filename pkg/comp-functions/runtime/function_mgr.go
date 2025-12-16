@@ -1058,7 +1058,8 @@ func (s *ServiceRuntime) DeleteDesiredCompososedResource(name string) {
 
 // isResourceSyncedAndReady checks if the given resource is synced and ready.
 func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
-	obj, ok := s.req.Observed.Resources[name]
+	resName := EscapeDNS1123(name, false)
+	obj, ok := s.req.Observed.Resources[resName]
 	if !ok {
 		return false
 	}
@@ -1079,10 +1080,10 @@ func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
 	}
 
 	for _, cond := range status.Conditions {
-		if cond.Type == xpv1.TypeSynced && cond.Status == "false" {
+		if cond.Type == xpv1.TypeSynced && cond.Status == corev1.ConditionFalse {
 			return false
 		}
-		if cond.Type == xpv1.TypeReady && cond.Status == "false" {
+		if cond.Type == xpv1.TypeReady && cond.Status == corev1.ConditionFalse {
 			return false
 		}
 	}
@@ -1540,7 +1541,8 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 }
 
 // IsResourceReady checks if a resource exists in observed state with Ready=True condition.
-func (s *ServiceRuntime) IsResourceReady(resourceName string) (bool, error) {
+func (s *ServiceRuntime) IsResourceReady(name string) (bool, error) {
+	resourceName := EscapeDNS1123(name, false)
 	observed, err := s.GetAllObserved()
 	if err != nil {
 		return false, fmt.Errorf("cannot get observed resources: %w", err)
@@ -1562,7 +1564,8 @@ func (s *ServiceRuntime) IsResourceReady(resourceName string) (bool, error) {
 // ResourceExistsInObserved checks if a resource exists in observed state.
 // Useful for preventing deletion when dependencies become temporarily unavailable.
 // If GetAllObserved fails, returns true (safer default) and adds a fatal result to halt composition.
-func (s *ServiceRuntime) ResourceExistsInObserved(resourceName string) bool {
+func (s *ServiceRuntime) ResourceExistsInObserved(name string) bool {
+	resourceName := EscapeDNS1123(name, false)
 	observed, err := s.GetAllObserved()
 	if err != nil {
 		s.Log.Error(err, "Failed to get observed resources, halting composition", "resourceName", resourceName)

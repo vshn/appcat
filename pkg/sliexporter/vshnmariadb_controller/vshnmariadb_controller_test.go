@@ -79,6 +79,61 @@ func TestVSHNMariaDB_Reconcile(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
+func TestVSHNMariaDB_Suspended_Dont_Probe(t *testing.T) {
+	mariadb, ns := newTestVSHNMariaDB("bar", "foo", "creds")
+	mariadb.Spec.Parameters.Instances = 0
+	r, manager, _ := setupVSHNMariaDBTest(t,
+		mariadb, ns,
+		newTestVSHNMariaDBCred("bar", "creds"),
+	)
+	pi := probes.ProbeInfo{
+		Service: "VSHNMariaDB",
+		Name:    "foo",
+	}
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "bar",
+			Name:      "foo",
+		},
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
+func TestVSHNMariaDB_Suspended_Stop_Running_Probe(t *testing.T) {
+	mariadb, ns := newTestVSHNMariaDB("bar", "foo", "creds")
+	r, manager, client := setupVSHNMariaDBTest(t,
+		mariadb, ns,
+		newTestVSHNMariaDBCred("bar", "creds"),
+	)
+	pi := probes.ProbeInfo{
+		Service: "VSHNMariaDB",
+		Name:    "foo",
+	}
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "bar",
+			Name:      "foo",
+		},
+	}
+
+	// Start with instances=1, probe should start
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.True(t, manager.probers[getFakeKey(pi)])
+
+	// Scale down to instances=0, probe should stop
+	mariadb.Spec.Parameters.Instances = 0
+	require.NoError(t, client.Update(context.TODO(), mariadb))
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.False(t, manager.probers[getFakeKey(pi)])
+}
+
 func setupVSHNMariaDBTest(t *testing.T, objs ...client.Object) (VSHNMariaDBReconciler, *fakeProbeManager, client.Client) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
@@ -107,7 +162,9 @@ func newTestVSHNMariaDB(namespace, name, cred string) (*vshnv1.XVSHNMariaDB, *co
 			Namespace: namespace,
 		},
 		Spec: vshnv1.XVSHNMariaDBSpec{
-			Parameters: vshnv1.VSHNMariaDBParameters{},
+			Parameters: vshnv1.VSHNMariaDBParameters{
+				Instances: 1,
+			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
 					Name:      cred,

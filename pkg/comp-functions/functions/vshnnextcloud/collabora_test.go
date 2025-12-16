@@ -111,3 +111,32 @@ func Test_addCollaboraCustomVersion(t *testing.T) {
 	assert.NoError(t, svc.GetDesiredKubeObject(sts, comp.GetName()+"-collabora-code-sts"))
 	assert.Equal(t, expectedImage, sts.Spec.Template.Spec.Containers[0].Image)
 }
+
+func Test_addCollaboraSuspendedInstance(t *testing.T) {
+	svc, comp := getNextcloudComp(t, "vshnnextcloud/01_default.yaml")
+	ctx := context.TODO()
+
+	// Configure Collabora with enabled but instances set to 0
+	comp.Spec.Parameters.Service.Collabora.Enabled = true
+	comp.Spec.Parameters.Service.Collabora.FQDN = "collabora.example.com"
+	comp.Spec.Parameters.Instances = 0
+
+	assert.Nil(t, DeployNextcloud(ctx, comp, svc))
+
+	result := DeployCollabora(ctx, comp, svc)
+	assert.True(t, result.Severity == v1.Severity_SEVERITY_NORMAL)
+
+	// Verify that Collabora StatefulSet has 0 replicas when instance is suspended
+	sts := &appsv1.StatefulSet{}
+	assert.NoError(t, svc.GetDesiredKubeObject(sts, comp.GetName()+"-collabora-code-sts"))
+	assert.Equal(t, int32(0), *sts.Spec.Replicas, "Collabora should have 0 replicas when instance is suspended")
+
+	// Now test with instances > 0
+	comp.Spec.Parameters.Instances = 2
+	assert.Nil(t, DeployNextcloud(ctx, comp, svc))
+	result = DeployCollabora(ctx, comp, svc)
+	assert.True(t, result.Severity == v1.Severity_SEVERITY_NORMAL)
+
+	assert.NoError(t, svc.GetDesiredKubeObject(sts, comp.GetName()+"-collabora-code-sts"))
+	assert.Equal(t, int32(1), *sts.Spec.Replicas, "Collabora should have 1 replica when instance is active")
+}

@@ -485,6 +485,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	updatedNextcloudConfig := setBackgroundJobMaintenance(*comp.GetMaintenanceTimeOfDay(), nextcloudConfig)
 	values = map[string]any{
+		"replicaCount": comp.GetInstances(),
 		"nextcloud": map[string]any{
 			"host":           comp.Spec.Parameters.Service.FQDN[0],
 			"trustedDomains": trustedDomain,
@@ -606,7 +607,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 		},
 		"cronjob": map[string]any{
-			"enabled": true,
+			"enabled": comp.GetInstances() > 0,
 			"type":    "cronjob",
 			"cronjob": map[string]any{
 				"affinity": map[string]any{
@@ -640,22 +641,24 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
-	if image := svc.Config.Data["nextcloud_image"]; image != "" {
-		values["image"] = map[string]interface{}{
-			"repository": image,
-		}
-	}
-
+	// Chart 8.6.0+ uses separate registry and repository instead of combined image path
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
-		image := fmt.Sprintf("%s/%s", registry, "xperimental/nextcloud-exporter")
+		// Nextcloud image
+		if repository := svc.Config.Data["nextcloud_image_repository"]; repository != "" {
+			values["image"] = map[string]any{
+				"registry":   registry,
+				"repository": repository,
+			}
+		}
 
+		// Metrics exporter image
 		err := common.SetNestedObjectValue(values, []string{"metrics", "image"}, map[string]any{
-			"repository": image,
+			"registry":   registry,
+			"repository": "xperimental/nextcloud-exporter",
 		})
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
 	return values, nil

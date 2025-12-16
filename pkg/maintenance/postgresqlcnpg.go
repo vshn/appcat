@@ -100,7 +100,7 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 	}
 
 	// Vacuum
-	if p.vacuum == "true" {
+	if p.vacuum == "true" && instanceCluster.Spec.Instances != 0 {
 		p.log.Info("Starting vacuum")
 
 		if instanceCluster.Status.ReadyInstances > 0 {

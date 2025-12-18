@@ -141,6 +141,7 @@ The controller manages and achieves the following:
 | --------------------- | ----------------------------------------------- | -------------------------------------------- |
 | `XVSHNPostgreSQL`     | Deletion Protection Support                     | Manages finalizers before and after deletion |
 | `validation webhooks` | Provide validation webhooks for AppCat services | See Goal                                     |
+| `crossplane metrics`  | Provides crossplane resource metrics            | See pkg/controller/crossplane_metrics/README.md for more information |
 
 ### Local Webhook debugging
 

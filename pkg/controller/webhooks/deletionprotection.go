@@ -72,8 +72,8 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionLabel)}, nil
 	}
 
-	onwerGroup, ok := obj.GetLabels()[runtime.OwnerGroupLabel]
-	if !ok || onwerGroup == "" {
+	ownerGroup, ok := obj.GetLabels()[runtime.OwnerGroupLabel]
+	if !ok || ownerGroup == "" {
 		l.Info(runtime.OwnerGroupLabel + " label not found, blocking deletion")
 		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionLabel)}, nil
 	}
@@ -81,7 +81,7 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 	gvk := schema.GroupVersionKind{
 		Kind:    ownerKind,
 		Version: ownerVersion,
-		Group:   onwerGroup,
+		Group:   ownerGroup,
 	}
 
 	rcomp, err := c.Scheme().New(gvk)

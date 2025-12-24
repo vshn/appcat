@@ -4,6 +4,8 @@ This package provides a Prometheus metrics collector for generic Crossplane reso
 
 ## Features
 
+- **Automatic XRD Discovery**: Automatically discovers all Composite Resource Definitions (XRDs) on the cluster
+- **Extra Resources**: Support for monitoring additional resources like Helm Releases, ProviderConfigs, etc.
 - **Dynamic Resource Discovery**: Collects metrics for any Crossplane CRD based on configuration
 - **Status Conditions**: Automatically extracts and labels status conditions (e.g., `status_ready`, `status_synced`)
 - **Label Mapping**: Maps Kubernetes labels to Prometheus labels for better querying
@@ -26,16 +28,6 @@ The collector requires configuration via environment variables:
 
 #### Required Configuration
 
-The following configuration is required when `crossplane-metrics` is enabled:
-
-**CROSSPLANE_RESOURCE_APIS** (required): JSON map of API versions to resource kinds to monitor
-
-```bash
-export CROSSPLANE_RESOURCE_APIS='{
-  "vshn.appcat.vshn.io/v1": ["xvshnpostgresqls", "xvshnredis"],
-  "exoscale.appcat.vshn.io/v1": ["exoscalepostgresqls", "exoscalemysqls"]
-}'
-```
 **CROSSPLANE_LABEL_MAPPING** (required): JSON map of Kubernetes labels to Prometheus label names
 
 ```bash
@@ -46,6 +38,56 @@ export CROSSPLANE_LABEL_MAPPING='{
   "appcat.vshn.io/sla": "sla"
 }'
 ```
+
+#### Optional Configuration
+
+**CROSSPLANE_EXTRA_RESOURCES** (optional): JSON map of additional resource APIs to monitor beyond auto-discovered XRDs
+
+Format: `{"apiVersion": ["resource1", "resource2"]}`
+
+```bash
+# Single API version with multiple resources
+export CROSSPLANE_EXTRA_RESOURCES='{"helm.crossplane.io/v1beta1": ["releases"]}'
+
+# Multiple API versions with resources
+export CROSSPLANE_EXTRA_RESOURCES='{
+  "helm.crossplane.io/v1beta1": ["releases"],
+  "mysql.sql.crossplane.io/v1alpha1": ["databases", "users"]
+}'
+```
+
+## How It Works
+
+### Automatic XRD Discovery
+
+The collector automatically discovers all Composite Resource Definitions (XRDs) on the cluster at startup by:
+
+1. Listing all `compositeresourcedefinitions.apiextensions.crossplane.io/v1` resources
+2. Extracting the group, versions, and plural resource names from each XRD
+3. Only monitoring versions marked as `served: true`
+4. Automatically collecting metrics for all discovered composite resources
+
+This means you don't need to manually configure which XRDs to monitor - they're discovered automatically!
+
+### Extra Resources
+
+For resources that are not XRDs (like Helm Releases, ProviderConfigs, managed resources, etc.), you can specify them using `CROSSPLANE_EXTRA_RESOURCES`:
+
+The format is a JSON map where the key is the full API version (`group/version`) and the value is an array of resource names (plural form).
+
+Example:
+```json
+{
+  "helm.crossplane.io/v1beta1": ["releases"],
+  "mysql.sql.crossplane.io/v1alpha1": ["databases", "users"],
+  "aws.upbound.io/v1beta1": ["buckets", "roles"]
+}
+```
+
+This configuration tells the collector to monitor:
+- `releases` from `helm.crossplane.io/v1beta1`
+- `databases` and `users` from `mysql.sql.crossplane.io/v1alpha1`
+- `buckets` and `roles` from `aws.upbound.io/v1beta1`
 
 ## Metric Format
 
@@ -122,18 +164,19 @@ spec:
           - controller
           - --crossplane-metrics=true
         env:
-        - name: CROSSPLANE_RESOURCE_APIS
-          value: |
-            {
-              "vshn.appcat.vshn.io/v1": ["xvshnpostgresqls", "xvshnredis", "xvshnmariadbs"],
-              "exoscale.appcat.vshn.io/v1": ["exoscalepostgresqls"]
-            }
         - name: CROSSPLANE_LABEL_MAPPING
           value: |
             {
               "crossplane.io/claim-namespace": "claim_namespace",
               "crossplane.io/claim-name": "claim_name",
               "appcat.vshn.io/organization": "organization"
+            }
+        # Optional: Monitor additional resources beyond XRDs
+        - name: CROSSPLANE_EXTRA_RESOURCES
+          value: |
+            {
+              "helm.crossplane.io/v1beta1": ["releases"],
+              "aws.upbound.io/v1beta1": ["providerconfigs"]
             }
         ports:
         - name: metrics

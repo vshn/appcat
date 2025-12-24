@@ -17,15 +17,15 @@ import (
 func TestNewMetricsCollector(t *testing.T) {
 	client := fake.NewSimpleDynamicClient(runtime.NewScheme())
 	labelMappings := map[string]string{"app": "application"}
-	resourceAPIs := map[string][]string{"example.com/v1": {"resources"}}
+	extraResources := map[string][]string{}
 	log := logr.Discard()
 
-	collector := NewMetricsCollector(client, labelMappings, resourceAPIs, log)
+	collector := NewMetricsCollector(client, labelMappings, extraResources, log)
 
 	assert.NotNil(t, collector)
 	assert.Equal(t, client, collector.client)
 	assert.Equal(t, labelMappings, collector.labelMappings)
-	assert.Equal(t, resourceAPIs, collector.resourceAPIs)
+	assert.Equal(t, extraResources, collector.extraResources)
 }
 
 func TestMetricsCollector_Describe(t *testing.T) {
@@ -84,11 +84,12 @@ func TestMetricsCollector_Collect_Success(t *testing.T) {
 		"app":         "application",
 		"environment": "env",
 	}
-	resourceAPIs := map[string][]string{
+
+	collector := NewMetricsCollector(client, labelMappings, nil, logr.Discard())
+	// Manually set resourceAPIs for testing (bypassing auto-discovery)
+	collector.xrds = map[string][]string{
 		"example.com/v1": {"testresources"},
 	}
-
-	collector := NewMetricsCollector(client, labelMappings, resourceAPIs, logr.Discard())
 
 	ch := make(chan prometheus.Metric, 10)
 	go func() {
@@ -141,11 +142,12 @@ func TestMetricsCollector_Collect_MinimalResource(t *testing.T) {
 	}
 
 	client := fake.NewSimpleDynamicClient(scheme, resource)
-	resourceAPIs := map[string][]string{
+
+	collector := NewMetricsCollector(client, nil, nil, logr.Discard())
+	// Manually set resourceAPIs for testing (bypassing auto-discovery)
+	collector.xrds = map[string][]string{
 		"example.com/v1": {"testresources"},
 	}
-
-	collector := NewMetricsCollector(client, nil, resourceAPIs, logr.Discard())
 
 	ch := make(chan prometheus.Metric, 10)
 	go func() {
@@ -202,11 +204,12 @@ func TestMetricsCollector_Collect_MultipleResources(t *testing.T) {
 	}
 
 	client := fake.NewSimpleDynamicClient(scheme, resource1, resource2)
-	resourceAPIs := map[string][]string{
+
+	collector := NewMetricsCollector(client, nil, nil, logr.Discard())
+	// Manually set resourceAPIs for testing (bypassing auto-discovery)
+	collector.xrds = map[string][]string{
 		"example.com/v1": {"testresources"},
 	}
-
-	collector := NewMetricsCollector(client, nil, resourceAPIs, logr.Discard())
 
 	ch := make(chan prometheus.Metric, 10)
 	go func() {
@@ -224,11 +227,12 @@ func TestMetricsCollector_Collect_MultipleResources(t *testing.T) {
 
 func TestMetricsCollector_Collect_InvalidAPIVersion(t *testing.T) {
 	client := fake.NewSimpleDynamicClient(runtime.NewScheme())
-	resourceAPIs := map[string][]string{
+
+	collector := NewMetricsCollector(client, nil, nil, logr.Discard())
+	// Manually set resourceAPIs for testing (bypassing auto-discovery)
+	collector.xrds = map[string][]string{
 		"invalid-api-version": {"testresources"},
 	}
-
-	collector := NewMetricsCollector(client, nil, resourceAPIs, logr.Discard())
 
 	ch := make(chan prometheus.Metric, 10)
 	go func() {
@@ -266,11 +270,12 @@ func TestMetricsCollector_Collect_EmptyLabelValue(t *testing.T) {
 		"app":   "application",
 		"empty": "empty_label",
 	}
-	resourceAPIs := map[string][]string{
+
+	collector := NewMetricsCollector(client, labelMappings, nil, logr.Discard())
+	// Manually set resourceAPIs for testing (bypassing auto-discovery)
+	collector.xrds = map[string][]string{
 		"example.com/v1": {"testresources"},
 	}
-
-	collector := NewMetricsCollector(client, labelMappings, resourceAPIs, logr.Discard())
 
 	ch := make(chan prometheus.Metric, 10)
 	go func() {
@@ -321,11 +326,12 @@ func TestMetricsCollector_Collect_NoMatchingK8sLabels(t *testing.T) {
 	labelMappings := map[string]string{
 		"app": "application",
 	}
-	resourceAPIs := map[string][]string{
+
+	collector := NewMetricsCollector(client, labelMappings, nil, logr.Discard())
+	// Manually set resourceAPIs for testing (bypassing auto-discovery)
+	collector.xrds = map[string][]string{
 		"example.com/v1": {"testresources"},
 	}
-
-	collector := NewMetricsCollector(client, labelMappings, resourceAPIs, logr.Discard())
 
 	ch := make(chan prometheus.Metric, 10)
 	go func() {
@@ -491,12 +497,13 @@ func TestMetricsCollector_Collect_MultipleAPIVersionsAndKinds(t *testing.T) {
 	}
 
 	client := fake.NewSimpleDynamicClient(scheme, resource1, resource2, resource3)
-	resourceAPIs := map[string][]string{
+
+	collector := NewMetricsCollector(client, nil, nil, logr.Discard())
+	// Manually set resourceAPIs for testing (bypassing auto-discovery)
+	collector.xrds = map[string][]string{
 		"example.com/v1": {"typeas", "typebs"},
 		"other.com/v1":   {"typecs"},
 	}
-
-	collector := NewMetricsCollector(client, nil, resourceAPIs, logr.Discard())
 
 	ch := make(chan prometheus.Metric, 10)
 	go func() {
@@ -614,11 +621,12 @@ func TestMetricsCollector_Integration(t *testing.T) {
 		"app.kubernetes.io/instance":  "app_instance",
 		"app.kubernetes.io/component": "app_component",
 	}
-	resourceAPIs := map[string][]string{
+
+	collector := NewMetricsCollector(client, labelMappings, nil, logr.Discard())
+	// Manually set resourceAPIs for testing (bypassing auto-discovery)
+	collector.xrds = map[string][]string{
 		"database.example.com/v1alpha1": {"postgresqls"},
 	}
-
-	collector := NewMetricsCollector(client, labelMappings, resourceAPIs, logr.Discard())
 
 	// Register collector
 	registry := prometheus.NewRegistry()

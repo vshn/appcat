@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 PROJECT_ROOT_DIR = .
 PROJECT_NAME ?= appcat
-PROJECT_OWNER ?= vshn
+PROJECT_OWNER ?= mikeshootzz
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -186,7 +186,7 @@ test: ## Run tests
 .PHONY: kind-load-branch-tag
 kind-load-branch-tag: ## load docker image with current branch tag into kind
 	tag=$$(git rev-parse --abbrev-ref HEAD) && \
-	kind load docker-image --name kindev ghcr.io/vshn/appcat:"$$(echo $$tag | sed 's#/#_#g')"
+	kind load docker-image --name kindev ghcr.io/mikeshootzz/appcat:"$$(echo $$tag | sed 's#/#_#g')"
 
 # Generate webhook certificates.
 # This is only relevant when debugging.

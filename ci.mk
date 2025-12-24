@@ -1,7 +1,7 @@
 # Image URL to use all building/pushing image targets
 IMG_TAG ?= latest
 APP_NAME ?= appcat
-ORG ?= vshn
+ORG ?= mikeshootzz
 IMG_REPO ?= ghcr.io
 IMG ?= $(IMG_REPO)/$(ORG)/$(APP_NAME):$(IMG_TAG)
 DOCKER_CMD ?= docker

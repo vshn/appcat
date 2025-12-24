@@ -4,11 +4,10 @@ on:
   issue_comment:
     types: [created]
 
-
 env:
   APP_NAME: appcat
-  COMPONENT_REPO: vshn/component-appcat
-  APPCAT_REPO: vshn/appcat
+  COMPONENT_REPO: mikeshootzz/component-appcat
+  APPCAT_REPO: mikeshootzz/appcat
 
 jobs:
   check-conditions:
@@ -164,11 +163,68 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.COMPONENT_ACCESS_TOKEN }}
     steps:
+      - name: Merge PR in appcat repo
+        run: |
+          echo "✅ Merging appcat PR: https://github.com/$APPCAT_REPO/pull/${{ needs.check-conditions.outputs.pr-number }}"
+          gh pr merge -R "$APPCAT_REPO" ${{ needs.check-conditions.outputs.pr-number }} --merge --delete-branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get merge commit SHA from develop
+        id: merge-commit
+        run: |
+          # Wait a moment for the merge to complete
+          sleep 2
+
+          # Get the latest commit SHA from develop branch (this is the merge commit)
+          MERGE_COMMIT_SHA=$(gh api repos/$APPCAT_REPO/git/ref/heads/develop --jq '.object.sha')
+          echo "🔧 Merge commit SHA: $MERGE_COMMIT_SHA"
+          echo "sha=$MERGE_COMMIT_SHA" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout appcat repository at merge commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.APPCAT_REPO }}
+          ref: ${{ steps.merge-commit.outputs.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine Go version from go.mod
+        run: echo "GO_VERSION=$(grep "go 1." go.mod | cut -d " " -f 2)" >> $GITHUB_ENV
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image with merge commit SHA
+        run: |
+          echo "🐳 Building and pushing image with tag: ${{ steps.merge-commit.outputs.sha }}"
+          make docker-push -e IMG_TAG=${{ steps.merge-commit.outputs.sha }} -e APP_NAME=${{ env.APP_NAME }}
+
+      - name: Build and push function package with merge commit SHA
+        run: |
+          echo "📦 Building and pushing function package with tag: ${{ steps.merge-commit.outputs.sha }}"
+          make package-push -e IMG_TAG=${{ steps.merge-commit.outputs.sha }} -e APP_NAME=${{ env.APP_NAME }}
+
       - name: Clone and patch component repo
         run: |
           COMPONENT_BRANCH="${{ needs.check-conditions.outputs.comp-feature-branch }}"
-          APPCAT_FR_COMMIT_SHA="${{ needs.check-conditions.outputs.last-sha }}"
-          echo "🔧 Using commit: $APPCAT_FR_COMMIT_SHA"
+          APPCAT_MERGE_COMMIT_SHA="${{ steps.merge-commit.outputs.sha }}"
+          echo "🔧 Using merge commit: $APPCAT_MERGE_COMMIT_SHA"
           echo "🔧 Cloning branch: $COMPONENT_BRANCH"
 
           git clone https://x-access-token:$GH_TOKEN@github.com/"$COMPONENT_REPO".git
@@ -176,20 +232,20 @@ jobs:
           git checkout "$COMPONENT_BRANCH"
 
           echo "🔧 Patching class/defaults.yml..."
-          yq e ".parameters.appcat.images.appcat.tag = \"$APPCAT_FR_COMMIT_SHA\"" class/defaults.yml \
+          yq e ".parameters.appcat.images.appcat.tag = \"$APPCAT_MERGE_COMMIT_SHA\"" class/defaults.yml \
             | diff -B class/defaults.yml - \
             | patch class/defaults.yml - || echo "✅ No patch needed"
 
           make gen-golden-all
 
-          git config --global user.email "githubbot@vshn.ch"
-          git config --global user.name "GitHubBot"
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
 
           git add .
           if git diff --cached --quiet; then
             echo "✅ No changes to commit"
           else
-            git commit -m "Auto update from appcat PR https://github.com/${{ env.APPCAT_REPO }}/pull/${{ needs.check-conditions.outputs.pr-number }}, dependency $APPCAT_FR_COMMIT_SHA"
+            git commit -m "Auto update from appcat PR https://github.com/${{ env.APPCAT_REPO }}/pull/${{ needs.check-conditions.outputs.pr-number }}, dependency $APPCAT_MERGE_COMMIT_SHA"
             git push origin "$COMPONENT_BRANCH"
           fi
 
@@ -210,11 +266,6 @@ jobs:
           echo "✅ Merging component PR: ${{ needs.check-conditions.outputs.comp-url }}"
           gh pr merge -R "$COMPONENT_REPO" ${{ needs.check-conditions.outputs.comp-pr-number }} --merge --delete-branch
 
-      - name: Merge PR in appcat repo
-        run: |
-          echo "✅ Merging appcat PR: https://github.com/$APPCAT_REPO/pull/${{ needs.check-conditions.outputs.pr-number }}"
-          gh pr merge -R "$APPCAT_REPO" ${{ needs.check-conditions.outputs.pr-number }} --merge --delete-branch
-
   merge-hotfix:
     needs: check-conditions
     if: needs.check-conditions.outputs.base-branch == 'master' && needs.check-conditions.outputs.is-hotfix == 'true'
@@ -233,8 +284,8 @@ jobs:
       - name: Auto-increment patch version and tag master
         id: tag
         run: |
-          git config --global user.email "githubbot@vshn.ch"
-          git config --global user.name "GitHubBot"
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
 
           git clone --quiet https://x-access-token:$APPCAT_GH_TOKEN@github.com/$APPCAT_REPO.git
           cd appcat
@@ -294,8 +345,8 @@ jobs:
 
           make gen-golden-all
 
-          git config --global user.email "githubbot@vshn.ch"
-          git config --global user.name "GitHubBot"
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
 
           git add .
           if git diff --cached --quiet; then

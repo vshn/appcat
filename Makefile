@@ -1,4 +1,4 @@
-SHELL := /bin/bash
+SHELL := /usr/bin/env bash
 
 PROJECT_ROOT_DIR = .
 PROJECT_NAME ?= appcat

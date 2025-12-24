@@ -153,17 +153,12 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("CROSSPLANE_LABEL_MAPPING cannot be empty when crossplane-metrics is enabled")
 		}
 
-		resourceAPIs := make(map[string][]string)
-		if resourceAPIsJSON := viper.GetString("CROSSPLANE_RESOURCE_APIS"); resourceAPIsJSON != "" {
-			if err := json.Unmarshal([]byte(resourceAPIsJSON), &resourceAPIs); err != nil {
-				return fmt.Errorf("failed to parse CROSSPLANE_RESOURCE_APIS: %w", err)
+		// Parse extra resources (optional)
+		extraResources := make(map[string][]string)
+		if extraResourcesStr := viper.GetString("CROSSPLANE_EXTRA_RESOURCES"); extraResourcesStr != "" {
+			if err := json.Unmarshal([]byte(extraResourcesStr), &extraResources); err != nil {
+				return fmt.Errorf("failed to parse CROSSPLANE_EXTRA_RESOURCES: %w", err)
 			}
-		} else {
-			return fmt.Errorf("CROSSPLANE_RESOURCE_APIS environment variable is required when crossplane-metrics is enabled")
-		}
-
-		if len(resourceAPIs) == 0 {
-			return fmt.Errorf("CROSSPLANE_RESOURCE_APIS cannot be empty when crossplane-metrics is enabled")
 		}
 
 		// Create dynamic client for Crossplane resources
@@ -173,7 +168,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		}
 
 		// Create and register the collector
-		collector := crossplane_metrics.NewMetricsCollector(dynamicClient, labelMapping, resourceAPIs, log)
+		collector := crossplane_metrics.NewMetricsCollector(dynamicClient, labelMapping, extraResources, log)
 		if err := metrics.Registry.Register(collector); err != nil {
 			return fmt.Errorf("failed to register Crossplane metrics collector: %w", err)
 		}

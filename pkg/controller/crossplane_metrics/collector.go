@@ -3,6 +3,7 @@ package crossplane_metrics
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -17,20 +18,133 @@ import (
 
 // MetricsCollector collects generic metrics about Crossplane resources
 type MetricsCollector struct {
-	client        dynamic.Interface
-	log           logr.Logger
-	labelMappings map[string]string
-	resourceAPIs  map[string][]string
+	client         dynamic.Interface
+	log            logr.Logger
+	labelMappings  map[string]string
+	extraResources map[string][]string
+	xrds           map[string][]string
 }
 
 // NewMetricsCollector creates a new MetricsCollector
-func NewMetricsCollector(client dynamic.Interface, labelMappings map[string]string, resourceAPIs map[string][]string, log logr.Logger) *MetricsCollector {
-	return &MetricsCollector{
-		client:        client,
-		log:           log,
-		labelMappings: labelMappings,
-		resourceAPIs:  resourceAPIs,
+func NewMetricsCollector(client dynamic.Interface, labelMappings map[string]string, extraResources map[string][]string, log logr.Logger) *MetricsCollector {
+	collector := &MetricsCollector{
+		client:         client,
+		log:            log,
+		labelMappings:  labelMappings,
+		extraResources: extraResources,
+		xrds:           make(map[string][]string),
 	}
+
+	discoveredXRDs, err := collector.discoverXRDs(context.Background())
+	if err != nil {
+		collector.log.Error(err, "Failed to discover XRDs during initialization")
+	} else {
+		collector.xrds = discoveredXRDs
+
+		totalXRDs := 0
+		for _, kinds := range discoveredXRDs {
+			totalXRDs += len(kinds)
+		}
+		totalExtraResources := 0
+		for _, kinds := range extraResources {
+			totalExtraResources += len(kinds)
+		}
+		collector.log.Info("Resource discovery complete", "xrds", totalXRDs, "extraResources", totalExtraResources)
+	}
+
+	return collector
+}
+
+// discoverXRDs discovers Composite Resource Definitions (XRDs) on the cluster
+func (c *MetricsCollector) discoverXRDs(ctx context.Context) (map[string][]string, error) {
+	result := make(map[string][]string)
+
+	// XRDs are in apiextensions.crossplane.io/v1
+	gvr := schema.GroupVersionResource{
+		Group:    "apiextensions.crossplane.io",
+		Version:  "v1",
+		Resource: "compositeresourcedefinitions",
+	}
+
+	// Use recover to handle panics from fake clients in tests
+	defer func() {
+		if r := recover(); r != nil {
+			c.log.Info("Recovered from panic during XRD discovery (likely in test environment)", "panic", r)
+		}
+	}()
+
+	xrdList, err := c.client.Resource(gvr).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		// If XRD CRD doesn't exist, just return empty (not an error)
+		c.log.Info("Could not list XRDs, Crossplane may not be installed", "error", err.Error())
+		return result, nil
+	}
+
+	for _, xrd := range xrdList.Items {
+		// Extract group from spec.group
+		group, found, err := unstructured.NestedString(xrd.Object, "spec", "group")
+		if err != nil || !found {
+			c.log.Info("Skipping XRD without group", "name", xrd.GetName())
+			continue
+		}
+
+		// Extract versions from spec.versions
+		versionsRaw, found, err := unstructured.NestedSlice(xrd.Object, "spec", "versions")
+		if err != nil || !found {
+			c.log.Info("Skipping XRD without versions", "name", xrd.GetName())
+			continue
+		}
+
+		// Extract plural name from spec.names.plural
+		plural, found, err := unstructured.NestedString(xrd.Object, "spec", "names", "plural")
+		if err != nil || !found {
+			c.log.Info("Skipping XRD without plural name", "name", xrd.GetName())
+			continue
+		}
+
+		// Process each version
+		for _, versionRaw := range versionsRaw {
+			versionMap, ok := versionRaw.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			versionName, found, err := unstructured.NestedString(versionMap, "name")
+			if err != nil || !found {
+				continue
+			}
+
+			// Check if version is served
+			served, found, err := unstructured.NestedBool(versionMap, "served")
+			if err != nil || !found || !served {
+				continue
+			}
+
+			// Build apiVersion (group/version)
+			apiVersion := fmt.Sprintf("%s/%s", group, versionName)
+
+			// Add to result
+			if existing, ok := result[apiVersion]; ok {
+				// Check for duplicates
+				found := false
+				for _, k := range existing {
+					if k == plural {
+						found = true
+						break
+					}
+				}
+				if !found {
+					result[apiVersion] = append(existing, plural)
+				}
+			} else {
+				result[apiVersion] = []string{plural}
+			}
+
+			c.log.Info("Discovered XRD", "apiVersion", apiVersion, "resource", plural, "name", xrd.GetName())
+		}
+	}
+
+	return result, nil
 }
 
 // Describe implements the prometheus.Collector interface
@@ -43,8 +157,31 @@ func (c *MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *MetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	c.log.V(1).Info("Collecting Crossplane resource metrics")
 
-	// Iterate over all configured CRDs
-	for apiVersion, kinds := range c.resourceAPIs {
+	// Combine xrds and extraResources for collection
+	allResources := make(map[string][]string)
+
+	// Add discovered XRDs
+	for apiVersion, kinds := range c.xrds {
+		allResources[apiVersion] = append([]string{}, kinds...)
+	}
+
+	// Add extra resources (merge with existing)
+	for apiVersion, kinds := range c.extraResources {
+		if existing, ok := allResources[apiVersion]; ok {
+			// Merge, avoiding duplicates
+			for _, kind := range kinds {
+				found := slices.Contains(existing, kind)
+				if !found {
+					allResources[apiVersion] = append(allResources[apiVersion], kind)
+				}
+			}
+		} else {
+			allResources[apiVersion] = append([]string{}, kinds...)
+		}
+	}
+
+	// Iterate over all resources
+	for apiVersion, kinds := range allResources {
 		apiParts := strings.Split(apiVersion, "/")
 		if len(apiParts) != 2 {
 			c.log.Error(fmt.Errorf("invalid API version format: %s", apiVersion), "skipping resource")

@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/github/v/release/vshn/appcat)](https://github.com/vshn/appcat/releases)
 [![GitHub downloads](https://img.shields.io/github/downloads/vshn/appcat/total)](https://github.com/vshn/appcat/releases)
 
-# AppCat
+# AppCat 
 
 This repository has k8s tools to manage AppCat services.
 

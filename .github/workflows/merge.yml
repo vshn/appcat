@@ -171,15 +171,31 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get merge commit SHA from develop
+      - name: Get merge commit SHA from PR
         id: merge-commit
         run: |
-          # Wait a moment for the merge to complete
+          # Wait for merge to be reflected in API
           sleep 2
 
-          # Get the latest commit SHA from develop branch (this is the merge commit)
-          MERGE_COMMIT_SHA=$(gh api repos/$APPCAT_REPO/git/ref/heads/develop --jq '.object.sha')
-          echo "🔧 Merge commit SHA: $MERGE_COMMIT_SHA"
+          # Get the merge commit SHA directly from the PR
+          MERGE_COMMIT_SHA=$(gh pr view ${{ needs.check-conditions.outputs.pr-number }} \
+            -R "$APPCAT_REPO" \
+            --json mergeCommit \
+            --jq '.mergeCommit.oid')
+
+          # Verify we got the commit that contains our PR's changes
+          LAST_PR_COMMIT="${{ needs.check-conditions.outputs.last-sha }}"
+
+          # Check if the merge commit has our last PR commit as a parent
+          PARENTS=$(gh api repos/$APPCAT_REPO/commits/$MERGE_COMMIT_SHA --jq '[.parents[].sha] | join(" ")')
+
+          if ! echo "$PARENTS" | grep -q "$LAST_PR_COMMIT"; then
+            echo "❌ Merge commit $MERGE_COMMIT_SHA does not contain PR commit $LAST_PR_COMMIT"
+            echo "Parents: $PARENTS"
+            exit 1
+          fi
+
+          echo "🔧 Merge commit SHA: $MERGE_COMMIT_SHA (verified)"
           echo "sha=$MERGE_COMMIT_SHA" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

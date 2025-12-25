@@ -48,10 +48,10 @@ var (
 )
 
 const (
-	OwnerKindAnnotation               = "appcat.vshn.io/ownerkind"
-	OwnerVersionAnnotation            = "appcat.vshn.io/ownerapiversion"
-	OwnerGroupAnnotation              = "appcat.vshn.io/ownergroup"
-	OwnerCompositeAnnotation          = "appcat.vshn.io/ownercomposite"
+	OwnerKindLabel                    = "appcat.vshn.io/ownerkind"
+	OwnerVersionLabel                 = "appcat.vshn.io/ownerapiversion"
+	OwnerGroupLabel                   = "appcat.vshn.io/ownergroup"
+	OwnerCompositeLabel               = "appcat.vshn.io/ownercomposite"
 	ProtectedByAnnotation             = "appcat.vshn.io/protectedby"
 	ProtectsAnnotation                = "appcat.vshn.io/protects"
 	EventForwardAnnotation            = "appcat.vshn.io/forward-events-to"
@@ -1175,10 +1175,10 @@ func (s *ServiceRuntime) addOwnerReferenceAnnotation(obj client.Object, composed
 		labels = map[string]string{}
 	}
 
-	labels[OwnerKindAnnotation] = s.Config.Data["ownerKind"]
-	labels[OwnerVersionAnnotation] = s.Config.Data["ownerVersion"]
-	labels[OwnerGroupAnnotation] = s.Config.Data["ownerGroup"]
-	labels[OwnerCompositeAnnotation] = s.observedComposite.GetName()
+	labels[OwnerKindLabel] = s.Config.Data["ownerKind"]
+	labels[OwnerVersionLabel] = s.Config.Data["ownerVersion"]
+	labels[OwnerGroupLabel] = s.Config.Data["ownerGroup"]
+	labels[OwnerCompositeLabel] = s.observedComposite.GetName()
 
 	obj.SetLabels(labels)
 }

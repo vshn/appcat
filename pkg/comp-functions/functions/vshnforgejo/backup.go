@@ -23,9 +23,10 @@ func AddBackup(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.Servi
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	err = backup.AddK8upBackup(ctx, svc, comp)
+	// Use rclone-based backup instead of external S3
+	err = AddRcloneBackup(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot add k8s backup to the desired state: %v", err))
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add rclone backup: %v", err))
 	}
 
 	// Always add backup script and update release to prevent StatefulSet patching issues

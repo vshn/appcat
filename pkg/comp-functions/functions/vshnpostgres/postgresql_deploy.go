@@ -72,16 +72,17 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 		return runtime.NewWarningResult(fmt.Errorf("cannot create stackgres objects: %w", err).Error())
 	}
 
-	l.Info("Create ObjectBucket")
-	err = createObjectBucket(ctx, comp, svc)
+	// Use rclone-based backup instead of external S3
+	l.Info("Create rclone backup")
+	err = AddRcloneBackup(ctx, comp, svc)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot create xObjectBucket object: %w", err).Error())
+		return runtime.NewWarningResult(fmt.Errorf("cannot create rclone backup: %w", err).Error())
 	}
 
 	// Only create SGObjectStorage if backups are enabled
 	if comp.Spec.Parameters.Backup.IsEnabled() {
-		l.Info("Create SgObjectStorage")
-		err = createSgObjectStorage(comp, svc)
+		l.Info("Create SgObjectStorage for rclone")
+		err = createSgObjectStorageForRclone(comp, svc)
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Errorf("cannot create sgObjectStorage object: %w", err).Error())
 		}
@@ -714,6 +715,60 @@ func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRunt
 				EnablePathStyleAddressing: ptr.To(true),
 				Region:                    ptr.To(string(cd["AWS_REGION"])),
 				Endpoint:                  ptr.To(string(cd["ENDPOINT_URL"])),
+				AwsCredentials: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentials{
+					SecretKeySelectors: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectors{
+						AccessKeyId: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId{
+							Name: "pgbucket-" + comp.GetName(),
+							Key:  "AWS_ACCESS_KEY_ID",
+						},
+						SecretAccessKey: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsSecretAccessKey{
+							Name: "pgbucket-" + comp.GetName(),
+							Key:  "AWS_SECRET_ACCESS_KEY",
+						},
+					},
+				},
+			},
+		},
+	}
+	err = svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup", runtime.KubeOptionAllowDeletion)
+	if err != nil {
+		err = fmt.Errorf("cannot create backup: %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func createSgObjectStorageForRclone(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	certificateExists := svc.WaitForObservedDependencies("sgbackup-"+comp.GetName(), "certificate")
+	if !certificateExists {
+		return fmt.Errorf("waiting for dependencies: certificate")
+	}
+
+	// Read the rclone connection secret directly
+	rcloneSecret := &v1.Secret{}
+	err := svc.GetObservedKubeObject(rcloneSecret, comp.GetName()+"-backup-connection")
+	if err != nil {
+		svc.Log.Info(fmt.Sprintf("rclone connection secret not yet available: %s", err.Error()))
+		return err
+	}
+
+	bucket := string(rcloneSecret.Data["BUCKET_NAME"])
+	endpoint := string(rcloneSecret.Data["ENDPOINT_URL"])
+	region := string(rcloneSecret.Data["AWS_REGION"])
+
+	sgObjectStorage := &sgv1beta1.SGObjectStorage{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "sgbackup-" + comp.GetName(),
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: sgv1beta1.SGObjectStorageSpec{
+			Type: "s3Compatible",
+			S3Compatible: &sgv1beta1.SGObjectStorageSpecS3Compatible{
+				Bucket:                    bucket,
+				EnablePathStyleAddressing: ptr.To(true),
+				Region:                    ptr.To(region),
+				Endpoint:                  ptr.To(endpoint),
 				AwsCredentials: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentials{
 					SecretKeySelectors: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectors{
 						AccessKeyId: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId{

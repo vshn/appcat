@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// UnamanagedHandler implements the admission UnamanagedHandler for unmanaged objects (PVC, services, etc).
+// UnamanagedHandler implements the admission UnmanagedHandler for unmanaged objects (PVC, services, etc).
 type UnamanagedHandler struct {
 	client             client.Client
 	controlPlaneClient client.Client

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -8,13 +9,16 @@ import (
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/controller/billing"
+	"github.com/vshn/appcat/v4/pkg/controller/crossplane_metrics"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	"github.com/vshn/appcat/v4/pkg/odoo"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -29,6 +33,7 @@ type controller struct {
 	enableQuotas            bool
 	enableEventForwarding   bool
 	enableBilling           bool
+	enableCrossplaneMetrics bool
 	certDir                 string
 }
 
@@ -55,6 +60,7 @@ func init() {
 	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
 	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", true, "Disable billing")
+	ControllerCMD.Flags().BoolVar(&c.enableCrossplaneMetrics, "crossplane-metrics", false, "Enable Crossplane resource metrics collector")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
 		viper.Set("PLANS_NAMESPACE", "syn-appcat")
@@ -130,6 +136,43 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if c.enableCrossplaneMetrics {
+		// Parse configuration from environment variables
+		labelMapping := make(map[string]string)
+		if labelMappingJSON := viper.GetString("CROSSPLANE_LABEL_MAPPING"); labelMappingJSON != "" {
+			if err := json.Unmarshal([]byte(labelMappingJSON), &labelMapping); err != nil {
+				return fmt.Errorf("failed to parse CROSSPLANE_LABEL_MAPPING: %w", err)
+			}
+		} else {
+			return fmt.Errorf("CROSSPLANE_LABEL_MAPPING environment variable is required when crossplane-metrics is enabled")
+		}
+
+		if len(labelMapping) == 0 {
+			return fmt.Errorf("CROSSPLANE_LABEL_MAPPING cannot be empty when crossplane-metrics is enabled")
+		}
+
+		// Parse extra resources (optional)
+		extraResources := make(map[string][]string)
+		if extraResourcesStr := viper.GetString("CROSSPLANE_EXTRA_RESOURCES"); extraResourcesStr != "" {
+			if err := json.Unmarshal([]byte(extraResourcesStr), &extraResources); err != nil {
+				return fmt.Errorf("failed to parse CROSSPLANE_EXTRA_RESOURCES: %w", err)
+			}
+		}
+
+		// Create dynamic client for Crossplane resources
+		dynamicClient, err := dynamic.NewForConfig(mgr.GetConfig())
+		if err != nil {
+			return fmt.Errorf("failed to create dynamic client: %w", err)
+		}
+
+		// Create and register the collector
+		collector := crossplane_metrics.NewMetricsCollector(dynamicClient, labelMapping, extraResources, log)
+		if err := metrics.Registry.Register(collector); err != nil {
+			return fmt.Errorf("failed to register Crossplane metrics collector: %w", err)
+		}
+		log.Info("Crossplane metrics collector registered successfully")
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

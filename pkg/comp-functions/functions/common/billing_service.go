@@ -22,14 +22,21 @@ const (
 	DefaultKeepAfterDeletion = 365
 )
 
+// BillingItem represents a single billable item/product
+type BillingItem struct {
+	ProductID   string
+	Value       string
+	Description string
+	Unit        string
+	MaxEvents   int // Per-product event limit
+}
+
 // BillingServiceOptions contains customization options for creating a BillingService CR
 type BillingServiceOptions struct {
 	// ResourceNameSuffix is appended to comp.GetName() to form the resource name (e.g., "-billing-service", "-addon-collabora")
 	ResourceNameSuffix string
-	// ProductID overrides the auto-generated productID based on service type and sla
-	ProductID string
-	// Size overrides the replica count for billing purposes
-	Size string
+	// Items defines the list of billable items/products for this instance
+	Items []BillingItem
 	// AdditionalLabels are added to the BillingService CR labels
 	AdditionalLabels map[string]string
 }
@@ -64,13 +71,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	namespace := comp.GetClaimNamespace()
 	service := comp.GetServiceName()
 
-	// Create productID from service and number of replicas (or use override)
-	productID := opts.ProductID
-	if productID == "" {
-		productID = getProductID(comp.GetInstances(), service)
-	}
-
-	// Get unitID from config
+	// Get unitID from config (for default item if no items specified)
 	unitID := svc.Config.Data["billingUnitID"]
 	if unitID == "" {
 		log.Error(fmt.Errorf("missing billing unitID"), "UnitID missing in composition")
@@ -98,10 +99,19 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		isAPPUiOCloud = true
 	}
 
-	// Determine size (use override or instance count)
-	size := opts.Size
-	if size == "" {
-		size = strconv.Itoa(comp.GetInstances())
+	// If no items specified, create default compute item (backwards compatibility)
+	items := opts.Items
+	if len(items) == 0 {
+		productID := getProductID(comp.GetInstances(), service)
+		items = []BillingItem{
+			{
+				ProductID:   productID,
+				Value:       strconv.Itoa(comp.GetInstances()),
+				Unit:        unitID,
+				Description: "Compute instances",
+				MaxEvents:   100, // default per-product limit
+			},
+		}
 	}
 
 	// Build labels
@@ -112,6 +122,22 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	}
 	for k, v := range opts.AdditionalLabels {
 		labels[k] = v
+	}
+
+	// Convert to ItemSpec array (per ADR)
+	itemSpecs := make([]vshnv1.ItemSpec, len(items))
+	for i, item := range items {
+		maxEvents := item.MaxEvents
+		if maxEvents <= 0 {
+			maxEvents = 100 // default per-item limit
+		}
+		itemSpecs[i] = vshnv1.ItemSpec{
+			ProductID:   item.ProductID,
+			Value:       item.Value,
+			Unit:        item.Unit,
+			Description: item.Description,
+			MaxEvents:   maxEvents,
+		}
 	}
 
 	// Create BillingService CR
@@ -125,12 +151,10 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 			KeepAfterDeletion: keepAfterDeletion,
 			Odoo: vshnv1.OdooSpec{
 				InstanceID:           comp.GetName(),
-				ProductID:            productID,
-				UnitID:               unitID,
-				Size:                 size,
 				SalesOrderID:         salesOrder,
 				ItemGroupDescription: claim,
 				ItemDescription:      GetItemDescription(isAPPUiOCloud, clusterName, namespace),
+				Items:                itemSpecs, // per ADR naming
 			},
 		},
 	}
@@ -180,7 +204,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create BillingService for %s: %v", comp.GetName(), err))
 	}
 
-	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s", comp.GetName()))
+	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s with %d items", comp.GetName(), len(itemSpecs)))
 }
 
 // GetItemDescription returns item description with cluster and namespace name

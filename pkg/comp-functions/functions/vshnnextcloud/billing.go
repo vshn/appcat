@@ -35,7 +35,9 @@ func AddBilling(ctx context.Context, comp *v1.VSHNNextcloud, svc *runtime.Servic
 	}
 
 	// Add BillingService CR-based billing
-	billingServiceResult := common.CreateOrUpdateBillingService(ctx, svc, comp)
+	billingServiceResult := common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
+		ResourceNameSuffix: "-billing-service",
+	})
 
 	if billingServiceResult != nil && billingServiceResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {
 		return billingServiceResult
@@ -56,8 +58,15 @@ func AddBilling(ctx context.Context, comp *v1.VSHNNextcloud, svc *runtime.Servic
 func createOrUpdateBillingServiceCollabora(ctx context.Context, svc *runtime.ServiceRuntime, comp *v1.VSHNNextcloud) *xfnproto.Result {
 	return common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
 		ResourceNameSuffix: "-collabora-billing-service",
-		ProductID:          "appcat-vshn-nextcloud-office-besteffort",
-		Size:               "1",
+		Items: []common.BillingItem{
+			{
+				ProductID:   "appcat-vshn-nextcloud-office-besteffort",
+				Value:       "1",
+				Unit:        "service",
+				Description: "Collabora Office add-on",
+				MaxEvents:   50,
+			},
+		},
 		AdditionalLabels: map[string]string{
 			"appcat.vshn.io/add-on": "true",
 		},

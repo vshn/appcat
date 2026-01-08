@@ -7,49 +7,40 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// handleSLAChange enqueues delete and create events if product changed.
-func (b *BillingHandler) handleSLAChange(ctx context.Context, billingService *vshnv1.BillingService) error {
-	currentProductID := billingService.Spec.Odoo.ProductID
-	currentSize := billingService.Spec.Odoo.Size
-
-	activeProd, activeSize, hasActive := lastActiveSentProduct(billingService)
-	if hasActive && activeProd == currentProductID {
-		return nil
+// handleRemovedItems detects items removed from spec and enqueues delete events
+func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService *vshnv1.BillingService) error {
+	// Build set of current product IDs in spec
+	currentProducts := make(map[string]bool)
+	for _, item := range billingService.Spec.Odoo.Items {
+		currentProducts[item.ProductID] = true
 	}
 
-	if supersedeCreatedForSLA(billingService, currentProductID) {
-		if err := b.Status().Update(ctx, billingService); err != nil {
-			return err
-		}
-	}
-
-	now := metav1.Now()
-
-	if hasActive && activeProd != currentProductID && !hasEvent(billingService, BillingEventTypeDeleted, activeProd) {
-		delEvent := vshnv1.BillingEventStatus{
-			Type:       string(BillingEventTypeDeleted),
-			ProductID:  activeProd,
-			Size:       lastObservedSizeForProduct(billingService, activeProd, activeSize),
-			Timestamp:  now,
-			State:      string(BillingEventStatePending),
-			RetryCount: 0,
-		}
-		if err := enqueueEvent(ctx, b, billingService, delEvent); err != nil {
-			return err
+	// Find products that have created events but are no longer in spec
+	seenProducts := make(map[string]bool)
+	for _, event := range billingService.Status.Events {
+		if event.Type == string(BillingEventTypeCreated) &&
+			event.State != string(BillingEventStateSuperseded) {
+			seenProducts[event.ProductID] = true
 		}
 	}
 
-	if !hasOpenCreated(billingService, currentProductID) {
-		createEvent := vshnv1.BillingEventStatus{
-			Type:       string(BillingEventTypeCreated),
-			ProductID:  currentProductID,
-			Size:       currentSize,
-			Timestamp:  now,
-			State:      string(BillingEventStatePending),
-			RetryCount: 0,
-		}
-		if err := enqueueEvent(ctx, b, billingService, createEvent); err != nil {
-			return err
+	// For each item/product removed from spec, enqueue delete event
+	for productID := range seenProducts {
+		if !currentProducts[productID] {
+			if !hasEvent(billingService, BillingEventTypeDeleted, productID) {
+				lastValue := lastObservedValueForProduct(billingService, productID, "")
+				delEvent := vshnv1.BillingEventStatus{
+					Type:       string(BillingEventTypeDeleted),
+					ProductID:  productID,
+					Value:      lastValue,
+					Timestamp:  metav1.Now(),
+					State:      string(BillingEventStatePending),
+					RetryCount: 0,
+				}
+				if err := enqueueEvent(ctx, b, billingService, delEvent); err != nil {
+					return err
+				}
+			}
 		}
 	}
 

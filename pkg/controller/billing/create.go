@@ -6,18 +6,16 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 )
 
-func (b *BillingHandler) handleCreation(ctx context.Context, billingService *vshnv1.BillingService) error {
-	currentProd := billingService.Spec.Odoo.ProductID
-	currentSize := billingService.Spec.Odoo.Size
-
-	if hasEvent(billingService, BillingEventTypeCreated, currentProd) {
+// handleItemCreation checks if each item/product has a created event
+func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService *vshnv1.BillingService, item vshnv1.ItemSpec) error {
+	if hasEvent(billingService, BillingEventTypeCreated, item.ProductID) {
 		return nil
 	}
 
 	event := vshnv1.BillingEventStatus{
 		Type:       string(BillingEventTypeCreated),
-		ProductID:  currentProd,
-		Size:       currentSize,
+		ProductID:  item.ProductID,
+		Value:      item.Value,
 		Timestamp:  billingService.ObjectMeta.CreationTimestamp,
 		State:      string(BillingEventStatePending),
 		RetryCount: 0,

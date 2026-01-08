@@ -13,25 +13,27 @@ func (b *BillingHandler) handleDeletion(ctx context.Context, billingService *vsh
 		return nil
 	}
 
-	currentProduct := billingService.Spec.Odoo.ProductID
+	delTime := *billingService.DeletionTimestamp
 
-	if !hasEvent(billingService, BillingEventTypeDeleted, currentProduct) {
-		delTime := *billingService.DeletionTimestamp
-		lastSize := lastObservedSizeForProduct(billingService, currentProduct, billingService.Spec.Odoo.Size)
-		ev := vshnv1.BillingEventStatus{
-			Type:       string(BillingEventTypeDeleted),
-			ProductID:  currentProduct,
-			Size:       lastSize,
-			Timestamp:  delTime,
-			State:      string(BillingEventStatePending),
-			RetryCount: 0,
-		}
-		if err := enqueueEvent(ctx, b, billingService, ev); err != nil {
-			return err
+	// Delete all items/products currently in spec
+	for _, item := range billingService.Spec.Odoo.Items {
+		if !hasEvent(billingService, BillingEventTypeDeleted, item.ProductID) {
+			lastValue := lastObservedValueForProduct(billingService, item.ProductID, item.Value)
+			event := vshnv1.BillingEventStatus{
+				Type:       string(BillingEventTypeDeleted),
+				ProductID:  item.ProductID,
+				Value:      lastValue,
+				Timestamp:  delTime,
+				State:      string(BillingEventStatePending),
+				RetryCount: 0,
+			}
+			if err := enqueueEvent(ctx, b, billingService, event); err != nil {
+				return err
+			}
 		}
 	}
 
-	// Finalizer removal is performed in Reconcile once the delete event is sent
+	// Finalizer removal is performed in Reconcile once the delete events are sent
 	_ = controllerutil.AddFinalizer(billingService, vshnv1.BillingServiceFinalizer)
 	return nil
 }

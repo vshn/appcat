@@ -166,15 +166,19 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	if err := b.handleSLAChange(ctx, &billingService); err != nil {
-		return ctrl.Result{}, err
+	// Handle lifecycle for each item/product in the spec
+	for _, item := range billingService.Spec.Odoo.Items {
+		if err := b.handleItemCreation(ctx, &billingService, item); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if err := b.handleItemScaling(ctx, &billingService, item); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
-	if err := b.handleCreation(ctx, &billingService); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if err := b.handleScaling(ctx, &billingService); err != nil {
+	// Handle items/products that were removed from spec
+	if err := b.handleRemovedItems(ctx, &billingService); err != nil {
 		return ctrl.Result{}, err
 	}
 

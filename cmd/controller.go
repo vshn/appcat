@@ -261,5 +261,5 @@ func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool,
 	if err != nil {
 		return err
 	}
-	return webhooks.SetupPVCDeletionProtectionHandlerWithManager(mgr)
+	return webhooks.SetupUnmanagedProtectionWebhookWithManager(mgr)
 }

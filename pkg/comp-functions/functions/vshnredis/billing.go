@@ -24,10 +24,9 @@ func AddBilling(ctx context.Context, comp *v1.VSHNRedis, svc *runtime.ServiceRun
 		return prometheusResult
 	}
 
-	// Add BillingService CR-based billing (using new multi-item API with default compute item)
+	// Add BillingService CR-based billing
 	billingServiceResult := common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
 		ResourceNameSuffix: "-billing-service",
-		// Items is empty, so it will create default compute item automatically
 	})
 
 	if billingServiceResult != nil && billingServiceResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {

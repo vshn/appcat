@@ -80,8 +80,6 @@ spec:
                         productID:
                           description: ProductID identifies the product in the billing
                             system
-                          maxLength: 100
-                          minLength: 1
                           type: string
                         unit:
                           description: Unit defines the billing unit type for this
@@ -198,7 +196,6 @@ spec:
                       - pending
                       - failed
                       - superseded
-                      - resend
                       type: string
                     timestamp:
                       description: Timestamp when the event occurred

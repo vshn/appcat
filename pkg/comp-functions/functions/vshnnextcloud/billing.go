@@ -58,12 +58,10 @@ func AddBilling(ctx context.Context, comp *v1.VSHNNextcloud, svc *runtime.Servic
 func createOrUpdateBillingServiceCollabora(ctx context.Context, svc *runtime.ServiceRuntime, comp *v1.VSHNNextcloud) *xfnproto.Result {
 	return common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
 		ResourceNameSuffix: "-collabora-billing-service",
-		Items: []common.BillingItem{
+		Items: []v1.ItemSpec{
 			{
 				ProductID: "appcat-vshn-nextcloud-office-besteffort",
 				Value:     "1",
-				Unit:      "service",
-				// ItemDescription and ItemGroupDescription will be auto-populated from claim/namespace
 			},
 		},
 		AdditionalLabels: map[string]string{

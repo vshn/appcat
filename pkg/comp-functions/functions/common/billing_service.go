@@ -22,21 +22,13 @@ const (
 	DefaultKeepAfterDeletion = 365
 )
 
-// BillingItem represents a single billable item/product
-type BillingItem struct {
-	ProductID            string
-	Value                string
-	Unit                 string
-	ItemDescription      string
-	ItemGroupDescription string
-}
 
 // BillingServiceOptions contains customization options for creating a BillingService CR
 type BillingServiceOptions struct {
 	// ResourceNameSuffix is appended to comp.GetName() to form the resource name (e.g., "-billing-service", "-addon-collabora")
 	ResourceNameSuffix string
 	// Items defines the list of billable items/products for this instance
-	Items []BillingItem
+	Items []vshnv1.ItemSpec
 	// AdditionalLabels are added to the BillingService CR labels
 	AdditionalLabels map[string]string
 }
@@ -107,7 +99,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	items := opts.Items
 	if len(items) == 0 {
 		productID := getProductID(comp.GetInstances(), service)
-		items = []BillingItem{
+		items = []vshnv1.ItemSpec{
 			{
 				ProductID:            productID,
 				Value:                strconv.Itoa(comp.GetInstances()),
@@ -128,28 +120,6 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		labels[k] = v
 	}
 
-	// Convert to ItemSpec array and set ItemDescription/ItemGroupDescription if not provided
-	itemSpecs := make([]vshnv1.ItemSpec, len(items))
-	for i, item := range items {
-		// Use provided values or default to shared values
-		itemDesc := item.ItemDescription
-		if itemDesc == "" {
-			itemDesc = itemDescription
-		}
-		itemGroupDesc := item.ItemGroupDescription
-		if itemGroupDesc == "" {
-			itemGroupDesc = itemGroupDescription
-		}
-
-		itemSpecs[i] = vshnv1.ItemSpec{
-			ProductID:            item.ProductID,
-			Value:                item.Value,
-			Unit:                 item.Unit,
-			ItemDescription:      itemDesc,
-			ItemGroupDescription: itemGroupDesc,
-		}
-	}
-
 	// Create BillingService CR
 	billingService := &vshnv1.BillingService{
 		ObjectMeta: metav1.ObjectMeta{
@@ -162,7 +132,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 			Odoo: vshnv1.OdooSpec{
 				InstanceID:   comp.GetName(),
 				SalesOrderID: salesOrder,
-				Items:        itemSpecs,
+				Items:        items,
 			},
 		},
 	}
@@ -212,7 +182,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create BillingService for %s: %v", comp.GetName(), err))
 	}
 
-	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s with %d items", comp.GetName(), len(itemSpecs)))
+	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s with %d items", comp.GetName(), len(items)))
 }
 
 // GetItemDescription returns item description with cluster and namespace name

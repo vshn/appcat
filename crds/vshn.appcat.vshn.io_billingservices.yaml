@@ -62,13 +62,6 @@ spec:
                     description: InstanceID uniquely identifies the service instance
                       in Odoo
                     type: string
-                  itemDescription:
-                    description: ItemDescription is a human readable description of
-                      the billing item
-                    type: string
-                  itemGroupDescription:
-                    description: ItemGroupDescription describes the billing item group
-                    type: string
                   items:
                     description: |-
                       Items defines list of billable products for this instance
@@ -76,9 +69,13 @@ spec:
                     items:
                       description: ItemSpec defines a single billable product/item
                       properties:
-                        description:
-                          description: Description is a human-readable description
-                            of this product
+                        itemDescription:
+                          description: ItemDescription is a human-readable description
+                            of the billing item
+                          type: string
+                        itemGroupDescription:
+                          description: ItemGroupDescription describes the billing
+                            item group
                           type: string
                         productID:
                           description: ProductID identifies the product in the billing
@@ -109,8 +106,6 @@ spec:
                     type: string
                 required:
                 - instanceID
-                - itemDescription
-                - itemGroupDescription
                 - items
                 type: object
             type: object

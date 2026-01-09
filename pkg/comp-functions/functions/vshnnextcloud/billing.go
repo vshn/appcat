@@ -60,10 +60,10 @@ func createOrUpdateBillingServiceCollabora(ctx context.Context, svc *runtime.Ser
 		ResourceNameSuffix: "-collabora-billing-service",
 		Items: []common.BillingItem{
 			{
-				ProductID:   "appcat-vshn-nextcloud-office-besteffort",
-				Value:       "1",
-				Unit:        "service",
-				Description: "Collabora Office add-on",
+				ProductID: "appcat-vshn-nextcloud-office-besteffort",
+				Value:     "1",
+				Unit:      "service",
+				// ItemDescription and ItemGroupDescription will be auto-populated from claim/namespace
 			},
 		},
 		AdditionalLabels: map[string]string{

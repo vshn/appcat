@@ -24,10 +24,11 @@ const (
 
 // BillingItem represents a single billable item/product
 type BillingItem struct {
-	ProductID   string
-	Value       string
-	Description string
-	Unit        string
+	ProductID            string
+	Value                string
+	Unit                 string
+	ItemDescription      string
+	ItemGroupDescription string
 }
 
 // BillingServiceOptions contains customization options for creating a BillingService CR
@@ -98,16 +99,21 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		isAPPUiOCloud = true
 	}
 
-	// If no items specified, create default compute item (backwards compatibility)
+	// Prepare ItemGroupDescription and ItemDescription for all items
+	itemGroupDescription := claim
+	itemDescription := GetItemDescription(isAPPUiOCloud, clusterName, namespace)
+
+	// If no items specified, create default compute item
 	items := opts.Items
 	if len(items) == 0 {
 		productID := getProductID(comp.GetInstances(), service)
 		items = []BillingItem{
 			{
-				ProductID:   productID,
-				Value:       strconv.Itoa(comp.GetInstances()),
-				Unit:        unitID,
-				Description: "Compute instances",
+				ProductID:            productID,
+				Value:                strconv.Itoa(comp.GetInstances()),
+				Unit:                 unitID,
+				ItemDescription:      itemDescription,
+				ItemGroupDescription: itemGroupDescription,
 			},
 		}
 	}
@@ -122,14 +128,25 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		labels[k] = v
 	}
 
-	// Convert to ItemSpec array
+	// Convert to ItemSpec array and set ItemDescription/ItemGroupDescription if not provided
 	itemSpecs := make([]vshnv1.ItemSpec, len(items))
 	for i, item := range items {
+		// Use provided values or default to shared values
+		itemDesc := item.ItemDescription
+		if itemDesc == "" {
+			itemDesc = itemDescription
+		}
+		itemGroupDesc := item.ItemGroupDescription
+		if itemGroupDesc == "" {
+			itemGroupDesc = itemGroupDescription
+		}
+
 		itemSpecs[i] = vshnv1.ItemSpec{
-			ProductID:   item.ProductID,
-			Value:       item.Value,
-			Unit:        item.Unit,
-			Description: item.Description,
+			ProductID:            item.ProductID,
+			Value:                item.Value,
+			Unit:                 item.Unit,
+			ItemDescription:      itemDesc,
+			ItemGroupDescription: itemGroupDesc,
 		}
 	}
 
@@ -143,11 +160,9 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		Spec: vshnv1.BillingServiceSpec{
 			KeepAfterDeletion: keepAfterDeletion,
 			Odoo: vshnv1.OdooSpec{
-				InstanceID:           comp.GetName(),
-				SalesOrderID:         salesOrder,
-				ItemGroupDescription: claim,
-				ItemDescription:      GetItemDescription(isAPPUiOCloud, clusterName, namespace),
-				Items:                itemSpecs, // per ADR naming
+				InstanceID:   comp.GetName(),
+				SalesOrderID: salesOrder,
+				Items:        itemSpecs,
 			},
 		},
 	}

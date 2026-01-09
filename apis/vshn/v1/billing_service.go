@@ -45,8 +45,11 @@ type ItemSpec struct {
 	// +kubebuilder:validation:MaxLength=100
 	ProductID string `json:"productID"`
 
-	// Description is a human-readable description of this product
-	Description string `json:"description,omitempty"`
+	// ItemDescription is a human-readable description of the billing item
+	ItemDescription string `json:"itemDescription,omitempty"`
+
+	// ItemGroupDescription describes the billing item group
+	ItemGroupDescription string `json:"itemGroupDescription,omitempty"`
 
 	// Unit defines the billing unit type for this product
 	Unit string `json:"unit,omitempty"`
@@ -66,12 +69,6 @@ type OdooSpec struct {
 
 	// Organization used to identify sales order
 	Organization string `json:"organization,omitempty"`
-
-	// ItemGroupDescription describes the billing item group
-	ItemGroupDescription string `json:"itemGroupDescription"`
-
-	// ItemDescription is a human readable description of the billing item
-	ItemDescription string `json:"itemDescription"`
 
 	// Items defines list of billable products for this instance
 	// Each item represents a product with independent lifecycle and event tracking

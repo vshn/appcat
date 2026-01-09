@@ -98,7 +98,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	// If no items specified, create default compute item
 	items := opts.Items
 	if len(items) == 0 {
-		productID := getProductID(comp.GetInstances(), service)
+		productID := getProductID(comp, service)
 		items = []vshnv1.ItemSpec{
 			{
 				ProductID:            productID,
@@ -193,9 +193,9 @@ func GetItemDescription(isAPPUiOCloud bool, cluster, namespace string) string {
 	return fmt.Sprintf("APPUiO Managed - Cluster: %s / Namespace: %s", cluster, namespace)
 }
 
-func getProductID(instances int, service string) string {
+func getProductID(comp InfoGetter, service string) string {
 	sla := vshnv1.BestEffort
-	if instances > 1 {
+	if comp.GetInstances() > 1 && comp.GetSLA() == string(vshnv1.Guaranteed) {
 		sla = vshnv1.Guaranteed
 	}
 

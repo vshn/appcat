@@ -41,8 +41,6 @@ type BillingServiceSpec struct {
 // ItemSpec defines a single billable product/item
 type ItemSpec struct {
 	// ProductID identifies the product in the billing system
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=100
 	ProductID string `json:"productID"`
 
 	// ItemDescription is a human-readable description of the billing item
@@ -102,7 +100,7 @@ type BillingEventStatus struct {
 	Timestamp metav1.Time `json:"timestamp"`
 
 	// State represents the current state of the event (sent, pending, failed, superseded)
-	// +kubebuilder:validation:Enum="sent";"pending";"failed";"superseded";"resend"
+	// +kubebuilder:validation:Enum="sent";"pending";"failed";"superseded"
 	State string `json:"state"`
 
 	// RetryCount tracks the number of retry attempts for failed events

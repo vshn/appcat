@@ -107,7 +107,12 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("initialize Odoo client: %w", err)
 		}
 
-		b := billing.New(mgr.GetClient(), mgr.GetScheme(), odooClient)
+		maxEvents := viper.GetInt("BILLING_MAX_EVENTS")
+		if maxEvents <= 0 {
+			maxEvents = 100 // default
+		}
+
+		b := billing.New(mgr.GetClient(), mgr.GetScheme(), odooClient, maxEvents)
 		if err := b.SetupWithManager(mgr); err != nil {
 			return err
 		}

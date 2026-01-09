@@ -54,10 +54,6 @@ type ItemSpec struct {
 	// Value represents the billable metric for this product
 	// Can be: replica count, disk size (e.g., "50Gi"), percentage, etc.
 	Value string `json:"value"`
-
-	// MaxEvents defines maximum events to retain for THIS product
-	// +kubebuilder:default=100
-	MaxEvents int `json:"maxEvents,omitempty"`
 }
 
 // OdooSpec defines Odoo-specific billing configuration

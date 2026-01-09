@@ -28,7 +28,6 @@ type BillingItem struct {
 	Value       string
 	Description string
 	Unit        string
-	MaxEvents   int // Per-product event limit
 }
 
 // BillingServiceOptions contains customization options for creating a BillingService CR
@@ -109,7 +108,6 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 				Value:       strconv.Itoa(comp.GetInstances()),
 				Unit:        unitID,
 				Description: "Compute instances",
-				MaxEvents:   100, // default per-product limit
 			},
 		}
 	}
@@ -124,19 +122,14 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		labels[k] = v
 	}
 
-	// Convert to ItemSpec array (per ADR)
+	// Convert to ItemSpec array
 	itemSpecs := make([]vshnv1.ItemSpec, len(items))
 	for i, item := range items {
-		maxEvents := item.MaxEvents
-		if maxEvents <= 0 {
-			maxEvents = 100 // default per-item limit
-		}
 		itemSpecs[i] = vshnv1.ItemSpec{
 			ProductID:   item.ProductID,
 			Value:       item.Value,
 			Unit:        item.Unit,
 			Description: item.Description,
-			MaxEvents:   maxEvents,
 		}
 	}
 

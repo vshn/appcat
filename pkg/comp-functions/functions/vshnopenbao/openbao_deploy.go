@@ -17,6 +17,10 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	serverCertificateSecretName = "tls-server-certificate"
+)
+
 // DeployConfigMap creates a ConfigMap with a hello world message and today's date
 func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 
@@ -33,9 +37,16 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 	}
 
 	svc.Log.Info("Creating HCL Configuration and saving it as a Secret")
-	err = writeHCLConfig(comp, svc)
+	err = createHCLConfig(comp, svc)
 	if err != nil {
 		err = fmt.Errorf("cannot create HCL Config: %w", err)
+		return runtime.NewFatalResult(err)
+	}
+
+	svc.Log.Info("Creating TLS certificates for OpenBao")
+	err = enableOpenBaoTLSSupport(comp, svc)
+	if err != nil {
+		err = fmt.Errorf("cannot create TLS certificates: %w", err)
 		return runtime.NewFatalResult(err)
 	}
 
@@ -49,6 +60,8 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 	return nil
 }
 func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
+	serviceName := comp.GetName()
+	rsn := newOpenBaoResourceNames(serviceName)
 
 	// The Components Appcat defines plans (how much CPU, memory etc)
 	// The XR object (created by user) defines only the plan.
@@ -68,7 +81,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 	disk := cmp.Or(comp.Spec.Parameters.Size.Disk, resouces.Disk.String())
 
 	values := map[string]interface{}{
-		"fullnameOverride": comp.GetName(),
+		"fullnameOverride": serviceName,
 		"agent": map[string]any{
 			"enabled": false,
 		},
@@ -76,6 +89,11 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 			"enabled": false,
 		},
 		"server": map[string]any{
+			"ha": map[string]any{
+				"enabled": true,
+				// The config is placed in the "openbao-storage-config" secret
+				"config": map[string]any{},
+			},
 			"authDelegator": map[string]any{
 				"enabled": false,
 			},
@@ -92,6 +110,35 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 			"dataStorage": map[string]any{
 				"enabled": true,
 				"size":    disk,
+			},
+			"extraArgs": fmt.Sprintf("-config=%s/%s", HclConfigMountPath, HclConfigFileName),
+			"volumes": []map[string]any{
+				{
+					"name": HclVolumeName,
+					"secret": map[string]any{
+						"defaultMode": 420,
+						"secretName":  rsn.HclConfigSecretName,
+					},
+				},
+				{
+					"name": TlsVolumeName,
+					"secret": map[string]any{
+						"defaultMode": 420,
+						"secretName":  rsn.ServerCertSecretName,
+					},
+				},
+			},
+			"volumeMounts": []map[string]any{
+				{
+					"mountPath": HclConfigMountPath,
+					"name":      HclVolumeName,
+					"readOnly":  true,
+				},
+				{
+					"mountPath": TlsCertsMountPath,
+					"name":      TlsVolumeName,
+					"readOnly":  true,
+				},
 			},
 		},
 	}

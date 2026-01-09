@@ -1,19 +1,33 @@
 package vshnopenbao
 
-type OpenBaoTLSCertificate struct {
-	// CACert   string
-	// Key      string
-	// ClientCA string
+const (
+	HclConfigFileName  = "config.hcl"
+	HclConfigMountPath = "/openbao/userconfig/openbao-hcl-config"
+	HclVolumeName      = "userconfig-openbao-storage-config"
+	TlsCertsMountPath  = "/openbao/userconfig/openbao-tls"
+	TlsVolumeName      = "userconfig-openbao-tls-secret"
+)
 
-	CACertFile   string
-	KeyFile      string
-	ClientCAFile string
+type OpenBaoResourceNames struct {
+	ServiceName          string
+	SelfSignedIssuerName string
+	RootCAIssuerName     string
+	RootCAName           string
+	ServerCertName       string
+	RootCASecretName     string
+	ServerCertSecretName string
+	HclConfigSecretName  string
 }
 
-func NewOpenBaoTLSCertificate() *OpenBaoTLSCertificate {
-	return &OpenBaoTLSCertificate{
-		CACertFile:   "/etc/ssl/certs/ca.crt",
-		KeyFile:      "/etc/ssl/private/key.pem",
-		ClientCAFile: "/etc/ssl/certs/client-ca.crt",
+func newOpenBaoResourceNames(serviceName string) *OpenBaoResourceNames {
+	return &OpenBaoResourceNames{
+		ServiceName:          serviceName,
+		SelfSignedIssuerName: serviceName + "-selfsigned-issuer",
+		RootCAIssuerName:     serviceName + "-ca-issuer",
+		RootCAName:           serviceName + "-ca",
+		RootCASecretName:     serviceName + "-ca-tls",
+		ServerCertName:       serviceName + "-server",
+		ServerCertSecretName: serviceName + "-server-tls",
+		HclConfigSecretName:  serviceName + "-hcl-config",
 	}
 }

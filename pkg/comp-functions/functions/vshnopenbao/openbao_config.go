@@ -55,26 +55,9 @@ func EmptyOption() OpenBaoConfigOption {
 func WithDefaultOptions() OpenBaoConfigOption {
 	return func(config *OpenBaoConfig) {
 		config.UI = true
-
 		config.LogLevel = "info"
 		config.LogFormat = "json"
-
-		config.APIAddr = "https://openbao:8200"
-		config.ClusterAddr = "https://openbao:8201"
-
 		config.PidFile = "/var/run/openbao.pid"
-
-		config.Listeners = []ListenerBlock{
-			{
-				Type:           "tcp",
-				Address:        "0.0.0.0:8200",
-				ClusterAddress: "0.0.0.0:8201",
-				TLSDisable:     false,
-				TLSCertFile:    "/etc/openbao/tls/cåert.pem",
-				TLSKeyFile:     "/etc/openbao/tls/key.pem",
-				TLSMinVersion:  "tls12",
-			},
-		}
 	}
 }
 
@@ -84,37 +67,62 @@ func WithClusterName(clusterName string) OpenBaoConfigOption {
 	}
 }
 
-func writeHCLConfig(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
-	configSecretResourceName := fmt.Sprintf("%s-config", comp.Name)
+func WithAPIAddr(addr string) OpenBaoConfigOption {
+	return func(config *OpenBaoConfig) {
+		config.APIAddr = addr
+	}
+}
 
-	config := buildHclConfig(comp)
+func WithClusterAddr(addr string) OpenBaoConfigOption {
+	return func(config *OpenBaoConfig) {
+		config.ClusterAddr = addr
+	}
+}
+
+func WithTLSListener(listener ListenerBlock) OpenBaoConfigOption {
+	return func(config *OpenBaoConfig) {
+		config.Listeners = append(config.Listeners, listener)
+	}
+}
+
+func createHCLConfig(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
+	serviceName := comp.GetName()
+	ns := comp.GetInstanceNamespace()
+	rsn := newOpenBaoResourceNames(serviceName)
+
+	config := NewOpenBaoConfig(
+		WithDefaultOptions(),
+		WithAPIAddr(fmt.Sprintf("https://%s:8200", serviceName)),
+		WithClusterAddr(fmt.Sprintf("https://%s:8201", serviceName)),
+		WithTLSListener(ListenerBlock{
+			Type:           "tcp",
+			Address:        "[::]:8200",
+			ClusterAddress: "[::]:8201",
+			TLSDisable:     false,
+			TLSCertFile:    fmt.Sprintf("%s/tls.crt", TlsCertsMountPath),
+			TLSKeyFile:     fmt.Sprintf("%s/tls.key", TlsCertsMountPath),
+		}),
+		WithClusterName(serviceName),
+	)
+
 	hclBytes := EncodeHCL(config)
 
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      configSecretResourceName,
-			Namespace: comp.GetInstanceNamespace(),
+			Name:      rsn.HclConfigSecretName,
+			Namespace: ns,
 		},
 		Data: map[string][]byte{
-			"config.hcl": hclBytes,
+			HclConfigFileName: hclBytes,
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(secret, configSecretResourceName)
+	err := svc.SetDesiredKubeObject(secret, rsn.HclConfigSecretName)
 	if err != nil {
-		return fmt.Errorf("cannot add %s secret object: %w", configSecretResourceName, err)
+		return fmt.Errorf("cannot add %s secret object: %w", rsn.HclConfigSecretName, err)
 	}
 
 	return nil
-}
-
-func buildHclConfig(comp *vshnv1.VSHNOpenBao) *OpenBaoConfig {
-	serviceName := comp.GetServiceName()
-
-	return NewOpenBaoConfig(
-		WithDefaultOptions(),
-		WithClusterName(serviceName),
-	)
 }
 
 // EncodeHCL encodes an OpenBaoConfig struct into HCL format bytes.

@@ -1,7 +1,6 @@
 package vshnopenbao
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -15,26 +14,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func enableOpenBaoTLSSupport(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
+func enableOpenBaoTLSSupport(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
 	serviceName := comp.GetName()
 	ns := comp.GetInstanceNamespace()
-
-	selfSignedIssuerName := serviceName + "-selfsigned-issuer"
-
-	rootCAName := serviceName + "-ca"
-	rootCASecretName := serviceName + "-ca-tls"
-	rootCAIssuerName := serviceName + "-ca-issuer"
-
-	openBaoServerCertName := serviceName + "-server"
-	openBaoServerCertSecretName := serviceName + "-server-tls"
+	rsn := newOpenBaoResourceNames(serviceName)
 
 	selfSignedIssuerOpts := &common.TLSOptions{
 		IssuerOptions: []common.IssuerOption{
 			withIssuerOfTypeSelfSigned(),
 		},
 	}
-	selfSignedIssuer := createIssuer(ns, selfSignedIssuerName, selfSignedIssuerOpts)
-	err := svc.SetDesiredKubeObject(selfSignedIssuer, selfSignedIssuerName, selfSignedIssuerOpts.KubeOptions...)
+	selfSignedIssuer := createIssuer(ns, rsn.SelfSignedIssuerName, selfSignedIssuerOpts)
+	err := svc.SetDesiredKubeObject(selfSignedIssuer, rsn.SelfSignedIssuerName, selfSignedIssuerOpts.KubeOptions...)
 	if err != nil {
 		err = fmt.Errorf("cannot create Self Signed Issuer for OpenBao %w", err)
 		return err
@@ -42,16 +33,16 @@ func enableOpenBaoTLSSupport(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 
 	rootCAOpts := &common.TLSOptions{
 		CertOptions: []common.CertOptions{
-			withCertificateSecretName(rootCASecretName),
+			withCertificateSecretName(rsn.RootCASecretName),
 			withCertificateDuration(time.Duration(87600 * time.Hour)),
 			withCertificateRenewBefore(time.Duration(2400 * time.Hour)),
-			withCertificateIssuerRef(selfSignedIssuerName),
+			withCertificateIssuerRef(rsn.SelfSignedIssuerName),
 			withCertificateIsCA(true),
 		},
 		KubeOptions: []runtime.KubeObjectOption{},
 	}
-	rootCA := createCertificate(ns, rootCAName, rootCAOpts)
-	err = svc.SetDesiredKubeObject(rootCA, rootCAName, rootCAOpts.KubeOptions...)
+	rootCA := createCertificate(ns, rsn.RootCAName, rootCAOpts)
+	err = svc.SetDesiredKubeObject(rootCA, rsn.RootCAName, rootCAOpts.KubeOptions...)
 	if err != nil {
 		err = fmt.Errorf("cannot create Root CA with Self Signed Issuer for OpenBao %w", err)
 		return err
@@ -59,11 +50,11 @@ func enableOpenBaoTLSSupport(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 
 	rootCAIssuerOpts := &common.TLSOptions{
 		IssuerOptions: []common.IssuerOption{
-			withIssuerOfTypeCA(rootCASecretName),
+			withIssuerOfTypeCA(rsn.RootCASecretName),
 		},
 	}
-	rootCAIssuer := createIssuer(ns, rootCAIssuerName, rootCAIssuerOpts)
-	err = svc.SetDesiredKubeObject(rootCAIssuer, rootCAIssuerName, rootCAIssuerOpts.KubeOptions...)
+	rootCAIssuer := createIssuer(ns, rsn.RootCAIssuerName, rootCAIssuerOpts)
+	err = svc.SetDesiredKubeObject(rootCAIssuer, rsn.RootCAIssuerName, rootCAIssuerOpts.KubeOptions...)
 	if err != nil {
 		err = fmt.Errorf("cannot create Root CA Issuer for OpenBao %w", err)
 		return err
@@ -71,13 +62,14 @@ func enableOpenBaoTLSSupport(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 
 	openBaoServerCertOpts := &common.TLSOptions{
 		CertOptions: []common.CertOptions{
-			withCertificateSecretName(openBaoServerCertSecretName),
+			withCertificateSecretName(rsn.ServerCertSecretName),
 			withCertificateDuration(time.Duration(87600 * time.Hour)),
 			withCertificateRenewBefore(time.Duration(2400 * time.Hour)),
-			withCertificateIssuerRef(rootCAIssuerName),
+			withCertificateIssuerRef(rsn.RootCAIssuerName),
 			withCertificateDNSName(serviceName + "." + ns + ".svc.cluster.local"),
 			withCertificateDNSName(serviceName + "." + ns + ".svc"),
 			withCertificateUsages([]cmv1.KeyUsage{"server auth", "client auth"}),
+			withCertificateIsCA(false),
 		},
 		KubeOptions: []runtime.KubeObjectOption{
 			runtime.KubeOptionAddConnectionDetails(ns,
@@ -86,7 +78,7 @@ func enableOpenBaoTLSSupport(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 						APIVersion: "v1",
 						Kind:       "Secret",
 						Namespace:  ns,
-						Name:       openBaoServerCertSecretName,
+						Name:       rsn.ServerCertSecretName,
 						FieldPath:  "data[ca.crt]",
 					},
 					ToConnectionSecretKey: "ca.crt",
@@ -96,7 +88,7 @@ func enableOpenBaoTLSSupport(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 						APIVersion: "v1",
 						Kind:       "Secret",
 						Namespace:  ns,
-						Name:       openBaoServerCertSecretName,
+						Name:       rsn.ServerCertSecretName,
 						FieldPath:  "data[tls.crt]",
 					},
 					ToConnectionSecretKey: "tls.crt",
@@ -106,7 +98,7 @@ func enableOpenBaoTLSSupport(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 						APIVersion: "v1",
 						Kind:       "Secret",
 						Namespace:  ns,
-						Name:       openBaoServerCertSecretName,
+						Name:       rsn.ServerCertSecretName,
 						FieldPath:  "data[tls.key]",
 					},
 					ToConnectionSecretKey: "tls.key",
@@ -114,8 +106,8 @@ func enableOpenBaoTLSSupport(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 			),
 		},
 	}
-	openBaoServerCert := createCertificate(ns, openBaoServerCertName, openBaoServerCertOpts)
-	err = svc.SetDesiredKubeObject(openBaoServerCert, openBaoServerCertName, openBaoServerCertOpts.KubeOptions...)
+	openBaoServerCert := createCertificate(ns, rsn.ServerCertName, openBaoServerCertOpts)
+	err = svc.SetDesiredKubeObject(openBaoServerCert, rsn.ServerCertName, openBaoServerCertOpts.KubeOptions...)
 	if err != nil {
 		err = fmt.Errorf("cannot create Server Certificate for OpenBao %w", err)
 		return err

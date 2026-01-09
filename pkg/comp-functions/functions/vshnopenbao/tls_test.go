@@ -1,7 +1,6 @@
 package vshnopenbao
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -21,9 +20,7 @@ func TestEnableOpenBaoTLSSupport(t *testing.T) {
 	err := svc.GetObservedComposite(comp)
 	assert.NoError(t, err)
 
-	ctx := context.TODO()
-
-	err = enableOpenBaoTLSSupport(ctx, comp, svc)
+	err = enableOpenBaoTLSSupport(comp, svc)
 	assert.NoError(t, err)
 
 	serviceName := comp.GetName()

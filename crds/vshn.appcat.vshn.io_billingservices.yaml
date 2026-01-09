@@ -80,11 +80,6 @@ spec:
                           description: Description is a human-readable description
                             of this product
                           type: string
-                        maxEvents:
-                          default: 100
-                          description: MaxEvents defines maximum events to retain
-                            for THIS product
-                          type: integer
                         productID:
                           description: ProductID identifies the product in the billing
                             system

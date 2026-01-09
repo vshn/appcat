@@ -30,14 +30,19 @@ type BillingHandler struct {
 	Scheme     *runtime.Scheme
 	odooClient *odoo.Client
 	log        logr.Logger
+	maxEvents  int
 }
 
-func New(c client.Client, scheme *runtime.Scheme, odooClient *odoo.Client) *BillingHandler {
+func New(c client.Client, scheme *runtime.Scheme, odooClient *odoo.Client, maxEvents int) *BillingHandler {
+	if maxEvents <= 0 {
+		maxEvents = 100 // default
+	}
 	return &BillingHandler{
 		Client:     c,
 		Scheme:     scheme,
 		odooClient: odooClient,
 		log:        ctrl.Log.WithName("controller").WithName("billing"),
+		maxEvents:  maxEvents,
 	}
 }
 

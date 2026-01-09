@@ -18,7 +18,7 @@ func enqueueEvent(ctx context.Context, b *BillingHandler, billingService *vshnv1
 	billingService.Status.Events = append([]vshnv1.BillingEventStatus{event}, billingService.Status.Events...)
 
 	// Prune events if needed (per-product limits)
-	pruned := pruneEventsIfNeeded(billingService)
+	pruned := pruneEventsIfNeeded(billingService, b.maxEvents)
 	if pruned > 0 {
 		b.log.Info("Pruned old billing events",
 			"billingService", billingService.Name,
@@ -29,19 +29,9 @@ func enqueueEvent(ctx context.Context, b *BillingHandler, billingService *vshnv1
 	return b.Status().Update(ctx, billingService)
 }
 
-// pruneEventsIfNeeded removes oldest sent/superseded events per product when limit exceeded
-// Per ADR 0033: "a configurable limit per product should be implemented"
-func pruneEventsIfNeeded(billingService *vshnv1.BillingService) int {
-	// Build map of maxEvents per productID
-	maxEventsPerProduct := make(map[string]int)
-	for _, item := range billingService.Spec.Odoo.Items {
-		maxEvents := item.MaxEvents
-		if maxEvents <= 0 {
-			maxEvents = 100 // default per product
-		}
-		maxEventsPerProduct[item.ProductID] = maxEvents
-	}
-
+// pruneEventsIfNeeded removes oldest sent events per product when limit exceeded
+// maxEvents applies globally to all products (same limit for each product)
+func pruneEventsIfNeeded(billingService *vshnv1.BillingService, maxEvents int) int {
 	// Count events per product
 	eventCountPerProduct := make(map[string]int)
 	for _, event := range billingService.Status.Events {
@@ -52,7 +42,13 @@ func pruneEventsIfNeeded(billingService *vshnv1.BillingService) int {
 	eventsToRemove := make(map[int]bool)
 	totalPruned := 0
 
-	for productID, maxEvents := range maxEventsPerProduct {
+	// Get all product IDs from items
+	productIDs := make(map[string]bool)
+	for _, item := range billingService.Spec.Odoo.Items {
+		productIDs[item.ProductID] = true
+	}
+
+	for productID := range productIDs {
 		currentCount := eventCountPerProduct[productID]
 		if currentCount <= maxEvents {
 			continue // no pruning needed for this product
@@ -60,15 +56,15 @@ func pruneEventsIfNeeded(billingService *vshnv1.BillingService) int {
 
 		toPrune := currentCount - maxEvents
 
-		// Find oldest sent/superseded events for this product (from end of array)
+		// Find oldest sent events for this product (from end of array)
+		// Only prune events with status "sent"
 		prunableIndices := []int{}
 		for i := len(billingService.Status.Events) - 1; i >= 0; i-- {
 			event := billingService.Status.Events[i]
 			if event.ProductID != productID {
 				continue
 			}
-			if event.State == string(BillingEventStateSent) ||
-				event.State == string(BillingEventStateSuperseded) {
+			if event.State == string(BillingEventStateSent) {
 				prunableIndices = append(prunableIndices, i)
 			}
 		}

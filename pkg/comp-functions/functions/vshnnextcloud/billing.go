@@ -64,7 +64,6 @@ func createOrUpdateBillingServiceCollabora(ctx context.Context, svc *runtime.Ser
 				Value:       "1",
 				Unit:        "service",
 				Description: "Collabora Office add-on",
-				MaxEvents:   50,
 			},
 		},
 		AdditionalLabels: map[string]string{

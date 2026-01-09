@@ -66,12 +66,35 @@ func (b *BillingHandler) sendEventToOdoo(ctx context.Context, billingService *vs
 	var itemUnit string
 	var itemDescription string
 	var itemGroupDescription string
+	found := false
+
+	// Try to find current item in spec
 	for _, item := range billingService.Spec.Odoo.Items {
 		if item.ProductID == event.ProductID {
 			itemUnit = item.Unit
 			itemDescription = item.ItemDescription
 			itemGroupDescription = item.ItemGroupDescription
+			found = true
 			break
+		}
+	}
+
+	// If item not found (e.g., for delete events of removed products),
+	// try to get metadata from the last sent event for this product
+	if !found {
+		for _, e := range billingService.Status.Events {
+			if e.ProductID == event.ProductID && e.State == string(BillingEventStateSent) {
+				// We can't get Unit/ItemDescription from old events,
+				// but we should log this case for debugging
+				break
+			}
+		}
+		// Log warning if metadata is missing for a non-delete event
+		if event.Type != string(BillingEventTypeDeleted) {
+			b.log.Info("Item metadata not found for product, using empty values",
+				"productID", event.ProductID,
+				"eventType", event.Type,
+				"billingService", billingService.Name)
 		}
 	}
 

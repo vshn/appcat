@@ -42,13 +42,9 @@ func pruneEventsIfNeeded(billingService *vshnv1.BillingService, maxEvents int) i
 	eventsToRemove := make(map[int]bool)
 	totalPruned := 0
 
-	// Get all product IDs from items
-	productIDs := make(map[string]bool)
-	for _, item := range billingService.Spec.Odoo.Items {
-		productIDs[item.ProductID] = true
-	}
-
-	for productID := range productIDs {
+	// Prune events for ALL products (including removed ones)
+	// This prevents unbounded growth of events for products that were removed from spec
+	for productID := range eventCountPerProduct {
 		currentCount := eventCountPerProduct[productID]
 		if currentCount <= maxEvents {
 			continue // no pruning needed for this product

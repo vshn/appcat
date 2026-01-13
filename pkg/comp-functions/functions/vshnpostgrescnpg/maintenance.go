@@ -51,6 +51,20 @@ var (
 		},
 		{
 			APIGroups: []string{
+				"postgresql.cnpg.io",
+			},
+			Resources: []string{
+				"backups",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
 				"",
 			},
 			Resources: []string{

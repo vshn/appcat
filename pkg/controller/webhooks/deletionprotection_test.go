@@ -32,10 +32,10 @@ func Test_checkManagedObject(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "leaf",
 			Labels: map[string]string{
-				runtime.OwnerKindAnnotation:      kind,
-				runtime.OwnerGroupAnnotation:     vshnv1.GroupVersion.Group,
-				runtime.OwnerVersionAnnotation:   vshnv1.GroupVersion.Version,
-				runtime.OwnerCompositeAnnotation: "redis",
+				runtime.OwnerKindLabel:      kind,
+				runtime.OwnerGroupLabel:     vshnv1.GroupVersion.Group,
+				runtime.OwnerVersionLabel:   vshnv1.GroupVersion.Version,
+				runtime.OwnerCompositeLabel: "redis",
 			},
 		},
 	}
@@ -105,10 +105,10 @@ func Test_checkManagedObject(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 			Labels: map[string]string{
-				runtime.OwnerKindAnnotation:      kind,
-				runtime.OwnerGroupAnnotation:     vshnv1.GroupVersion.Group,
-				runtime.OwnerVersionAnnotation:   vshnv1.GroupVersion.Version,
-				runtime.OwnerCompositeAnnotation: "redis",
+				runtime.OwnerKindLabel:      kind,
+				runtime.OwnerGroupLabel:     vshnv1.GroupVersion.Group,
+				runtime.OwnerVersionLabel:   vshnv1.GroupVersion.Version,
+				runtime.OwnerCompositeLabel: "redis",
 			},
 		},
 	}
@@ -149,10 +149,10 @@ func Test_unmanagedPvcDeletion(t *testing.T) {
 		composite = "redis"
 	)
 	labels := map[string]string{
-		runtime.OwnerKindAnnotation:      kind,
-		runtime.OwnerGroupAnnotation:     vshnv1.GroupVersion.Group,
-		runtime.OwnerVersionAnnotation:   vshnv1.GroupVersion.Version,
-		runtime.OwnerCompositeAnnotation: composite,
+		runtime.OwnerKindLabel:      kind,
+		runtime.OwnerGroupLabel:     vshnv1.GroupVersion.Group,
+		runtime.OwnerVersionLabel:   vshnv1.GroupVersion.Version,
+		runtime.OwnerCompositeLabel: composite,
 	}
 
 	parents := []client.Object{

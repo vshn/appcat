@@ -53,6 +53,8 @@ var (
 type Maintenance interface {
 	DoMaintenance(ctx context.Context) error
 	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client, minAge time.Duration) error
+	// RunBackup runs a pre-maintenance backup if supported
+	RunBackup(ctx context.Context) error
 }
 
 type service enumflag.Flag
@@ -163,9 +165,16 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 	}
 
 	if err = errors.Join(
-		// We do the release first and then the maintenance
-		// This is to avoid deadlocks, where a maintenance might be broken
-		// in a version and the fix is in the next version.
+		// Run backup before any changes, then release, then maintenance
+		func() error {
+			log.Info("Running pre-maintenance backup")
+			if err := m.RunBackup(ctx); err != nil {
+				log.Error(err, "Pre-maintenance backup failed")
+				return fmt.Errorf("pre-maintenance backup failed: %w", err)
+			}
+			log.Info("Pre-maintenance backup completed successfully")
+			return nil
+		}(),
 		func() error {
 			enabled, err := strconv.ParseBool(viper.GetString("RELEASE_MANAGEMENT_ENABLED"))
 			if err != nil {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
+	"github.com/vshn/appcat/v4/pkg/maintenance/backup"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 
 	"k8s.io/apimachinery/pkg/watch"
@@ -33,10 +34,11 @@ var (
 
 // PostgreSQL handles the maintenance of postgresql services
 type PostgreSQL struct {
-	k8sClient client.WithWatch
-	sClient   *stackgres.StackgresClient
-	log       logr.Logger
-	timeout   time.Duration
+	backupHelper *backup.Helper
+	k8sClient    client.WithWatch
+	sClient      *stackgres.StackgresClient
+	log          logr.Logger
+	timeout      time.Duration
 	release.VersionHandler
 	instanceNamespace string
 	apiUserName       string
@@ -50,7 +52,9 @@ type PostgreSQL struct {
 
 // NewPostgreSQL returns a new PostgreSQL maintenance job runner
 func NewPostgreSQL(c client.WithWatch, sClient *stackgres.StackgresClient, versionHandler release.VersionHandler, log logr.Logger) *PostgreSQL {
+	runner := backup.NewStackGresBackupRunner(c, log)
 	return &PostgreSQL{
+		backupHelper:      backup.NewHelper(runner, log),
 		k8sClient:         c,
 		sClient:           sClient,
 		timeout:           time.Hour,
@@ -65,6 +69,11 @@ func NewPostgreSQL(c client.WithWatch, sClient *stackgres.StackgresClient, versi
 		repack:            viper.GetString("REPACK_ENABLED"),
 		vacuum:            viper.GetString("VACUUM_ENABLED"),
 	}
+}
+
+// RunBackup executes a pre-maintenance backup
+func (p *PostgreSQL) RunBackup(ctx context.Context) error {
+	return p.backupHelper.RunBackup(ctx)
 }
 
 // DoMaintenance will run postgresql's maintenance script.

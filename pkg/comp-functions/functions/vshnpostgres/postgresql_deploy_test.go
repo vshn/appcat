@@ -169,6 +169,136 @@ func TestPostgreSqlDeployWithBackupDisabled(t *testing.T) {
 	assert.NoError(t, svc.GetDesiredKubeObject(sgInstanceProfile, "profile"))
 }
 
+func TestQoSGuaranteedDetection(t *testing.T) {
+	tests := []struct {
+		name                           string
+		cpu                            string
+		memory                         string
+		requestsCPU                    string
+		requestsMemory                 string
+		expectedQoSGuaranteed          bool
+		expectedEnableSetPatroniCPU    bool
+		expectedEnableSetPatroniMemory bool
+		expectedDisableResourcesSplit  bool
+	}{
+		{
+			name:                           "Plan only - should NOT have QoS Guaranteed",
+			cpu:                            "",
+			memory:                         "",
+			requestsCPU:                    "",
+			requestsMemory:                 "",
+			expectedQoSGuaranteed:          false,
+			expectedEnableSetPatroniCPU:    true,
+			expectedEnableSetPatroniMemory: true,
+			expectedDisableResourcesSplit:  false,
+		},
+		{
+			name:                           "Custom equal limits and requests - SHOULD have QoS Guaranteed",
+			cpu:                            "500m",
+			memory:                         "2Gi",
+			requestsCPU:                    "500m",
+			requestsMemory:                 "2Gi",
+			expectedQoSGuaranteed:          true,
+			expectedEnableSetPatroniCPU:    false,
+			expectedEnableSetPatroniMemory: false,
+			expectedDisableResourcesSplit:  true,
+		},
+		{
+			name:                           "Custom different limits and requests - should NOT have QoS Guaranteed",
+			cpu:                            "600m",
+			memory:                         "2Gi",
+			requestsCPU:                    "300m",
+			requestsMemory:                 "1Gi",
+			expectedQoSGuaranteed:          false,
+			expectedEnableSetPatroniCPU:    true,
+			expectedEnableSetPatroniMemory: true,
+			expectedDisableResourcesSplit:  false,
+		},
+		{
+			name:                           "Only limits specified - should NOT have QoS Guaranteed",
+			cpu:                            "500m",
+			memory:                         "2Gi",
+			requestsCPU:                    "",
+			requestsMemory:                 "",
+			expectedQoSGuaranteed:          false,
+			expectedEnableSetPatroniCPU:    true,
+			expectedEnableSetPatroniMemory: true,
+			expectedDisableResourcesSplit:  false,
+		},
+		{
+			name:                           "Only requests specified - should NOT have QoS Guaranteed",
+			cpu:                            "",
+			memory:                         "",
+			requestsCPU:                    "500m",
+			requestsMemory:                 "2Gi",
+			expectedQoSGuaranteed:          false,
+			expectedEnableSetPatroniCPU:    true,
+			expectedEnableSetPatroniMemory: true,
+			expectedDisableResourcesSplit:  false,
+		},
+		{
+			name:                           "Partial specs (only CPU limit and request) - should NOT have QoS Guaranteed",
+			cpu:                            "500m",
+			memory:                         "",
+			requestsCPU:                    "500m",
+			requestsMemory:                 "",
+			expectedQoSGuaranteed:          false,
+			expectedEnableSetPatroniCPU:    true,
+			expectedEnableSetPatroniMemory: true,
+			expectedDisableResourcesSplit:  false,
+		},
+		{
+			name:                           "Equivalent resources in different formats - SHOULD have QoS Guaranteed",
+			cpu:                            "1",
+			memory:                         "2Gi",
+			requestsCPU:                    "1000m",
+			requestsMemory:                 "2048Mi",
+			expectedQoSGuaranteed:          true,
+			expectedEnableSetPatroniCPU:    false,
+			expectedEnableSetPatroniMemory: false,
+			expectedDisableResourcesSplit:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, comp := getPostgreSqlComp(t, "vshn-postgres/deploy/01_default.yaml")
+
+			// Set custom resources
+			comp.Spec.Parameters.Size.CPU = tt.cpu
+			comp.Spec.Parameters.Size.Memory = tt.memory
+			comp.Spec.Parameters.Size.Requests.CPU = tt.requestsCPU
+			comp.Spec.Parameters.Size.Requests.Memory = tt.requestsMemory
+
+			ctx := context.TODO()
+			assert.Nil(t, DeployPostgreSQL(ctx, comp, svc))
+
+			// Check SGCluster configuration
+			cluster := &sgv1.SGCluster{}
+			assert.NoError(t, svc.GetDesiredKubeObject(cluster, "cluster"))
+
+			assert.Equal(t, tt.expectedEnableSetPatroniCPU, *cluster.Spec.NonProductionOptions.EnableSetPatroniCpuRequests,
+				"EnableSetPatroniCpuRequests mismatch")
+			assert.Equal(t, tt.expectedEnableSetPatroniMemory, *cluster.Spec.NonProductionOptions.EnableSetPatroniMemoryRequests,
+				"EnableSetPatroniMemoryRequests mismatch")
+			assert.Equal(t, tt.expectedDisableResourcesSplit, *cluster.Spec.Pods.Resources.DisableResourcesRequestsSplitFromTotal,
+				"DisableResourcesRequestsSplitFromTotal mismatch")
+
+			// Check SGInstanceProfile to verify resources are set correctly
+			sgInstanceProfile := &sgv1.SGInstanceProfile{}
+			assert.NoError(t, svc.GetDesiredKubeObject(sgInstanceProfile, "profile"))
+
+			if tt.expectedQoSGuaranteed {
+				// For QoS Guaranteed, requests should equal limits
+				assert.Equal(t, sgInstanceProfile.Spec.Cpu, *sgInstanceProfile.Spec.Requests.Cpu,
+					"CPU requests should equal limits for QoS Guaranteed")
+				assert.Equal(t, sgInstanceProfile.Spec.Memory, *sgInstanceProfile.Spec.Requests.Memory,
+					"Memory requests should equal limits for QoS Guaranteed")
+			}
+		})
+	}
+}
+
 func getPostgreSqlComp(t *testing.T, file string) (*runtime.ServiceRuntime, *vshnv1.VSHNPostgreSQL) {
 	svc := commontest.LoadRuntimeFromFile(t, file)
 

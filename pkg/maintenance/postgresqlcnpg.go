@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgrescnpg"
+	"github.com/vshn/appcat/v4/pkg/maintenance/backup"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"gopkg.in/yaml.v2"
 
@@ -23,10 +24,11 @@ import (
 
 // PostgreSQLCNPG handles the maintenance of postgresql services
 type PostgreSQLCNPG struct {
-	k8sClient  client.WithWatch
-	httpClient *http.Client
-	log        logr.Logger
-	timeout    time.Duration
+	backupHelper *backup.Helper
+	k8sClient    client.WithWatch
+	httpClient   *http.Client
+	log          logr.Logger
+	timeout      time.Duration
 	release.VersionHandler
 	instanceNamespace string
 	claimNamespace    string
@@ -39,7 +41,9 @@ type PostgreSQLCNPG struct {
 
 // NewPostgreSQL returns a new PostgreSQL maintenance job runner
 func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler release.VersionHandler, log logr.Logger) *PostgreSQLCNPG {
+	runner := backup.NewCNPGBackupRunner(c, log)
 	return &PostgreSQLCNPG{
+		backupHelper:      backup.NewHelper(runner, log),
 		k8sClient:         c,
 		httpClient:        hc,
 		timeout:           time.Hour,
@@ -52,6 +56,11 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 		vacuum:            viper.GetString("VACUUM_ENABLED"),
 		catalogURL:        viper.GetString("MAINTENANCE_URL"),
 	}
+}
+
+// RunBackup executes a pre-maintenance backup
+func (p *PostgreSQLCNPG) RunBackup(ctx context.Context) error {
+	return p.backupHelper.RunBackup(ctx)
 }
 
 // DoMaintenance will run postgresql's maintenance script.

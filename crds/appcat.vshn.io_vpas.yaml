@@ -1,0 +1,78 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+  name: vpas.appcat.vshn.io
+spec:
+  group: appcat.vshn.io
+  names:
+    kind: VPA
+    listKind: VPAList
+    plural: vpas
+    singular: vpa
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.replicas
+      name: Replicas
+      type: integer
+    - jsonPath: .status.replicas
+      name: Ready
+      type: integer
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: VPA is a simple Custom Resource Definition with scale subresource
+          support
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: VPASpec defines the desired state of VPA
+            properties:
+              replicas:
+                default: 1
+                description: Replicas is the desired number of replicas
+                format: int32
+                type: integer
+              selector:
+                description: Selector is the label selector for pods (used by scale
+                  subresource)
+                type: string
+            type: object
+          status:
+            description: VPAStatus reflects the observed state of VPA
+            properties:
+              replicas:
+                description: Replicas is the actual number of replicas
+                format: int32
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .spec.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
+      status: {}

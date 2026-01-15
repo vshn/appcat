@@ -48,6 +48,10 @@ func init() {
 				Name:    "billing",
 				Execute: AddBilling,
 			},
+			{
+				Name:    "vpa",
+				Execute: common.AddVPAConfig[*vshnv1.VSHNPostgreSQL],
+			},
 		},
 	})
 }

@@ -9,40 +9,47 @@ import (
 
 // handleRemovedItems detects items removed from spec and enqueues delete events
 func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService *vshnv1.BillingService) error {
-	// Build set of current product IDs in spec
 	currentProducts := make(map[string]bool)
 	for _, item := range billingService.Spec.Odoo.Items {
 		currentProducts[item.ProductID] = true
 	}
 
-	// Find products that have created events but are no longer in spec
-	seenProducts := make(map[string]bool)
+	// Single pass through events (newest-first order)
+	createdProducts := make(map[string]bool)           // products with non-superseded created events
+	lastSentValue := make(map[string]string)           // most recent sent value per product
+	lastSentUnit := make(map[string]string)            // most recent sent unit per product
+
 	for _, event := range billingService.Status.Events {
 		if event.Type == string(BillingEventTypeCreated) &&
 			event.State != string(BillingEventStateSuperseded) {
-			seenProducts[event.ProductID] = true
+			createdProducts[event.ProductID] = true
+		}
+
+		// Capture from first (most recent) sent created/scaled event
+		if _, seen := lastSentValue[event.ProductID]; !seen &&
+			event.State == string(BillingEventStateSent) &&
+			(event.Type == string(BillingEventTypeCreated) || event.Type == string(BillingEventTypeScaled)) {
+			lastSentValue[event.ProductID] = event.Value
+			lastSentUnit[event.ProductID] = event.Unit
 		}
 	}
 
-	// For each item/product removed from spec, enqueue delete event
-	for productID := range seenProducts {
-		if !currentProducts[productID] {
-			if !hasEvent(billingService, BillingEventTypeDeleted, productID) {
-				lastValue := lastObservedValueForProduct(billingService, productID, "")
-				lastUnit := lastSentUnitForProduct(billingService, productID)
-				delEvent := vshnv1.BillingEventStatus{
-					Type:       string(BillingEventTypeDeleted),
-					ProductID:  productID,
-					Value:      lastValue,
-					Unit:       lastUnit,
-					Timestamp:  metav1.Now(),
-					State:      string(BillingEventStatePending),
-					RetryCount: 0,
-				}
-				if err := enqueueEvent(ctx, b, billingService, delEvent); err != nil {
-					return err
-				}
-			}
+	for productID := range createdProducts {
+		if currentProducts[productID] || hasEvent(billingService, BillingEventTypeDeleted, productID) {
+			continue
+		}
+
+		delEvent := vshnv1.BillingEventStatus{
+			Type:       string(BillingEventTypeDeleted),
+			ProductID:  productID,
+			Value:      lastSentValue[productID],
+			Unit:       lastSentUnit[productID],
+			Timestamp:  metav1.Now(),
+			State:      string(BillingEventStatePending),
+			RetryCount: 0,
+		}
+		if err := enqueueEvent(ctx, b, billingService, delEvent); err != nil {
+			return err
 		}
 	}
 

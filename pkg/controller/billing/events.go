@@ -52,7 +52,7 @@ func pruneEventsIfNeeded(billingService *vshnv1.BillingService, maxEvents int) i
 
 		toPrune := currentCount - maxEvents
 
-		// Find oldest sent events for this product (from end of array)
+		// Find oldest sent events for this product
 		// Only prune events with status "sent"
 		prunableIndices := []int{}
 		for i := len(billingService.Status.Events) - 1; i >= 0; i-- {

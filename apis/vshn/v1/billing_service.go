@@ -38,13 +38,29 @@ type BillingServiceSpec struct {
 	Odoo OdooSpec `json:"odoo,omitempty"`
 }
 
+// ItemSpec defines a single billable product/item
+type ItemSpec struct {
+	// ProductID identifies the product in the billing system
+	ProductID string `json:"productID"`
+
+	// ItemDescription is a human-readable description of the billing item
+	ItemDescription string `json:"itemDescription,omitempty"`
+
+	// ItemGroupDescription describes the billing item group
+	ItemGroupDescription string `json:"itemGroupDescription,omitempty"`
+
+	// Unit defines the billing unit type for this product
+	Unit string `json:"unit,omitempty"`
+
+	// Value represents the billable metric for this product
+	// Can be: replica count, disk size (e.g., "50Gi"), percentage, etc.
+	Value string `json:"value"`
+}
+
 // OdooSpec defines Odoo-specific billing configuration
 type OdooSpec struct {
 	// InstanceID uniquely identifies the service instance in Odoo
 	InstanceID string `json:"instanceID"`
-
-	// ProductID identifies the product in the billing system
-	ProductID string `json:"productID"`
 
 	// SalesOrderID identifies the sales order in Odoo
 	SalesOrderID string `json:"salesOrderID,omitempty"`
@@ -52,17 +68,10 @@ type OdooSpec struct {
 	// Organization used to identify sales order
 	Organization string `json:"organization,omitempty"`
 
-	// UnitID defines the billing unit type in Odoo
-	UnitID string `json:"unitID"`
-
-	// Size represents the size of the service instance
-	Size string `json:"size,omitempty"`
-
-	// ItemGroupDescription describes the billing item group
-	ItemGroupDescription string `json:"itemGroupDescription"`
-
-	// ItemDescription is a human readable description of the billing item
-	ItemDescription string `json:"itemDescription"`
+	// Items defines list of billable products for this instance
+	// Each item represents a product with independent lifecycle and event tracking
+	// +kubebuilder:validation:MinItems=1
+	Items []ItemSpec `json:"items"`
 }
 
 // BillingServiceStatus defines the observed state of a BillingService
@@ -76,15 +85,25 @@ type BillingServiceStatus struct {
 
 // BillingEventStatus represents the status of a billing event
 type BillingEventStatus struct {
-	// Type is the type of billing event (created, deleted, scaled)
-	// +kubebuilder:validation:Enum="created";"deleted";"scaled"
+	// Type is the type of billing event (create, delete, scale)
+	// +kubebuilder:validation:Enum="create";"delete";"scale"
 	Type string `json:"type"`
 
 	// ProductID identifies the product in the billing system
 	ProductID string `json:"productId"`
 
-	// Size represents the size/plan at the time of the event
-	Size string `json:"size"`
+	// Value represents the billable metric at the time of the event
+	// Generic field supporting replica count, disk size, percentages, etc.
+	Value string `json:"value"`
+
+	// Unit defines the billing unit type for this product
+	Unit string `json:"unit,omitempty"`
+
+	// ItemDescription is a human-readable description of the billing item
+	ItemDescription string `json:"itemDescription,omitempty"`
+
+	// ItemGroupDescription describes the billing item group
+	ItemGroupDescription string `json:"itemGroupDescription,omitempty"`
 
 	// Timestamp when the event occurred
 	Timestamp metav1.Time `json:"timestamp"`

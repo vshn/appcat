@@ -29,9 +29,9 @@ const (
 type BillingEventType string
 
 const (
-	BillingEventTypeCreated BillingEventType = "created"
-	BillingEventTypeDeleted BillingEventType = "deleted"
-	BillingEventTypeScaled  BillingEventType = "scaled"
+	BillingEventTypeCreated BillingEventType = "create"
+	BillingEventTypeDeleted BillingEventType = "delete"
+	BillingEventTypeScaled  BillingEventType = "scale"
 )
 
 const (

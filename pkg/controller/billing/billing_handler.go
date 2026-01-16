@@ -30,14 +30,19 @@ type BillingHandler struct {
 	Scheme     *runtime.Scheme
 	odooClient *odoo.Client
 	log        logr.Logger
+	maxEvents  int
 }
 
-func New(c client.Client, scheme *runtime.Scheme, odooClient *odoo.Client) *BillingHandler {
+func New(c client.Client, scheme *runtime.Scheme, odooClient *odoo.Client, maxEvents int) *BillingHandler {
+	if maxEvents <= 0 {
+		maxEvents = 100 // default
+	}
 	return &BillingHandler{
 		Client:     c,
 		Scheme:     scheme,
 		odooClient: odooClient,
 		log:        ctrl.Log.WithName("controller").WithName("billing"),
+		maxEvents:  maxEvents,
 	}
 }
 
@@ -166,15 +171,19 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	if err := b.handleSLAChange(ctx, &billingService); err != nil {
-		return ctrl.Result{}, err
+	// Handle lifecycle for each item/product in the spec
+	for _, item := range billingService.Spec.Odoo.Items {
+		if err := b.handleItemCreation(ctx, &billingService, item); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if err := b.handleItemScaling(ctx, &billingService, item); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
-	if err := b.handleCreation(ctx, &billingService); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if err := b.handleScaling(ctx, &billingService); err != nil {
+	// Handle items/products that were removed from spec
+	if err := b.handleRemovedItems(ctx, &billingService); err != nil {
 		return ctrl.Result{}, err
 	}
 

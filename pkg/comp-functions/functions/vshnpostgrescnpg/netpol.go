@@ -43,8 +43,12 @@ func createCnpgNetworkPolicy(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 							},
 						},
 						PodSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"app.kubernetes.io/name": "cloudnative-pg",
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "app.kubernetes.io/name",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"cloudnative-pg", "plugin-barman-cloud"},
+								},
 							},
 						},
 					}},

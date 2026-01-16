@@ -15,9 +15,11 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 	}
 
 	// Single pass through events (newest-first order)
-	createdProducts := make(map[string]bool) // products with non-superseded created events
-	lastSentValue := make(map[string]string) // most recent sent value per product
-	lastSentUnit := make(map[string]string)  // most recent sent unit per product
+	type eventInfo struct {
+		value, unit, itemDesc, itemGroupDesc string
+	}
+	createdProducts := make(map[string]bool)
+	lastSent := make(map[string]eventInfo)
 
 	for _, event := range billingService.Status.Events {
 		if event.Type == string(BillingEventTypeCreated) &&
@@ -26,11 +28,15 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 		}
 
 		// Capture from first (most recent) sent created/scaled event
-		if _, seen := lastSentValue[event.ProductID]; !seen &&
+		if _, seen := lastSent[event.ProductID]; !seen &&
 			event.State == string(BillingEventStateSent) &&
 			(event.Type == string(BillingEventTypeCreated) || event.Type == string(BillingEventTypeScaled)) {
-			lastSentValue[event.ProductID] = event.Value
-			lastSentUnit[event.ProductID] = event.Unit
+			lastSent[event.ProductID] = eventInfo{
+				value:         event.Value,
+				unit:          event.Unit,
+				itemDesc:      event.ItemDescription,
+				itemGroupDesc: event.ItemGroupDescription,
+			}
 		}
 	}
 
@@ -39,14 +45,17 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 			continue
 		}
 
+		info := lastSent[productID]
 		delEvent := vshnv1.BillingEventStatus{
-			Type:       string(BillingEventTypeDeleted),
-			ProductID:  productID,
-			Value:      lastSentValue[productID],
-			Unit:       lastSentUnit[productID],
-			Timestamp:  metav1.Now(),
-			State:      string(BillingEventStatePending),
-			RetryCount: 0,
+			Type:                 string(BillingEventTypeDeleted),
+			ProductID:            productID,
+			Value:                info.value,
+			Unit:                 info.unit,
+			ItemDescription:      info.itemDesc,
+			ItemGroupDescription: info.itemGroupDesc,
+			Timestamp:            metav1.Now(),
+			State:                string(BillingEventStatePending),
+			RetryCount:           0,
 		}
 		if err := enqueueEvent(ctx, b, billingService, delEvent); err != nil {
 			return err

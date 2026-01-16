@@ -99,6 +99,12 @@ type BillingEventStatus struct {
 	// Unit defines the billing unit type for this product
 	Unit string `json:"unit,omitempty"`
 
+	// ItemDescription is a human-readable description of the billing item
+	ItemDescription string `json:"itemDescription,omitempty"`
+
+	// ItemGroupDescription describes the billing item group
+	ItemGroupDescription string `json:"itemGroupDescription,omitempty"`
+
 	// Timestamp when the event occurred
 	Timestamp metav1.Time `json:"timestamp"`
 

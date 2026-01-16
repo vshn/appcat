@@ -34,7 +34,7 @@ func TestHandleItemCreation(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						InstanceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", Unit: "instance"},
+							{ProductID: "prod-123", Value: "2", Unit: "instance", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
@@ -43,9 +43,11 @@ func TestHandleItemCreation(t *testing.T) {
 				},
 			},
 			item: vshnv1.ItemSpec{
-				ProductID: "prod-123",
-				Value:     "2",
-				Unit:      "instance",
+				ProductID:            "prod-123",
+				Value:                "2",
+				Unit:                 "instance",
+				ItemDescription:      "Test Item",
+				ItemGroupDescription: "Test Group",
 			},
 			expectEvent:  true,
 			expectedType: string(BillingEventTypeCreated),
@@ -61,7 +63,7 @@ func TestHandleItemCreation(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						InstanceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", Unit: "instance"},
+							{ProductID: "prod-123", Value: "2", Unit: "instance", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
@@ -77,9 +79,11 @@ func TestHandleItemCreation(t *testing.T) {
 				},
 			},
 			item: vshnv1.ItemSpec{
-				ProductID: "prod-123",
-				Value:     "2",
-				Unit:      "instance",
+				ProductID:            "prod-123",
+				Value:                "2",
+				Unit:                 "instance",
+				ItemDescription:      "Test Item",
+				ItemGroupDescription: "Test Group",
 			},
 			expectEvent: false,
 		},
@@ -94,8 +98,8 @@ func TestHandleItemCreation(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						InstanceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", Unit: "instance"},
-							{ProductID: "prod-456", Value: "50Gi", Unit: "storage"},
+							{ProductID: "prod-123", Value: "2", Unit: "instance", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-456", Value: "50Gi", Unit: "storage", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
 						},
 					},
 				},
@@ -111,9 +115,11 @@ func TestHandleItemCreation(t *testing.T) {
 				},
 			},
 			item: vshnv1.ItemSpec{
-				ProductID: "prod-456",
-				Value:     "50Gi",
-				Unit:      "storage",
+				ProductID:            "prod-456",
+				Value:                "50Gi",
+				Unit:                 "storage",
+				ItemDescription:      "Storage Item",
+				ItemGroupDescription: "Storage Group",
 			},
 			expectEvent:  true,
 			expectedType: string(BillingEventTypeCreated),
@@ -146,6 +152,8 @@ func TestHandleItemCreation(t *testing.T) {
 				assert.Equal(t, tt.item.ProductID, newEvent.ProductID)
 				assert.Equal(t, tt.item.Value, newEvent.Value)
 				assert.Equal(t, tt.item.Unit, newEvent.Unit)
+				assert.Equal(t, tt.item.ItemDescription, newEvent.ItemDescription)
+				assert.Equal(t, tt.item.ItemGroupDescription, newEvent.ItemGroupDescription)
 				assert.Equal(t, string(BillingEventStatePending), newEvent.State)
 			} else {
 				assert.Equal(t, initialEventCount, len(tt.billingService.Status.Events),
@@ -168,9 +176,9 @@ func TestHandleItemCreation_MultipleItems(t *testing.T) {
 			Odoo: vshnv1.OdooSpec{
 				InstanceID: "test-instance",
 				Items: []vshnv1.ItemSpec{
-					{ProductID: "prod-compute", Value: "2", Unit: "instance"},
-					{ProductID: "prod-storage", Value: "50Gi", Unit: "storage"},
-					{ProductID: "prod-backup", Value: "enabled", Unit: "boolean"},
+					{ProductID: "prod-compute", Value: "2", Unit: "instance", ItemDescription: "Compute Item", ItemGroupDescription: "Compute Group"},
+					{ProductID: "prod-storage", Value: "50Gi", Unit: "storage", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+					{ProductID: "prod-backup", Value: "enabled", Unit: "boolean", ItemDescription: "Backup Item", ItemGroupDescription: "Backup Group"},
 				},
 			},
 		},

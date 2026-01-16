@@ -18,13 +18,15 @@ func (b *BillingHandler) handleItemScaling(ctx context.Context, billingService *
 	}
 
 	ev := vshnv1.BillingEventStatus{
-		Type:       string(BillingEventTypeScaled),
-		ProductID:  item.ProductID,
-		Value:      item.Value,
-		Unit:       item.Unit,
-		Timestamp:  metav1.Now(),
-		State:      string(BillingEventStatePending),
-		RetryCount: 0,
+		Type:                 string(BillingEventTypeScaled),
+		ProductID:            item.ProductID,
+		Value:                item.Value,
+		Unit:                 item.Unit,
+		ItemDescription:      item.ItemDescription,
+		ItemGroupDescription: item.ItemGroupDescription,
+		Timestamp:            metav1.Now(),
+		State:                string(BillingEventStatePending),
+		RetryCount:           0,
 	}
 
 	return enqueueEvent(ctx, b, billingService, ev)

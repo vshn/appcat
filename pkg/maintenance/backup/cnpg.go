@@ -67,7 +67,7 @@ func (c *CNPGBackupRunner) RunBackup(ctx context.Context, namespace, backupName 
 		"cluster": map[string]interface{}{
 			"name": cluster.Name,
 		},
-		"method": "barmanObjectStore",
+		"method": "plugin",
 	}, "spec"); err != nil {
 		return fmt.Errorf("failed to set backup spec: %w", err)
 	}

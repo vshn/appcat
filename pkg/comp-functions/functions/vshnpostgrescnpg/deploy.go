@@ -189,6 +189,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 	}
 
 	values := map[string]any{
+		"fullnameOverride": comp.GetName() + "-cluster",
 		"cluster": map[string]any{
 			"instances": instances,
 			"annotations": map[string]string{

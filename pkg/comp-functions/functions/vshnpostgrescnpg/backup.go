@@ -31,7 +31,12 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 	maintTime := common.SetRandomMaintenanceSchedule(comp)
 	common.SetRandomBackupSchedule(comp, &maintTime)
 
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+		return fmt.Errorf("failed to set composite status: %w", err)
+	}
+
 	if comp.IsBackupEnabled() && comp.GetInstances() != 0 {
+		// Configure barman cloud plugin via helm values
 		if err := insertBackupValues(svc, comp, values); err != nil {
 			return err
 		}
@@ -52,32 +57,57 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 		retentionDays = 6
 	}
 
+	// Enable the barman-cloud plugin in the cluster configuration
+	clusterPlugins := []map[string]any{{
+		"name":          "barman-cloud.cloudnative-pg.io",
+		"enabled":       true,
+		"isWALArchiver": true,
+		"parameters": map[string]any{
+			"barmanObjectName": comp.GetName() + "-cluster-object-store",
+			"serverName":       "",
+		},
+	}}
+
+	// Get existing cluster config or create it
+	cluster, ok := values["cluster"].(map[string]any)
+	if !ok {
+		cluster = map[string]any{}
+		values["cluster"] = cluster
+	}
+	cluster["plugins"] = clusterPlugins
+
+	// Configure backups using the barman cloud plugin
 	maps.Copy(values, map[string]any{
 		"backups": map[string]any{
 			"enabled":         true,
+			"provider":        "s3",
 			"endpointURL":     connectionDetails.endpoint,
 			"retentionPolicy": fmt.Sprintf("%dd", retentionDays),
-			"scheduledBackups": []map[string]string{{
-				"name":                 "default",
-				"method":               "barmanObjectStore",
-				"schedule":             transformSchedule(comp.GetBackupSchedule()),
-				"backupOwnerReference": "self",
-			}},
-			"data": map[string]string{
-				"encryption": "",
-			},
-			"wal": map[string]string{
-				"encryption": "",
-			},
-			"s3": map[string]string{
+			"s3": map[string]any{
 				"bucket":    connectionDetails.bucket,
 				"region":    connectionDetails.region,
+				"path":      "/",
 				"accessKey": connectionDetails.accessId,
 				"secretKey": connectionDetails.accessKey,
-				// The S3 secret MUST have the keys ACCESS_KEY_ID and ACCESS_SECRET_KEY.
-				// This is currently hardcoded in the chart, and as the CD secret does not have those keys in verbatim,
-				// we are forced to pass those values to the chart and letting it create its own secret instead.
 			},
+			"wal": map[string]any{
+				"compression": "gzip",
+				"maxParallel": 1,
+			},
+			"data": map[string]any{
+				"compression": "gzip",
+				"jobs":        2,
+			},
+			"secret": map[string]any{
+				"create": true,
+				"name":   "",
+			},
+			"scheduledBackups": []map[string]any{{
+				"name":                 "default",
+				"schedule":             transformSchedule(comp.GetBackupSchedule()),
+				"backupOwnerReference": "self",
+				"method":               "barmanObjectStore",
+			}},
 		},
 	})
 

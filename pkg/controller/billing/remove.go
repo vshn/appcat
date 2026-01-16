@@ -15,9 +15,9 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 	}
 
 	// Single pass through events (newest-first order)
-	createdProducts := make(map[string]bool)           // products with non-superseded created events
-	lastSentValue := make(map[string]string)           // most recent sent value per product
-	lastSentUnit := make(map[string]string)            // most recent sent unit per product
+	createdProducts := make(map[string]bool) // products with non-superseded created events
+	lastSentValue := make(map[string]string) // most recent sent value per product
+	lastSentUnit := make(map[string]string)  // most recent sent unit per product
 
 	for _, event := range billingService.Status.Events {
 		if event.Type == string(BillingEventTypeCreated) &&

@@ -22,7 +22,6 @@ const (
 	DefaultKeepAfterDeletion = 365
 )
 
-
 // BillingServiceOptions contains customization options for creating a BillingService CR
 type BillingServiceOptions struct {
 	// ResourceNameSuffix is appended to comp.GetName() to form the resource name (e.g., "-billing-service", "-addon-collabora")

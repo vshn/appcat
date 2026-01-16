@@ -107,7 +107,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("initialize Odoo client: %w", err)
 		}
 
-		maxEvents := viper.GetInt("BILLING_MAX_EVENTS")
+		maxEvents := viper.GetInt("BILLING_MAX_EVENTS_PRODUCT")
 		if maxEvents <= 0 {
 			maxEvents = 100 // default
 		}

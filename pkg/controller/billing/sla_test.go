@@ -17,10 +17,10 @@ func TestHandleRemovedItems(t *testing.T) {
 	require.NoError(t, vshnv1.AddToScheme(scheme))
 
 	tests := []struct {
-		name                  string
-		billingService        *vshnv1.BillingService
-		expectDeleteEvents    []string // productIDs that should have delete events
-		expectNoDeleteEvents  []string // productIDs that should not have delete events
+		name                 string
+		billingService       *vshnv1.BillingService
+		expectDeleteEvents   []string // productIDs that should have delete events
+		expectNoDeleteEvents []string // productIDs that should not have delete events
 	}{
 		{
 			name: "creates delete event for removed item",
@@ -43,12 +43,14 @@ func TestHandleRemovedItems(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "2",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 						{
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-456",
 							Value:     "50Gi",
+							Unit:      "storage",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -79,12 +81,14 @@ func TestHandleRemovedItems(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "2",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 						{
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-456",
 							Value:     "50Gi",
+							Unit:      "storage",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -114,18 +118,21 @@ func TestHandleRemovedItems(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "2",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 						{
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-456",
 							Value:     "50Gi",
+							Unit:      "storage",
 							State:     string(BillingEventStateSent),
 						},
 						{
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-789",
 							Value:     "enabled",
+							Unit:      "boolean",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -161,12 +168,14 @@ func TestHandleRemovedItems(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "2",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 						{
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-456",
 							Value:     "50Gi",
+							Unit:      "storage",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -196,12 +205,14 @@ func TestHandleRemovedItems(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "2",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 						{
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-456",
 							Value:     "50Gi",
+							Unit:      "storage",
 							State:     string(BillingEventStateSuperseded),
 						},
 					},
@@ -229,12 +240,14 @@ func TestHandleRemovedItems(t *testing.T) {
 							Type:      string(BillingEventTypeScaled),
 							ProductID: "prod-123",
 							Value:     "5",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 						{
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "2",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -273,6 +286,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						// Special check for "uses last sent value for delete event" test
 						if tt.name == "uses last sent value for delete event" {
 							assert.Equal(t, "5", event.Value, "should use last sent scaled value")
+							assert.Equal(t, "instance", event.Unit, "should use last sent unit")
 						}
 						break
 					}
@@ -316,18 +330,21 @@ func TestHandleRemovedItems_EmptySpec(t *testing.T) {
 					Type:      string(BillingEventTypeCreated),
 					ProductID: "prod-123",
 					Value:     "2",
+					Unit:      "instance",
 					State:     string(BillingEventStateSent),
 				},
 				{
 					Type:      string(BillingEventTypeCreated),
 					ProductID: "prod-456",
 					Value:     "50Gi",
+					Unit:      "storage",
 					State:     string(BillingEventStateSent),
 				},
 				{
 					Type:      string(BillingEventTypeCreated),
 					ProductID: "prod-789",
 					Value:     "enabled",
+					Unit:      "boolean",
 					State:     string(BillingEventStateSent),
 				},
 			},

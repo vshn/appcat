@@ -145,6 +145,7 @@ func TestHandleItemCreation(t *testing.T) {
 				assert.Equal(t, tt.expectedType, newEvent.Type)
 				assert.Equal(t, tt.item.ProductID, newEvent.ProductID)
 				assert.Equal(t, tt.item.Value, newEvent.Value)
+				assert.Equal(t, tt.item.Unit, newEvent.Unit)
 				assert.Equal(t, string(BillingEventStatePending), newEvent.State)
 			} else {
 				assert.Equal(t, initialEventCount, len(tt.billingService.Status.Events),

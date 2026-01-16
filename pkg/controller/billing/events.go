@@ -258,3 +258,19 @@ func hasBacklog(billingService *vshnv1.BillingService) bool {
 	}
 	return false
 }
+
+// lastSentUnitForProduct returns the Unit from the most recent SENT created/scaled event for productID.
+func lastSentUnitForProduct(billingService *vshnv1.BillingService, productID string) string {
+	for _, event := range billingService.Status.Events {
+		if event.State != string(BillingEventStateSent) {
+			continue
+		}
+		if event.ProductID != productID {
+			continue
+		}
+		if event.Type == string(BillingEventTypeScaled) || event.Type == string(BillingEventTypeCreated) {
+			return event.Unit
+		}
+	}
+	return ""
+}

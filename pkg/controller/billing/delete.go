@@ -19,10 +19,16 @@ func (b *BillingHandler) handleDeletion(ctx context.Context, billingService *vsh
 	for _, item := range billingService.Spec.Odoo.Items {
 		if !hasEvent(billingService, BillingEventTypeDeleted, item.ProductID) {
 			lastValue := lastObservedValueForProduct(billingService, item.ProductID, item.Value)
+			// Use item.Unit if available, otherwise look up from previous events
+			unit := item.Unit
+			if unit == "" {
+				unit = lastSentUnitForProduct(billingService, item.ProductID)
+			}
 			event := vshnv1.BillingEventStatus{
 				Type:       string(BillingEventTypeDeleted),
 				ProductID:  item.ProductID,
 				Value:      lastValue,
+				Unit:       unit,
 				Timestamp:  delTime,
 				State:      string(BillingEventStatePending),
 				RetryCount: 0,

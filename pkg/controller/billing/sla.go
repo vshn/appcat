@@ -29,10 +29,12 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 		if !currentProducts[productID] {
 			if !hasEvent(billingService, BillingEventTypeDeleted, productID) {
 				lastValue := lastObservedValueForProduct(billingService, productID, "")
+				lastUnit := lastSentUnitForProduct(billingService, productID)
 				delEvent := vshnv1.BillingEventStatus{
 					Type:       string(BillingEventTypeDeleted),
 					ProductID:  productID,
 					Value:      lastValue,
+					Unit:       lastUnit,
 					Timestamp:  metav1.Now(),
 					State:      string(BillingEventStatePending),
 					RetryCount: 0,

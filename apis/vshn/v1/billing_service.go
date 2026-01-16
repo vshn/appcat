@@ -96,6 +96,9 @@ type BillingEventStatus struct {
 	// Generic field supporting replica count, disk size, percentages, etc.
 	Value string `json:"value"`
 
+	// Unit defines the billing unit type for this product
+	Unit string `json:"unit,omitempty"`
+
 	// Timestamp when the event occurred
 	Timestamp metav1.Time `json:"timestamp"`
 

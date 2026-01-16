@@ -1,0 +1,7 @@
+apiVersion: vshn.appcat.vshn.io/v1
+kind: VSHNOpenBao
+metadata:
+  name: openbao-test
+spec:
+  writeConnectionSecretToRef:
+    name: "openbao-test"

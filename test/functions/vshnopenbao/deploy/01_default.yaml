@@ -1,0 +1,87 @@
+desired: {}
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNOpenBao
+      metadata:
+        name: openbao-gc9x4
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: openbao
+          crossplane.io/claim-namespace: unit-test
+      spec:
+        parameters:
+          service:
+            version: "2.0.0"
+          size:
+            plan: standard-1
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNOpenBao
+          name: openbao
+          namespace: unit-test
+        compositionRef:
+          name: vshnopenbao.vshn.appcat.vshn.io
+        compositionUpdatePolicy: Automatic
+  resources:
+    openbao-gc9x4-claim-ns-observer:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: openbao-gc9x4-claim-ns-observer
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  'appuio.io/organization': 'vshn'
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  'appuio.io/organization': 'vshn'
+    openbao-gc9x4-ns:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: vshn-openbao-openbao-gc9x4
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: vshn-openbao-openbao-gc9x4
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: vshn-openbao-openbao-gc9x4
+input:
+  apiVersion: v1
+  data:
+    defaultPlan: standard-1
+    chartRepository: https://openbao.github.io/openbao-helm
+    chartVersion: 0.4.0
+    controlNamespace: appcat-control
+    plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true, "memory": "1Gi"}}}'
+    imageRegistry: ghcr.io/openbao
+    providerEnabled: "true"
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config

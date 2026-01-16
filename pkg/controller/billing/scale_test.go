@@ -261,7 +261,7 @@ func TestHandleItemScaling_MultipleItems(t *testing.T) {
 					Type:      string(BillingEventTypeCreated),
 					ProductID: "prod-compute",
 					Value:     "2",
-							Unit:      "instance",
+					Unit:      "instance",
 					State:     string(BillingEventStateSent),
 				},
 				{

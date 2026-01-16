@@ -202,12 +202,12 @@ spec:
                       format: date-time
                       type: string
                     type:
-                      description: Type is the type of billing event (created, deleted,
-                        scaled)
+                      description: Type is the type of billing event (create, delete,
+                        scale)
                       enum:
-                      - created
-                      - deleted
-                      - scaled
+                      - create
+                      - delete
+                      - scale
                       type: string
                     value:
                       description: |-

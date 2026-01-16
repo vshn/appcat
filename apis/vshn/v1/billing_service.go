@@ -85,8 +85,8 @@ type BillingServiceStatus struct {
 
 // BillingEventStatus represents the status of a billing event
 type BillingEventStatus struct {
-	// Type is the type of billing event (created, deleted, scaled)
-	// +kubebuilder:validation:Enum="created";"deleted";"scaled"
+	// Type is the type of billing event (create, delete, scale)
+	// +kubebuilder:validation:Enum="create";"delete";"scale"
 	Type string `json:"type"`
 
 	// ProductID identifies the product in the billing system

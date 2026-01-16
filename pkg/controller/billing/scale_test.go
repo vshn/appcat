@@ -44,6 +44,7 @@ func TestHandleItemScaling(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "1",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -78,6 +79,7 @@ func TestHandleItemScaling(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "2",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -183,6 +185,7 @@ func TestHandleItemScaling(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-storage",
 							Value:     "50Gi",
+							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -223,6 +226,7 @@ func TestHandleItemScaling(t *testing.T) {
 				assert.Equal(t, string(BillingEventTypeScaled), newEvent.Type)
 				assert.Equal(t, tt.item.ProductID, newEvent.ProductID)
 				assert.Equal(t, tt.expectedValue, newEvent.Value)
+				assert.Equal(t, tt.item.Unit, newEvent.Unit)
 				assert.Equal(t, string(BillingEventStatePending), newEvent.State)
 			} else {
 				assert.Equal(t, initialEventCount, len(tt.billingService.Status.Events),
@@ -257,6 +261,7 @@ func TestHandleItemScaling_MultipleItems(t *testing.T) {
 					Type:      string(BillingEventTypeCreated),
 					ProductID: "prod-compute",
 					Value:     "2",
+							Unit:      "instance",
 					State:     string(BillingEventStateSent),
 				},
 				{

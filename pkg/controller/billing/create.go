@@ -13,13 +13,15 @@ func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService 
 	}
 
 	event := vshnv1.BillingEventStatus{
-		Type:       string(BillingEventTypeCreated),
-		ProductID:  item.ProductID,
-		Value:      item.Value,
-		Unit:       item.Unit,
-		Timestamp:  billingService.ObjectMeta.CreationTimestamp,
-		State:      string(BillingEventStatePending),
-		RetryCount: 0,
+		Type:                 string(BillingEventTypeCreated),
+		ProductID:            item.ProductID,
+		Value:                item.Value,
+		Unit:                 item.Unit,
+		ItemDescription:      item.ItemDescription,
+		ItemGroupDescription: item.ItemGroupDescription,
+		Timestamp:            billingService.ObjectMeta.CreationTimestamp,
+		State:                string(BillingEventStatePending),
+		RetryCount:           0,
 	}
 
 	return enqueueEvent(ctx, b, billingService, event)

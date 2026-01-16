@@ -62,35 +62,15 @@ func (b *BillingHandler) deliverQueuedEvent(ctx context.Context, billingService 
 }
 
 func (b *BillingHandler) sendEventToOdoo(ctx context.Context, billingService *vshnv1.BillingService, event vshnv1.BillingEventStatus) error {
-	// Find the item for this event to get its ItemDescription and ItemGroupDescription
-	var itemDescription string
-	var itemGroupDescription string
-
-	// Try to find current item in spec for description fields
-	for _, item := range billingService.Spec.Odoo.Items {
-		if item.ProductID == event.ProductID {
-			itemDescription = item.ItemDescription
-			itemGroupDescription = item.ItemGroupDescription
-			break
-		}
-	}
-
-	// Use Unit from the event (stored when event was created)
-	// Fall back to looking up from previous sent events if not set
-	itemUnit := event.Unit
-	if itemUnit == "" {
-		itemUnit = lastSentUnitForProduct(billingService, event.ProductID)
-	}
-
 	return b.odooClient.SendInstanceEvent(ctx, odoo.InstanceEvent{
 		ProductID:            event.ProductID,
 		InstanceID:           billingService.Spec.Odoo.InstanceID,
 		SalesOrderID:         billingService.Spec.Odoo.SalesOrderID,
-		ItemDescription:      itemDescription,
-		ItemGroupDescription: itemGroupDescription,
-		UnitID:               itemUnit,
+		ItemDescription:      event.ItemDescription,
+		ItemGroupDescription: event.ItemGroupDescription,
+		UnitID:               event.Unit,
 		EventType:            event.Type,
-		Size:                 event.Value, // "Size" is Odoo API field name, but we use Value internally
+		Size:                 event.Value,
 		Timestamp:            event.Timestamp.Format(time.RFC3339),
 	})
 }

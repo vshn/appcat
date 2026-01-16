@@ -209,6 +209,9 @@ spec:
                       - delete
                       - scale
                       type: string
+                    unit:
+                      description: Unit defines the billing unit type for this product
+                      type: string
                     value:
                       description: |-
                         Value represents the billable metric at the time of the event

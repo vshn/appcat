@@ -16,6 +16,7 @@ func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService 
 		Type:       string(BillingEventTypeCreated),
 		ProductID:  item.ProductID,
 		Value:      item.Value,
+		Unit:       item.Unit,
 		Timestamp:  billingService.ObjectMeta.CreationTimestamp,
 		State:      string(BillingEventStatePending),
 		RetryCount: 0,

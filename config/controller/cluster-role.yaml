@@ -126,18 +126,9 @@ rules:
   - xvshnpostgresqls/status
   - xvshnredis
   - xvshnredis/status
-  - xobjectbuckets
   verbs:
   - get
   - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - apiextensions.crossplane.io
-  resources:
-  - compositeresourcedefinitions
-  verbs:
-  - get
-  - list
   - watch

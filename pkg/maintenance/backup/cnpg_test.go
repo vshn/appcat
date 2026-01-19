@@ -83,32 +83,32 @@ func TestCNPGBackupRunner_RunBackup(t *testing.T) {
 func TestCNPGBackupRunner_checkSuccess(t *testing.T) {
 	tests := []struct {
 		name        string
-		phase       string
+		phase       cnpgv1.BackupPhase
 		errorMsg    string
 		wantErr     bool
 		errContains string
 	}{
 		{
 			name:    "GivenCompletedPhase_ThenReturnNil",
-			phase:   "completed",
+			phase:   cnpgv1.BackupPhaseCompleted,
 			wantErr: false,
 		},
 		{
 			name:        "GivenFailedPhase_ThenReturnError",
-			phase:       "failed",
+			phase:       cnpgv1.BackupPhaseFailed,
 			wantErr:     true,
 			errContains: "backup failed",
 		},
 		{
 			name:        "GivenFailedPhaseWithError_ThenReturnErrorWithMessage",
-			phase:       "failed",
+			phase:       cnpgv1.BackupPhaseFailed,
 			errorMsg:    "Storage quota exceeded",
 			wantErr:     true,
 			errContains: "Storage quota exceeded",
 		},
 		{
 			name:        "GivenUnknownPhase_ThenReturnError",
-			phase:       "unknown",
+			phase:       cnpgv1.BackupPhase("unknown"),
 			wantErr:     true,
 			errContains: "unknown phase",
 		},
@@ -122,12 +122,15 @@ func TestCNPGBackupRunner_checkSuccess(t *testing.T) {
 				},
 			}
 
-			backup := &unstructured.Unstructured{}
-			backup.SetName("test-backup")
-			backup.SetNamespace("test-ns")
-			_ = unstructured.SetNestedField(backup.Object, tt.phase, "status", "phase")
-			if tt.errorMsg != "" {
-				_ = unstructured.SetNestedField(backup.Object, tt.errorMsg, "status", "error")
+			backup := &cnpgv1.Backup{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-backup",
+					Namespace: "test-ns",
+				},
+				Status: cnpgv1.BackupStatus{
+					Phase: tt.phase,
+					Error: tt.errorMsg,
+				},
 			}
 
 			err := runner.checkSuccess(backup)
@@ -251,7 +254,13 @@ func TestCNPGBackupRunner_BackupSpec(t *testing.T) {
 		// Check the backup method
 		method, found, _ := unstructured.NestedString(backup.Object, "spec", "method")
 		assert.True(t, found)
-		assert.Equal(t, "barmanObjectStore", method)
+		assert.Equal(t, "plugin", method)
+
+		// Check that plugin name is the barman cloud plugin
+		pluginName, found, _ := unstructured.NestedString(backup.Object, "spec", "pluginConfiguration", "name")
+		assert.True(t, found)
+		assert.Equal(t, "barman-cloud.cloudnative-pg.io", pluginName)
+
 	}
 }
 

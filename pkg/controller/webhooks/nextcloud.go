@@ -8,6 +8,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -31,7 +32,6 @@ type NextcloudWebhookHandler struct {
 
 // SetupNextcloudWebhookHandlerWithManager registers the validation webhook with the manager.
 func SetupNextcloudWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&vshnv1.VSHNNextcloud{}).
 		WithValidator(&NextcloudWebhookHandler{
@@ -43,47 +43,68 @@ func SetupNextcloudWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) e
 				"nextcloud",
 				nextcloudGK,
 				nextcloudGR,
+				maxNestedNameLength,
 			),
 		}).
 		Complete()
 }
 
 func (n *NextcloudWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
-	if warning != nil || err != nil {
-		return warning, err
-	}
-
 	nx, ok := obj.(*vshnv1.VSHNNextcloud)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
+	allErrs := newFielErrors(nx.GetName(), nextcloudGK)
+
+	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
+	if err != nil {
+		tmpErr := err.(*fieldErrors)
+		allErrs.Add(tmpErr.List()...)
+	}
+	if warning != nil && err == nil {
+		return warning, nil
+	}
+
 	if err := validateFQDNs(nx.Spec.Parameters.Service.FQDN); err != nil {
-		return nil, err
+		allErrs.Add(err)
 	}
 
 	if nx.Spec.Parameters.Service.Collabora.Enabled {
 		if nx.Spec.Parameters.Service.Collabora.FQDN == "" {
-			return nil, fmt.Errorf("Collabora FQDN is required when Collabora is enabled")
+			allErrs.Add(field.Invalid(
+				field.NewPath("spec", "parameters", "service", "collabora", "fqdn"),
+				"",
+				"Collabora FQDN is required when Collabora is enabled",
+			))
 		}
 		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
-			return nil, err
+			allErrs.Add(err)
 		}
 	}
 
-	return nil, nil
+	return nil, allErrs.Get()
 }
 
 func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	warning, err := n.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
-	if warning != nil || err != nil {
-		return warning, err
-	}
-
 	nx, ok := newObj.(*vshnv1.VSHNNextcloud)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNNextcloud object")
+	}
+
+	if nx.GetDeletionTimestamp() != nil {
+		return nil, nil
+	}
+
+	allErrs := newFielErrors(nx.GetName(), nextcloudGK)
+
+	warning, err := n.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	if err != nil {
+		tmpErr := err.(*fieldErrors)
+		allErrs.Add(tmpErr.List()...)
+	}
+	if warning != nil && err == nil {
+		return warning, err
 	}
 
 	oldNx, ok := oldObj.(*vshnv1.VSHNNextcloud)
@@ -92,15 +113,19 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 	}
 
 	if err := validateFQDNs(nx.Spec.Parameters.Service.FQDN); err != nil {
-		return nil, err
+		allErrs.Add(err)
 	}
 
 	if nx.Spec.Parameters.Service.Collabora.Enabled {
 		if nx.Spec.Parameters.Service.Collabora.FQDN == "" {
-			return nil, fmt.Errorf("Collabora FQDN is required when Collabora is enabled")
+			allErrs.Add(field.Invalid(
+				field.NewPath("spec", "parameters", "service", "collabora", "fqdn"),
+				"",
+				"Collabora FQDN is required when Collabora is enabled",
+			))
 		}
 		if err := validateFQDNs([]string{nx.Spec.Parameters.Service.Collabora.FQDN}); err != nil {
-			return nil, err
+			allErrs.Add(err)
 		}
 	}
 
@@ -109,18 +134,21 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 		newEncryption := &nx.Spec.Parameters.Service.PostgreSQLParameters.Encryption
 		oldEncryption := &oldNx.Spec.Parameters.Service.PostgreSQLParameters.Encryption
 		fieldPath := "spec.parameters.service.postgreSQLParameters.encryption.enabled"
-		if err := validatePostgreSQLEncryptionChanges(nx.GetName(), newEncryption, oldEncryption, fieldPath); err != nil {
-			return nil, err
+		if err := validatePostgreSQLEncryptionChanges(newEncryption, oldEncryption, fieldPath); err != nil {
+			allErrs.Add(err)
 		}
 	}
 
-	return nil, nil
+	return nil, allErrs.Get()
 }
 
-func validateFQDNs(fqdns []string) error {
+func validateFQDNs(fqdns []string) *field.Error {
 	for _, fqdn := range fqdns {
 		if !valid.IsDNSName(fqdn) {
-			return fmt.Errorf("FQDN %s is not a valid DNS name", fqdn)
+			return field.Invalid(
+				field.NewPath("spec", "parameters", "service", "fqdn"),
+				fqdn,
+				fmt.Sprintf("FQDN %s is not a valid DNS name", fqdn))
 		}
 	}
 	return nil

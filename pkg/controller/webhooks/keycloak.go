@@ -55,6 +55,7 @@ func SetupKeycloakWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) er
 				"keycloak",
 				keycloakGK,
 				keycloakGR,
+				maxNestedNameLength,
 			),
 		}).
 		Complete()
@@ -62,24 +63,31 @@ func SetupKeycloakWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) er
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
-	if warning != nil || err != nil {
-		return warning, err
-	}
-
 	keycloak, ok := obj.(*vshnv1.VSHNKeycloak)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNKeycloak object")
 	}
+
+	allErrs := newFielErrors(keycloak.GetName(), keycloakGK)
+
+	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
+	if err != nil {
+		tmpErr := err.(*fieldErrors)
+		allErrs.Add(tmpErr.List()...)
+	}
+	// Only return here if there are no errors. Errors should take
+	// precedence.
+	if warning != nil && err == nil {
+		return warning, nil
+	}
+
 	if err := validateCustomFileObject(keycloak); err != nil {
-		return nil, err
+		allErrs.Add(err)
 	}
 
-	if warn, err := isDeprecatedFieldInUse(keycloak); warn != nil {
-		return warn, err
-	}
+	warn := isDeprecatedFieldInUse(keycloak)
 
-	return nil, nil
+	return warn, allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -93,12 +101,23 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, fmt.Errorf("not a valid VSHNKeycloak object")
 	}
 
-	if err := validateCustomFileObject(newKeycloak); err != nil {
-		return nil, err
+	if newKeycloak.GetDeletionTimestamp() != nil {
+		return nil, nil
 	}
 
-	if warn, err := isDeprecatedFieldInUse(newKeycloak); warn != nil {
-		return warn, err
+	allErrs := newFielErrors(newKeycloak.GetName(), keycloakGK)
+
+	warnings, err := p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	if err != nil {
+		tmpErr := err.(*fieldErrors)
+		allErrs.Add(tmpErr.List()...)
+	}
+	if warnings != nil && err == nil {
+		return warnings, nil
+	}
+
+	if err := validateCustomFileObject(newKeycloak); err != nil {
+		allErrs.Add(err)
 	}
 
 	// Validate PostgreSQL encryption changes
@@ -106,25 +125,27 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 		newEncryption := &newKeycloak.Spec.Parameters.Service.PostgreSQLParameters.Encryption
 		oldEncryption := &oldKeycloak.Spec.Parameters.Service.PostgreSQLParameters.Encryption
 		fieldPath := "spec.parameters.service.postgreSQLParameters.encryption.enabled"
-		if err := validatePostgreSQLEncryptionChanges(newKeycloak.GetName(), newEncryption, oldEncryption, fieldPath); err != nil {
-			return nil, err
+		if err := validatePostgreSQLEncryptionChanges(newEncryption, oldEncryption, fieldPath); err != nil {
+			allErrs.Add(err)
 		}
 	}
 
-	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	warn := isDeprecatedFieldInUse(newKeycloak)
+
+	return warn, allErrs.Get()
 }
 
-func validateCustomFileObject(keycloak *vshnv1.VSHNKeycloak) error {
+func validateCustomFileObject(keycloak *vshnv1.VSHNKeycloak) *field.Error {
 	if len(keycloak.Spec.Parameters.Service.CustomFiles) > 0 {
 		if keycloak.Spec.Parameters.Service.CustomizationImage.Image == "" {
-			return fmt.Errorf("custom files have been defined, but no customization image")
+			return field.Invalid(field.NewPath("spec", "parameters", "service", "customizationImage", "image"), "", "custom files have been defined, but no customization image")
 		}
 	}
 
 	return validateCustomFilePaths(keycloak.Spec.Parameters.Service.CustomFiles)
 }
 
-func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error {
+func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) *field.Error {
 	fieldPath := field.NewPath("spec", "parameters", "service", "customFiles")
 	for i, customFile := range customFiles {
 		if customFile.Source == "" {
@@ -165,14 +186,14 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) error 
 	return nil
 }
 
-func isDeprecatedFieldInUse(comp *vshnv1.VSHNKeycloak) (admission.Warnings, error) {
+func isDeprecatedFieldInUse(comp *vshnv1.VSHNKeycloak) admission.Warnings {
 	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
 		return admission.Warnings{
 			fmt.Sprintf("Field 'customEnvVariablesRef' in %s has been deprecated, please use 'envFrom' instead.",
 				field.NewPath("spec", "parameters", "service").String(),
 			),
-		}, nil
+		}
 	}
 
-	return nil, nil
+	return nil
 }

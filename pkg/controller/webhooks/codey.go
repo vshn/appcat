@@ -41,7 +41,6 @@ type CodeyInstanceWebhookHandler struct {
 
 // SetupCodeyInstanceWebhookHandlerWithManager registers the validation webhook with the manager.
 func SetupCodeyInstanceWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&codey.CodeyInstance{}).
 		WithValidator(&CodeyInstanceWebhookHandler{
@@ -53,6 +52,7 @@ func SetupCodeyInstanceWebhookHandlerWithManager(mgr ctrl.Manager, withQuota boo
 				"codey",
 				codeyGK,
 				codeyGR,
+				maxNestedNameLength,
 			),
 		}).
 		Complete()
@@ -60,24 +60,30 @@ func SetupCodeyInstanceWebhookHandlerWithManager(mgr ctrl.Manager, withQuota boo
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (n *CodeyInstanceWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
-	if warning != nil || err != nil {
-		return warning, err
-	}
-
 	codeyInstance, ok := obj.(*codey.CodeyInstance)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid CodeyInstance object")
+	}
+
+	allErrs := newFielErrors(codeyInstance.GetName(), codeyGK)
+
+	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
+	if err != nil {
+		tmpErr := err.(*fieldErrors)
+		allErrs.Add(tmpErr.List()...)
+	}
+	if warning != nil && err == nil {
+		return warning, nil
 	}
 
 	codeyFqdn := codeyInstance.ObjectMeta.Name + codeyUrlSuffix
 
 	// compositeName is empty on creation
 	if err := isCodeyFqdnUnique(codeyFqdn, "", n.client); err != nil {
-		return nil, fmt.Errorf("failed FQDN validation: %v", err)
+		allErrs.Add(err)
 	}
 
-	return nil, nil
+	return nil, allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -91,22 +97,33 @@ func (p *CodeyInstanceWebhookHandler) ValidateUpdate(ctx context.Context, oldObj
 		return nil, fmt.Errorf("not a valid CodeyInstance object")
 	}
 
-	codeyFqdn := newCodeyInstance.ObjectMeta.Name + codeyUrlSuffix
-	if err := isCodeyFqdnUnique(codeyFqdn, newCodeyInstance.Spec.ResourceRef.Name, p.client); err != nil {
-		return nil, fmt.Errorf("failed FQDN validation: %v", err)
+	allErrs := newFielErrors(newCodeyInstance.GetName(), codeyGK)
+
+	warnings, parentErr := p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	if parentErr != nil {
+		tmpErr := parentErr.(*fieldErrors)
+		allErrs.Add(tmpErr.List()...)
+	}
+	if warnings != nil {
+		return warnings, nil
 	}
 
-	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	codeyFqdn := newCodeyInstance.ObjectMeta.Name + codeyUrlSuffix
+	if err := isCodeyFqdnUnique(codeyFqdn, newCodeyInstance.Spec.ResourceRef.Name, p.client); err != nil {
+		allErrs.Add(err)
+	}
+
+	return nil, allErrs.Get()
 }
 
 // Checks if a given FQDN is already in use by some CodeyInstance in the cluster
-func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) error {
+func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) *field.Error {
 	ingressList := &netv1.IngressList{}
 
 	// We get all namespaces for XVSHNForgejo...
 	reqOwnerkind, err := labels.NewRequirement("appcat.vshn.io/ownerkind", selection.Equals, []string{"XVSHNForgejo"})
 	if err != nil {
-		return err
+		return field.InternalError(field.NewPath("N/A"), err)
 	}
 
 	listOpts := []client.ListOption{
@@ -118,7 +135,7 @@ func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) error {
 	if compositeName != "" {
 		reqComposite, err := labels.NewRequirement("appcat.vshn.io/ownercomposite", selection.NotEquals, []string{compositeName})
 		if err != nil {
-			return err
+			return field.InternalError(field.NewPath("N/A"), err)
 		}
 		listOpts = append(listOpts, client.MatchingLabelsSelector{
 			Selector: labels.NewSelector().Add(*reqComposite),
@@ -127,7 +144,7 @@ func isCodeyFqdnUnique(fqdn, compositeName string, cl client.Client) error {
 
 	err = cl.List(context.TODO(), ingressList, listOpts...)
 	if err != nil {
-		return fmt.Errorf("failed listing ingresses: %v", err)
+		return field.InternalError(field.NewPath("N/A"), fmt.Errorf("failed listing ingresses: %v", err))
 	}
 
 	for _, ingress := range ingressList.Items {

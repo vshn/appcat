@@ -1,5 +1,8 @@
 package crossplane_metrics
 
+//+kubebuilder:rbac:groups=apiextensions.crossplane.io,resources=compositeresourcedefinitions,verbs=get;list;watch
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xobjectbuckets,verbs=get;list;watch;patch;update
+
 import (
 	"context"
 	"fmt"

@@ -94,20 +94,28 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	itemGroupDescription := claim
 	itemDescription := GetItemDescription(isAPPUiOCloud, clusterName, namespace)
 
-	// If no items specified, create default compute item
+	// Populate missing attributes with default values in case the attributes are missing
 	items := opts.Items
-	if len(items) == 0 {
-		productID := getProductID(comp, service)
-		items = []vshnv1.ItemSpec{
-			{
-				ProductID:            productID,
-				Value:                strconv.Itoa(comp.GetInstances()),
-				Unit:                 unitID,
-				ItemDescription:      itemDescription,
-				ItemGroupDescription: itemGroupDescription,
-			},
+	for i := range items {
+		if items[i].ItemDescription == "" {
+			items[i].ItemDescription = itemDescription
+		}
+		if items[i].ItemGroupDescription == "" {
+			items[i].ItemGroupDescription = itemGroupDescription
+		}
+		if items[i].Unit == "" {
+			items[i].Unit = unitID
 		}
 	}
+
+	// Create default service item and add to any other items that come from each service
+	items = append(items, vshnv1.ItemSpec{
+		ProductID:            getProductID(comp, service),
+		Value:                strconv.Itoa(comp.GetInstances()),
+		Unit:                 unitID,
+		ItemDescription:      itemDescription,
+		ItemGroupDescription: itemGroupDescription,
+	})
 
 	// Build labels
 	labels := map[string]string{

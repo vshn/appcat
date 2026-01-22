@@ -131,11 +131,12 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 
 	handler := PostgreSQLWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNPostgreSQL{},
-			name:      "postgresql",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
 		},
 	}
 
@@ -161,72 +162,72 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateCreate(ctx, pgOrig)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
-	//When quota breached
+	// When quota breached
 	// CPU Limits
 	pgInvalid := pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.CPU = "15000m"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//CPU Requests
+	// CPU Requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.CPU = "6500m"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Memory Limits
+	// Memory Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Memory = "25Gi"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Memory requests
+	// Memory requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.Memory = "25Gi"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Disk
+	// Disk
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Disk = "25Ti"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//When invalid size
+	// When invalid size
 	// CPU Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.CPU = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//CPU Requests
+	// CPU Requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.CPU = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Memory Limits
+	// Memory Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Memory = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Memory requests
+	// Memory requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.Memory = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Disk
+	// Disk
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Disk = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Instances
+	// Instances
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Instances = 1
 	pgInvalid.Spec.Parameters.Service.ServiceLevel = "guaranteed"
@@ -279,11 +280,12 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 
 	handler := PostgreSQLWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: false,
-			obj:       &vshnv1.VSHNPostgreSQL{},
-			name:      "postgresql",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
 		},
 	}
 	pgOrig := &vshnv1.VSHNPostgreSQL{
@@ -464,11 +466,12 @@ func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {
 
 	handler := PostgreSQLWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNPostgreSQL{},
-			name:      "postgresql",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
 		},
 	}
 
@@ -497,18 +500,17 @@ func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateDelete(ctx, pgOrig)
 
-	//Then err
+	// Then err
 	assert.Error(t, err)
 
-	//Instances
+	// Instances
 	pgDeletable := pgOrig.DeepCopy()
 	pgDeletable.Spec.Parameters.Security.DeletionProtection = false
 
 	_, err = handler.ValidateDelete(ctx, pgDeletable)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
-
 }
 
 func TestPostgreSQLWebhookHandler_ValidateEncryptionChanges(t *testing.T) {
@@ -528,11 +530,12 @@ func TestPostgreSQLWebhookHandler_ValidateEncryptionChanges(t *testing.T) {
 
 	handler := PostgreSQLWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: false,
-			obj:       &vshnv1.VSHNPostgreSQL{},
-			name:      "postgresql",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
 		},
 	}
 

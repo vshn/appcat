@@ -2,7 +2,6 @@ package webhooks
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -35,11 +34,12 @@ func TestWebhookHandlerWithManager_ValidateCreate_FQDN(t *testing.T) {
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 
@@ -66,7 +66,7 @@ func TestWebhookHandlerWithManager_ValidateCreate_FQDN(t *testing.T) {
 
 	_, err := handler.ValidateCreate(ctx, nextcloudOrig)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
 	// When FQDN invalid
@@ -77,7 +77,7 @@ func TestWebhookHandlerWithManager_ValidateCreate_FQDN(t *testing.T) {
 
 	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Errorf("FQDN n€xtcloud.example.tld is not a valid DNS name"), err)
+	assert.ErrorContains(t, err, "FQDN n€xtcloud.example.tld is not a valid DNS name")
 }
 
 func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
@@ -100,11 +100,12 @@ func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 
@@ -133,7 +134,7 @@ func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
 
 	_, err := handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudNew)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
 	// When FQDN invalid
@@ -144,7 +145,7 @@ func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
 
 	_, err = handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudInvalid)
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Errorf("FQDN n€xtcloud.example.tld is not a valid DNS name"), err)
+	assert.ErrorContains(t, err, "FQDN n€xtcloud.example.tld is not a valid DNS name")
 }
 
 func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
@@ -167,11 +168,12 @@ func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 
@@ -255,7 +257,7 @@ func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateCreate(ctx, nextcloudCollaboraInvalid)
 	assert.Error(t, err, "Collabora enabled with invalid FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("FQDN c€llabora.example.tld is not a valid DNS name"), err)
+	assert.ErrorContains(t, err, "FQDN c€llabora.example.tld is not a valid DNS name")
 
 	// Test 4: Collabora enabled with empty FQDN - should fail
 	nextcloudCollaboraEmpty := &vshnv1.VSHNNextcloud{
@@ -283,7 +285,7 @@ func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateCreate(ctx, nextcloudCollaboraEmpty)
 	assert.Error(t, err, "Collabora enabled with empty FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("Collabora FQDN is required when Collabora is enabled"), err)
+	assert.ErrorContains(t, err, "Collabora FQDN is required when Collabora is enabled")
 }
 
 func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
@@ -306,11 +308,12 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 
@@ -360,7 +363,7 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudEnableInvalid)
 	assert.Error(t, err, "Enabling Collabora with invalid FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("FQDN c€llabora.example.tld is not a valid DNS name"), err)
+	assert.ErrorContains(t, err, "FQDN c€llabora.example.tld is not a valid DNS name")
 
 	// Test 4: Enable Collabora with empty FQDN - should fail
 	nextcloudEnableEmpty := nextcloudOrig.DeepCopy()
@@ -369,7 +372,7 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudEnableEmpty)
 	assert.Error(t, err, "Enabling Collabora with empty FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("Collabora FQDN is required when Collabora is enabled"), err)
+	assert.ErrorContains(t, err, "Collabora FQDN is required when Collabora is enabled")
 
 	// Test 5: Update Collabora FQDN to another valid one - should pass
 	nextcloudWithCollabora := &vshnv1.VSHNNextcloud{
@@ -410,11 +413,12 @@ func TestNextcloudWebhookHandler_ValidatePostgreSQLEncryptionChanges(t *testing.
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: false,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 

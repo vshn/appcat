@@ -59,7 +59,7 @@ func generateConnectionDetailInfoForRelease(comp *vshnv1.VSHNPostgreSQL, svc *ru
 			ObjectReference: corev1.ObjectReference{
 				APIVersion: "v1",
 				Kind:       "Secret",
-				Name:       comp.GetName() + "-cluster-superuser",
+				Name:       "postgresql-superuser",
 				Namespace:  comp.GetInstanceNamespace(),
 				FieldPath:  fmt.Sprintf("data.%s", secretKey),
 			},
@@ -94,7 +94,7 @@ func generateConnectionDetailInfoForRelease(comp *vshnv1.VSHNPostgreSQL, svc *ru
 		ObjectReference: corev1.ObjectReference{
 			APIVersion: "postgresql.cnpg.io/v1",
 			Kind:       "Cluster",
-			Name:       comp.GetName() + "-cluster",
+			Name:       "postgresql",
 			Namespace:  comp.GetInstanceNamespace(),
 			FieldPath:  "status.instanceNames",
 		},

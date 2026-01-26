@@ -6,7 +6,7 @@ import (
 
 // +kubebuilder:object:root=true
 
-// Backup is the API for creating one-opff backups.
+// Backup is the API for creating one-off backups.
 // This is a partial reconstruction containing only fields we need for maintenance operations.
 type Backup struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -21,6 +21,7 @@ type Backup struct {
 
 // +kubebuilder:object:root=true
 
+// BackupList contains a list of Backup resources.
 type BackupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -28,6 +29,7 @@ type BackupList struct {
 	Items []Backup `json:"items"`
 }
 
+// BackupSpec defines the desired state of a Backup.
 type BackupSpec struct {
 	// Cluster is the reference to the PostgreSQL cluster to backup
 	Cluster BackupCluster `json:"cluster"`
@@ -39,6 +41,7 @@ type BackupSpec struct {
 	PluginConfiguration `json:"pluginConfiguration,omitempty"`
 }
 
+// BackupCluster defines the cluster reference for a backup.
 type BackupCluster struct {
 	// Name of the cluster to backup
 	Name string `json:"name"`
@@ -61,6 +64,7 @@ type PluginConfiguration struct {
 	Parameters map[string]string `json:"parameters,omitempty"`
 }
 
+// BackupStatus defines the observed state of a Backup.
 type BackupStatus struct {
 	// Phase describes the current phase of the backup
 	// +kubebuilder:validation:Enum=pending;running;completed;failed

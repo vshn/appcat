@@ -27,7 +27,7 @@ func Test_RetrieveObjectsAndPatchImageCatalog(t *testing.T) {
 
 	fakeCluster := &cnpgv1.Cluster{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      compName + "-cluster",
+			Name:      "postgresql",
 			Namespace: instanceNamespace,
 		},
 		Spec: cnpgv1.ClusterSpec{

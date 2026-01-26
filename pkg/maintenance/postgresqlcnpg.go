@@ -249,7 +249,7 @@ func (p *PostgreSQLCNPG) getCompositeCluster(ctx context.Context) (*cnpgv1.Clust
 	cluster := &cnpgv1.Cluster{}
 	err := p.k8sClient.Get(ctx, client.ObjectKey{
 		Namespace: p.instanceNamespace,
-		Name:      p.compName + "-cluster",
+		Name:      "postgresql",
 	}, cluster)
 	if err != nil {
 		return nil, err

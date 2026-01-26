@@ -96,7 +96,7 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 		return err
 	}
 
-	svcName := comp.GetName() + "-cluster-rw"
+	svcName := "postgresql-rw"
 	certificate := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
@@ -189,7 +189,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 	}
 
 	values := map[string]any{
-		"fullnameOverride": comp.GetName() + "-cluster",
+		"fullnameOverride": "postgresql",
 		"cluster": map[string]any{
 			"instances": instances,
 			"annotations": map[string]string{
@@ -197,7 +197,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 			},
 			"imageCatalogRef": map[string]string{
 				"kind": "ImageCatalog",
-				"name": comp.GetName() + "-cluster",
+				"name": "postgresql",
 			},
 			"monitoring": map[string]any{
 				"enabled": true,

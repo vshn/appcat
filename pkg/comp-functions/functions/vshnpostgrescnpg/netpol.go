@@ -31,7 +31,7 @@ func createCnpgNetworkPolicy(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 			},
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"cnpg.io/cluster": comp.GetName() + "-cluster",
+					"cnpg.io/cluster": "postgresql",
 				},
 			},
 			Ingress: []netv1.NetworkPolicyIngressRule{

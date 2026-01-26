@@ -63,7 +63,7 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 		"enabled":       true,
 		"isWALArchiver": true,
 		"parameters": map[string]any{
-			"barmanObjectName": comp.GetName() + "-cluster-object-store",
+			"barmanObjectName": "postgresql-object-store",
 			"serverName":       "",
 		},
 	}}
@@ -82,6 +82,7 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 			"enabled":         true,
 			"provider":        "s3",
 			"endpointURL":     connectionDetails.endpoint,
+			"region":          connectionDetails.region,
 			"retentionPolicy": fmt.Sprintf("%dd", retentionDays),
 			"s3": map[string]any{
 				"bucket":    connectionDetails.bucket,
@@ -105,8 +106,11 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 			"scheduledBackups": []map[string]any{{
 				"name":                 "default",
 				"schedule":             transformSchedule(comp.GetBackupSchedule()),
-				"backupOwnerReference": "self",
-				"method":               "barmanObjectStore",
+				"backupOwnerReference": "cluster",
+				"method":               "plugin",
+				"pluginConfiguration": map[string]string{
+					"name": "barman-cloud.cloudnative-pg.io",
+				},
 			}},
 		},
 	})

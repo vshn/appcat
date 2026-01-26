@@ -11,8 +11,6 @@ import (
 	cnpgv1 "github.com/vshn/appcat/v4/apis/cnpg/v1"
 	"github.com/vshn/appcat/v4/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -192,12 +190,7 @@ func TestCNPGBackupRunner_BackupLabels(t *testing.T) {
 	// Wait for backup to be created
 	time.Sleep(50 * time.Millisecond)
 
-	backup := &unstructured.Unstructured{}
-	backup.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "postgresql.cnpg.io",
-		Version: "v1",
-		Kind:    "Backup",
-	})
+	backup := &cnpgv1.Backup{}
 	err := fakeClient.Get(context.Background(), client.ObjectKey{Namespace: "test-ns", Name: "labeled-backup"}, backup)
 	if err == nil {
 		labels := backup.GetLabels()
@@ -238,29 +231,17 @@ func TestCNPGBackupRunner_BackupSpec(t *testing.T) {
 	// Wait for backup to be created
 	time.Sleep(50 * time.Millisecond)
 
-	backup := &unstructured.Unstructured{}
-	backup.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "postgresql.cnpg.io",
-		Version: "v1",
-		Kind:    "Backup",
-	})
+	backup := &cnpgv1.Backup{}
 	err := fakeClient.Get(context.Background(), client.ObjectKey{Namespace: "test-ns", Name: "spec-backup"}, backup)
 	if err == nil {
 		// Check that the backup references the correct cluster
-		clusterName, found, _ := unstructured.NestedString(backup.Object, "spec", "cluster", "name")
-		assert.True(t, found)
-		assert.Equal(t, "my-cluster", clusterName)
+		assert.Equal(t, "my-cluster", backup.Spec.Cluster.Name)
 
 		// Check the backup method
-		method, found, _ := unstructured.NestedString(backup.Object, "spec", "method")
-		assert.True(t, found)
-		assert.Equal(t, "plugin", method)
+		assert.Equal(t, cnpgv1.BackupMethodPlugin, backup.Spec.Method)
 
 		// Check that plugin name is the barman cloud plugin
-		pluginName, found, _ := unstructured.NestedString(backup.Object, "spec", "pluginConfiguration", "name")
-		assert.True(t, found)
-		assert.Equal(t, "barman-cloud.cloudnative-pg.io", pluginName)
-
+		assert.Equal(t, "barman-cloud.cloudnative-pg.io", backup.Spec.PluginConfiguration.Name)
 	}
 }
 
@@ -307,12 +288,7 @@ func TestCNPGBackupRunner_MultipleClustersTakesFirst(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify a backup was created (regardless of which cluster was used)
-	backup := &unstructured.Unstructured{}
-	backup.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "postgresql.cnpg.io",
-		Version: "v1",
-		Kind:    "Backup",
-	})
+	backup := &cnpgv1.Backup{}
 	err := fakeClient.Get(context.Background(), client.ObjectKey{Namespace: "test-ns", Name: "multi-cluster-backup"}, backup)
 	assert.NoError(t, err)
 }

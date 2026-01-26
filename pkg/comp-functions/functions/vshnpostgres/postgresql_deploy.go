@@ -834,7 +834,8 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 		},
 	}
 
-	err := svc.SetDesiredKubeObjectWithName(copyJob, comp.GetName()+"-copyjob", "copy-job")
+	// Allow copy job to be removed after restore is done
+	err := svc.SetDesiredKubeObjectWithName(copyJob, comp.GetName()+"-copyjob", "copy-job", runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		err = fmt.Errorf("cannot create copyJob: %w", err)
 		return err

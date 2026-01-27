@@ -26,5 +26,7 @@ func init() {
 		&ClusterList{},
 		&ImageCatalog{},
 		&ImageCatalogList{},
+		&Backup{},
+		&BackupList{},
 	)
 }

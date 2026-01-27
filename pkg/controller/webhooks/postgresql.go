@@ -33,7 +33,7 @@ import (
 //+kubebuilder:rbac:groups=postgresql.sql.crossplane.io,resources=providerconfigs,verbs=get;list;watch;
 
 const (
-	maxResourceNameLength = 30
+	maxPgResourceNameLength = 30
 )
 
 var (
@@ -77,6 +77,7 @@ func SetupPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) 
 				"postgresql",
 				pgGK,
 				pgGR,
+				maxPgResourceNameLength,
 			),
 		}).
 		Complete()
@@ -91,42 +92,44 @@ func (p *PostgreSQLWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, n
 }
 
 func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newObj, oldObj runtime.Object, isCreate bool) (admission.Warnings, error) {
-	allErrs := field.ErrorList{}
 	newPg, ok := newObj.(*vshnv1.VSHNPostgreSQL)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 	}
 
+	allErrs := newFielErrors(newPg.Name, pgGK)
+
 	// Validate provider config
-	providerConfigErrs := p.DefaultWebhookHandler.ValidateProviderConfig(ctx, newPg)
+	providerConfigErrs := p.ValidateProviderConfig(ctx, newPg)
 	if len(providerConfigErrs) > 0 {
-		allErrs = append(allErrs, providerConfigErrs...)
+		allErrs.Add(providerConfigErrs...)
 	}
 
 	// Validate Vacuum and Repack settings
 	if err := validateVacuumRepack(newPg.Spec.Parameters.Service.VacuumEnabled, newPg.Spec.Parameters.Service.RepackEnabled); err != nil {
-		allErrs = append(allErrs, err)
+		allErrs.Add(err)
 	}
 
 	// Validate quotas if enabled
+	// we can't use the default validation here because pg has a
+	// different API than the rest...
 	if p.withQuota {
 		quotaErrs, fieldErrs := p.checkPostgreSQLQuotas(ctx, newPg, isCreate)
 		if quotaErrs != nil {
-			allErrs = append(allErrs, field.Forbidden(field.NewPath("quota"), fmt.Sprintf("quota check failed: %s", quotaErrs.Error())))
+			allErrs.Add(field.Forbidden(field.NewPath("quota"), fmt.Sprintf("quota check failed: %s", quotaErrs.Error())))
 		}
-		allErrs = append(allErrs, fieldErrs...)
+		allErrs.Add(fieldErrs...)
 	}
 
 	// Validate guaranteed availability
-	allErrs = append(allErrs, p.checkGuaranteedAvailability(newPg)...)
+	allErrs.Add(p.checkGuaranteedAvailability(newPg)...)
 
 	// Validate name length
-	if err := p.validateResourceNameLength(newPg.GetName(), maxResourceNameLength); err != nil {
-		allErrs = append(allErrs, field.TooLong(field.NewPath(".metadata.name"), newPg.GetName(), maxResourceNameLength))
+	if err := p.validateResourceNameLength(newPg.GetName()); err != nil {
+		allErrs.Add(err)
 	}
-
 	// Validate PostgreSQL configuration
-	allErrs = append(allErrs, validatePgConf(newPg)...)
+	allErrs.Add(validatePgConf(newPg)...)
 
 	if !isCreate {
 		oldPg, ok := oldObj.(*vshnv1.VSHNPostgreSQL)
@@ -140,33 +143,29 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 		// Do not allow changing compositionRef if it has been set previously.
 		// When creating a new VSHNPostgresQL, crossplane will automatically set this field if unset.
 		if oldPg.Spec.CompositionRef.Name != "" && newPg.Spec.CompositionRef.Name != oldPg.Spec.CompositionRef.Name {
-			return nil, field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
+			allErrs.Add(field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable"))
 		}
 
 		// Check for disk downsizing
 		if diskErr := p.DefaultWebhookHandler.ValidateDiskDownsizing(ctx, oldPg, newPg, p.gk.Kind); diskErr != nil {
-			allErrs = append(allErrs, diskErr)
+			allErrs.Add(diskErr)
 		}
 
 		// Validate major upgrades
 		if errList := validateMajorVersionUpgrade(newPg, oldPg); errList != nil {
-			allErrs = append(allErrs, errList...)
+			allErrs.Add(errList...)
 		}
 
 		// Validate encryption changes
 		newEncryption := &newPg.Spec.Parameters.Encryption
 		oldEncryption := &oldPg.Spec.Parameters.Encryption
 		fieldPath := "spec.parameters.encryption.enabled"
-		if err := validatePostgreSQLEncryptionChanges(newPg.GetName(), newEncryption, oldEncryption, fieldPath); err != nil {
-			return nil, err
+		if err := validatePostgreSQLEncryptionChanges(newEncryption, oldEncryption, fieldPath); err != nil {
+			allErrs.Add(err)
 		}
 	}
 
-	if len(allErrs) > 0 {
-		return nil, apierrors.NewInvalid(pgGK, newPg.GetName(), allErrs)
-	}
-
-	return nil, nil
+	return nil, allErrs.Get()
 }
 
 // checkPostgreSQLQuotas will read the plan if it's set and then check if any other size parameters are overwritten
@@ -307,7 +306,6 @@ func validatePgConf(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
 }
 
 func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSHNPostgreSQL) (errList field.ErrorList) {
-
 	newVersion, err := strconv.Atoi(newPg.Spec.Parameters.Service.MajorVersion)
 	if err != nil {
 		errList = append(errList, field.Invalid(
@@ -365,15 +363,13 @@ func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSH
 	return errList
 }
 
-func validatePostgreSQLEncryptionChanges(name string, newEncryption, oldEncryption *vshnv1.VSHNPostgreSQLEncryption, fieldPath string) error {
+func validatePostgreSQLEncryptionChanges(newEncryption, oldEncryption *vshnv1.VSHNPostgreSQLEncryption, fieldPath string) *field.Error {
 	// Check if encryption setting is being changed
 	if newEncryption.Enabled != oldEncryption.Enabled {
-		errList := field.ErrorList{}
-		errList = append(errList, field.Forbidden(
+		return field.Forbidden(
 			field.NewPath(fieldPath),
 			"encryption setting cannot be changed after instance creation. It can only be set during initial creation.",
-		))
-		return apierrors.NewInvalid(pgGK, name, errList)
+		)
 	}
 	return nil
 }

@@ -34,11 +34,12 @@ func TestSetupRedisWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 
 	handler := RedisWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNRedis{},
-			name:      "redis",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNRedis{},
+			name:       "redis",
+			nameLength: 30,
 		},
 	}
 
@@ -59,7 +60,7 @@ func TestSetupRedisWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateCreate(ctx, redisOrig)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
 	// When name too long
@@ -68,7 +69,7 @@ func TestSetupRedisWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
 
-	//When quota breached
+	// When quota breached
 	// CPU Requests
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.CPURequests = "5000m"
@@ -99,7 +100,7 @@ func TestSetupRedisWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
 
-	//When invalid size
+	// When invalid size
 	// CPU Requests
 	redisInvalid = redisOrig.DeepCopy()
 	redisInvalid.Spec.Parameters.Size.CPURequests = "foo"
@@ -129,7 +130,6 @@ func TestSetupRedisWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	redisInvalid.Spec.Parameters.Size.Disk = "foo"
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
-
 }
 
 func TestSetupRedisWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
@@ -152,11 +152,12 @@ func TestSetupRedisWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 
 	handler := RedisWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNRedis{},
-			name:      "redis",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNRedis{},
+			name:       "redis",
+			nameLength: 30,
 		},
 	}
 
@@ -177,15 +178,15 @@ func TestSetupRedisWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateDelete(ctx, redisOrig)
 
-	//Then err
+	// Then err
 	assert.Error(t, err)
 
-	//Instances
+	// Instances
 	redisDeletable := redisOrig.DeepCopy()
 	redisDeletable.Spec.Parameters.Security.DeletionProtection = false
 
 	_, err = handler.ValidateDelete(ctx, redisDeletable)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 }

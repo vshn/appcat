@@ -3,6 +3,7 @@ package vshnpostgres
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -50,7 +51,8 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 
 		roleName := fmt.Sprintf("%s-%s-role", comp.GetName(), dbuser)
 		dbName := fmt.Sprintf("%s-%s-database", comp.GetName(), dbname)
-		grantName := fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), dbuser, dbname)
+		dbGrantName := fmt.Sprintf("%s-%s-%s-db-grants", comp.GetName(), dbuser, dbname)
+		schemaGrantName := fmt.Sprintf("%s-%s-%s-schema-grants", comp.GetName(), dbuser, dbname)
 
 		// Only add database if role is ready
 		// We also check for self-existence to prevent deletion when the depending resource turns unready
@@ -64,7 +66,7 @@ func UserManagement(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runti
 		// Only add grants if both role and database are ready
 		// We also check for self-existence to prevent deletion when the depending resource turns unready
 		dbReady, dbErr := svc.IsResourceReady(dbName)
-		if (roleErr == nil && roleReady && dbErr == nil && dbReady) || svc.ResourceExistsInObserved(grantName) {
+		if (roleErr == nil && roleReady && dbErr == nil && dbReady) || svc.ResourceExistsInObserved(dbGrantName) || svc.ResourceExistsInObserved(schemaGrantName) {
 			addGrants(comp, svc, dbuser, dbname, access.Privileges)
 		} else {
 			if roleErr != nil {
@@ -342,33 +344,92 @@ func addGrants(comp common.Composite, svc *runtime.ServiceRuntime, username, dbn
 		privs = append(privs, pgv1alpha1.GrantPrivilege(priv))
 	}
 
-	grant := &pgv1alpha1.Grant{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), username, dbname),
-			Labels: map[string]string{
-				runtime.ProviderConfigIgnoreLabel: "true",
-				runtime.WebhookAllowDeletionLabel: "true",
-			},
-		},
-		Spec: pgv1alpha1.GrantSpec{
-			ForProvider: pgv1alpha1.GrantParameters{
-				Privileges: privs,
-				Role:       &username,
-				Database:   &dbname,
-				Schema:     ptr.To("public"),
-			},
-			ResourceSpec: xpv1.ResourceSpec{
-				ProviderConfigReference: &xpv1.Reference{
-					Name: comp.GetName(),
-				},
-				ManagementPolicies: managementPoliciesWithoutDelete,
-			},
-		},
+	// We need to separate database and schema grants, as not all grant types apply to both.
+	// Database only grants: CONNECT, TEMPORARY, TEMP
+	// Schema only grants: USAGE
+	// Both: ALL, ALL PRIVILEGES, CREATE
+	// All other privileges apply to the schema
+	dbGrants := []pgv1alpha1.GrantPrivilege{}
+	schemaGrants := []pgv1alpha1.GrantPrivilege{}
+
+	dbOnlyPrivileges := []string{"CONNECT", "TEMPORARY", "TEMP"}
+	schemaOnlyPrivileges := []string{"USAGE"}
+
+	for _, priv := range privs {
+		privStr := string(priv)
+		if slices.Contains(dbOnlyPrivileges, privStr) {
+			dbGrants = append(dbGrants, priv)
+		} else if slices.Contains(schemaOnlyPrivileges, privStr) {
+			schemaGrants = append(schemaGrants, priv)
+		} else if privStr == "CREATE" || privStr == "ALL" || privStr == "ALL PRIVILEGES" {
+			dbGrants = append(dbGrants, priv)
+			schemaGrants = append(schemaGrants, priv)
+		} else {
+			schemaGrants = append(schemaGrants, priv)
+		}
 	}
 
-	err := svc.SetDesiredComposedResource(grant, runtime.ComposedOptionProtects(comp.GetName()+"-provider-conf-credentials"))
-	if err != nil {
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply database: %s", err)))
-		svc.Log.Error(err, "cannot apply database")
+	if len(dbGrants) > 0 {
+		dbGrant := &pgv1alpha1.Grant{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("%s-%s-%s-db-grants", comp.GetName(), username, dbname),
+				Labels: map[string]string{
+					runtime.ProviderConfigIgnoreLabel: "true",
+					runtime.WebhookAllowDeletionLabel: "true",
+				},
+			},
+			Spec: pgv1alpha1.GrantSpec{
+				ForProvider: pgv1alpha1.GrantParameters{
+					Privileges: dbGrants,
+					Role:       &username,
+					Database:   &dbname,
+				},
+				ResourceSpec: xpv1.ResourceSpec{
+					ProviderConfigReference: &xpv1.Reference{
+						Name: comp.GetName(),
+					},
+					ManagementPolicies: managementPoliciesWithoutDelete,
+				},
+			},
+		}
+
+		err := svc.SetDesiredComposedResource(dbGrant, runtime.ComposedOptionProtects(comp.GetName()+"-provider-conf-credentials"))
+		if err != nil {
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply database grant: %s", err)))
+			svc.Log.Error(err, "cannot apply database grant")
+		}
+
 	}
+
+	if len(schemaGrants) > 0 {
+		schemaGrant := &pgv1alpha1.Grant{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("%s-%s-%s-schema-grants", comp.GetName(), username, dbname),
+				Labels: map[string]string{
+					runtime.ProviderConfigIgnoreLabel: "true",
+					runtime.WebhookAllowDeletionLabel: "true",
+				},
+			},
+			Spec: pgv1alpha1.GrantSpec{
+				ForProvider: pgv1alpha1.GrantParameters{
+					Privileges: schemaGrants,
+					Role:       &username,
+					Database:   &dbname,
+					Schema:     ptr.To("public"),
+				},
+				ResourceSpec: xpv1.ResourceSpec{
+					ProviderConfigReference: &xpv1.Reference{
+						Name: comp.GetName(),
+					},
+					ManagementPolicies: managementPoliciesWithoutDelete,
+				},
+			},
+		}
+		err := svc.SetDesiredComposedResource(schemaGrant, runtime.ComposedOptionProtects(comp.GetName()+"-provider-conf-credentials"))
+		if err != nil {
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot apply schema grant: %s", err)))
+			svc.Log.Error(err, "cannot apply schema grant")
+		}
+	}
+
 }

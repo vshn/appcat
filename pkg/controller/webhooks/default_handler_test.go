@@ -38,11 +38,12 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 
 	handler := KeycloakWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNKeycloak{},
-			name:      "keycloak",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNKeycloak{},
+			name:       "keycloak",
+			nameLength: 30,
 		},
 	}
 
@@ -65,7 +66,7 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateCreate(ctx, keycloakOrig)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
 	// When quota breached
@@ -99,7 +100,7 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
-	//When invalid size
+	// When invalid size
 	// CPU Requests
 	keycloakInvalid = keycloakOrig.DeepCopy()
 	keycloakInvalid.Spec.Parameters.Size.Requests.CPU = "foo"
@@ -129,7 +130,6 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	keycloakInvalid.Spec.Parameters.Size.Disk = "foo"
 	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
-
 }
 
 func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
@@ -152,11 +152,12 @@ func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 
 	handler := KeycloakWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNKeycloak{},
-			name:      "keycloak",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNKeycloak{},
+			name:       "keycloak",
+			nameLength: 30,
 		},
 	}
 
@@ -177,16 +178,16 @@ func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateDelete(ctx, keycloakOrig)
 
-	//Then err
+	// Then err
 	assert.Error(t, err)
 
-	//Instances
+	// Instances
 	keycloakDeletable := keycloakOrig.DeepCopy()
 	keycloakDeletable.Spec.Parameters.Security.DeletionProtection = false
 
 	_, err = handler.ValidateDelete(ctx, keycloakDeletable)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 }
 

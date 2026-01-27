@@ -109,15 +109,62 @@ func Test_addGrants(t *testing.T) {
 	// given
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/usermanagement/01-emptyaccess.yaml")
 
-	// when
 	comp := &vshnv1.VSHNPostgreSQL{}
 	assert.NoError(t, svc.GetObservedComposite(comp))
 
+	// when ALL privileges
 	addGrants(comp, svc, "unit", "unit", []string{"ALL"})
 
-	// then
-	grant := &pgv1alpha1.Grant{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(grant, fmt.Sprintf("%s-%s-%s-grants", comp.GetName(), "unit", "unit")))
+	// then - check that both database-level and schema-level grants are created
+	dbGrant := &pgv1alpha1.Grant{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(dbGrant, fmt.Sprintf("%s-%s-%s-db-grants", comp.GetName(), "unit", "unit")))
+	assert.Equal(t, pgv1alpha1.GrantPrivileges{"ALL"}, dbGrant.Spec.ForProvider.Privileges)
+	assert.Nil(t, dbGrant.Spec.ForProvider.Schema)
+
+	schemaGrant := &pgv1alpha1.Grant{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(schemaGrant, fmt.Sprintf("%s-%s-%s-schema-grants", comp.GetName(), "unit", "unit")))
+	assert.Equal(t, pgv1alpha1.GrantPrivileges{"ALL"}, schemaGrant.Spec.ForProvider.Privileges)
+	assert.Equal(t, "public", *schemaGrant.Spec.ForProvider.Schema)
+
+	// when CONNECT privileges
+	addGrants(comp, svc, "unit2", "unit2", []string{"CONNECT"})
+
+	// then - check that only database-level grant is created
+	dbGrant = &pgv1alpha1.Grant{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(dbGrant, fmt.Sprintf("%s-%s-%s-db-grants", comp.GetName(), "unit2", "unit2")))
+	assert.Equal(t, pgv1alpha1.GrantPrivileges{"CONNECT"}, dbGrant.Spec.ForProvider.Privileges)
+	assert.Nil(t, dbGrant.Spec.ForProvider.Schema)
+
+	// Schema grant should not exist
+	schemaGrant = &pgv1alpha1.Grant{}
+	assert.Error(t, svc.GetDesiredComposedResourceByName(schemaGrant, fmt.Sprintf("%s-%s-%s-schema-grants", comp.GetName(), "unit2", "unit2")))
+
+	// when USAGE privileges
+	addGrants(comp, svc, "unit3", "unit3", []string{"USAGE"})
+
+	// then - check that only schema-level grant is created
+	schemaGrant = &pgv1alpha1.Grant{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(schemaGrant, fmt.Sprintf("%s-%s-%s-schema-grants", comp.GetName(), "unit3", "unit3")))
+	assert.Equal(t, pgv1alpha1.GrantPrivileges{"USAGE"}, schemaGrant.Spec.ForProvider.Privileges)
+	assert.Equal(t, "public", *schemaGrant.Spec.ForProvider.Schema)
+
+	// Database grant should not exist
+	dbGrant = &pgv1alpha1.Grant{}
+	assert.Error(t, svc.GetDesiredComposedResourceByName(dbGrant, fmt.Sprintf("%s-%s-%s-db-grants", comp.GetName(), "unit3", "unit3")))
+
+	// when CONNECT, USAGE, SELECT privileges
+	addGrants(comp, svc, "unit4", "unit4", []string{"CONNECT", "USAGE", "SELECT"})
+
+	// then - check that both grants are created with correct privileges
+	dbGrant = &pgv1alpha1.Grant{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(dbGrant, fmt.Sprintf("%s-%s-%s-db-grants", comp.GetName(), "unit4", "unit4")))
+	assert.Equal(t, pgv1alpha1.GrantPrivileges{"CONNECT"}, dbGrant.Spec.ForProvider.Privileges)
+	assert.Nil(t, dbGrant.Spec.ForProvider.Schema)
+
+	schemaGrant = &pgv1alpha1.Grant{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(schemaGrant, fmt.Sprintf("%s-%s-%s-schema-grants", comp.GetName(), "unit4", "unit4")))
+	assert.Equal(t, pgv1alpha1.GrantPrivileges{"USAGE", "SELECT"}, schemaGrant.Spec.ForProvider.Privileges)
+	assert.Equal(t, "public", *schemaGrant.Spec.ForProvider.Schema)
 
 }
 

@@ -34,19 +34,15 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, SetupBackup(ctx, svc, comp, values))
-	assert.NotNil(t, values["backups"])
 
+	// Check backups section exists
+	assert.NotNil(t, values["backups"])
 	backupValues := values["backups"].(map[string]any)
 
-	// Enabled, retention
+	// Check backup configuration
 	assert.True(t, backupValues["enabled"].(bool))
-	assert.Equal(t, backupValues["retentionPolicy"], "6d")
-
-	// Schedule
-	assert.Equal(t,
-		backupValues["scheduledBackups"].([]map[string]string)[0]["schedule"],
-		transformSchedule(comp.GetBackupSchedule()),
-	)
+	assert.Equal(t, "s3", backupValues["provider"])
+	assert.Equal(t, "6d", backupValues["retentionPolicy"])
 
 	// Bucket configuration
 	cd, err := getBackupBucketConnectionDetails(svc, comp)
@@ -57,11 +53,54 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	assert.Equal(t, cd.accessId, "secretAccessId")
 	assert.Equal(t, cd.accessKey, "secretAccessKey")
 
+	// Check endpoint, region (top-level), and S3 configuration
 	assert.Equal(t, cd.endpoint, backupValues["endpointURL"])
-	assert.Equal(t, cd.bucket, backupValues["s3"].(map[string]string)["bucket"])
-	assert.Equal(t, cd.region, backupValues["s3"].(map[string]string)["region"])
-	assert.Equal(t, cd.accessId, backupValues["s3"].(map[string]string)["accessKey"])
-	assert.Equal(t, cd.accessKey, backupValues["s3"].(map[string]string)["secretKey"])
+	assert.Equal(t, cd.region, backupValues["region"])
+	s3Config := backupValues["s3"].(map[string]any)
+	assert.Equal(t, cd.bucket, s3Config["bucket"])
+	assert.Equal(t, cd.region, s3Config["region"])
+	assert.Equal(t, "/", s3Config["path"])
+	assert.Equal(t, cd.accessId, s3Config["accessKey"])
+	assert.Equal(t, cd.accessKey, s3Config["secretKey"])
+
+	// Check WAL and data configuration
+	walConfig := backupValues["wal"].(map[string]any)
+	assert.Equal(t, "gzip", walConfig["compression"])
+	assert.Equal(t, 1, walConfig["maxParallel"])
+
+	dataConfig := backupValues["data"].(map[string]any)
+	assert.Equal(t, "gzip", dataConfig["compression"])
+	assert.Equal(t, 2, dataConfig["jobs"])
+
+	// Check secret configuration
+	secretConfig := backupValues["secret"].(map[string]any)
+	assert.True(t, secretConfig["create"].(bool))
+	assert.Equal(t, "", secretConfig["name"])
+
+	// Check cluster plugins configuration
+	assert.NotNil(t, values["cluster"])
+	clusterConfig := values["cluster"].(map[string]any)
+	assert.NotNil(t, clusterConfig["plugins"])
+	plugins := clusterConfig["plugins"].([]map[string]any)
+	assert.Len(t, plugins, 1)
+	assert.Equal(t, "barman-cloud.cloudnative-pg.io", plugins[0]["name"])
+	assert.True(t, plugins[0]["enabled"].(bool))
+	assert.True(t, plugins[0]["isWALArchiver"].(bool))
+	pluginParams := plugins[0]["parameters"].(map[string]any)
+	assert.Equal(t, "postgresql-object-store", pluginParams["barmanObjectName"])
+	assert.Equal(t, "", pluginParams["serverName"])
+
+	// Check scheduled backups
+	scheduledBackups := backupValues["scheduledBackups"].([]map[string]any)
+	assert.Len(t, scheduledBackups, 1)
+	assert.Equal(t, "default", scheduledBackups[0]["name"])
+	assert.Equal(t, transformSchedule(comp.GetBackupSchedule()), scheduledBackups[0]["schedule"])
+	assert.Equal(t, "cluster", scheduledBackups[0]["backupOwnerReference"])
+	assert.Equal(t, "plugin", scheduledBackups[0]["method"])
+
+	// Check plugin configuration
+	pluginConfig := scheduledBackups[0]["pluginConfiguration"].(map[string]string)
+	assert.Equal(t, "barman-cloud.cloudnative-pg.io", pluginConfig["name"])
 
 	bucketName := comp.GetName() + "-backup"
 	err = svc.GetDesiredComposedResourceByName(&appcatv1.XObjectBucket{}, bucketName)

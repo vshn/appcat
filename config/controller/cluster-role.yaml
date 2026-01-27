@@ -30,6 +30,14 @@ rules:
   - update
   - watch
 - apiGroups:
+  - apiextensions.crossplane.io
+  resources:
+  - compositeresourcedefinitions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - cloudscale.crossplane.io
   - exoscale.crossplane.io
   - helm.crossplane.io
@@ -112,6 +120,7 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - xobjectbuckets
   - xvshnforgejoes
   - xvshnforgejoes/status
   - xvshnkeycloaks
@@ -126,18 +135,9 @@ rules:
   - xvshnpostgresqls/status
   - xvshnredis
   - xvshnredis/status
-  - xobjectbuckets
   verbs:
   - get
   - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - apiextensions.crossplane.io
-  resources:
-  - compositeresourcedefinitions
-  verbs:
-  - get
-  - list
   - watch

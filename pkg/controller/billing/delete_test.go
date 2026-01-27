@@ -28,7 +28,9 @@ func TestShouldRemoveFinalizer(t *testing.T) {
 				Spec: vshnv1.BillingServiceSpec{
 					KeepAfterDeletion: 0,
 					Odoo: vshnv1.OdooSpec{
-						ProductID: "prod-123",
+						Items: []vshnv1.ItemSpec{
+							{ProductID: "prod-123", Value: "1", Unit: "instance", ItemDescription: "test", ItemGroupDescription: "test-group"},
+						},
 					},
 				},
 			},
@@ -44,7 +46,9 @@ func TestShouldRemoveFinalizer(t *testing.T) {
 				Spec: vshnv1.BillingServiceSpec{
 					KeepAfterDeletion: 7,
 					Odoo: vshnv1.OdooSpec{
-						ProductID: "prod-123",
+						Items: []vshnv1.ItemSpec{
+							{ProductID: "prod-123", Value: "1", Unit: "instance", ItemDescription: "test", ItemGroupDescription: "test-group"},
+						},
 					},
 				},
 			},
@@ -63,7 +67,9 @@ func TestShouldRemoveFinalizer(t *testing.T) {
 				Spec: vshnv1.BillingServiceSpec{
 					KeepAfterDeletion: 7,
 					Odoo: vshnv1.OdooSpec{
-						ProductID: "prod-123",
+						Items: []vshnv1.ItemSpec{
+							{ProductID: "prod-123", Value: "1", Unit: "instance", ItemDescription: "test", ItemGroupDescription: "test-group"},
+						},
 					},
 				},
 			},
@@ -78,7 +84,9 @@ func TestShouldRemoveFinalizer(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						ProductID: "prod-123",
+						Items: []vshnv1.ItemSpec{
+							{ProductID: "prod-123", Value: "1", Unit: "instance", ItemDescription: "test", ItemGroupDescription: "test-group"},
+						},
 					},
 				},
 			},
@@ -94,7 +102,9 @@ func TestShouldRemoveFinalizer(t *testing.T) {
 				Spec: vshnv1.BillingServiceSpec{
 					KeepAfterDeletion: -1,
 					Odoo: vshnv1.OdooSpec{
-						ProductID: "prod-123",
+						Items: []vshnv1.ItemSpec{
+							{ProductID: "prod-123", Value: "1", Unit: "instance", ItemDescription: "test", ItemGroupDescription: "test-group"},
+						},
 					},
 				},
 			},

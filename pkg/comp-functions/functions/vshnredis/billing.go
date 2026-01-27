@@ -25,7 +25,9 @@ func AddBilling(ctx context.Context, comp *v1.VSHNRedis, svc *runtime.ServiceRun
 	}
 
 	// Add BillingService CR-based billing
-	billingServiceResult := common.CreateOrUpdateBillingService(ctx, svc, comp)
+	billingServiceResult := common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
+		ResourceNameSuffix: "-billing-service",
+	})
 
 	if billingServiceResult != nil && billingServiceResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {
 		return billingServiceResult

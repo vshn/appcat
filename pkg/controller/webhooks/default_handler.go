@@ -25,49 +25,112 @@ import (
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;patch;update;delete
 //+kubebuilder:rbac:groups=cloudscale.crossplane.io;kubernetes.crossplane.io;helm.crossplane.io;minio.crossplane.io;postgresql.sql.crossplane.io,resources=providerconfigs,verbs=get;list;watch
 
+const (
+	// because postgresql has a max of 30 and the
+	// pg builder adds `-pg` to the composite...
+	maxNestedNameLength   = 27
+	maxResourceNameLength = 37
+)
+
 type DefaultWebhookHandler struct {
-	client    client.Client
-	log       logr.Logger
-	withQuota bool
-	obj       runtime.Object
-	name      string
-	gk        schema.GroupKind
-	gr        schema.GroupResource
+	client     client.Client
+	log        logr.Logger
+	withQuota  bool
+	obj        runtime.Object
+	name       string
+	gk         schema.GroupKind
+	gr         schema.GroupResource
+	nameLength int
 }
 
 var _ webhook.CustomValidator = &DefaultWebhookHandler{}
 
-// SetupWebhookHandlerWithManager registers the validation webhook with the manager.
-func New(mgrClient client.Client, logger logr.Logger, withQuota bool, obj runtime.Object, name string, gk schema.GroupKind, gr schema.GroupResource) *DefaultWebhookHandler {
+func newFielErrors(compName string, compGK schema.GroupKind) *fieldErrors {
+	return &fieldErrors{
+		compGK:   compGK,
+		compName: compName,
+		errors:   field.ErrorList{},
+	}
+}
 
+// fieldErrors is a helper struct to collect
+// fieldErrors. So all invalid fields
+// can be reported at once.
+type fieldErrors struct {
+	compGK   schema.GroupKind
+	compName string
+	errors   field.ErrorList
+}
+
+// Add adds a new field.Error to the internal list
+func (f *fieldErrors) Add(err ...*field.Error) {
+	f.errors = append(f.errors, err...)
+}
+
+// Get should be called when fieldErrors is returned.
+// This ensures that we can do nil checks from the caller.
+func (f *fieldErrors) Get() error {
+	if len(f.errors) > 0 {
+		return f
+	}
+	return nil
+}
+
+// wrap will wrap all the errors in an apierror.
+func (f *fieldErrors) wrap() error {
+	if len(f.errors) > 0 {
+		return apierrors.NewInvalid(f.compGK, f.compName, f.errors)
+	}
+	return nil
+}
+
+// Error implements the error interface
+func (f fieldErrors) Error() string {
+	if f.wrap() != nil {
+		return f.wrap().Error()
+	}
+	return ""
+}
+
+// List provides a function to get the underyling
+// ErrorList. This is useful for nesting fieldErrors
+// e.g. when calling a default handler in a service specific handler.
+func (f *fieldErrors) List() field.ErrorList {
+	return f.errors
+}
+
+// SetupWebhookHandlerWithManager registers the validation webhook with the manager.
+func New(mgrClient client.Client, logger logr.Logger, withQuota bool, obj runtime.Object, name string, gk schema.GroupKind, gr schema.GroupResource, nameLength int) *DefaultWebhookHandler {
 	return &DefaultWebhookHandler{
-		client:    mgrClient,
-		log:       logger,
-		withQuota: withQuota,
-		name:      name,
-		obj:       obj,
-		gk:        gk,
-		gr:        gr,
+		client:     mgrClient,
+		log:        logger,
+		withQuota:  withQuota,
+		name:       name,
+		obj:        obj,
+		gk:         gk,
+		gr:         gr,
+		nameLength: nameLength,
 	}
 }
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	allErrs := field.ErrorList{}
 	comp, ok := obj.(common.Composite)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
 	}
 
+	allErrs := newFielErrors(comp.GetName(), comp.GetObjectKind().GroupVersionKind().GroupKind())
+
 	providerConfigErrs := r.ValidateProviderConfig(ctx, comp)
 	if len(providerConfigErrs) > 0 {
-		allErrs = append(allErrs, providerConfigErrs...)
+		allErrs.Add(providerConfigErrs...)
 	}
 
 	if r.withQuota {
 		quotaErrs := r.checkQuotas(ctx, comp, true)
 		if quotaErrs != nil {
-			allErrs = append(allErrs, &field.Error{
+			allErrs.Add(&field.Error{
 				Field: "quota",
 				Detail: fmt.Sprintf("quota check failed: %s",
 					quotaErrs.Error()),
@@ -77,23 +140,15 @@ func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 		}
 	}
 
-	// We aggregate and return all errors at the same time.
-	// So the user is aware of all broken parameters.
-	// But at the same time, if any of these fail we cannot do proper quota checks anymore.
-	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
-			r.gk,
-			comp.GetName(),
-			allErrs,
-		)
+	if err := r.validateResourceNameLength(comp.GetName()); err != nil {
+		allErrs.Add(err)
 	}
 
-	return nil, nil
+	return nil, allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	allErrs := field.ErrorList{}
 	comp, ok := newObj.(common.Composite)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
@@ -108,20 +163,22 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		return nil, nil
 	}
 
+	allErrs := newFielErrors(comp.GetName(), comp.GetObjectKind().GroupVersionKind().GroupKind())
+
 	// Check for disk downsizing
 	if diskErr := r.ValidateDiskDownsizing(ctx, oldComp, comp, r.gk.Kind); diskErr != nil {
-		allErrs = append(allErrs, diskErr)
+		allErrs.Add(diskErr)
 	}
 
 	providerConfigErrs := r.ValidateProviderConfig(ctx, comp)
 	if len(providerConfigErrs) > 0 {
-		allErrs = append(allErrs, providerConfigErrs...)
+		allErrs.Add(providerConfigErrs...)
 	}
 
 	if r.withQuota {
 		quotaErrs := r.checkQuotas(ctx, comp, true)
 		if quotaErrs != nil {
-			allErrs = append(allErrs, &field.Error{
+			allErrs.Add(&field.Error{
 				Field: "quota",
 				Detail: fmt.Sprintf("quota check failed: %s",
 					quotaErrs.Error()),
@@ -131,44 +188,27 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		}
 	}
 
-	// We aggregate and return all errors at the same time.
-	// So the user is aware of all broken parameters.
-	// But at the same time, if any of these fail we cannot do proper quota checks anymore.
-	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
-			r.gk,
-			comp.GetName(),
-			allErrs,
-		)
-	}
-
-	return nil, nil
+	return nil, allErrs.Get()
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *DefaultWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	allErrs := field.ErrorList{}
-
 	comp, ok := obj.(common.Composite)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
 	}
 
-	allErrs = GetClaimDeletionProtection(comp.GetSecurity(), allErrs)
+	allErrs := newFielErrors(comp.GetName(), obj.GetObjectKind().GroupVersionKind().GroupKind())
 
-	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
-			r.gk,
-			comp.GetName(),
-			allErrs,
-		)
+	if err := GetClaimDeletionProtection(comp.GetSecurity()); err != nil {
+		allErrs.Add(err)
 	}
-	return nil, nil
+
+	return nil, allErrs.Get()
 }
 
 // checkQuotas will read the plan if it's set and then check if any other size parameters are overwriten
 func (r *DefaultWebhookHandler) checkQuotas(ctx context.Context, comp common.Composite, checkNamespaceQuota bool) *apierrors.StatusError {
-
 	var fieldErr *field.Error
 	instances := int64(comp.GetInstances())
 	allErrs := field.ErrorList{}
@@ -266,14 +306,18 @@ func (r *DefaultWebhookHandler) addPathsToResources(res *utils.Resources, isLega
 		res.MemoryRequestsPath = basePath.Child("Requests", "Memory")
 	}
 	res.DiskPath = basePath.Child("disk")
-
 }
 
 // k8s limitation is 52 characters, our longest postfix we add is 15 character, therefore 37 chracters is the maximum length
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
-func (r *DefaultWebhookHandler) validateResourceNameLength(name string, lenght int) error {
-	if len(name) > lenght {
-		return fmt.Errorf("%d/%d chars.\n\tWe add various postfixes and CronJob name length has it's own limitations: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names", len(name), lenght)
+func (r *DefaultWebhookHandler) validateResourceNameLength(name string) *field.Error {
+	if len(name) > r.nameLength {
+		return &field.Error{
+			Field:    ".metadata.name",
+			Detail:   fmt.Sprintf("Please shorten %s, currently it is: %d/%d chars", name, len(name), r.nameLength),
+			BadValue: name,
+			Type:     field.ErrorTypeTooLong,
+		}
 	}
 	return nil
 }
@@ -458,7 +502,6 @@ func (r *DefaultWebhookHandler) validateProviderConfigSecret(ctx context.Context
 		Name:      secretName,
 		Namespace: secretNamespace,
 	}, secret)
-
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return &field.Error{

@@ -66,7 +66,7 @@ func Test_validateCustomFilePaths(t *testing.T) {
 	))
 
 	t.Log("Expect no error: Valid destination")
-	assert.NoError(t, validateCustomFilePaths(
+	assert.Nil(t, validateCustomFilePaths(
 		[]vshnv1.VSHNKeycloakCustomFile{
 			{
 				Source:      "blacklist.txt",
@@ -84,11 +84,12 @@ func TestKeycloakWebhookHandler_ValidatePostgreSQLEncryptionChanges(t *testing.T
 
 	handler := KeycloakWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: false,
-			obj:       &vshnv1.VSHNKeycloak{},
-			name:      "keycloak",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNKeycloak{},
+			name:       "keycloak",
+			nameLength: 30,
 		},
 	}
 

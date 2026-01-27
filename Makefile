@@ -79,6 +79,7 @@ generate:  get-crds generate-stackgres-crds generate-cnpg-crds protobuf-gen ## G
 	go version
 	rm -rf apis/generated
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="{./apis/v1/..., ./apis/vshn/..., ./apis/exoscale/..., ./apis/apiserver/..., ./apis/syntools/..., ./apis/codey/...}" object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="./apis/cnpg/v1/..." object output:object:artifacts:config=./apis/cnpg/v1
 	go generate ./...
 	# Because yaml is such a fun and easy specification, we need to hack some things here.
 	# Depending on the yaml parser implementation the equal sign (=) has special meaning, or not...

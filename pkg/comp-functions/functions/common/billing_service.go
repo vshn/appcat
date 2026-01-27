@@ -26,10 +26,8 @@ const (
 type BillingServiceOptions struct {
 	// ResourceNameSuffix is appended to comp.GetName() to form the resource name (e.g., "-billing-service", "-addon-collabora")
 	ResourceNameSuffix string
-	// ProductID overrides the auto-generated productID based on service type and sla
-	ProductID string
-	// Size overrides the replica count for billing purposes
-	Size string
+	// Items defines the list of billable items/products for this instance
+	Items []vshnv1.ItemSpec
 	// AdditionalLabels are added to the BillingService CR labels
 	AdditionalLabels map[string]string
 }
@@ -64,13 +62,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	namespace := comp.GetClaimNamespace()
 	service := comp.GetServiceName()
 
-	// Create productID from service and number of replicas (or use override)
-	productID := opts.ProductID
-	if productID == "" {
-		productID = getProductID(comp.GetInstances(), service)
-	}
-
-	// Get unitID from config
+	// Get unitID from config (for default item if no items specified)
 	unitID := svc.Config.Data["billingUnitID"]
 	if unitID == "" {
 		log.Error(fmt.Errorf("missing billing unitID"), "UnitID missing in composition")
@@ -98,11 +90,32 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		isAPPUiOCloud = true
 	}
 
-	// Determine size (use override or instance count)
-	size := opts.Size
-	if size == "" {
-		size = strconv.Itoa(comp.GetInstances())
+	// Prepare ItemGroupDescription and ItemDescription for all items
+	itemGroupDescription := claim
+	itemDescription := GetItemDescription(isAPPUiOCloud, clusterName, namespace)
+
+	// Populate missing attributes with default values in case the attributes are missing
+	items := opts.Items
+	for i := range items {
+		if items[i].ItemDescription == "" {
+			items[i].ItemDescription = itemDescription
+		}
+		if items[i].ItemGroupDescription == "" {
+			items[i].ItemGroupDescription = itemGroupDescription
+		}
+		if items[i].Unit == "" {
+			items[i].Unit = unitID
+		}
 	}
+
+	// Create default service item and add to any other items that come from each service
+	items = append(items, vshnv1.ItemSpec{
+		ProductID:            getProductID(comp, service),
+		Value:                strconv.Itoa(comp.GetInstances()),
+		Unit:                 unitID,
+		ItemDescription:      itemDescription,
+		ItemGroupDescription: itemGroupDescription,
+	})
 
 	// Build labels
 	labels := map[string]string{
@@ -124,13 +137,9 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		Spec: vshnv1.BillingServiceSpec{
 			KeepAfterDeletion: keepAfterDeletion,
 			Odoo: vshnv1.OdooSpec{
-				InstanceID:           comp.GetName(),
-				ProductID:            productID,
-				UnitID:               unitID,
-				Size:                 size,
-				SalesOrderID:         salesOrder,
-				ItemGroupDescription: claim,
-				ItemDescription:      GetItemDescription(isAPPUiOCloud, clusterName, namespace),
+				InstanceID:   comp.GetName(),
+				SalesOrderID: salesOrder,
+				Items:        items,
 			},
 		},
 	}
@@ -180,7 +189,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create BillingService for %s: %v", comp.GetName(), err))
 	}
 
-	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s", comp.GetName()))
+	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s with %d items", comp.GetName(), len(items)))
 }
 
 // GetItemDescription returns item description with cluster and namespace name
@@ -191,9 +200,9 @@ func GetItemDescription(isAPPUiOCloud bool, cluster, namespace string) string {
 	return fmt.Sprintf("APPUiO Managed - Cluster: %s / Namespace: %s", cluster, namespace)
 }
 
-func getProductID(instances int, service string) string {
+func getProductID(comp InfoGetter, service string) string {
 	sla := vshnv1.BestEffort
-	if instances > 1 {
+	if comp.GetInstances() > 1 && comp.GetSLA() == string(vshnv1.Guaranteed) {
 		sla = vshnv1.Guaranteed
 	}
 

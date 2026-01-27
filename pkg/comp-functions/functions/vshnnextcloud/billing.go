@@ -34,32 +34,25 @@ func AddBilling(ctx context.Context, comp *v1.VSHNNextcloud, svc *runtime.Servic
 		return prometheusResult
 	}
 
-	// Add BillingService CR-based billing
-	billingServiceResult := common.CreateOrUpdateBillingService(ctx, svc, comp)
+	// Add BillingService CR-based billing with Collabora add-on if enabled
+	billingOpts := common.BillingServiceOptions{
+		ResourceNameSuffix: "-billing-service",
+	}
+
+	if comp.Spec.Parameters.Service.Collabora.Enabled {
+		billingOpts.Items = []v1.ItemSpec{
+			{
+				ProductID: "appcat-vshn-nextcloud-office-besteffort",
+				Value:     "1",
+			},
+		}
+	}
+
+	billingServiceResult := common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, billingOpts)
 
 	if billingServiceResult != nil && billingServiceResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {
 		return billingServiceResult
 	}
 
-	// Add BillingService CR-based billing
-	if comp.Spec.Parameters.Service.Collabora.Enabled {
-		billingServiceAddOnResult := createOrUpdateBillingServiceCollabora(ctx, svc, comp)
-
-		if billingServiceAddOnResult != nil && billingServiceAddOnResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {
-			return billingServiceAddOnResult
-		}
-	}
-
 	return runtime.NewNormalResult(fmt.Sprintf("Billing enabled for instance %s", comp.GetName()))
-}
-
-func createOrUpdateBillingServiceCollabora(ctx context.Context, svc *runtime.ServiceRuntime, comp *v1.VSHNNextcloud) *xfnproto.Result {
-	return common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
-		ResourceNameSuffix: "-collabora-billing-service",
-		ProductID:          "appcat-vshn-nextcloud-office-besteffort",
-		Size:               "1",
-		AdditionalLabels: map[string]string{
-			"appcat.vshn.io/add-on": "true",
-		},
-	})
 }

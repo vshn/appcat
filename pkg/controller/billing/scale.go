@@ -7,26 +7,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// handleScaling enqueues a scaled event if the size changed from the last sent value.
-func (b *BillingHandler) handleScaling(ctx context.Context, billingService *vshnv1.BillingService) error {
-	currentProduct := billingService.Spec.Odoo.ProductID
-	currentSize := billingService.Spec.Odoo.Size
-
-	lastSize, ok := lastSentSizeForProduct(billingService, currentProduct)
-	if !ok || lastSize == currentSize {
+// handleItemScaling enqueues a scaled event if the value changed from the last sent value.
+func (b *BillingHandler) handleItemScaling(ctx context.Context, billingService *vshnv1.BillingService, item vshnv1.ItemSpec) error {
+	lastValue, ok := lastSentValueForProduct(billingService, item.ProductID)
+	if !ok || lastValue == item.Value {
 		return nil
 	}
-	if hasEventWithSize(billingService, BillingEventTypeScaled, currentProduct, currentSize) {
+	if hasEventWithValue(billingService, BillingEventTypeScaled, item.ProductID, item.Value) {
 		return nil // already queued
 	}
 
 	ev := vshnv1.BillingEventStatus{
-		Type:       string(BillingEventTypeScaled),
-		ProductID:  currentProduct,
-		Size:       currentSize,
-		Timestamp:  metav1.Now(),
-		State:      string(BillingEventStatePending),
-		RetryCount: 0,
+		Type:                 string(BillingEventTypeScaled),
+		ProductID:            item.ProductID,
+		Value:                item.Value,
+		Unit:                 item.Unit,
+		ItemDescription:      item.ItemDescription,
+		ItemGroupDescription: item.ItemGroupDescription,
+		Timestamp:            metav1.Now(),
+		State:                string(BillingEventStatePending),
+		RetryCount:           0,
 	}
 
 	return enqueueEvent(ctx, b, billingService, ev)

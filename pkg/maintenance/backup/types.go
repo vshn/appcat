@@ -42,5 +42,5 @@ func GetBackupMetadata() (*Metadata, error) {
 
 // FormatBackupName creates a consistent backup name across all services
 func (m *Metadata) FormatBackupName() string {
-	return fmt.Sprintf("%s-premaint-%s", m.CompositeName, m.Timestamp)
+	return fmt.Sprintf("premaint-%s", m.Timestamp)
 }

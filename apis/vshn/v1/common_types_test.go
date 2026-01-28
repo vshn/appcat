@@ -108,3 +108,55 @@ func Test_IsSet(t *testing.T) {
 		})
 	}
 }
+
+func Test_IsServiceMaintenanceDisabled(t *testing.T) {
+	tests := []struct {
+		name         string
+		scheduleSpec VSHNDBaaSMaintenanceScheduleSpec
+		want         bool
+	}{
+		{
+			name: "GivenDisableServiceMaintenanceTrue_ThenExpectTrue",
+			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{
+				DisableServiceMaintenance: true,
+			},
+			want: true,
+		},
+		{
+			name:         "GivenDefaultValue_ThenExpectFalse",
+			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{},
+			want:         false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.scheduleSpec.IsServiceMaintenanceDisabled())
+		})
+	}
+}
+
+func Test_IsAppcatReleaseDisabled(t *testing.T) {
+	tests := []struct {
+		name         string
+		scheduleSpec VSHNDBaaSMaintenanceScheduleSpec
+		want         bool
+	}{
+		{
+			name: "GivenDisableAppcatReleaseTrue_ThenExpectTrue",
+			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{
+				DisableAppcatRelease: true,
+			},
+			want: true,
+		},
+		{
+			name:         "GivenDefaultValue_ThenExpectFalse",
+			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{},
+			want:         false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.scheduleSpec.IsAppcatReleaseDisabled())
+		})
+	}
+}

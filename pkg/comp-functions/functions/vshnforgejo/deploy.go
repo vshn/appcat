@@ -281,7 +281,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	if err != nil {
 		return fmt.Errorf("cannot get observed release values: %w", err)
 	}
-	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.MajorVersion, values, observedValues, []string{"image", "tag"})
+	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.MajorVersion, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.DisableServiceMaintenance)
 	if err != nil {
 		return fmt.Errorf("cannot set forgejo version for release: %w", err)
 	}

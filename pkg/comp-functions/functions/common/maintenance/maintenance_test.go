@@ -328,3 +328,101 @@ func createMaintenanceSecretTest(instanceNamespace, sgNamespace, resourceName st
 		},
 	}
 }
+
+func TestSetReleaseVersion(t *testing.T) {
+	ctx := context.TODO()
+	fields := []string{"image", "tag"}
+
+	tests := []struct {
+		name            string
+		claimVersion    string
+		desiredVersion  string
+		observedVersion string
+		disableMaint    bool
+		wantVersion     string
+		wantErr         bool
+	}{
+		// Maintenance enabled (normal behavior)
+		{
+			name:         "MaintenanceEnabled_NoObserved_UseClaimVersion",
+			claimVersion: "7.0.0",
+			wantVersion:  "7.0.0",
+		},
+		{
+			name:            "MaintenanceEnabled_ObservedHigher_KeepObserved",
+			claimVersion:    "7.0.0",
+			desiredVersion:  "7.2.0",
+			observedVersion: "7.2.0",
+			wantVersion:     "7.2.0",
+		},
+		// Maintenance disabled (user manages versions)
+		{
+			name:         "MaintenanceDisabled_NoObserved_UseClaimVersion",
+			claimVersion: "7.0.0",
+			disableMaint: true,
+			wantVersion:  "7.0.0",
+		},
+		{
+			name:            "MaintenanceDisabled_ObservedHigher_PreventDowngrade",
+			claimVersion:    "7.0.0",
+			observedVersion: "7.2.0",
+			disableMaint:    true,
+			wantVersion:     "7.2.0",
+		},
+		{
+			name:            "MaintenanceDisabled_ObservedLower_AllowUpgrade",
+			claimVersion:    "7.2.0",
+			observedVersion: "7.0.0",
+			disableMaint:    true,
+			wantVersion:     "7.2.0",
+		},
+		{
+			name:            "MaintenanceDisabled_VersionsEqual_KeepVersion",
+			claimVersion:    "7.2.0",
+			observedVersion: "7.2.0",
+			disableMaint:    true,
+			wantVersion:     "7.2.0",
+		},
+		{
+			name:            "MaintenanceDisabled_InvalidObserved_UseClaimVersion",
+			claimVersion:    "7.0.0",
+			observedVersion: "invalid",
+			disableMaint:    true,
+			wantVersion:     "7.0.0",
+		},
+		// Error cases
+		{
+			name:         "InvalidClaimVersion_Error",
+			claimVersion: "invalid",
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			desiredValues := makeVersionMap(tt.desiredVersion)
+			observedValues := makeVersionMap(tt.observedVersion)
+
+			gotVersion, err := SetReleaseVersion(ctx, tt.claimVersion, desiredValues, observedValues, fields, tt.disableMaint)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantVersion, gotVersion)
+		})
+	}
+}
+
+func makeVersionMap(version string) map[string]any {
+	if version == "" {
+		return map[string]any{}
+	}
+	return map[string]any{
+		"image": map[string]any{
+			"tag": version,
+		},
+	}
+}

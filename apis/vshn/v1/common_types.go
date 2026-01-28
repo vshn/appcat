@@ -86,6 +86,19 @@ type VSHNDBaaSMaintenanceScheduleSpec struct {
 	// TimeOfDay for installing updates in UTC.
 	// Format: "hh:mm:ss".
 	TimeOfDay TimeOfDay `json:"timeOfDay,omitempty"`
+
+	// +kubebuilder:default=false
+	// DisableServiceMaintenance disables automatic service version updates during maintenance windows.
+	// When enabled, the version specified in spec.parameters.service.version is used as the target version.
+	// WARNING: User takes full responsibility for version management and security updates.
+	DisableServiceMaintenance bool `json:"disableServiceMaintenance,omitempty"`
+
+	// +kubebuilder:default=false
+	// DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
+	// When enabled, the instance will not automatically receive new AppCat composition revisions
+	// which may contain bug fixes, security patches, and new features.
+	// WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
+	DisableAppcatRelease bool `json:"disableAppcatRelease,omitempty"`
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
@@ -106,6 +119,16 @@ func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceDayOfWeek(dow string) {
 // SetMaintenanceTimeOfDay sets the time of day to the given value
 func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	n.TimeOfDay = tod
+}
+
+// IsServiceMaintenanceDisabled returns true if service maintenance is disabled
+func (n *VSHNDBaaSMaintenanceScheduleSpec) IsServiceMaintenanceDisabled() bool {
+	return n.DisableServiceMaintenance
+}
+
+// IsAppcatReleaseDisabled returns true if AppCat release updates are disabled
+func (n *VSHNDBaaSMaintenanceScheduleSpec) IsAppcatReleaseDisabled() bool {
+	return n.DisableAppcatRelease
 }
 
 // VSHNSizeSpec contains settings to control the sizing of a service.

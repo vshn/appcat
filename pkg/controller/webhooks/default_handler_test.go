@@ -370,3 +370,55 @@ func createTestProviderConfigNoCredentials(group, version, name string) *unstruc
 
 	return obj
 }
+
+func TestCheckManualVersionManagementWarnings(t *testing.T) {
+	tests := []struct {
+		name         string
+		maintenance  vshnv1.VSHNDBaaSMaintenanceScheduleSpec
+		wantWarnings int
+		wantContains []string
+	}{
+		{
+			name:         "GivenDefaultValues_ThenNoWarnings",
+			maintenance:  vshnv1.VSHNDBaaSMaintenanceScheduleSpec{},
+			wantWarnings: 0,
+		},
+		{
+			name: "GivenDisableServiceMaintenanceOnly_ThenOneWarning",
+			maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+				DisableServiceMaintenance: true,
+			},
+			wantWarnings: 1,
+			wantContains: []string{"Service maintenance disabled"},
+		},
+		{
+			name: "GivenDisableAppcatReleaseOnly_ThenOneWarning",
+			maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+				DisableAppcatRelease: true,
+			},
+			wantWarnings: 1,
+			wantContains: []string{"AppCat release updates disabled"},
+		},
+		{
+			name: "GivenBothDisabled_ThenTwoWarnings",
+			maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+				DisableServiceMaintenance: true,
+				DisableAppcatRelease:      true,
+			},
+			wantWarnings: 2,
+			wantContains: []string{"Service maintenance disabled", "AppCat release updates disabled"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings := checkManualVersionManagementWarnings(tt.maintenance)
+
+			assert.Len(t, warnings, tt.wantWarnings)
+
+			for i, expectedSubstr := range tt.wantContains {
+				assert.Contains(t, string(warnings[i]), expectedSubstr)
+			}
+		})
+	}
+}

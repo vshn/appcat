@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -51,12 +50,12 @@ func SetupRedisWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	comp, ok := obj.(common.Composite)
+	redis, ok := obj.(*vshnv1.VSHNRedis)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
 	}
 
-	allErrs := newFielErrors(comp.GetName(), redisGK)
+	allErrs := newFielErrors(redis.GetName(), redisGK)
 
 	// First call the parent validation (includes provider config validation)
 	parentWarnings, parentErr := r.DefaultWebhookHandler.ValidateCreate(ctx, obj)
@@ -73,16 +72,16 @@ func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Ob
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
 func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	comp, ok := newObj.(common.Composite)
+	redis, ok := newObj.(*vshnv1.VSHNRedis)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
 	}
 
-	if comp.GetDeletionTimestamp() != nil {
+	if redis.GetDeletionTimestamp() != nil {
 		return nil, nil
 	}
 
-	allErrs := newFielErrors(comp.GetName(), redisGK)
+	allErrs := newFielErrors(redis.GetName(), redisGK)
 
 	// First call the parent validation (includes provider config validation)
 	parentWarnings, parentErr := r.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)

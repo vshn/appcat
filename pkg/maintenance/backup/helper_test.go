@@ -174,5 +174,5 @@ func TestMetadata_FormatBackupName(t *testing.T) {
 
 	name := meta.FormatBackupName()
 
-	assert.Equal(t, "my-composite-premaint-20240115-120000", name)
+	assert.Equal(t, "premaint-20240115-120000", name)
 }

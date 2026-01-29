@@ -13,52 +13,51 @@ import (
 )
 
 type OpenBaoConfig struct {
-	UI          bool            `hcl:"ui,optional"`
-	LogLevel    string          `hcl:"log_level,optional"`
-	LogFormat   string          `hcl:"log_format,optional"`
-	ClusterName string          `hcl:"cluster_name,optional"`
-	APIAddr     string          `hcl:"api_addr,optional"`
-	ClusterAddr string          `hcl:"cluster_addr,optional"`
-	PidFile     string          `hcl:"pid_file,optional"`
-	Listeners   []ListenerBlock `hcl:"listener,block"`
+	UI          bool   `hcl:"ui,optional"`
+	LogLevel    string `hcl:"log_level,optional"`
+	LogFormat   string `hcl:"log_format,optional"`
+	ClusterName string `hcl:"cluster_name,optional"`
+	APIAddr     string `hcl:"api_addr,optional"`
+	ClusterAddr string `hcl:"cluster_addr,optional"`
+	// PidFile     string          `hcl:"pid_file,optional"`
+	Listeners []ListenerBlock `hcl:"listener,block"`
+	Storage   []StorageBlock  `hcl:"storage,block"`
 }
 
 type OpenBaoConfigOption func(*OpenBaoConfig)
 
 type ListenerBlock struct {
-	Type               string `hcl:"type,label"`
-	Address            string `hcl:"address"`
-	ClusterAddress     string `hcl:"cluster_address,optional"`
-	TLSDisable         bool   `hcl:"tls_disable,optional"`
-	TLSCertFile        string `hcl:"tls_cert_file,optional"`
-	TLSKeyFile         string `hcl:"tls_key_file,optional"`
-	TLSMinVersion      string `hcl:"tls_min_version,optional"`
-	TLSMaxVersion      string `hcl:"tls_max_version,optional"`
-	MaxRequestSize     *int64 `hcl:"max_request_size,optional"`
-	MaxRequestDuration string `hcl:"max_request_duration,optional"`
+	Type           string `hcl:"type,label"`
+	Address        string `hcl:"address"`
+	ClusterAddress string `hcl:"cluster_address,optional"`
+	TLSDisable     bool   `hcl:"tls_disable"`
+	TLSCertFile    string `hcl:"tls_cert_file,optional"`
+	TLSKeyFile     string `hcl:"tls_key_file,optional"`
+}
+
+type StorageBlock struct {
+	Type      string      `hcl:"type,label"`
+	Path      string      `hcl:"path"`
+	RetryJoin []RetryJoin `hcl:"retry_join,block"`
+}
+
+type RetryJoin struct {
+	AutoJoin *string `hcl:"auto_join,optional"`
 }
 
 func NewOpenBaoConfig(opts ...OpenBaoConfigOption) *OpenBaoConfig {
-	config := &OpenBaoConfig{}
+	config := &OpenBaoConfig{
+		UI:        true,
+		LogLevel:  "info",
+		LogFormat: "json",
+		// PidFile:   "/var/run/openbao.pid",
+	}
 
 	for _, opt := range opts {
 		opt(config)
 	}
 
 	return config
-}
-
-func EmptyOption() OpenBaoConfigOption {
-	return func(config *OpenBaoConfig) {}
-}
-
-func WithDefaultOptions() OpenBaoConfigOption {
-	return func(config *OpenBaoConfig) {
-		config.UI = true
-		config.LogLevel = "info"
-		config.LogFormat = "json"
-		config.PidFile = "/var/run/openbao.pid"
-	}
 }
 
 func WithClusterName(clusterName string) OpenBaoConfigOption {
@@ -85,13 +84,18 @@ func WithTLSListener(listener ListenerBlock) OpenBaoConfigOption {
 	}
 }
 
+func WithStorage(storage StorageBlock) OpenBaoConfigOption {
+	return func(config *OpenBaoConfig) {
+		config.Storage = append(config.Storage, storage)
+	}
+}
+
 func createHCLConfig(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
 	serviceName := comp.GetName()
 	ns := comp.GetInstanceNamespace()
 	rsn := newOpenBaoResourceNames(serviceName)
 
 	config := NewOpenBaoConfig(
-		WithDefaultOptions(),
 		WithAPIAddr(fmt.Sprintf("https://%s:8200", serviceName)),
 		WithClusterAddr(fmt.Sprintf("https://%s:8201", serviceName)),
 		WithTLSListener(ListenerBlock{
@@ -103,6 +107,10 @@ func createHCLConfig(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) erro
 			TLSKeyFile:     fmt.Sprintf("%s/tls.key", TlsCertsMountPath),
 		}),
 		WithClusterName(serviceName),
+		WithStorage(StorageBlock{
+			Type: "raft",
+			Path: RaftDataPath,
+		}),
 	)
 
 	hclBytes := EncodeHCL(config)

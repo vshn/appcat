@@ -6,6 +6,7 @@ const (
 	HclVolumeName      = "userconfig-openbao-storage-config"
 	TlsCertsMountPath  = "/openbao/userconfig/openbao-tls"
 	TlsVolumeName      = "userconfig-openbao-tls-secret"
+	RaftDataPath       = "/openbao/data"
 )
 
 type OpenBaoResourceNames struct {

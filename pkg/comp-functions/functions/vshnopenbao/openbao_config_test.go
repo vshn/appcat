@@ -48,7 +48,6 @@ func TestBuildHclConfig(t *testing.T) {
 	assert.Equal(t, comp.GetName(), parsedConfig.ClusterName, "ClusterName should match instance name")
 	assert.Equal(t, fmt.Sprintf("https://%s:8200", comp.GetName()), parsedConfig.APIAddr)
 	assert.Equal(t, fmt.Sprintf("https://%s:8201", comp.GetName()), parsedConfig.ClusterAddr)
-	assert.Equal(t, "/var/run/openbao.pid", parsedConfig.PidFile)
 
 	// Verify listener configuration
 	require.Len(t, parsedConfig.Listeners, 1, "Should have exactly one listener")
@@ -65,8 +64,15 @@ func TestBuildHclConfig(t *testing.T) {
 func TestEncodeDecodeHCL(t *testing.T) {
 	// Create a test config
 	originalConfig := NewOpenBaoConfig(
-		WithDefaultOptions(),
 		WithClusterName("test-cluster"),
+		WithTLSListener(ListenerBlock{
+			Type:           "tcp",
+			Address:        "[::]:8200",
+			ClusterAddress: "[::]:8201",
+			TLSDisable:     false,
+			TLSCertFile:    "/certs/tls.crt",
+			TLSKeyFile:     "/certs/tls.key",
+		}),
 	)
 
 	// Encode to HCL
@@ -85,7 +91,6 @@ func TestEncodeDecodeHCL(t *testing.T) {
 	assert.Equal(t, originalConfig.ClusterName, decodedConfig.ClusterName)
 	assert.Equal(t, originalConfig.APIAddr, decodedConfig.APIAddr)
 	assert.Equal(t, originalConfig.ClusterAddr, decodedConfig.ClusterAddr)
-	assert.Equal(t, originalConfig.PidFile, decodedConfig.PidFile)
 	assert.Len(t, decodedConfig.Listeners, len(originalConfig.Listeners))
 
 	// Verify listener details
@@ -98,7 +103,6 @@ func TestEncodeDecodeHCL(t *testing.T) {
 		assert.Equal(t, origListener.TLSDisable, decListener.TLSDisable)
 		assert.Equal(t, origListener.TLSCertFile, decListener.TLSCertFile)
 		assert.Equal(t, origListener.TLSKeyFile, decListener.TLSKeyFile)
-		assert.Equal(t, origListener.TLSMinVersion, decListener.TLSMinVersion)
 	}
 }
 

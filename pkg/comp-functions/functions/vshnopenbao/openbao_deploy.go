@@ -91,8 +91,11 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc 
 		"server": map[string]any{
 			"ha": map[string]any{
 				"enabled": true,
-				// The config is placed in the "openbao-storage-config" secret
-				"config": map[string]any{},
+				"config":  "# Config provided via external file\n",
+				"raft": map[string]any{
+					"enabled": true,
+					"config":  "# Config provided via external file\n",
+				},
 			},
 			"authDelegator": map[string]any{
 				"enabled": false,

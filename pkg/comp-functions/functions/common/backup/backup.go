@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	"github.com/sethvargo/go-password/password"
+	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
@@ -17,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
@@ -426,4 +429,110 @@ func PatchConnectionSecretWithAllowDeletion(ctx context.Context, comp common.Inf
 
 	return svc.SetDesiredKubeObject(secretObject, secretObjectName,
 		runtime.KubeOptionAllowDeletion)
+}
+
+// RcloneProxyCredentials contains the backend credentials to connect to rclone
+type RcloneProxyCredentials struct {
+	Region    string
+	AccessID  string
+	AccessKey string
+}
+
+// DeployRcloneProxy deploys the rclone encryption proxy helm chart
+func DeployRcloneProxy(ctx context.Context, svc *runtime.ServiceRuntime, comp common.InfoGetter) (*RcloneProxyCredentials, error) {
+	l := controllerruntime.LoggerFrom(ctx)
+
+	// Get bucket connection details from observed composite resource
+	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-backup")
+	if err != nil {
+		if err == runtime.ErrNotFound {
+			l.V(1).Info("Backup bucket connection details not found yet, skipping rclone proxy deployment")
+			return nil, nil
+		}
+		return nil, fmt.Errorf("cannot get backup bucket connection details: %w", err)
+	}
+
+	bucket := string(cd["BUCKET_NAME"])
+	region := string(cd["AWS_REGION"])
+	accessID := string(cd["AWS_ACCESS_KEY_ID"])
+	accessKey := string(cd["AWS_SECRET_ACCESS_KEY"])
+
+	// Determine bucket credentials secret name in instance namespace
+	bucketSecretName := credentialSecretName + "-" + comp.GetName()
+
+	// Get chart configuration from service config
+	chartRepository := svc.Config.Data["rcloneproxyChartSource"]
+	chartVersion := svc.Config.Data["rcloneproxyChartVersion"]
+	chartName := svc.Config.Data["rcloneproxyChartName"]
+
+	if chartRepository == "" || chartVersion == "" || chartName == "" {
+		return nil, fmt.Errorf("rclone chart configuration missing in service config (rcloneproxyChartSource, rcloneproxyChartVersion, rcloneproxyChartName)")
+	}
+
+	// Prepare Helm values for rclone chart
+	values := map[string]any{
+		"backend": map[string]any{
+			"secretRef": map[string]any{
+				"name": bucketSecretName,
+				"keys": map[string]any{
+					"accessKeyID":     "AWS_ACCESS_KEY_ID",
+					"accessKeySecret": "AWS_SECRET_ACCESS_KEY",
+					"endpoint":        "ENDPOINT_URL",
+					"region":          "AWS_REGION",
+					"bucket":          "BUCKET_NAME",
+				},
+			},
+		},
+	}
+
+	// Marshal values to JSON
+	valueBytes, err := json.Marshal(values)
+	if err != nil {
+		return nil, fmt.Errorf("cannot marshal rclone helm values: %w", err)
+	}
+
+	// Create Helm release for rclone proxy
+	releaseName := comp.GetName() + "-rclone"
+	release := &xhelmv1.Release{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: releaseName,
+		},
+		Spec: xhelmv1.ReleaseSpec{
+			ForProvider: xhelmv1.ReleaseParameters{
+				Chart: xhelmv1.ChartSpec{
+					Repository: chartRepository,
+					Version:    chartVersion,
+					Name:       chartName,
+				},
+				Namespace: comp.GetInstanceNamespace(),
+				ValuesSpec: xhelmv1.ValuesSpec{
+					Values: k8sruntime.RawExtension{
+						Raw: valueBytes,
+					},
+				},
+			},
+			ResourceSpec: xpv1.ResourceSpec{
+				ProviderConfigReference: &xpv1.Reference{
+					Name: "helm",
+				},
+			},
+		},
+	}
+
+	// Set the desired Helm release
+	err = svc.SetDesiredComposedResourceWithName(release, releaseName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot set desired rclone proxy helm release: %w", err)
+	}
+
+	l.Info("Deployed rclone encryption proxy",
+		"releaseName", releaseName,
+		"namespace", comp.GetInstanceNamespace(),
+		"backendBucket", bucket)
+
+	return &RcloneProxyCredentials{
+		Region:    region,
+		AccessID:  accessID,
+		AccessKey: accessKey,
+	}, nil
 }

@@ -4,22 +4,12 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"strings"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
-
-// Backup bucket connection details
-type backupCredentials struct {
-	endpoint  string
-	bucket    string
-	region    string
-	accessId  string
-	accessKey string
-}
 
 // Bootstrap backup (if enabled)
 func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, values map[string]any) error {
@@ -36,21 +26,24 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 	}
 
 	if comp.IsBackupEnabled() && comp.GetInstances() != 0 {
-		// Configure barman cloud plugin via helm values
-		if err := insertBackupValues(svc, comp, values); err != nil {
-			return err
+		// Deploy rclone encryption proxy and get backend credentials
+		proxyCreds, err := backup.DeployRcloneProxy(ctx, svc, comp)
+		if err != nil {
+			return fmt.Errorf("cannot deploy rclone encryption proxy: %w", err)
+		}
+
+		// Configure barman cloud plugin via helm values with rclone proxy
+		if proxyCreds != nil {
+			if err := insertBackupValues(svc, comp, values, proxyCreds); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
 // Add backup config to helm values
-func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, values map[string]any) error {
-	connectionDetails, err := getBackupBucketConnectionDetails(svc, comp)
-	if err != nil {
-		return err
-	}
-
+func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, values map[string]any, proxyCreds *backup.RcloneProxyCredentials) error {
 	retention := comp.GetBackupRetention()
 	retentionDays := retention.KeepDaily
 	if retentionDays <= 0 {
@@ -76,20 +69,21 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 	}
 	cluster["plugins"] = clusterPlugins
 
-	// Configure backups using the barman cloud plugin
+	// Configure backups using the barman cloud plugin with rclone encryption proxy
 	maps.Copy(values, map[string]any{
 		"backups": map[string]any{
 			"enabled":         true,
 			"provider":        "s3",
-			"endpointURL":     connectionDetails.endpoint,
-			"region":          connectionDetails.region,
+			"endpointURL":     "http://rcloneproxy:9095",
+			"region":          proxyCreds.Region,
 			"retentionPolicy": fmt.Sprintf("%dd", retentionDays),
 			"s3": map[string]any{
-				"bucket":    connectionDetails.bucket,
-				"region":    connectionDetails.region,
+				// rclone gets confused when the bucket name matches the one it's rooted at. Since this can be arbitrary we hardcode it
+				"bucket":    "backup",
+				"region":    proxyCreds.Region,
 				"path":      "/",
-				"accessKey": connectionDetails.accessId,
-				"secretKey": connectionDetails.accessKey,
+				"accessKey": proxyCreds.AccessID,
+				"secretKey": proxyCreds.AccessKey,
 			},
 			"wal": map[string]any{
 				"compression": "gzip",
@@ -116,24 +110,6 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 	})
 
 	return nil
-}
-
-func getBackupBucketConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (backupCredentials, error) {
-	backupCredentials := backupCredentials{}
-	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-backup")
-	if err != nil && err == runtime.ErrNotFound {
-		return backupCredentials, fmt.Errorf("backup bucket connection details not found")
-	} else if err != nil {
-		return backupCredentials, err
-	}
-
-	endpoint, _ := strings.CutSuffix(string(cd["ENDPOINT_URL"]), "/")
-	backupCredentials.endpoint = endpoint
-	backupCredentials.bucket = string(cd["BUCKET_NAME"])
-	backupCredentials.region = string(cd["AWS_REGION"])
-	backupCredentials.accessId = string(cd["AWS_ACCESS_KEY_ID"])
-	backupCredentials.accessKey = string(cd["AWS_SECRET_ACCESS_KEY"])
-	return backupCredentials, nil
 }
 
 // Transform backup schedule according to robfig/cron (used by CNPG)

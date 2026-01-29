@@ -215,6 +215,9 @@ input:
       "memory": "64Mi"}}, "setDbopsResult": {"limits": {"cpu": "250m", "memory":
       "256Mi"}, "requests": {"cpu": "100m", "memory": "64Mi"}}}'
     providerEnabled: "true"
+    rcloneproxyChartSource: "oci://ghcr.io/vshn/appcat-charts/rcloneproxy"
+    rcloneproxyChartVersion: "0.0.1"
+    rcloneproxyChartName: "rcloneproxy"
   kind: ConfigMap
   metadata:
     annotations: {}

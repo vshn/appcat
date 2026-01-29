@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
@@ -44,24 +45,18 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	assert.Equal(t, "s3", backupValues["provider"])
 	assert.Equal(t, "6d", backupValues["retentionPolicy"])
 
-	// Bucket configuration
-	cd, err := getBackupBucketConnectionDetails(svc, comp)
-	assert.NoError(t, err)
-	assert.Equal(t, cd.endpoint, "https://s3.minio.local") // No trailing /
-	assert.Equal(t, cd.bucket, "backupBucket")
-	assert.Equal(t, cd.region, "rma")
-	assert.Equal(t, cd.accessId, "secretAccessId")
-	assert.Equal(t, cd.accessKey, "secretAccessKey")
+	// Check that rclone proxy endpoint is used (not direct S3)
+	assert.Equal(t, "http://rcloneproxy:9095", backupValues["endpointURL"])
 
-	// Check endpoint, region (top-level), and S3 configuration
-	assert.Equal(t, cd.endpoint, backupValues["endpointURL"])
-	assert.Equal(t, cd.region, backupValues["region"])
+	// Region and credentials are passed through from the bucket
+	assert.Equal(t, "rma", backupValues["region"])
 	s3Config := backupValues["s3"].(map[string]any)
-	assert.Equal(t, cd.bucket, s3Config["bucket"])
-	assert.Equal(t, cd.region, s3Config["region"])
+	// Bucket is hardcoded because rclone gets confused when the bucket name matches the backend bucket
+	assert.Equal(t, "backup", s3Config["bucket"])
+	assert.Equal(t, "rma", s3Config["region"])
 	assert.Equal(t, "/", s3Config["path"])
-	assert.Equal(t, cd.accessId, s3Config["accessKey"])
-	assert.Equal(t, cd.accessKey, s3Config["secretKey"])
+	assert.Equal(t, "secretAccessId", s3Config["accessKey"])
+	assert.Equal(t, "secretAccessKey", s3Config["secretKey"])
 
 	// Check WAL and data configuration
 	walConfig := backupValues["wal"].(map[string]any)
@@ -102,7 +97,15 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	pluginConfig := scheduledBackups[0]["pluginConfiguration"].(map[string]string)
 	assert.Equal(t, "barman-cloud.cloudnative-pg.io", pluginConfig["name"])
 
+	// Check that backup bucket is created
 	bucketName := comp.GetName() + "-backup"
 	err = svc.GetDesiredComposedResourceByName(&appcatv1.XObjectBucket{}, bucketName)
 	assert.NoError(t, err)
+
+	// Check that rclone proxy Helm release is created
+	rcloneReleaseName := comp.GetName() + "-rclone"
+	rcloneRelease := &xhelmv1.Release{}
+	err = svc.GetDesiredComposedResourceByName(rcloneRelease, rcloneReleaseName)
+	assert.NoError(t, err, "rclone proxy Helm release should be created")
+	assert.Equal(t, comp.GetInstanceNamespace(), rcloneRelease.Spec.ForProvider.Namespace)
 }

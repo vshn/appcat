@@ -162,6 +162,18 @@ spec:
                   monitoring:
                     description: Monitoring contains settings to control monitoring.
                     properties:
+                      alertFrequency:
+                        default: standard
+                        description: |-
+                          AlertFrequency controls how often repeat alert emails are sent for ongoing issues.
+                          "frequent" sends reminders every hour, "standard" (default) every 4 hours,
+                          "minimal" every 12 hours. This helps reduce email spam while ensuring
+                          you stay informed about unresolved alerts.
+                        enum:
+                        - frequent
+                        - standard
+                        - minimal
+                        type: string
                       alertmanagerConfigRef:
                         description: |-
                           AlertmanagerConfigRef contains the name of the AlertmanagerConfig that should be copied over to the

@@ -31,7 +31,9 @@ func MailgunAlerting[T client.Object](ctx context.Context, obj T, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Sprintf("Type %s doesn't implement Alerter interface", reflect.TypeOf(obj).String()))
 	}
 
-	email := alertConfig.GetVSHNMonitoring().Email
+	monitoring := alertConfig.GetVSHNMonitoring()
+	email := monitoring.Email
+	alertFrequency := monitoring.AlertFrequency
 	instanceNamespace := alertConfig.GetInstanceNamespace()
 	name := obj.GetName()
 
@@ -42,8 +44,8 @@ func MailgunAlerting[T client.Object](ctx context.Context, obj T, svc *runtime.S
 		return runtime.NewWarningResult("Email Alerting is not enabled")
 	}
 
-	log.Info("Deploying AlertmanagerConfig for mail alerting...")
-	err = deployAlertmanagerConfig(ctx, name, email, instanceNamespace, svc)
+	log.Info("Deploying AlertmanagerConfig for mail alerting...", "alertFrequency", alertFrequency)
+	err = deployAlertmanagerConfig(ctx, name, email, alertFrequency, instanceNamespace, svc)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("Can't deploy AlertmanagerConfig "+name+"-alertmanagerconfig-mailgun for mail alerting: %w", err))
 	}
@@ -53,10 +55,49 @@ func MailgunAlerting[T client.Object](ctx context.Context, obj T, svc *runtime.S
 	return nil
 }
 
-func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespace string, svc *runtime.ServiceRuntime) error {
+// getAlertIntervals returns the appropriate alert timing intervals.
+// Priority: per-instance AlertFrequency preset > component ConfigMap values > hardcoded defaults.
+//
+// AlertFrequency presets:
+//   - "frequent": 10s/5m/1h (legacy behavior, max ~24 emails/day)
+//   - "standard": 30s/10m/4h (default, max ~6 emails/day)
+//   - "minimal": 1m/30m/12h (low spam, max ~2 emails/day)
+func getAlertIntervals(alertFrequency string, config *v1.ConfigMap) (groupWait, groupInterval, repeatInterval string) {
+	// If per-instance AlertFrequency preset is specified, use it
+	switch alertFrequency {
+	case "frequent":
+		return "10s", "5m", "1h"
+	case "minimal":
+		return "1m", "30m", "12h"
+	case "standard":
+		return "30s", "10m", "4h"
+	}
+
+	// Otherwise, use component ConfigMap values with hardcoded fallbacks
+	groupWait = config.Data["emailAlertingGroupWait"]
+	if groupWait == "" {
+		groupWait = "30s"
+	}
+
+	groupInterval = config.Data["emailAlertingGroupInterval"]
+	if groupInterval == "" {
+		groupInterval = "10m"
+	}
+
+	repeatInterval = config.Data["emailAlertingRepeatInterval"]
+	if repeatInterval == "" {
+		repeatInterval = "4h"
+	}
+
+	return groupWait, groupInterval, repeatInterval
+}
+
+func deployAlertmanagerConfig(ctx context.Context, name, email, alertFrequency, instanceNamespace string, svc *runtime.ServiceRuntime) error {
 	var alertManagerConfigName = name + "-alertmanagerconfig-mailgun"
 	var alertManagerConfigSecretName = name + "-alertmanagerconfig-mailgun-secret"
 	receiverName := "mailgun"
+
+	groupWait, groupInterval, repeatInterval := getAlertIntervals(alertFrequency, &svc.Config)
 
 	ac := &alertmanagerv1alpha1.AlertmanagerConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -92,9 +133,9 @@ func deployAlertmanagerConfig(ctx context.Context, name, email, instanceNamespac
 				GroupBy: []string{
 					"alertname",
 				},
-				GroupWait:      "10s",
-				GroupInterval:  "5m",
-				RepeatInterval: "1h",
+				GroupWait:      groupWait,
+				GroupInterval:  groupInterval,
+				RepeatInterval: repeatInterval,
 				Receiver:       receiverName,
 			},
 		},

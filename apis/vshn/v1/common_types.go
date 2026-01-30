@@ -182,6 +182,15 @@ type VSHNMonitoring struct {
 
 	// Email necessary to send alerts via email
 	Email string `json:"email,omitempty"`
+
+	// +kubebuilder:validation:Enum=frequent;standard;minimal
+	// +kubebuilder:default=standard
+
+	// AlertFrequency controls how often repeat alert emails are sent for ongoing issues.
+	// "frequent" sends reminders every hour, "standard" (default) every 4 hours,
+	// "minimal" every 12 hours. This helps reduce email spam while ensuring
+	// you stay informed about unresolved alerts.
+	AlertFrequency string `json:"alertFrequency,omitempty"`
 }
 
 // InitialMaintenanceStatus tracks the status of the initial maintenance job.

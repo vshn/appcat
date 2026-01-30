@@ -150,6 +150,21 @@ spec:
                         - saturday
                         - sunday
                         type: string
+                      disableAppcatRelease:
+                        default: false
+                        description: |-
+                          DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
+                          When enabled, the instance will not automatically receive new AppCat composition revisions
+                          which may contain bug fixes, security patches, and new features.
+                          WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
+                        type: boolean
+                      disableServiceMaintenance:
+                        default: false
+                        description: |-
+                          DisableServiceMaintenance disables automatic service version updates during maintenance windows.
+                          When enabled, the version specified in spec.parameters.service.version is used as the target version.
+                          WARNING: User takes full responsibility for version management and security updates.
+                        type: boolean
                       timeOfDay:
                         description: |-
                           TimeOfDay for installing updates in UTC.
@@ -5746,6 +5761,21 @@ spec:
                         - saturday
                         - sunday
                         type: string
+                      disableAppcatRelease:
+                        default: false
+                        description: |-
+                          DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
+                          When enabled, the instance will not automatically receive new AppCat composition revisions
+                          which may contain bug fixes, security patches, and new features.
+                          WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
+                        type: boolean
+                      disableServiceMaintenance:
+                        default: false
+                        description: |-
+                          DisableServiceMaintenance disables automatic service version updates during maintenance windows.
+                          When enabled, the version specified in spec.parameters.service.version is used as the target version.
+                          WARNING: User takes full responsibility for version management and security updates.
+                        type: boolean
                       timeOfDay:
                         description: |-
                           TimeOfDay for installing updates in UTC.

@@ -122,7 +122,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 		return fmt.Errorf("cannot get observed release values: %w", err)
 	}
 
-	versionTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	versionTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.DisableServiceMaintenance)
 	if err != nil {
 		return fmt.Errorf("cannot set mariadb version for release: %w", err)
 	}

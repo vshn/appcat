@@ -485,6 +485,40 @@ func DeployRcloneProxy(ctx context.Context, svc *runtime.ServiceRuntime, comp co
 		},
 	}
 
+	// Configure security contexts based on platform
+	isOpenshift := svc.GetBoolFromCompositionConfig("isOpenshift")
+
+	if isOpenshift {
+		// OpenShift: disable explicit UID/GID, let SCC assign them
+		// But enable SELinux configuration
+		values["podSecurityContext"] = map[string]any{
+			"enabled":             true,
+			"fsGroup":             nil, // Let OpenShift SCC assign
+			"fsGroupChangePolicy": "OnRootMismatch",
+			"seLinuxOptions": map[string]any{
+				"type": "spc_t",
+			},
+		}
+		values["containerSecurityContext"] = map[string]any{
+			"enabled":                  true,
+			"runAsUser":                nil, // Let OpenShift SCC assign
+			"runAsNonRoot":             true,
+			"allowPrivilegeEscalation": false,
+			"readOnlyRootFilesystem":   false, // rclone needs to write config
+			"capabilities": map[string]any{
+				"drop": []string{"ALL"},
+			},
+		}
+	} else {
+		// Regular Kubernetes: explicitly set UID/GID
+		values["podSecurityContext"] = map[string]any{
+			"enabled": true,
+		}
+		values["containerSecurityContext"] = map[string]any{
+			"enabled": true,
+		}
+	}
+
 	// Marshal values to JSON
 	valueBytes, err := json.Marshal(values)
 	if err != nil {

@@ -5322,59 +5322,11 @@ spec:
                             description: AutoUnseal configures various auto unseal
                               methods.
                             properties:
-                              awsKmsSecretRef:
-                                description: AWSKmsSecretRef references to secret
-                                  containing AWS KMS credentials and configuration
-                                properties:
-                                  name:
-                                    description: |-
-                                      Name of the referent.
-                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                    type: string
-                                  namespace:
-                                    type: string
-                                type: object
-                                x-kubernetes-map-type: atomic
-                              azureKeyVaultSecretRef:
-                                description: AzureKeyVaultSecretRef references to
-                                  secret containing Azure Key Vault credentials and
-                                  configuration
-                                properties:
-                                  name:
-                                    description: |-
-                                      Name of the referent.
-                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                    type: string
-                                  namespace:
-                                    type: string
-                                type: object
-                                x-kubernetes-map-type: atomic
-                              gcpKmsSecretRef:
-                                description: GCPKmsSecretRef references to secret
-                                  containing GCP KMS credentials and configuration
-                                properties:
-                                  name:
-                                    description: |-
-                                      Name of the referent.
-                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                    type: string
-                                  namespace:
-                                    type: string
-                                type: object
-                                x-kubernetes-map-type: atomic
-                              transitSecretRef:
-                                description: TransitSecretRef references to secret
-                                  containing Transit auto-unseal configuration
-                                properties:
-                                  name:
-                                    description: |-
-                                      Name of the referent.
-                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                    type: string
-                                  namespace:
-                                    type: string
-                                type: object
-                                x-kubernetes-map-type: atomic
+                              enabled:
+                                description: Enabled allows users to enable Autounseal
+                                  with VSHN provided Vault instance (required for
+                                  SLA)
+                                type: boolean
                             type: object
                         type: object
                       serviceLevel:

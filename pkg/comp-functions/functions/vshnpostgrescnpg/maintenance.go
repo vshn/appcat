@@ -82,18 +82,12 @@ var (
 
 // addSchedules will add a job to do the maintenance for the instance
 func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	// Get the desired composite first to preserve CurrentReleaseTag if pinImageTag is set
-	desiredComp := &vshnv1.VSHNPostgreSQL{}
-	_ = svc.GetDesiredComposite(desiredComp)
-
-	err := svc.GetObservedComposite(comp)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
-	}
-
-	// Preserve CurrentReleaseTag from desired state if pinImageTag is set
-	if comp.Spec.Parameters.Maintenance.PinImageTag != "" && desiredComp.Status.CurrentReleaseTag != "" {
-		comp.Status.CurrentReleaseTag = desiredComp.Status.CurrentReleaseTag
+	// Try desired first to preserve status set by deploy step (including CurrentVersion),
+	// fall back to observed if desired is not available.
+	if err := svc.GetDesiredComposite(comp); err != nil {
+		if err := svc.GetObservedComposite(comp); err != nil {
+			return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+		}
 	}
 
 	common.SetRandomMaintenanceSchedule(comp)

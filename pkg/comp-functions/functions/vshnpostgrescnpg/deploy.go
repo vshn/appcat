@@ -47,12 +47,6 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
 
-	l.Info("Set major version in status")
-	err = setMajorVersionStatus(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot set major version: %w", err).Error())
-	}
-
 	l.Info("Create tls certificate")
 	err = createCerts(comp, svc)
 	if err != nil {
@@ -60,16 +54,6 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	}
 
 	return deployPostgresSQLUsingCNPG(ctx, comp, svc)
-}
-
-// setMajorVersionStatus sets version in status only when it is provisioned
-// The subsequent update of this field is to happen in the MajorUpgrade comp-func
-func setMajorVersionStatus(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
-	if comp.Status.CurrentVersion == "" {
-		comp.Status.CurrentVersion = comp.Spec.Parameters.Service.MajorVersion
-		return svc.SetDesiredCompositeStatus(comp)
-	}
-	return nil
 }
 
 func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
@@ -207,11 +191,11 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		svc.Log.Info("Using pinned image tag for PostgreSQL", "majorVersion", majorVersion, "pinnedTag", pinImageTag)
 	}
 
-	// Update status with current release tag
+	// Update status with current version (full minor version like "17.5")
 	if currentReleaseTag != "" {
-		comp.Status.CurrentReleaseTag = currentReleaseTag
+		comp.Status.CurrentVersion = currentReleaseTag
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
-			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+			svc.Log.Error(err, "cannot update CurrentVersion in status")
 		}
 	}
 

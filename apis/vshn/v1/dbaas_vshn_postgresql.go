@@ -278,9 +278,6 @@ type VSHNPostgreSQLStatus struct {
 	// PreviousVersion contains the previous version of PostgreSQL.
 	PreviousVersion string `json:"previousVersion,omitempty"`
 
-	// CurrentReleaseTag contains the currently deployed image tag.
-	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
-
 	// PostgreSQLConditions contains the status conditions of the backing object.
 	PostgreSQLConditions         []Condition `json:"postgresqlConditions,omitempty"`
 	NamespaceConditions          []Condition `json:"namespaceConditions,omitempty"`

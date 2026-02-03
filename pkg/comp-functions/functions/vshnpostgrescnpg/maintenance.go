@@ -82,14 +82,27 @@ var (
 
 // addSchedules will add a job to do the maintenance for the instance
 func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	// Get the desired composite first to preserve CurrentReleaseTag if pinImageTag is set
+	desiredComp := &vshnv1.VSHNPostgreSQL{}
+	_ = svc.GetDesiredComposite(desiredComp)
+
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
+	// Preserve CurrentReleaseTag from desired state if pinImageTag is set
+	if comp.Spec.Parameters.Maintenance.PinImageTag != "" && desiredComp.Status.CurrentReleaseTag != "" {
+		comp.Status.CurrentReleaseTag = desiredComp.Status.CurrentReleaseTag
+	}
+
 	common.SetRandomMaintenanceSchedule(comp)
 	instanceNamespace := comp.GetInstanceNamespace()
 	schedule := comp.GetFullMaintenanceSchedule()
+
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+		svc.Log.Error(err, "cannot set composite status")
+	}
 
 	// Disable vacuum for suspended instances
 	vacuumEnabled := comp.Spec.Parameters.Service.VacuumEnabled && comp.Spec.Parameters.Instances != 0

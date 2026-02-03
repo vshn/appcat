@@ -13,8 +13,17 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	// Get the desired composite first to preserve CurrentReleaseTag if pinImageTag is set
+	desiredComp := &vshnv1.VSHNRedis{}
+	_ = svc.GetDesiredComposite(desiredComp)
+
 	if err := svc.GetObservedComposite(comp); err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+	}
+
+	// Preserve CurrentReleaseTag from desired state if pinImageTag is set
+	if comp.Spec.Parameters.Maintenance.PinImageTag != "" && desiredComp.Status.CurrentReleaseTag != "" {
+		comp.Status.CurrentReleaseTag = desiredComp.Status.CurrentReleaseTag
 	}
 
 	maintTime := common.SetRandomMaintenanceSchedule(comp)

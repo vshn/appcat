@@ -622,7 +622,7 @@ func checkManualVersionManagementWarnings(maintenance vshnv1.VSHNDBaaSMaintenanc
 	var warnings admission.Warnings
 	if maintenance.PinImageTag != "" {
 		warnings = append(warnings,
-			fmt.Sprintf("WARNING: Image tag pinned to %q at %s. You are responsible for version management. Downgrades are allowed.",
+			fmt.Sprintf("WARNING: Image tag pinned to %q at %s. You are responsible for version management. Downgrades are allowed at your own risk.",
 				maintenance.PinImageTag,
 				field.NewPath("spec", "parameters", "maintenance", "pinImageTag").String()))
 	}

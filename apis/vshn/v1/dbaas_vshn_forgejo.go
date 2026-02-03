@@ -172,6 +172,8 @@ type VSHNForgejoStatus struct {
 	// InitialMaintenance tracks the status of the initial maintenance job,
 	// including when it ran and whether it succeeded or failed.
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
+	// CurrentReleaseTag contains the currently deployed image tag.
+	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
 
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`

@@ -87,11 +87,11 @@ type VSHNDBaaSMaintenanceScheduleSpec struct {
 	// Format: "hh:mm:ss".
 	TimeOfDay TimeOfDay `json:"timeOfDay,omitempty"`
 
-	// +kubebuilder:default=false
-	// DisableServiceMaintenance disables automatic service version updates during maintenance windows.
-	// When enabled, the version specified in spec.parameters.service.version is used as the target version.
+	// PinImageTag allows pinning the service to a specific image tag.
+	// When set, the exact specified tag will be used, even if it's older than the currently deployed version.
 	// WARNING: User takes full responsibility for version management and security updates.
-	DisableServiceMaintenance bool `json:"disableServiceMaintenance,omitempty"`
+	// Downgrades are allowed when pinning - the customer assumes all risk.
+	PinImageTag string `json:"pinImageTag,omitempty"`
 
 	// +kubebuilder:default=false
 	// DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
@@ -121,9 +121,14 @@ func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceTimeOfDay(tod TimeOfDay
 	n.TimeOfDay = tod
 }
 
-// IsServiceMaintenanceDisabled returns true if service maintenance is disabled
-func (n *VSHNDBaaSMaintenanceScheduleSpec) IsServiceMaintenanceDisabled() bool {
-	return n.DisableServiceMaintenance
+// GetPinImageTag returns the pinned image tag if set
+func (n *VSHNDBaaSMaintenanceScheduleSpec) GetPinImageTag() string {
+	return n.PinImageTag
+}
+
+// IsPinImageTagSet returns true if an image tag is pinned
+func (n *VSHNDBaaSMaintenanceScheduleSpec) IsPinImageTagSet() bool {
+	return n.PinImageTag != ""
 }
 
 // IsAppcatReleaseDisabled returns true if AppCat release updates are disabled

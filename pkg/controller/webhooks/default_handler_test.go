@@ -384,12 +384,12 @@ func TestCheckManualVersionManagementWarnings(t *testing.T) {
 			wantWarnings: 0,
 		},
 		{
-			name: "GivenDisableServiceMaintenanceOnly_ThenOneWarning",
+			name: "GivenPinImageTagOnly_ThenOneWarning",
 			maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
-				DisableServiceMaintenance: true,
+				PinImageTag: "7.2.5",
 			},
 			wantWarnings: 1,
-			wantContains: []string{"Service maintenance disabled"},
+			wantContains: []string{"Image tag pinned to"},
 		},
 		{
 			name: "GivenDisableAppcatReleaseOnly_ThenOneWarning",
@@ -400,13 +400,13 @@ func TestCheckManualVersionManagementWarnings(t *testing.T) {
 			wantContains: []string{"AppCat release updates disabled"},
 		},
 		{
-			name: "GivenBothDisabled_ThenTwoWarnings",
+			name: "GivenBothPinnedAndDisabled_ThenTwoWarnings",
 			maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
-				DisableServiceMaintenance: true,
-				DisableAppcatRelease:      true,
+				PinImageTag:          "7.2.5",
+				DisableAppcatRelease: true,
 			},
 			wantWarnings: 2,
-			wantContains: []string{"Service maintenance disabled", "AppCat release updates disabled"},
+			wantContains: []string{"Image tag pinned to", "AppCat release updates disabled"},
 		},
 	}
 

@@ -132,6 +132,14 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 	// Validate PostgreSQL configuration
 	allErrs.Add(validatePgConf(newPg)...)
 
+	// Validate pinImageTag matches majorVersion
+	if err := validatePinImageTag(
+		newPg.Spec.Parameters.Maintenance.PinImageTag,
+		newPg.Spec.Parameters.Service.MajorVersion,
+	); err != nil {
+		allErrs.Add(err)
+	}
+
 	if !isCreate {
 		oldPg, ok := oldObj.(*vshnv1.VSHNPostgreSQL)
 		if !ok {
@@ -378,5 +386,28 @@ func validatePostgreSQLEncryptionChanges(newEncryption, oldEncryption *vshnv1.VS
 			"encryption setting cannot be changed after instance creation. It can only be set during initial creation.",
 		)
 	}
+	return nil
+}
+
+// validatePinImageTag validates that pinImageTag's major version matches the specified majorVersion
+func validatePinImageTag(pinImageTag, majorVersion string) *field.Error {
+	if pinImageTag == "" {
+		return nil
+	}
+
+	// Extract major version from pinImageTag (e.g., "15.13" -> "15", "16.4" -> "16")
+	pinMajor := pinImageTag
+	if idx := strings.Index(pinImageTag, "."); idx > 0 {
+		pinMajor = pinImageTag[:idx]
+	}
+
+	if pinMajor != majorVersion {
+		return field.Invalid(
+			field.NewPath("spec", "parameters", "maintenance", "pinImageTag"),
+			pinImageTag,
+			fmt.Sprintf("pinImageTag major version %q must match majorVersion %q", pinMajor, majorVersion),
+		)
+	}
+
 	return nil
 }

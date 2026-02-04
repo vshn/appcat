@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -318,7 +319,13 @@ func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSH
 	if oldPg.Status.CurrentVersion == "" {
 		oldVersion = newVersion
 	} else {
-		oldVersion, err = strconv.Atoi(oldPg.Status.CurrentVersion)
+		// CurrentVersion can be either major version ("15") or full version ("15.9")
+		// Extract just the major version part
+		currentVersion := oldPg.Status.CurrentVersion
+		if idx := strings.Index(currentVersion, "."); idx > 0 {
+			currentVersion = currentVersion[:idx]
+		}
+		oldVersion, err = strconv.Atoi(currentVersion)
 		if err != nil {
 			errList = append(errList, field.Invalid(
 				field.NewPath("status.currentVersion"),

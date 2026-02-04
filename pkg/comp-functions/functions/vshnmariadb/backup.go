@@ -26,6 +26,11 @@ func AddBackupMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtim
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
+	
+	// CurrentReleaseTag is being overriden in other functions 
+	if comp.Spec.Parameters.Maintenance.PinImageTag != "" {
+		comp.Status.MariaDBVersion = comp.Spec.Parameters.Maintenance.PinImageTag
+	}
 
 	maintTime := common.SetRandomMaintenanceSchedule(comp)
 	common.SetRandomBackupSchedule(comp, &maintTime)

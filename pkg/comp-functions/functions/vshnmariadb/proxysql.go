@@ -97,6 +97,11 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create PDB for ProxySQL: %s", err))
 	}
+	
+	// CurrentReleaseTag is being overriden in other functions 
+	if comp.Spec.Parameters.Maintenance.PinImageTag != "" {
+		comp.Status.MariaDBVersion = comp.Spec.Parameters.Maintenance.PinImageTag
+	}
 
 	svc.Log.Info("Updating composite status")
 	err = svc.SetDesiredCompositeStatus(comp)

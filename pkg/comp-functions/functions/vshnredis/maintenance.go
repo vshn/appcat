@@ -17,7 +17,8 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	// CurrentReleaseTag is being overriden in other functions 
+	// Setting the version may be lost in other functions, reinforce it here
+	// TODO Fix status field being overwritten every time SetDesiredCompositeStatus() function is called 
 	if comp.Spec.Parameters.Maintenance.PinImageTag != "" {
 		comp.Status.CurrentReleaseTag = comp.Spec.Parameters.Maintenance.PinImageTag
 	}

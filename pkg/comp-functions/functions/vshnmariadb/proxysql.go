@@ -98,7 +98,8 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create PDB for ProxySQL: %s", err))
 	}
 	
-	// CurrentReleaseTag is being overriden in other functions 
+	// Setting the version may be lost in other functions, reinforce it here
+	// TODO Fix status field being overwritten every time SetDesiredCompositeStatus() function is called 
 	if comp.Spec.Parameters.Maintenance.PinImageTag != "" {
 		comp.Status.MariaDBVersion = comp.Spec.Parameters.Maintenance.PinImageTag
 	}

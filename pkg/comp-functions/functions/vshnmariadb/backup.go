@@ -27,7 +27,8 @@ func AddBackupMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtim
 		return runtime.NewFatalResult(fmt.Errorf("failed to parse composite: %w", err))
 	}
 	
-	// CurrentReleaseTag is being overriden in other functions 
+	// Setting the version may be lost in other functions, reinforce it here
+	// TODO Fix status field being overwritten every time SetDesiredCompositeStatus() function is called 
 	if comp.Spec.Parameters.Maintenance.PinImageTag != "" {
 		comp.Status.MariaDBVersion = comp.Spec.Parameters.Maintenance.PinImageTag
 	}

@@ -526,10 +526,16 @@ func DeployRcloneProxy(ctx context.Context, svc *runtime.ServiceRuntime, comp co
 	}
 
 	// Create Helm release for rclone proxy
-	releaseName := comp.GetName() + "-rclone"
 	release := &xhelmv1.Release{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: releaseName,
+			Labels: map[string]string{
+				// needed to disable backups
+				runtime.WebhookAllowDeletionLabel: "true",
+			},
+			Annotations: map[string]string{
+				// Set stable external-name so Helm release name doesn't change on recreate
+				"crossplane.io/external-name": "rclone",
+			},
 		},
 		Spec: xhelmv1.ReleaseSpec{
 			ForProvider: xhelmv1.ReleaseParameters{
@@ -553,14 +559,12 @@ func DeployRcloneProxy(ctx context.Context, svc *runtime.ServiceRuntime, comp co
 		},
 	}
 
-	// Set the desired Helm release
-	err = svc.SetDesiredComposedResourceWithName(release, releaseName)
+	err = svc.SetDesiredComposedResourceWithName(release, "rclone")
 	if err != nil {
 		return nil, fmt.Errorf("cannot set desired rclone proxy helm release: %w", err)
 	}
 
 	l.Info("Deployed rclone encryption proxy",
-		"releaseName", releaseName,
 		"namespace", comp.GetInstanceNamespace(),
 		"backendBucket", bucket)
 

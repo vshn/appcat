@@ -103,9 +103,10 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that rclone proxy Helm release is created
-	rcloneReleaseName := comp.GetName() + "-rclone"
 	rcloneRelease := &xhelmv1.Release{}
-	err = svc.GetDesiredComposedResourceByName(rcloneRelease, rcloneReleaseName)
+	err = svc.GetDesiredComposedResourceByName(rcloneRelease, "rclone")
 	assert.NoError(t, err, "rclone proxy Helm release should be created")
 	assert.Equal(t, comp.GetInstanceNamespace(), rcloneRelease.Spec.ForProvider.Namespace)
+	// Verify the stable Helm release name is set via external-name annotation
+	assert.Equal(t, "rclone", rcloneRelease.Annotations["crossplane.io/external-name"])
 }

@@ -164,17 +164,14 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		panic("service name is mandatory")
 	}
 
-	disableServiceMaintenance, err := strconv.ParseBool(viper.GetString("DISABLE_SERVICE_MAINTENANCE"))
-	if err != nil {
-		return fmt.Errorf("cannot parse env variable DISABLE_SERVICE_MAINTENANCE to bool: %w", err)
-	}
+	pinImageTag := viper.GetString("PIN_IMAGE_TAG")
 	disableAppcatRelease, err := strconv.ParseBool(viper.GetString("DISABLE_APPCAT_RELEASE"))
 	if err != nil {
 		return fmt.Errorf("cannot parse env variable DISABLE_APPCAT_RELEASE to bool: %w", err)
 	}
 
-	if disableAppcatRelease && disableServiceMaintenance {
-		log.Info("AppCat release and service maintenance disabled, skipping...")
+	if disableAppcatRelease && pinImageTag != "" {
+		log.Info("AppCat release disabled and image tag pinned, skipping...")
 		return nil
 	}
 
@@ -216,8 +213,8 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 			return m.ReleaseLatest(ctx, enabled, maintClient, minAge)
 		}(),
 		func() error {
-			if disableServiceMaintenance {
-				log.Info("Service maintenance disabled by user configuration")
+			if pinImageTag != "" {
+				log.Info("Image tag pinned by user configuration, skipping service maintenance", "pinnedTag", pinImageTag)
 				return nil
 			}
 			return m.DoMaintenance(ctx)

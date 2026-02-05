@@ -350,8 +350,8 @@ func (m *Maintenance) buildMaintenancePodTemplateSpec(imageTag, serviceAccount s
 			Value: m.svc.Config.Data["minimumRevisionAge"],
 		},
 		{
-			Name:  "DISABLE_SERVICE_MAINTENANCE",
-			Value: strconv.FormatBool(m.schedule.DisableServiceMaintenance),
+			Name:  "PIN_IMAGE_TAG",
+			Value: m.schedule.PinImageTag,
 		},
 		{
 			Name:  "DISABLE_APPCAT_RELEASE",
@@ -515,14 +515,14 @@ func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
 // SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function.
 // It will return the concrete observed version as well.
 // If the desired values contain a higher version than either the observed or the comp version, it will take precedence.
-//
-// If disableServiceMaintenance is true:
-//   - The version from the claim is used as the target version
-//   - Downgrades are NOT allowed: if the currently deployed version is higher than the claim version,
-//     the current version is kept to prevent service disruption
-//   - The version can only go up to the claim version, not higher
-func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string, disableServiceMaintenance bool) (string, error) {
+func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string, pinImageTag string) (string, error) {
 	l := controllerruntime.LoggerFrom(ctx)
+
+	// If an image tag is pinned, use it unconditionally, downgrades ARE allowed on user's own risk
+	if pinImageTag != "" {
+		l.Info("Using pinned image tag", "pinnedTag", pinImageTag)
+		return pinImageTag, unstructured.SetNestedField(desiredValues, pinImageTag, fields...)
+	}
 
 	observedValueVersion, _, err := unstructured.NestedString(observedValues, fields...)
 	if err != nil {
@@ -533,27 +533,6 @@ func SetReleaseVersion(ctx context.Context, version string, desiredValues map[st
 	if err != nil {
 		l.Info("failed to parse desired service version", "version", version)
 		return "", fmt.Errorf("invalid service version %q", version)
-	}
-
-	// If service maintenance is disabled, use the claim version as target but prevent downgrades
-	if disableServiceMaintenance {
-		observedVersion, err := semver.ParseTolerant(observedValueVersion)
-		if err != nil {
-			// No valid observed version, use the claim version
-			l.Info("service maintenance disabled, no observed version, using claim version", "version", version)
-			return version, unstructured.SetNestedField(desiredValues, version, fields...)
-		}
-
-		// Prevent downgrades: if observed version is higher than claim version, keep observed
-		if observedVersion.GT(compVersion) {
-			l.Info("service maintenance disabled, keeping current version to prevent downgrade",
-				"claimVersion", version, "currentVersion", observedValueVersion)
-			return observedValueVersion, unstructured.SetNestedField(desiredValues, observedValueVersion, fields...)
-		}
-
-		// Use the claim version (upgrade or same version)
-		l.Info("service maintenance disabled, using claim version", "version", version)
-		return version, unstructured.SetNestedField(desiredValues, version, fields...)
 	}
 
 	desiredValueVersion, _, err := unstructured.NestedString(desiredValues, fields...)

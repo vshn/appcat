@@ -47,12 +47,6 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
 
-	l.Info("Set major version in status")
-	err = setMajorVersionStatus(comp, svc)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot set major version: %w", err).Error())
-	}
-
 	l.Info("Create tls certificate")
 	err = createCerts(comp, svc)
 	if err != nil {
@@ -60,16 +54,6 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	}
 
 	return deployPostgresSQLUsingCNPG(ctx, comp, svc)
-}
-
-// setMajorVersionStatus sets version in status only when it is provisioned
-// The subsequent update of this field is to happen in the MajorUpgrade comp-func
-func setMajorVersionStatus(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
-	if comp.Status.CurrentVersion == "" {
-		comp.Status.CurrentVersion = comp.Spec.Parameters.Service.MajorVersion
-		return svc.SetDesiredCompositeStatus(comp)
-	}
-	return nil
 }
 
 func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
@@ -188,6 +172,42 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		hibernation = "on"
 	}
 
+	// Default version mappings (major -> minor version)
+	defaultVersions := map[string]string{
+		"17": "17.5",
+		"16": "16.9",
+		"15": "15.9",
+	}
+
+	// Build ImageCatalog images, respecting pinImageTag if set
+	majorVersion := comp.Spec.Parameters.Service.MajorVersion
+	pinImageTag := comp.Spec.Parameters.Maintenance.PinImageTag
+	currentReleaseTag := defaultVersions[majorVersion]
+
+	// If pinImageTag is set, use it for the user's major version
+	if pinImageTag != "" {
+		defaultVersions[majorVersion] = pinImageTag
+		currentReleaseTag = pinImageTag
+		svc.Log.Info("Using pinned image tag for PostgreSQL", "majorVersion", majorVersion, "pinnedTag", pinImageTag)
+	}
+
+	// Update status with current version (full minor version like "17.5")
+	if currentReleaseTag != "" {
+		comp.Status.CurrentVersion = currentReleaseTag
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			svc.Log.Error(err, "cannot update CurrentVersion in status")
+		}
+	}
+
+	// Build the images list for the ImageCatalog
+	imageCatalogImages := []map[string]string{}
+	for major, version := range defaultVersions {
+		imageCatalogImages = append(imageCatalogImages, map[string]string{
+			"image": getPsqlImage(version),
+			"major": major,
+		})
+	}
+
 	values := map[string]any{
 		"fullnameOverride": "postgresql",
 		"cluster": map[string]any{
@@ -226,23 +246,10 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		"imageCatalog": map[string]any{
 			"create": true,
 			// Image tags: skopeo list-tags docker://ghcr.io/cloudnative-pg/postgresql
-			"images": []map[string]string{
-				{
-					"image": getPsqlImage("17.5"),
-					"major": "17",
-				},
-				{
-					"image": getPsqlImage("16.9"),
-					"major": "16",
-				},
-				{
-					"image": getPsqlImage("15.9"),
-					"major": "15",
-				},
-			},
+			"images": imageCatalogImages,
 		},
 		"version": map[string]string{
-			"postgresql": comp.Spec.Parameters.Service.MajorVersion,
+			"postgresql": majorVersion,
 		},
 	}
 

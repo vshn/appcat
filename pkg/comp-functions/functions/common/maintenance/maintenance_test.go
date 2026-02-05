@@ -338,61 +338,60 @@ func TestSetReleaseVersion(t *testing.T) {
 		claimVersion    string
 		desiredVersion  string
 		observedVersion string
-		disableMaint    bool
+		pinImageTag     string
 		wantVersion     string
 		wantErr         bool
 	}{
-		// Maintenance enabled (normal behavior)
+		// Normal maintenance (pinImageTag empty)
 		{
-			name:         "MaintenanceEnabled_NoObserved_UseClaimVersion",
+			name:         "NormalMaintenance_NoObserved_UseClaimVersion",
 			claimVersion: "7.0.0",
 			wantVersion:  "7.0.0",
 		},
 		{
-			name:            "MaintenanceEnabled_ObservedHigher_KeepObserved",
+			name:            "NormalMaintenance_ObservedHigher_KeepObserved",
 			claimVersion:    "7.0.0",
 			desiredVersion:  "7.2.0",
 			observedVersion: "7.2.0",
 			wantVersion:     "7.2.0",
 		},
-		// Maintenance disabled (user manages versions)
+		// Pinned image tag scenarios (user manages versions, downgrades allowed)
 		{
-			name:         "MaintenanceDisabled_NoObserved_UseClaimVersion",
+			name:         "PinnedTag_NoObserved_UsePinnedTag",
 			claimVersion: "7.0.0",
-			disableMaint: true,
-			wantVersion:  "7.0.0",
+			pinImageTag:  "7.2.5",
+			wantVersion:  "7.2.5",
 		},
 		{
-			name:            "MaintenanceDisabled_ObservedHigher_PreventDowngrade",
+			name:            "PinnedTag_ObservedHigher_AllowDowngrade",
 			claimVersion:    "7.0.0",
-			observedVersion: "7.2.0",
-			disableMaint:    true,
-			wantVersion:     "7.2.0",
+			observedVersion: "7.4.0",
+			pinImageTag:     "7.2.5",
+			wantVersion:     "7.2.5",
 		},
 		{
-			name:            "MaintenanceDisabled_ObservedLower_AllowUpgrade",
-			claimVersion:    "7.2.0",
+			name:            "PinnedTag_ObservedLower_AllowUpgrade",
+			claimVersion:    "7.0.0",
 			observedVersion: "7.0.0",
-			disableMaint:    true,
-			wantVersion:     "7.2.0",
+			pinImageTag:     "7.2.5",
+			wantVersion:     "7.2.5",
 		},
 		{
-			name:            "MaintenanceDisabled_VersionsEqual_KeepVersion",
-			claimVersion:    "7.2.0",
+			name:            "PinnedTag_IgnoresClaimVersion",
+			claimVersion:    "8.0.0",
 			observedVersion: "7.2.0",
-			disableMaint:    true,
-			wantVersion:     "7.2.0",
+			pinImageTag:     "7.2.5",
+			wantVersion:     "7.2.5",
 		},
 		{
-			name:            "MaintenanceDisabled_InvalidObserved_UseClaimVersion",
-			claimVersion:    "7.0.0",
-			observedVersion: "invalid",
-			disableMaint:    true,
-			wantVersion:     "7.0.0",
+			name:         "PinnedTag_InvalidClaimVersion_StillUsesPinned",
+			claimVersion: "invalid",
+			pinImageTag:  "7.2.5",
+			wantVersion:  "7.2.5",
 		},
-		// Error cases
+		// Error cases (only when pinImageTag is empty)
 		{
-			name:         "InvalidClaimVersion_Error",
+			name:         "InvalidClaimVersion_NoPinnedTag_Error",
 			claimVersion: "invalid",
 			wantErr:      true,
 		},
@@ -403,7 +402,7 @@ func TestSetReleaseVersion(t *testing.T) {
 			desiredValues := makeVersionMap(tt.desiredVersion)
 			observedValues := makeVersionMap(tt.observedVersion)
 
-			gotVersion, err := SetReleaseVersion(ctx, tt.claimVersion, desiredValues, observedValues, fields, tt.disableMaint)
+			gotVersion, err := SetReleaseVersion(ctx, tt.claimVersion, desiredValues, observedValues, fields, tt.pinImageTag)
 
 			if tt.wantErr {
 				assert.Error(t, err)

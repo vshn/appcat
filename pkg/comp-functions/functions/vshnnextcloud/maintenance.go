@@ -13,8 +13,10 @@ import (
 
 // AddMaintenanceJob will add a job to do the maintenance for the instance
 func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	if err := svc.GetObservedComposite(comp); err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+	if err := svc.GetDesiredComposite(comp); err != nil {
+		if err := svc.GetObservedComposite(comp); err != nil {
+			return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+		}
 	}
 
 	maintTime := common.SetRandomMaintenanceSchedule(comp)

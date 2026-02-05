@@ -168,13 +168,13 @@ spec:
                           which may contain bug fixes, security patches, and new features.
                           WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
                         type: boolean
-                      disableServiceMaintenance:
-                        default: false
+                      pinImageTag:
                         description: |-
-                          DisableServiceMaintenance disables automatic service version updates during maintenance windows.
-                          When enabled, the version specified in spec.parameters.service.version is used as the target version.
+                          PinImageTag allows pinning the service to a specific image tag.
+                          When set, the exact specified tag will be used, even if it's older than the currently deployed version.
                           WARNING: User takes full responsibility for version management and security updates.
-                        type: boolean
+                          Downgrades are allowed when pinning - the customer assumes all risk.
+                        type: string
                       timeOfDay:
                         description: |-
                           TimeOfDay for installing updates in UTC.
@@ -6371,13 +6371,13 @@ spec:
                           which may contain bug fixes, security patches, and new features.
                           WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
                         type: boolean
-                      disableServiceMaintenance:
-                        default: false
+                      pinImageTag:
                         description: |-
-                          DisableServiceMaintenance disables automatic service version updates during maintenance windows.
-                          When enabled, the version specified in spec.parameters.service.version is used as the target version.
+                          PinImageTag allows pinning the service to a specific image tag.
+                          When set, the exact specified tag will be used, even if it's older than the currently deployed version.
                           WARNING: User takes full responsibility for version management and security updates.
-                        type: boolean
+                          Downgrades are allowed when pinning - the customer assumes all risk.
+                        type: string
                       timeOfDay:
                         description: |-
                           TimeOfDay for installing updates in UTC.

@@ -591,6 +591,147 @@ func TestPostgreSQLWebhookHandler_ValidateEncryptionChanges(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestValidatePinImageTag(t *testing.T) {
+	tests := []struct {
+		name         string
+		pinImageTag  string
+		majorVersion string
+		expectErr    bool
+		errContains  string
+	}{
+		{
+			name:         "GivenEmptyPinImageTag_ThenNoError",
+			pinImageTag:  "",
+			majorVersion: "15",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMatchingMajorVersion_ThenNoError",
+			pinImageTag:  "15.13",
+			majorVersion: "15",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMatchingMajorVersionDifferentMinor_ThenNoError",
+			pinImageTag:  "15.9",
+			majorVersion: "15",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMajorVersion16Match_ThenNoError",
+			pinImageTag:  "16.4",
+			majorVersion: "16",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMajorVersion17Match_ThenNoError",
+			pinImageTag:  "17.2",
+			majorVersion: "17",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMismatchedMajorVersion_ThenError",
+			pinImageTag:  "16.4",
+			majorVersion: "15",
+			expectErr:    true,
+			errContains:  "pinImageTag major version \"16\" must match majorVersion \"15\"",
+		},
+		{
+			name:         "GivenPinImageTagWithDifferentMajor_ThenError",
+			pinImageTag:  "15.13",
+			majorVersion: "16",
+			expectErr:    true,
+			errContains:  "pinImageTag major version \"15\" must match majorVersion \"16\"",
+		},
+		{
+			name:         "GivenPinImageTagWithMajorOnly_ThenNoError",
+			pinImageTag:  "15",
+			majorVersion: "15",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenPinImageTagWithMajorOnlyMismatch_ThenError",
+			pinImageTag:  "16",
+			majorVersion: "15",
+			expectErr:    true,
+			errContains:  "pinImageTag major version \"16\" must match majorVersion \"15\"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePinImageTag(tt.pinImageTag, tt.majorVersion)
+			if tt.expectErr {
+				assert.NotNil(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestPostgreSQLWebhookHandler_ValidateCreateWithPinImageTag(t *testing.T) {
+	ctx := context.TODO()
+	claimNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "claimns",
+			Labels: map[string]string{
+				utils.OrgLabelName: "myorg",
+			},
+		},
+	}
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(claimNS).
+		Build()
+
+	handler := PostgreSQLWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
+		},
+	}
+
+	pgBase := &vshnv1.VSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "claimns",
+		},
+		Spec: vshnv1.VSHNPostgreSQLSpec{
+			Parameters: vshnv1.VSHNPostgreSQLParameters{
+				Service: vshnv1.VSHNPostgreSQLServiceSpec{
+					MajorVersion:  "15",
+					RepackEnabled: true,
+				},
+			},
+		},
+	}
+
+	// Test: Valid pinImageTag matching majorVersion
+	pgValid := pgBase.DeepCopy()
+	pgValid.Spec.Parameters.Maintenance.PinImageTag = "15.13"
+	_, err := handler.ValidateCreate(ctx, pgValid)
+	assert.NoError(t, err)
+
+	// Test: Invalid pinImageTag not matching majorVersion
+	pgInvalid := pgBase.DeepCopy()
+	pgInvalid.Spec.Parameters.Maintenance.PinImageTag = "16.4"
+	_, err = handler.ValidateCreate(ctx, pgInvalid)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "pinImageTag major version")
+
+	// Test: No pinImageTag set (should be valid)
+	pgNoPin := pgBase.DeepCopy()
+	pgNoPin.Spec.Parameters.Maintenance.PinImageTag = ""
+	_, err = handler.ValidateCreate(ctx, pgNoPin)
+	assert.NoError(t, err)
+}
+
 // disabling this temporarily
 // func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 // 	tests := []struct {

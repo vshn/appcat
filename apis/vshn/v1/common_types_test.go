@@ -109,28 +109,32 @@ func Test_IsSet(t *testing.T) {
 	}
 }
 
-func Test_IsServiceMaintenanceDisabled(t *testing.T) {
+func Test_PinImageTag(t *testing.T) {
 	tests := []struct {
 		name         string
 		scheduleSpec VSHNDBaaSMaintenanceScheduleSpec
-		want         bool
+		wantTag      string
+		wantIsSet    bool
 	}{
 		{
-			name: "GivenDisableServiceMaintenanceTrue_ThenExpectTrue",
+			name: "GivenPinImageTagSet_ThenExpectTagAndTrue",
 			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{
-				DisableServiceMaintenance: true,
+				PinImageTag: "7.2.5",
 			},
-			want: true,
+			wantTag:   "7.2.5",
+			wantIsSet: true,
 		},
 		{
-			name:         "GivenDefaultValue_ThenExpectFalse",
+			name:         "GivenDefaultValue_ThenExpectEmptyAndFalse",
 			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{},
-			want:         false,
+			wantTag:      "",
+			wantIsSet:    false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.scheduleSpec.IsServiceMaintenanceDisabled())
+			assert.Equal(t, tt.wantTag, tt.scheduleSpec.GetPinImageTag())
+			assert.Equal(t, tt.wantIsSet, tt.scheduleSpec.IsPinImageTagSet())
 		})
 	}
 }

@@ -83,7 +83,7 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	assert.True(t, plugins[0]["isWALArchiver"].(bool))
 	pluginParams := plugins[0]["parameters"].(map[string]any)
 	assert.Equal(t, "postgresql-object-store", pluginParams["barmanObjectName"])
-	assert.Equal(t, "", pluginParams["serverName"])
+	assert.Equal(t, "postgresql", pluginParams["serverName"])
 
 	// Check scheduled backups
 	scheduledBackups := backupValues["scheduledBackups"].([]map[string]any)

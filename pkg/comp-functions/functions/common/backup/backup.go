@@ -32,6 +32,13 @@ const (
 	BackupDisabledTimestampLabel = "appcat.vshn.io/backup-disabled-timestamp"
 )
 
+// RcloneProxyCredentials contains the backend credentials to connect to rclone
+type RcloneProxyCredentials struct {
+	Region    string
+	AccessID  string
+	AccessKey string
+}
+
 // AddK8upBackup creates an S3 bucket and a K8up schedule according to the composition spec.
 // When backup is disabled, it only creates/preserves the bucket for retention but skips other backup objects.
 func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common.InfoGetter) error {
@@ -431,13 +438,6 @@ func PatchConnectionSecretWithAllowDeletion(ctx context.Context, comp common.Inf
 		runtime.KubeOptionAllowDeletion)
 }
 
-// RcloneProxyCredentials contains the backend credentials to connect to rclone
-type RcloneProxyCredentials struct {
-	Region    string
-	AccessID  string
-	AccessKey string
-}
-
 // DeployRcloneProxy deploys the rclone encryption proxy helm chart
 func DeployRcloneProxy(ctx context.Context, svc *runtime.ServiceRuntime, comp common.InfoGetter) (*RcloneProxyCredentials, error) {
 	l := controllerruntime.LoggerFrom(ctx)
@@ -470,6 +470,8 @@ func DeployRcloneProxy(ctx context.Context, svc *runtime.ServiceRuntime, comp co
 	}
 
 	// Prepare Helm values for rclone chart
+	isOpenshift := svc.GetBoolFromCompositionConfig("isOpenshift")
+
 	values := map[string]any{
 		"backend": map[string]any{
 			"secretRef": map[string]any{
@@ -483,40 +485,7 @@ func DeployRcloneProxy(ctx context.Context, svc *runtime.ServiceRuntime, comp co
 				},
 			},
 		},
-	}
-
-	// Configure security contexts based on platform
-	isOpenshift := svc.GetBoolFromCompositionConfig("isOpenshift")
-
-	if isOpenshift {
-		// OpenShift: disable explicit UID/GID, let SCC assign them
-		// But enable SELinux configuration
-		values["podSecurityContext"] = map[string]any{
-			"enabled":             true,
-			"fsGroup":             nil, // Let OpenShift SCC assign
-			"fsGroupChangePolicy": "OnRootMismatch",
-			"seLinuxOptions": map[string]any{
-				"type": "spc_t",
-			},
-		}
-		values["containerSecurityContext"] = map[string]any{
-			"enabled":                  true,
-			"runAsUser":                nil, // Let OpenShift SCC assign
-			"runAsNonRoot":             true,
-			"allowPrivilegeEscalation": false,
-			"readOnlyRootFilesystem":   false, // rclone needs to write config
-			"capabilities": map[string]any{
-				"drop": []string{"ALL"},
-			},
-		}
-	} else {
-		// Regular Kubernetes: explicitly set UID/GID
-		values["podSecurityContext"] = map[string]any{
-			"enabled": true,
-		}
-		values["containerSecurityContext"] = map[string]any{
-			"enabled": true,
-		}
+		"isOpenshift": isOpenshift,
 	}
 
 	// Marshal values to JSON

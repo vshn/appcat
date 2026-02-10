@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
@@ -144,7 +145,8 @@ func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 		allErrs.Add(err)
 	}
 
-	return nil, allErrs.Get()
+	warn := checkManualVersionManagementWarnings(comp.GetFullMaintenanceSchedule())
+	return warn, allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -188,7 +190,8 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		}
 	}
 
-	return nil, allErrs.Get()
+	warn := checkManualVersionManagementWarnings(comp.GetFullMaintenanceSchedule())
+	return warn, allErrs.Get()
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
@@ -612,4 +615,22 @@ func (r *DefaultWebhookHandler) getEffectiveDiskSize(ctx context.Context, comp c
 
 	// No disk size configured
 	return "", nil
+}
+
+// checkManualVersionManagementWarnings returns warnings if manual version management flags are enabled
+func checkManualVersionManagementWarnings(maintenance vshnv1.VSHNDBaaSMaintenanceScheduleSpec) admission.Warnings {
+	var warnings admission.Warnings
+	if maintenance.PinImageTag != "" {
+		warnings = append(warnings,
+			fmt.Sprintf("WARNING: Image tag pinned to %q at %s. You are responsible for version management. Downgrades are allowed at your own risk.",
+				maintenance.PinImageTag,
+				field.NewPath("spec", "parameters", "maintenance", "pinImageTag").String()))
+	}
+	if maintenance.DisableAppcatRelease {
+		warnings = append(warnings,
+			"WARNING: AppCat release updates disabled at "+
+				field.NewPath("spec", "parameters", "maintenance", "disableAppcatRelease").String()+
+				". This is strongly discouraged and may leave your instance without security patches.")
+	}
+	return warnings
 }

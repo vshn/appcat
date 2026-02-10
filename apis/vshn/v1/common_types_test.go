@@ -108,3 +108,59 @@ func Test_IsSet(t *testing.T) {
 		})
 	}
 }
+
+func Test_PinImageTag(t *testing.T) {
+	tests := []struct {
+		name         string
+		scheduleSpec VSHNDBaaSMaintenanceScheduleSpec
+		wantTag      string
+		wantIsSet    bool
+	}{
+		{
+			name: "GivenPinImageTagSet_ThenExpectTagAndTrue",
+			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{
+				PinImageTag: "7.2.5",
+			},
+			wantTag:   "7.2.5",
+			wantIsSet: true,
+		},
+		{
+			name:         "GivenDefaultValue_ThenExpectEmptyAndFalse",
+			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{},
+			wantTag:      "",
+			wantIsSet:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.wantTag, tt.scheduleSpec.GetPinImageTag())
+			assert.Equal(t, tt.wantIsSet, tt.scheduleSpec.IsPinImageTagSet())
+		})
+	}
+}
+
+func Test_IsAppcatReleaseDisabled(t *testing.T) {
+	tests := []struct {
+		name         string
+		scheduleSpec VSHNDBaaSMaintenanceScheduleSpec
+		want         bool
+	}{
+		{
+			name: "GivenDisableAppcatReleaseTrue_ThenExpectTrue",
+			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{
+				DisableAppcatRelease: true,
+			},
+			want: true,
+		},
+		{
+			name:         "GivenDefaultValue_ThenExpectFalse",
+			scheduleSpec: VSHNDBaaSMaintenanceScheduleSpec{},
+			want:         false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.scheduleSpec.IsAppcatReleaseDisabled())
+		})
+	}
+}

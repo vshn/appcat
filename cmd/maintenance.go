@@ -164,6 +164,17 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		panic("service name is mandatory")
 	}
 
+	pinImageTag := viper.GetString("PIN_IMAGE_TAG")
+	disableAppcatRelease, err := strconv.ParseBool(viper.GetString("DISABLE_APPCAT_RELEASE"))
+	if err != nil {
+		return fmt.Errorf("cannot parse env variable DISABLE_APPCAT_RELEASE to bool: %w", err)
+	}
+
+	if disableAppcatRelease && pinImageTag != "" {
+		log.Info("AppCat release disabled and image tag pinned, skipping...")
+		return nil
+	}
+
 	if err = errors.Join(
 		// Run backup before any changes, then release, then maintenance
 		func() error {
@@ -176,6 +187,11 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 			return nil
 		}(),
 		func() error {
+			if disableAppcatRelease {
+				log.Info("AppCat release updates disabled by user configuration")
+				return nil
+			}
+
 			enabled, err := strconv.ParseBool(viper.GetString("RELEASE_MANAGEMENT_ENABLED"))
 			if err != nil {
 				return fmt.Errorf("cannot determine if release management is enabled: %w", err)
@@ -196,7 +212,13 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 
 			return m.ReleaseLatest(ctx, enabled, maintClient, minAge)
 		}(),
-		m.DoMaintenance(ctx),
+		func() error {
+			if pinImageTag != "" {
+				log.Info("Image tag pinned by user configuration, skipping service maintenance", "pinnedTag", pinImageTag)
+				return nil
+			}
+			return m.DoMaintenance(ctx)
+		}(),
 	); err != nil {
 		return fmt.Errorf("maintenance failed: %w", err)
 	}

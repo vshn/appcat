@@ -328,3 +328,100 @@ func createMaintenanceSecretTest(instanceNamespace, sgNamespace, resourceName st
 		},
 	}
 }
+
+func TestSetReleaseVersion(t *testing.T) {
+	ctx := context.TODO()
+	fields := []string{"image", "tag"}
+
+	tests := []struct {
+		name            string
+		claimVersion    string
+		desiredVersion  string
+		observedVersion string
+		pinImageTag     string
+		wantVersion     string
+		wantErr         bool
+	}{
+		// Normal maintenance (pinImageTag empty)
+		{
+			name:         "NormalMaintenance_NoObserved_UseClaimVersion",
+			claimVersion: "7.0.0",
+			wantVersion:  "7.0.0",
+		},
+		{
+			name:            "NormalMaintenance_ObservedHigher_KeepObserved",
+			claimVersion:    "7.0.0",
+			desiredVersion:  "7.2.0",
+			observedVersion: "7.2.0",
+			wantVersion:     "7.2.0",
+		},
+		// Pinned image tag scenarios (user manages versions, downgrades allowed)
+		{
+			name:         "PinnedTag_NoObserved_UsePinnedTag",
+			claimVersion: "7.0.0",
+			pinImageTag:  "7.2.5",
+			wantVersion:  "7.2.5",
+		},
+		{
+			name:            "PinnedTag_ObservedHigher_AllowDowngrade",
+			claimVersion:    "7.0.0",
+			observedVersion: "7.4.0",
+			pinImageTag:     "7.2.5",
+			wantVersion:     "7.2.5",
+		},
+		{
+			name:            "PinnedTag_ObservedLower_AllowUpgrade",
+			claimVersion:    "7.0.0",
+			observedVersion: "7.0.0",
+			pinImageTag:     "7.2.5",
+			wantVersion:     "7.2.5",
+		},
+		{
+			name:            "PinnedTag_IgnoresClaimVersion",
+			claimVersion:    "8.0.0",
+			observedVersion: "7.2.0",
+			pinImageTag:     "7.2.5",
+			wantVersion:     "7.2.5",
+		},
+		{
+			name:         "PinnedTag_InvalidClaimVersion_StillUsesPinned",
+			claimVersion: "invalid",
+			pinImageTag:  "7.2.5",
+			wantVersion:  "7.2.5",
+		},
+		// Error cases (only when pinImageTag is empty)
+		{
+			name:         "InvalidClaimVersion_NoPinnedTag_Error",
+			claimVersion: "invalid",
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			desiredValues := makeVersionMap(tt.desiredVersion)
+			observedValues := makeVersionMap(tt.observedVersion)
+
+			gotVersion, err := SetReleaseVersion(ctx, tt.claimVersion, desiredValues, observedValues, fields, tt.pinImageTag)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantVersion, gotVersion)
+		})
+	}
+}
+
+func makeVersionMap(version string) map[string]any {
+	if version == "" {
+		return map[string]any{}
+	}
+	return map[string]any{
+		"image": map[string]any{
+			"tag": version,
+		},
+	}
+}

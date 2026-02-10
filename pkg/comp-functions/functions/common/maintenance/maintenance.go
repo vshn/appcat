@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/blang/semver/v4"
@@ -348,6 +349,14 @@ func (m *Maintenance) buildMaintenancePodTemplateSpec(imageTag, serviceAccount s
 			Name:  "MINIMUM_REVISION_AGE",
 			Value: m.svc.Config.Data["minimumRevisionAge"],
 		},
+		{
+			Name:  "PIN_IMAGE_TAG",
+			Value: m.schedule.PinImageTag,
+		},
+		{
+			Name:  "DISABLE_APPCAT_RELEASE",
+			Value: strconv.FormatBool(m.schedule.DisableAppcatRelease),
+		},
 	}
 
 	return corev1.PodTemplateSpec{
@@ -503,11 +512,17 @@ func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
 	return m.svc.SetDesiredKubeObject(job, m.getInitialMaintenanceJobName(), kubeOpts...)
 }
 
-// SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function
+// SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function.
 // It will return the concrete observed version as well.
 // If the desired values contain a higher version than either the observed or the comp version, it will take precedence.
-func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string) (string, error) {
+func SetReleaseVersion(ctx context.Context, version string, desiredValues map[string]interface{}, observedValues map[string]interface{}, fields []string, pinImageTag string) (string, error) {
 	l := controllerruntime.LoggerFrom(ctx)
+
+	// If an image tag is pinned, use it unconditionally, downgrades ARE allowed on user's own risk
+	if pinImageTag != "" {
+		l.Info("Using pinned image tag", "pinnedTag", pinImageTag)
+		return pinImageTag, unstructured.SetNestedField(desiredValues, pinImageTag, fields...)
+	}
 
 	observedValueVersion, _, err := unstructured.NestedString(observedValues, fields...)
 	if err != nil {

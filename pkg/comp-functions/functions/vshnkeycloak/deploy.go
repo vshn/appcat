@@ -853,12 +853,20 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot get observed release values: %w", err)
 	}
 
-	observedVersion, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	releaseTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.PinImageTag)
 	if err != nil {
 		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
 	}
 
-	err = addInitContainer(comp, values, observedVersion)
+	// Update status with current release tag
+	if releaseTag != "" {
+		comp.Status.CurrentReleaseTag = releaseTag
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+		}
+	}
+
+	err = addInitContainer(comp, values, releaseTag)
 	if err != nil {
 		return nil, err
 	}

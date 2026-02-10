@@ -675,9 +675,17 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot get observed release values: %w", err)
 	}
 
-	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	releaseTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.PinImageTag)
 	if err != nil {
-		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
+		return nil, fmt.Errorf("cannot set nextcloud version for release: %w", err)
+	}
+
+	// Update status with current release tag
+	if releaseTag != "" {
+		comp.Status.CurrentReleaseTag = releaseTag
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+		}
 	}
 
 	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")

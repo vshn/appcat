@@ -96,9 +96,17 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *r
 		return fmt.Errorf("cannot get observed release values: %w", err)
 	}
 
-	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	releaseTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.PinImageTag)
 	if err != nil {
 		return fmt.Errorf("cannot set redis version for release: %w", err)
+	}
+
+	// Update status with current release tag
+	if releaseTag != "" {
+		comp.Status.CurrentReleaseTag = releaseTag
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+		}
 	}
 
 	rel, err := newRelease(ctx, svc, values, comp)

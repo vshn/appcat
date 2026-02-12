@@ -25,9 +25,9 @@ type Alerts struct {
 }
 
 const (
-	SynTeam                                       string          = "schedar"
-	SeverityCritical                              string          = "critical"
-	MinuteInterval, HourInterval, TwoHourInterval promV1.Duration = "1m", "1h", "2h"
+	SynTeam                                                              string          = "schedar"
+	SeverityCritical                                                     string          = "critical"
+	MinuteInterval, FifteenMinuteInterval, HourInterval, TwoHourInterval promV1.Duration = "1m", "15m", "1h", "2h"
 )
 
 var (
@@ -46,7 +46,7 @@ var (
 					Type:   intstr.String,
 					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\", metrics_path=\"/metrics\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\"}) < 0.03 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
-				For: MinuteInterval,
+				For: FifteenMinuteInterval,
 				Labels: map[string]string{
 					"severity": SeverityCritical,
 					"syn_team": SynTeam,

@@ -100,6 +100,19 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 			return runtime.NewWarningResult(fmt.Errorf("cannot create copyJob object: %w", err).Error())
 		}
 	}
+
+	l.Info("Create NetworkPolicy for Stackgres Operator access")
+
+	sgNamespace := svc.Config.Data["sgNamespace"]
+
+	if sgNamespace == "" {
+		return runtime.NewFatalResult(fmt.Errorf("\"sgNamespace\" parameter missing or empty. Ensure it's set correctly"))
+	}
+
+	err = common.CustomCreateNetworkPolicy([]string{sgNamespace}, comp.GetInstanceNamespace(), "allow-stackgres-operator", comp.GetName()+"-sg-netpol", false, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot create NetworkPolicy object: %w", err).Error())
+	}
 	return nil
 }
 

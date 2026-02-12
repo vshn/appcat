@@ -17,6 +17,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
@@ -92,6 +93,11 @@ func TestPostgreSqlDeploy(t *testing.T) {
 	assert.Contains(t, podMonitor.Spec.Selector.MatchLabels, "stackgres.io/cluster-name")
 	assert.Equal(t, comp.GetName(), podMonitor.Spec.Selector.MatchLabels["stackgres.io/cluster-name"])
 	assert.Equal(t, "pgexporter", podMonitor.Spec.PodMetricsEndpoints[0].Port)
+
+	netPol := &netv1.NetworkPolicy{}
+	assert.NoError(t, svc.GetDesiredKubeObject(netPol, comp.GetName()+"-sg-netpol"))
+	assert.Contains(t, netPol.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels, "kubernetes.io/metadata.name")
+	assert.Equal(t, netPol.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"], svc.Config.Data["sgNamespace"])
 
 }
 

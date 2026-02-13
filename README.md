@@ -255,7 +255,7 @@ make install-proxy
 
 It's also possible to trigger fake request to gRPC server via the crank renderer:
 ```
-go run github.com/crossplane/crossplane/cmd/crank beta render xr.yaml composition.yaml functions.yaml -r
+go run github.com/crossplane/crossplane/cmd/crank render xr.yaml composition.yaml functions.yaml -r
 ```
 Crank will return a list of all the objects this specific request would have produced, including the result messages.
 

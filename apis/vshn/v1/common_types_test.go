@@ -184,7 +184,7 @@ func Test_AddDuration(t *testing.T) {
 			wantDayOffset: 0,
 		},
 		{
-			name:          "GivenExactMidnight_ThenExpectNoDayOffset",
+			name:          "GivenRolloverToMidnight_ThenExpectNextDay",
 			timeOfDay:     TimeOfDay("23:00:00"),
 			duration:      1 * time.Hour,
 			wantTime:      "00:00:00",
@@ -203,6 +203,34 @@ func Test_AddDuration(t *testing.T) {
 			duration:      15 * time.Hour,
 			wantTime:      "01:00:00",
 			wantDayOffset: 1,
+		},
+		{
+			name:          "GivenExactly24Hours_ThenExpectOneDayOffset",
+			timeOfDay:     TimeOfDay("10:00:00"),
+			duration:      24 * time.Hour,
+			wantTime:      "10:00:00",
+			wantDayOffset: 1,
+		},
+		{
+			name:          "Given25HoursWithRollover_ThenExpectTwoDayOffset",
+			timeOfDay:     TimeOfDay("23:00:00"),
+			duration:      25 * time.Hour,
+			wantTime:      "00:00:00",
+			wantDayOffset: 2,
+		},
+		{
+			name:          "Given36HoursWithRollover_ThenExpectTwoDayOffset",
+			timeOfDay:     TimeOfDay("12:00:00"),
+			duration:      36 * time.Hour,
+			wantTime:      "00:00:00",
+			wantDayOffset: 2,
+		},
+		{
+			name:          "Given50HoursWithRollover_ThenExpectThreeDayOffset",
+			timeOfDay:     TimeOfDay("22:00:00"),
+			duration:      50 * time.Hour,
+			wantTime:      "00:00:00",
+			wantDayOffset: 3,
 		},
 	}
 	for _, tt := range tests {

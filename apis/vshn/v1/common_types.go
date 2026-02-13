@@ -319,13 +319,12 @@ func (a TimeOfDay) AddDuration(d time.Duration) (TimeOfDay, int) {
 
 	dayOffset := int(d.Hours() / 24)
 
-	if dayOffset == 0 && d != 0 {
-		if d > 0 && newTime.Hour() < startTime.Hour() {
-			dayOffset = 1
-		}
-		if d < 0 && newTime.Hour() > startTime.Hour() {
-			dayOffset = -1
-		}
+	// Adjust for additional day rollover from the time component
+	if d > 0 && newTime.Hour() < startTime.Hour() {
+		dayOffset++
+	}
+	if d < 0 && newTime.Hour() > startTime.Hour() {
+		dayOffset--
 	}
 
 	return TimeOfDay(newTime.Format(time.TimeOnly)), dayOffset

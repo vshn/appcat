@@ -96,7 +96,7 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
 		AddPGBouncerConfig(pgBuncerConfig).
 		AddRestore(comp.Spec.Parameters.Restore, comp.Kind).
-		SetCustomMaintenanceSchedule(comp.Spec.Parameters.Maintenance.TimeOfDay.AddTime(20 * time.Minute)).
+		SetCustomMaintenanceSchedule(20 * time.Minute).
 		CreateDependency()
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))

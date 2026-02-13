@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"strings"
 	"time"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -311,8 +312,32 @@ func (a *TimeOfDay) SetTime(t time.Time) {
 	*a = TimeOfDay(t.Format(time.TimeOnly))
 }
 
-// AddTime adds duration to current time
-func (a *TimeOfDay) AddTime(d time.Duration) TimeOfDay {
-	a.SetTime(a.GetTime().Add(d))
-	return *a
+// AddDuration adds duration to current time and returns the new time plus day offset.
+func (a TimeOfDay) AddDuration(d time.Duration) (TimeOfDay, int) {
+	startTime := a.GetTime()
+	newTime := startTime.Add(d)
+
+	dayOffset := int(d.Hours() / 24)
+
+	if dayOffset == 0 && d != 0 {
+		if d > 0 && newTime.Hour() < startTime.Hour() {
+			dayOffset = 1
+		}
+		if d < 0 && newTime.Hour() > startTime.Hour() {
+			dayOffset = -1
+		}
+	}
+
+	return TimeOfDay(newTime.Format(time.TimeOnly)), dayOffset
+}
+
+// AddDaysToWeekday adds days to a weekday and returns the new weekday.
+func AddDaysToWeekday(weekday string, days int) string {
+	for wd := time.Sunday; wd <= time.Saturday; wd++ {
+		if strings.ToLower(wd.String()) == weekday {
+			newWd := (int(wd) + days%7 + 7) % 7
+			return strings.ToLower(time.Weekday(newWd).String())
+		}
+	}
+	return weekday
 }

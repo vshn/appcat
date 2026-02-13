@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -27,6 +28,7 @@ type PostgreSQLDependencyBuilder struct {
 	pgBouncerConfig      map[string]string
 	pgSettings           map[string]string
 	timeOfDayMaintenance vshnv1.TimeOfDay
+	dayOfWeekOverride    string
 	restore              *vshnv1.VSHNPostgreSQLRestore
 }
 
@@ -60,8 +62,16 @@ func (a *PostgreSQLDependencyBuilder) AddPGSettings(pgSettings map[string]string
 	return a
 }
 
-func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(timeOfDayMaintenance vshnv1.TimeOfDay) *PostgreSQLDependencyBuilder {
-	a.timeOfDayMaintenance = timeOfDayMaintenance
+// SetCustomMaintenanceSchedule offsets the maintenance schedule by the given duration.
+func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(duration time.Duration) *PostgreSQLDependencyBuilder {
+	parentSchedule := a.comp.GetFullMaintenanceSchedule()
+	newTime, dayOffset := parentSchedule.TimeOfDay.AddDuration(duration)
+	a.timeOfDayMaintenance = newTime
+
+	if dayOffset != 0 {
+		a.dayOfWeekOverride = vshnv1.AddDaysToWeekday(parentSchedule.DayOfWeek, dayOffset)
+	}
+
 	return a
 }
 
@@ -144,6 +154,9 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 
 	if a.timeOfDayMaintenance != "" {
 		params.Maintenance.TimeOfDay = a.timeOfDayMaintenance
+	}
+	if a.dayOfWeekOverride != "" {
+		params.Maintenance.DayOfWeek = a.dayOfWeekOverride
 	}
 	// We need to set this after the merge, as the default instance count for PostgreSQL is always 1
 	// and would therefore override any value we set before the merge.

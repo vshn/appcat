@@ -478,6 +478,22 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	cronjobSecurityContext := map[string]any{}
+	if !isOpenShift {
+		cronjobSecurityContext = map[string]any{
+			"runAsUser":                33,
+			"runAsGroup":               33,
+			"runAsNonRoot":             true,
+			"allowPrivilegeEscalation": false,
+			"capabilities": map[string]any{
+				"drop": []string{"ALL"},
+			},
+			"seccompProfile": map[string]any{
+				"type": "RuntimeDefault",
+			},
+		}
+	}
+
 	trustedDomain := []string{
 		comp.GetName() + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
 	}
@@ -610,6 +626,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": comp.GetInstances() > 0,
 			"type":    "cronjob",
 			"cronjob": map[string]any{
+				"securityContext": cronjobSecurityContext,
 				"affinity": map[string]any{
 					"podAffinity": map[string]any{
 						"requiredDuringSchedulingIgnoredDuringExecution": []map[string]any{

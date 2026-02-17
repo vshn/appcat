@@ -8,6 +8,7 @@ import (
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/cloudscalebucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/exoscalebucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/miniobucket"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/virtuozzobucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spks/spksmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spks/spksredis"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnforgejo"

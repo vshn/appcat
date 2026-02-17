@@ -1,0 +1,29 @@
+desired: {}
+input:
+  apiVersion: v1
+  data:
+    providerConfig: virtuozzo
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: appcat.vshn.io/v1
+      kind: ObjectBucket
+      metadata:
+        name: testbucket
+        namespace: default
+      spec:
+        parameters:
+          bucketName: mytest
+  resources:
+    virtuozzo-bucket:
+      resource:
+        apiVersion: virtuozzo.crossplane.io/v1
+        kind: Bucket
+        metadata:
+          name: existing-bucket

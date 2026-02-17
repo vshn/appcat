@@ -40,6 +40,20 @@ func AddConnectionSecrets(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 		return runtime.NewWarningResult(fmt.Sprintf("Couldn't set connection details: %v", err))
 	}
 
+	host := fmt.Sprintf("postgresql-rw.%s.svc.cluster.local", comp.GetInstanceNamespace())
+	svc.SetConnectionDetail(PostgresqlHost, []byte(host))
+
+	// CNPG's uri field uses a bare hostname and a wildcard '*' database, which most
+	// clients reject. Reconstruct the URL from the already-correct individual fields.
+	cd := svc.GetConnectionDetails()
+	user := string(cd[PostgresqlUser])
+	password := string(cd[PostgresqlPassword])
+	port := string(cd[PostgresqlPort])
+	db := string(cd[PostgresqlDb])
+	if user != "" && password != "" && port != "" {
+		svc.SetConnectionDetail(PostgresqlURL, []byte(fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", user, password, host, port, db)))
+	}
+
 	return nil
 }
 

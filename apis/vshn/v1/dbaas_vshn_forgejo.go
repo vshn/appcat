@@ -103,8 +103,8 @@ type VSHNForgejoServiceSpec struct {
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 
 	// Version contains supported version of Forgejo.
-	// Multiple versions are supported. Defaults to 12.0.0 if not set.
-	// +kubebuilder:default="12.0.0"
+	// Multiple versions are supported. Defaults to 14.0.0 if not set.
+	// +kubebuilder:default="14.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
 }
 

@@ -232,6 +232,13 @@ func Test_AddDuration(t *testing.T) {
 			wantTime:      "00:00:00",
 			wantDayOffset: 3,
 		},
+		{
+			name:          "GivenRolloverWithSameHourButDifferentMinutes_ThenExpectOneDayOffset",
+			timeOfDay:     TimeOfDay("00:30:00"),
+			duration:      23*time.Hour + 30*time.Minute,
+			wantTime:      "00:00:00",
+			wantDayOffset: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

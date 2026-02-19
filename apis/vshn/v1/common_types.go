@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"strings"
 	"time"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -314,28 +313,22 @@ func (a *TimeOfDay) SetTime(t time.Time) {
 
 // AddDuration adds duration to current time and returns the new time plus day offset.
 func (a TimeOfDay) AddDuration(d time.Duration) (TimeOfDay, int) {
-	startTime := a.GetTime()
-	newTime := startTime.Add(d)
+	start := a.GetTime()
+	end := start.Add(d)
 
-	dayOffset := int(d.Hours() / 24)
+	startDate := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, time.UTC)
+	dayOffset := int(endDate.Sub(startDate) / (24 * time.Hour))
 
-	// Adjust for additional day rollover from the time component
-	if d > 0 && newTime.Hour() < startTime.Hour() {
-		dayOffset++
-	}
-	if d < 0 && newTime.Hour() > startTime.Hour() {
-		dayOffset--
-	}
-
-	return TimeOfDay(newTime.Format(time.TimeOnly)), dayOffset
+	return TimeOfDay(end.Format(time.TimeOnly)), dayOffset
 }
 
 // AddDaysToWeekday adds days to a weekday and returns the new weekday.
 func AddDaysToWeekday(weekday string, days int) string {
-	for wd := time.Sunday; wd <= time.Saturday; wd++ {
-		if strings.ToLower(wd.String()) == weekday {
-			newWd := (int(wd) + days%7 + 7) % 7
-			return strings.ToLower(time.Weekday(newWd).String())
+	weekdays := []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
+	for i, w := range weekdays {
+		if w == weekday {
+			return weekdays[((i+days)%7+7)%7]
 		}
 	}
 	return weekday

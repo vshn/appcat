@@ -162,6 +162,21 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 	// and would therefore override any value we set before the merge.
 	params.Instances = a.comp.GetInstances()
 
+	// Preserve the compositionRef of an already-existing nested PostgreSQL composite.
+	// If we always wrote defaultPGComposition, switching that default (e.g. Stackgres → CNPG)
+	// would silently migrate live instances on the next reconcile, which is destructive.
+	// If the observed composite exists but has no compositionRef we return an error rather than
+	// falling back to the default — an empty ref on an existing instance is unexpected and
+	// silently overwriting it could trigger an unintended backend migration.
+	compositionName := a.svc.Config.Data["defaultPGComposition"]
+	observedPg := &vshnv1.XVSHNPostgreSQL{}
+	if err := a.svc.GetObservedComposedResource(observedPg, a.comp.GetName()+PgInstanceNameSuffix); err == nil {
+		if observedPg.Spec.CompositionRef.Name == "" {
+			return "", fmt.Errorf("observed nested postgresql composite %q has no compositionRef, refusing to overwrite with default to prevent unintended backend migration", observedPg.GetName())
+		}
+		compositionName = observedPg.Spec.CompositionRef.Name
+	}
+
 	// We have to ignore the providerconfig on the composite itself.
 	pg := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
@@ -173,7 +188,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		Spec: vshnv1.XVSHNPostgreSQLSpec{
 			Parameters: *params,
 			CompositionRef: v1.CompositionReference{
-				Name: a.svc.Config.Data["defaultPGComposition"],
+				Name: compositionName,
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{

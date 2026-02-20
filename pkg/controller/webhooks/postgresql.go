@@ -24,6 +24,10 @@ import (
 // See https://book.kubebuilder.io/reference/markers/webhook for docs
 //+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnpostgresqls,versions=v1,name=postgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
+// Protect the nested XVSHNPostgreSQL composite from having its compositionRef changed once set.
+// This prevents accidental backend migrations (e.g. StackGres → CNPG) on live instances.
+//+kubebuilder:webhook:verbs=update,path=/validate-vshn-appcat-vshn-io-v1-xvshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,versions=v1,name=xvshnpostgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+
 //RBAC
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,verbs=get;list;watch;patch;update
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls/status,verbs=get;list;watch;patch;update
@@ -38,10 +42,12 @@ const (
 )
 
 var (
-	pgGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNPostgreSQL"}
-	pgGR = schema.GroupResource{Group: pgGK.Group, Resource: "vshnpostgresqls"}
+	pgGK  = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNPostgreSQL"}
+	pgGR  = schema.GroupResource{Group: pgGK.Group, Resource: "vshnpostgresqls"}
+	xpgGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "XVSHNPostgreSQL"}
 
 	_ webhook.CustomValidator = &PostgreSQLWebhookHandler{}
+	_ webhook.CustomValidator = &XVSHNPostgreSQLWebhookHandler{}
 
 	blocklist = map[string]string{
 		"listen_addresses":      "",
@@ -82,6 +88,46 @@ func SetupPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) 
 			),
 		}).
 		Complete()
+}
+
+// XVSHNPostgreSQLWebhookHandler validates the nested XVSHNPostgreSQL composite resource.
+// Its sole purpose is to make compositionRef immutable once set, preventing accidental
+// backend migrations on live nested instances (e.g. those created by VSHNKeycloak).
+type XVSHNPostgreSQLWebhookHandler struct{}
+
+// SetupXVSHNPostgreSQLWebhookHandlerWithManager registers the XVSHNPostgreSQL validation webhook.
+func SetupXVSHNPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewWebhookManagedBy(mgr).
+		For(&vshnv1.XVSHNPostgreSQL{}).
+		WithValidator(&XVSHNPostgreSQLWebhookHandler{}).
+		Complete()
+}
+
+func (x *XVSHNPostgreSQLWebhookHandler) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+	return nil, nil
+}
+
+func (x *XVSHNPostgreSQLWebhookHandler) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	oldPg, ok := oldObj.(*vshnv1.XVSHNPostgreSQL)
+	if !ok {
+		return nil, fmt.Errorf("provided manifest is not a valid XVSHNPostgreSQL object")
+	}
+	newPg, ok := newObj.(*vshnv1.XVSHNPostgreSQL)
+	if !ok {
+		return nil, fmt.Errorf("provided manifest is not a valid XVSHNPostgreSQL object")
+	}
+
+	if newPg.DeletionTimestamp != nil {
+		return nil, nil
+	}
+
+	allErrs := newFielErrors(newPg.Name, xpgGK)
+	allErrs.Add(validateCompositionRefImmutability(oldPg.Spec.CompositionRef.Name, newPg.Spec.CompositionRef.Name))
+	return nil, allErrs.Get()
+}
+
+func (x *XVSHNPostgreSQLWebhookHandler) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+	return nil, nil
 }
 
 func (p *PostgreSQLWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
@@ -151,9 +197,7 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 
 		// Do not allow changing compositionRef if it has been set previously.
 		// When creating a new VSHNPostgresQL, crossplane will automatically set this field if unset.
-		if oldPg.Spec.CompositionRef.Name != "" && newPg.Spec.CompositionRef.Name != oldPg.Spec.CompositionRef.Name {
-			allErrs.Add(field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable"))
-		}
+		allErrs.Add(validateCompositionRefImmutability(oldPg.Spec.CompositionRef.Name, newPg.Spec.CompositionRef.Name))
 
 		// Check for disk downsizing
 		if diskErr := p.DefaultWebhookHandler.ValidateDiskDownsizing(ctx, oldPg, newPg, p.gk.Kind); diskErr != nil {
@@ -385,6 +429,14 @@ func validatePostgreSQLEncryptionChanges(newEncryption, oldEncryption *vshnv1.VS
 			field.NewPath(fieldPath),
 			"encryption setting cannot be changed after instance creation. It can only be set during initial creation.",
 		)
+	}
+	return nil
+}
+
+// validateCompositionRefImmutability returns a Forbidden error if the compositionRef name has changed after being set
+func validateCompositionRefImmutability(oldRef, newRef string) *field.Error {
+	if oldRef != "" && newRef != oldRef {
+		return field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
 	}
 	return nil
 }

@@ -315,7 +315,8 @@ func addDatabase(comp common.Composite, svc *runtime.ServiceRuntime, username, d
 		},
 		Spec: pgv1alpha1.DatabaseSpec{
 			ForProvider: pgv1alpha1.DatabaseParameters{
-				Owner: &username,
+				Owner:    &username,
+				Template: ptr.To("template0"),
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				ProviderConfigReference: &xpv1.Reference{

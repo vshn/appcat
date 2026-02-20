@@ -86,6 +86,7 @@ func Test_addDatabase(t *testing.T) {
 	db := &pgv1alpha1.Database{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "unit")))
 	assert.Equal(t, *db.Spec.ForProvider.Owner, "unit")
+	assert.Equal(t, "template0", *db.Spec.ForProvider.Template)
 }
 
 func Test_addDatabaseAndUser(t *testing.T) {
@@ -103,6 +104,7 @@ func Test_addDatabaseAndUser(t *testing.T) {
 	db := &pgv1alpha1.Database{}
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(db, fmt.Sprintf("%s-%s-database", comp.GetName(), "myDB")))
 	assert.Equal(t, *db.Spec.ForProvider.Owner, "myUser")
+	assert.Equal(t, "template0", *db.Spec.ForProvider.Template)
 }
 
 func Test_addGrants(t *testing.T) {

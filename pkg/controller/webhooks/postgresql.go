@@ -24,8 +24,7 @@ import (
 // See https://book.kubebuilder.io/reference/markers/webhook for docs
 //+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnpostgresqls,versions=v1,name=postgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
-// Protect the nested XVSHNPostgreSQL composite from having its compositionRef changed once set.
-// This prevents accidental backend migrations (e.g. StackGres → CNPG) on live instances.
+// Protect the XVSHNPostgreSQL composite from having its compositionRef changed once set.
 //+kubebuilder:webhook:verbs=update,path=/validate-vshn-appcat-vshn-io-v1-xvshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,versions=v1,name=xvshnpostgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
 //RBAC
@@ -91,8 +90,6 @@ func SetupPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) 
 }
 
 // XVSHNPostgreSQLWebhookHandler validates the nested XVSHNPostgreSQL composite resource.
-// Its sole purpose is to make compositionRef immutable once set, preventing accidental
-// backend migrations on live nested instances (e.g. those created by VSHNKeycloak).
 type XVSHNPostgreSQLWebhookHandler struct{}
 
 // SetupXVSHNPostgreSQLWebhookHandlerWithManager registers the XVSHNPostgreSQL validation webhook.
@@ -122,7 +119,9 @@ func (x *XVSHNPostgreSQLWebhookHandler) ValidateUpdate(_ context.Context, oldObj
 	}
 
 	allErrs := newFielErrors(newPg.Name, xpgGK)
-	allErrs.Add(validateCompositionRefImmutability(oldPg.Spec.CompositionRef.Name, newPg.Spec.CompositionRef.Name))
+	if err := validateCompositionRefImmutability(oldPg.Spec.CompositionRef.Name, newPg.Spec.CompositionRef.Name); err != nil {
+		allErrs.Add(err)
+	}
 	return nil, allErrs.Get()
 }
 
@@ -197,7 +196,9 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 
 		// Do not allow changing compositionRef if it has been set previously.
 		// When creating a new VSHNPostgresQL, crossplane will automatically set this field if unset.
-		allErrs.Add(validateCompositionRefImmutability(oldPg.Spec.CompositionRef.Name, newPg.Spec.CompositionRef.Name))
+		if err := validateCompositionRefImmutability(oldPg.Spec.CompositionRef.Name, newPg.Spec.CompositionRef.Name); err != nil {
+			allErrs.Add(err)
+		}
 
 		// Check for disk downsizing
 		if diskErr := p.DefaultWebhookHandler.ValidateDiskDownsizing(ctx, oldPg, newPg, p.gk.Kind); diskErr != nil {

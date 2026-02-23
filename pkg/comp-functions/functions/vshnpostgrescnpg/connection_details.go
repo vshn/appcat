@@ -51,7 +51,8 @@ func AddConnectionSecrets(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc 
 	port := string(cd[PostgresqlPort])
 	db := string(cd[PostgresqlDb])
 	if user != "" && password != "" && port != "" {
-		svc.SetConnectionDetail(PostgresqlURL, []byte(fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", user, password, host, port, db)))
+		svc.SetConnectionDetail(PostgresqlURL, []byte(fmt.Sprintf("postgresql://%s:%s@%s:%s/%s",
+			user, password, host, port, db)))
 	}
 
 	return nil

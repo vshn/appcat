@@ -163,16 +163,15 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 	params.Instances = a.comp.GetInstances()
 
 	// Preserve the compositionRef of an already-existing nested PostgreSQL composite.
-	// If we always wrote defaultPGComposition, switching that default (e.g. Stackgres → CNPG)
-	// would silently migrate live instances on the next reconcile, which is destructive.
-	// If the observed composite exists but has no compositionRef we return an error rather than
-	// falling back to the default — an empty ref on an existing instance is unexpected and
-	// silently overwriting it could trigger an unintended backend migration.
 	compositionName := a.svc.Config.Data["defaultPGComposition"]
 	observedPg := &vshnv1.XVSHNPostgreSQL{}
-	if err := a.svc.GetObservedComposedResource(observedPg, a.comp.GetName()+PgInstanceNameSuffix); err == nil {
+	err := a.svc.GetObservedComposedResource(observedPg, a.comp.GetName()+PgInstanceNameSuffix)
+	if err != nil && err != runtime.ErrNotFound {
+		return "", fmt.Errorf("couldn't read observed nested postgresql composite: %w", err)
+	}
+	if err == nil {
 		if observedPg.Spec.CompositionRef.Name == "" {
-			return "", fmt.Errorf("observed nested postgresql composite %q has no compositionRef, refusing to overwrite with default to prevent unintended backend migration", observedPg.GetName())
+			return "", fmt.Errorf("observed nested postgresql composite %q has no compositionRef, refusing to overwrite with default", observedPg.GetName())
 		}
 		compositionName = observedPg.Spec.CompositionRef.Name
 	}
@@ -204,7 +203,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		pg.Labels[runtime.ProviderConfigLabel] = v
 	}
 
-	err := CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), "", false, a.svc)
+	err = CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), "", false, a.svc)
 	if err != nil {
 		return "", err
 	}

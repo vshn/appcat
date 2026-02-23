@@ -732,6 +732,97 @@ func TestPostgreSQLWebhookHandler_ValidateCreateWithPinImageTag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestValidateCompositionRefImmutability(t *testing.T) {
+	tests := []struct {
+		name      string
+		oldRef    string
+		newRef    string
+		expectErr bool
+	}{
+		{
+			name:      "GivenBothEmpty_ThenNoError",
+			oldRef:    "",
+			newRef:    "",
+			expectErr: false,
+		},
+		{
+			name:      "GivenOldEmptyNewSet_ThenNoError",
+			oldRef:    "",
+			newRef:    "vshnpostgrescnpg.vshn.appcat.vshn.io",
+			expectErr: false,
+		},
+		{
+			name:      "GivenSameRef_ThenNoError",
+			oldRef:    "vshnpostgres.vshn.appcat.vshn.io",
+			newRef:    "vshnpostgres.vshn.appcat.vshn.io",
+			expectErr: false,
+		},
+		{
+			name:      "GivenOldSetNewDifferent_ThenError",
+			oldRef:    "vshnpostgres.vshn.appcat.vshn.io",
+			newRef:    "vshnpostgrescnpg.vshn.appcat.vshn.io",
+			expectErr: true,
+		},
+		{
+			name:      "GivenOldSetNewEmpty_ThenError",
+			oldRef:    "vshnpostgres.vshn.appcat.vshn.io",
+			newRef:    "",
+			expectErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCompositionRefImmutability(tt.oldRef, tt.newRef)
+			if tt.expectErr {
+				assert.NotNil(t, err)
+				assert.Contains(t, err.Error(), "compositionRef is immutable")
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestXVSHNPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
+	ctx := context.TODO()
+	handler := XVSHNPostgreSQLWebhookHandler{}
+
+	base := &vshnv1.XVSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "keycloak-pg",
+			Namespace: "vshn-keycloak-myinstance",
+		},
+	}
+
+	// Allow: compositionRef not yet set on either side
+	_, err := handler.ValidateUpdate(ctx, base, base.DeepCopy())
+	assert.NoError(t, err)
+
+	// Allow: first assignment (old empty, new set)
+	withRef := base.DeepCopy()
+	withRef.Spec.CompositionRef.Name = "vshnpostgrescnpg.vshn.appcat.vshn.io"
+	_, err = handler.ValidateUpdate(ctx, base, withRef)
+	assert.NoError(t, err)
+
+	// Allow: compositionRef unchanged
+	_, err = handler.ValidateUpdate(ctx, withRef, withRef.DeepCopy())
+	assert.NoError(t, err)
+
+	// Reject: compositionRef changed on existing instance
+	changedRef := base.DeepCopy()
+	changedRef.Spec.CompositionRef.Name = "vshnpostgres.vshn.appcat.vshn.io"
+	_, err = handler.ValidateUpdate(ctx, withRef, changedRef)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "compositionRef is immutable")
+
+	// Allow: object is being deleted even if compositionRef would change
+	deletingObj := changedRef.DeepCopy()
+	now := metav1.Now()
+	deletingObj.DeletionTimestamp = &now
+	_, err = handler.ValidateUpdate(ctx, withRef, deletingObj)
+	assert.NoError(t, err)
+}
+
 // disabling this temporarily
 // func TestPostgreSQLWebhookHandler_ValidateMajorVersionUpgrade(t *testing.T) {
 // 	tests := []struct {

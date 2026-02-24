@@ -324,3 +324,22 @@ webhooks:
     resources:
     - xobjectbuckets
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-xvshnpostgresql
+  failurePolicy: Fail
+  name: xvshnpostgresql.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - UPDATE
+    resources:
+    - xvshnpostgresqls
+  sideEffects: None

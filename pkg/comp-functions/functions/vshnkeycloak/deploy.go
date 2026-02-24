@@ -831,9 +831,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	if busyBoxImage := svc.Config.Data["busybox_image"]; busyBoxImage != "" {
-		err := common.SetNestedObjectValue(values, []string{"dbchecker", "image"}, map[string]any{
+		dbcheckerImage := map[string]any{
 			"repository": busyBoxImage,
-		})
+		}
+		if tag := svc.Config.Data["busybox_image_tag"]; tag != "" {
+			dbcheckerImage["tag"] = tag
+		}
+		err := common.SetNestedObjectValue(values, []string{"dbchecker", "image"}, dbcheckerImage)
 		if err != nil {
 			return nil, err
 		}

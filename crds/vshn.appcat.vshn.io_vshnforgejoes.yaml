@@ -4669,10 +4669,10 @@ spec:
                           minItems: 1
                           type: array
                         majorVersion:
-                          default: 12.0.0
+                          default: 14.0.0
                           description: |-
                             Version contains supported version of Forgejo.
-                            Multiple versions are supported. Defaults to 12.0.0 if not set.
+                            Multiple versions are supported. Defaults to 14.0.0 if not set.
                           type: string
                         serviceLevel:
                           default: besteffort

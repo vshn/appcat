@@ -196,6 +196,10 @@ func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool,
 		if err != nil {
 			return err
 		}
+		err = webhooks.SetupXVSHNPostgreSQLWebhookHandlerWithManager(mgr)
+		if err != nil {
+			return err
+		}
 		err = webhooks.SetupRedisWebhookHandlerWithManager(mgr, withQuota)
 		if err != nil {
 			return err

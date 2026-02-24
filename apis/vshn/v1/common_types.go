@@ -311,8 +311,25 @@ func (a *TimeOfDay) SetTime(t time.Time) {
 	*a = TimeOfDay(t.Format(time.TimeOnly))
 }
 
-// AddTime adds duration to current time
-func (a *TimeOfDay) AddTime(d time.Duration) TimeOfDay {
-	a.SetTime(a.GetTime().Add(d))
-	return *a
+// AddDuration adds duration to current time and returns the new time plus day offset.
+func (a TimeOfDay) AddDuration(d time.Duration) (TimeOfDay, int) {
+	start := a.GetTime()
+	end := start.Add(d)
+
+	startDate := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, time.UTC)
+	dayOffset := int(endDate.Sub(startDate) / (24 * time.Hour))
+
+	return TimeOfDay(end.Format(time.TimeOnly)), dayOffset
+}
+
+// AddDaysToWeekday adds days to a weekday and returns the new weekday.
+func AddDaysToWeekday(weekday string, days int) string {
+	weekdays := []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
+	for i, w := range weekdays {
+		if w == weekday {
+			return weekdays[((i+days)%7+7)%7]
+		}
+	}
+	return weekday
 }

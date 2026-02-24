@@ -137,9 +137,6 @@ func configureDatabase(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *run
 }
 
 func createNewPGService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) (pgSecret string, err error) {
-	var pgTime vshnv1.TimeOfDay
-	pgTime.SetTime(comp.GetMaintenanceTimeOfDay().GetTime().Add(20 * time.Minute))
-
 	pgBouncerConfig, pgSettings, pgDiskSize, err := getObservedPostgresSettings(svc, comp)
 	if err != nil {
 		return "", fmt.Errorf("cannot get observed postgres settings: %s", err)
@@ -151,7 +148,7 @@ func createNewPGService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime)
 		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
 		AddPGBouncerConfig(pgBouncerConfig).
 		AddPGSettings(pgSettings).
-		SetCustomMaintenanceSchedule(pgTime)
+		SetCustomMaintenanceSchedule(20 * time.Minute)
 
 	if pgDiskSize != "" {
 		pgBuilder.SetDiskSize(pgDiskSize)
@@ -478,6 +475,22 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	cronjobSecurityContext := map[string]any{}
+	if !isOpenShift {
+		cronjobSecurityContext = map[string]any{
+			"runAsUser":                33,
+			"runAsGroup":               33,
+			"runAsNonRoot":             true,
+			"allowPrivilegeEscalation": false,
+			"capabilities": map[string]any{
+				"drop": []string{"ALL"},
+			},
+			"seccompProfile": map[string]any{
+				"type": "RuntimeDefault",
+			},
+		}
+	}
+
 	trustedDomain := []string{
 		comp.GetName() + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
 	}
@@ -610,6 +623,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"enabled": comp.GetInstances() > 0,
 			"type":    "cronjob",
 			"cronjob": map[string]any{
+				"securityContext": cronjobSecurityContext,
 				"affinity": map[string]any{
 					"podAffinity": map[string]any{
 						"requiredDuringSchedulingIgnoredDuringExecution": []map[string]any{

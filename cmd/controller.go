@@ -12,6 +12,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/controller/crossplane_metrics"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
+	"github.com/vshn/appcat/v4/pkg/webhook/portalloc"
 	"github.com/vshn/appcat/v4/pkg/odoo"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
@@ -35,6 +36,12 @@ type controller struct {
 	enableBilling           bool
 	enableCrossplaneMetrics bool
 	certDir                 string
+	webhookPort             int
+
+	// Port allocator webhook configuration
+	portRangeStart      int32
+	portRangeEnd        int32
+	enablePortAllocator bool
 }
 
 var c = controller{
@@ -57,10 +64,14 @@ func init() {
 	ControllerCMD.Flags().BoolVar(&c.enableAppcatWebhooks, "appcat-webhooks", true, "Disable the appcat validation webhooks")
 	ControllerCMD.Flags().BoolVar(&c.enableProviderWebhooks, "provider-webhooks", true, "Disable the provider validation webhooks")
 	ControllerCMD.Flags().StringVar(&c.certDir, "certdir", "/etc/webhook/certs", "Set the webhook certificate directory")
+	ControllerCMD.Flags().IntVar(&c.webhookPort, "webhook-port", 9443, "Set the webhook server port")
 	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
 	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", true, "Disable billing")
 	ControllerCMD.Flags().BoolVar(&c.enableCrossplaneMetrics, "crossplane-metrics", false, "Enable Crossplane resource metrics collector")
+	ControllerCMD.Flags().BoolVar(&c.enablePortAllocator, "port-allocator", false, "Enable the TCP port allocator webhook for XListenerSet resources")
+	ControllerCMD.Flags().Int32Var(&c.portRangeStart, "port-range-start", 10000, "Start of the TCP port allocation range")
+	ControllerCMD.Flags().Int32Var(&c.portRangeEnd, "port-range-end", 29999, "End of the TCP port allocation range")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
 		viper.Set("PLANS_NAMESPACE", "syn-appcat")
@@ -81,7 +92,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 			BindAddress: c.metricsAddr,
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
-			Port:    9443,
+			Port:    c.webhookPort,
 			CertDir: c.certDir,
 		}),
 	})
@@ -138,6 +149,13 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		}
 
 		err := setupWebhooks(mgr, c.enableQuotas, c.enableAppcatWebhooks, c.enableProviderWebhooks)
+		if err != nil {
+			return err
+		}
+	}
+
+	if c.enablePortAllocator {
+		err := portalloc.SetupXListenerSetWebhookWithManager(mgr, c.portRangeStart, c.portRangeEnd)
 		if err != nil {
 			return err
 		}

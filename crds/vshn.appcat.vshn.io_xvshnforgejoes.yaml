@@ -5489,6 +5489,17 @@ spec:
                         - besteffort
                         - guaranteed
                         type: string
+                      ssh:
+                        description: SSH contains settings for SSH access to the Forgejo
+                          instance.
+                        properties:
+                          enabled:
+                            default: false
+                            description: |-
+                              Enabled controls whether SSH access is available for this instance.
+                              Requires the cluster to have a TCP gateway configured.
+                            type: boolean
+                        type: object
                     required:
                     - fqdn
                     type: object
@@ -5887,6 +5898,11 @@ spec:
                     format: int64
                     type: integer
                 type: object
+              sshPort:
+                description: SSHPort contains the allocated SSH gateway port for this
+                  instance.
+                format: int32
+                type: integer
             type: object
         required:
         - spec

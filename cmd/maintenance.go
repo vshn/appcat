@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -87,10 +86,11 @@ var serviceName service
 func newMaintenanceCMD() *cobra.Command {
 
 	command := &cobra.Command{
-		Use:   "maintenance",
-		Short: "Maintenance runner",
-		Long:  "Run maintenance for various services",
-		RunE:  c.runMaintenance,
+		Use:          "maintenance",
+		Short:        "Maintenance runner",
+		Long:         "Run maintenance for various services",
+		RunE:         c.runMaintenance,
+		SilenceUsage: true,
 	}
 
 	command.Flags().Var(
@@ -175,51 +175,45 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	if err = errors.Join(
-		// Run backup before any changes, then release, then maintenance
-		func() error {
-			log.Info("Running pre-maintenance backup")
-			if err := m.RunBackup(ctx); err != nil {
-				log.Error(err, "Pre-maintenance backup failed")
-				return fmt.Errorf("pre-maintenance backup failed: %w", err)
-			}
-			log.Info("Pre-maintenance backup completed successfully")
-			return nil
-		}(),
-		func() error {
-			if disableAppcatRelease {
-				log.Info("AppCat release updates disabled by user configuration")
-				return nil
-			}
+	// Run backup before any changes; abort if it fails
+	log.Info("Running pre-maintenance backup")
+	if err := m.RunBackup(ctx); err != nil {
+		log.Error(err, "Pre-maintenance backup failed")
+		return fmt.Errorf("pre-maintenance backup failed: %w", err)
+	}
+	log.Info("Pre-maintenance backup completed successfully")
 
-			enabled, err := strconv.ParseBool(viper.GetString("RELEASE_MANAGEMENT_ENABLED"))
+	if !disableAppcatRelease {
+		enabled, err := strconv.ParseBool(viper.GetString("RELEASE_MANAGEMENT_ENABLED"))
+		if err != nil {
+			return fmt.Errorf("cannot determine if release management is enabled: %w", err)
+		}
+		if !enabled {
+			log.Info("release management disabled, skipping rollout of latest revisions")
+		}
+
+		// Parse minimum revision age from component, default to 7 days
+		minAge := 7 * 24 * time.Hour
+		if ageStr := viper.GetString("MINIMUM_REVISION_AGE"); ageStr != "" {
+			parsedAge, err := time.ParseDuration(ageStr)
 			if err != nil {
-				return fmt.Errorf("cannot determine if release management is enabled: %w", err)
+				return fmt.Errorf("cannot parse MINIMUM_REVISION_AGE: %w", err)
 			}
-			if !enabled {
-				log.Info("release management disabled, skipping rollout of latest revisions")
-			}
+			minAge = parsedAge
+		}
 
-			// Parse minimum revision age from component, default to 7 days
-			minAge := 7 * 24 * time.Hour
-			if ageStr := viper.GetString("MINIMUM_REVISION_AGE"); ageStr != "" {
-				parsedAge, err := time.ParseDuration(ageStr)
-				if err != nil {
-					return fmt.Errorf("cannot parse MINIMUM_REVISION_AGE: %w", err)
-				}
-				minAge = parsedAge
-			}
+		if err := m.ReleaseLatest(ctx, enabled, maintClient, minAge); err != nil {
+			return fmt.Errorf("maintenance failed: %w", err)
+		}
+	} else {
+		log.Info("AppCat release updates disabled by user configuration")
+	}
 
-			return m.ReleaseLatest(ctx, enabled, maintClient, minAge)
-		}(),
-		func() error {
-			if pinImageTag != "" {
-				log.Info("Image tag pinned by user configuration, skipping service maintenance", "pinnedTag", pinImageTag)
-				return nil
-			}
-			return m.DoMaintenance(ctx)
-		}(),
-	); err != nil {
+	if pinImageTag != "" {
+		log.Info("Image tag pinned by user configuration, skipping service maintenance", "pinnedTag", pinImageTag)
+		return nil
+	}
+	if err := m.DoMaintenance(ctx); err != nil {
 		return fmt.Errorf("maintenance failed: %w", err)
 	}
 

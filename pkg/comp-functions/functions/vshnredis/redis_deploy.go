@@ -166,7 +166,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	sidecars, err := utils.FetchSidecarsFromConfig(ctx, svc)
-
 	if err != nil {
 		err = fmt.Errorf("cannot get sideCars from config: %w", err)
 		return nil, err
@@ -342,7 +341,8 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 				Kind:       "Secret",
 				Name:       "tls-client-certificate",
 				Namespace:  comp.GetInstanceNamespace(),
-				FieldPath:  "data[ca.crt]"},
+				FieldPath:  "data[ca.crt]",
+			},
 			ToConnectionSecretKey:  "ca.crt",
 			SkipPartOfReleaseCheck: true,
 		},
@@ -352,7 +352,8 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 				Kind:       "Secret",
 				Name:       "tls-client-certificate",
 				Namespace:  comp.GetInstanceNamespace(),
-				FieldPath:  "data[tls.crt]"},
+				FieldPath:  "data[tls.crt]",
+			},
 			ToConnectionSecretKey:  "tls.crt",
 			SkipPartOfReleaseCheck: true,
 		},
@@ -362,7 +363,8 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 				Kind:       "Secret",
 				Name:       "tls-client-certificate",
 				Namespace:  comp.GetInstanceNamespace(),
-				FieldPath:  "data[tls.key]"},
+				FieldPath:  "data[tls.key]",
+			},
 			ToConnectionSecretKey:  "tls.key",
 			SkipPartOfReleaseCheck: true,
 		},
@@ -407,7 +409,6 @@ func getRedisRootPassword(secretName string, svc *runtime.ServiceRuntime) ([]byt
 	secret := &corev1.Secret{}
 
 	err := svc.GetObservedKubeObject(secret, secretName)
-
 	if err != nil {
 		if err == runtime.ErrNotFound {
 			return nil, nil
@@ -418,7 +419,6 @@ func getRedisRootPassword(secretName string, svc *runtime.ServiceRuntime) ([]byt
 }
 
 func migrateRedis(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis) error {
-
 	rules := []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{"apps"},

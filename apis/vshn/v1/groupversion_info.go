@@ -59,5 +59,10 @@ func init() {
 		&XVSHNForgejoList{},
 		&VSHNForgejo{},
 		&VSHNForgejoList{},
+
+		&VSHNGarage{},
+		&VSHNGarageList{},
+		&XVSHNGarage{},
+		&XVSHNGarageList{},
 	)
 }

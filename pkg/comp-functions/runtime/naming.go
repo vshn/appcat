@@ -20,6 +20,7 @@ func escapeK8sNames(obj client.Object) {
 	kind, _, err := composed.Scheme.ObjectKinds(obj)
 	if err != nil {
 		obj.SetName(EscapeDNS1123(obj.GetName(), false))
+		return
 	}
 
 	switch kind[0].Kind {

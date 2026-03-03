@@ -188,6 +188,7 @@ type VSHNDBaaSPostgresExtension struct {
 	// For an extensive list, please consult https://stackgres.io/doc/latest/intro/extensions/
 	Name string `json:"name,omitempty"`
 	// Image containing the PostgreSQL extension.
+	// This is only available for CloudNativePG
 	// For a list of images, please consult https://github.com/cloudnative-pg/postgres-extensions-containers and https://github.com/vshn/cnpg_extensions
 	Image string `json:"image,omitempty"`
 	// Optional image pull policy for the extension image

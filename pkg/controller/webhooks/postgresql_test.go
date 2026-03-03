@@ -854,12 +854,13 @@ func TestValidateCNPGExtensionFields(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			name: "GivenExtensionWithImageOnCNPG_ThenNoError",
+			name: "GivenExtensionWithImageOnCNPGAndVersion18_ThenNoError",
 			pg: &vshnv1.VSHNPostgreSQL{
 				Spec: vshnv1.VSHNPostgreSQLSpec{
 					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
 					Parameters: vshnv1.VSHNPostgreSQLParameters{
 						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
 							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
 								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
 							},
@@ -870,12 +871,13 @@ func TestValidateCNPGExtensionFields(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			name: "GivenExtensionWithImagePullPolicyOnCNPG_ThenNoError",
+			name: "GivenExtensionWithImagePullPolicyOnCNPGAndVersion18_ThenNoError",
 			pg: &vshnv1.VSHNPostgreSQL{
 				Spec: vshnv1.VSHNPostgreSQLSpec{
 					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
 					Parameters: vshnv1.VSHNPostgreSQLParameters{
 						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
 							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
 								{Name: "pgvector", ImagePullPolicy: "Always"},
 							},
@@ -892,6 +894,7 @@ func TestValidateCNPGExtensionFields(t *testing.T) {
 					CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
 					Parameters: vshnv1.VSHNPostgreSQLParameters{
 						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
 							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
 								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
 							},
@@ -909,6 +912,7 @@ func TestValidateCNPGExtensionFields(t *testing.T) {
 					CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
 					Parameters: vshnv1.VSHNPostgreSQLParameters{
 						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
 							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
 								{Name: "pgvector", ImagePullPolicy: "IfNotPresent"},
 							},
@@ -925,6 +929,7 @@ func TestValidateCNPGExtensionFields(t *testing.T) {
 				Spec: vshnv1.VSHNPostgreSQLSpec{
 					Parameters: vshnv1.VSHNPostgreSQLParameters{
 						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
 							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
 								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
 							},
@@ -934,6 +939,59 @@ func TestValidateCNPGExtensionFields(t *testing.T) {
 			},
 			expectErr:   true,
 			errContains: "image is only supported for CloudNativePG",
+		},
+		{
+			name: "GivenExtensionWithImageOnCNPGButVersionBelow18_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "17",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "image is only supported for PostgreSQL 18 and above",
+		},
+		{
+			name: "GivenExtensionWithImagePullPolicyOnCNPGButVersionBelow18_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "16",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", ImagePullPolicy: "Always"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "imagePullPolicy is only supported for PostgreSQL 18 and above",
+		},
+		{
+			name: "GivenExtensionWithImageOnCNPGAndVersion19_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "19",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr: false,
 		},
 	}
 

@@ -174,7 +174,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 
 	// Default version mappings (major -> minor version)
 	defaultVersions := map[string]string{
-		"18": "18.1",
+		"18": "18.3",
 		"17": "17.5",
 		"16": "16.9",
 		"15": "15.9",

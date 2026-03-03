@@ -174,6 +174,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 
 	// Default version mappings (major -> minor version)
 	defaultVersions := map[string]string{
+		"18": "18.1",
 		"17": "17.5",
 		"16": "16.9",
 		"15": "15.9",
@@ -279,6 +280,15 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		}
 	}
 
+	// Extensions
+	extensions := buildCNPGExtensionValues(comp.Spec.Parameters.Service.Extensions)
+	if len(extensions) > 0 {
+		err = common.SetNestedObjectValue(values, []string{"cluster", "postgresql", "extensions"}, extensions)
+		if err != nil {
+			return map[string]any{}, fmt.Errorf("cannot set extensions: %w", err)
+		}
+	}
+
 	// Compute resources
 	svc.Log.Info("Fetching and setting compute resources")
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
@@ -350,6 +360,27 @@ func getPgSettingsMap(pgSettings k8sruntime.RawExtension) (map[string]string, er
 		}
 	}
 	return pgConf, nil
+}
+
+// buildCNPGExtensionValues converts the user-facing extension spec into the Helm chart values
+func buildCNPGExtensionValues(extensions []vshnv1.VSHNDBaaSPostgresExtension) []map[string]any {
+	result := []map[string]any{}
+	for _, ext := range extensions {
+		if ext.Image == "" {
+			continue
+		}
+		imageMap := map[string]any{
+			"reference": ext.Image,
+		}
+		if ext.ImagePullPolicy != "" {
+			imageMap["pullPolicy"] = ext.ImagePullPolicy
+		}
+		result = append(result, map[string]any{
+			"name":  ext.Name,
+			"image": imageMap,
+		})
+	}
+	return result
 }
 
 // Get PostgresQL image for a provided version

@@ -5524,6 +5524,7 @@ spec:
                         - "15"
                         - "16"
                         - "17"
+                        - "18"
                         type: string
                       pgBouncerSettings:
                         description: PgBouncerSettings passes additional configuration

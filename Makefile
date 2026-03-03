@@ -215,6 +215,7 @@ $(webhook_cert): $(webhook_key)
 
 .PHONY: webhook-debug
 webhook_service_name = host.docker.internal
+webhook_port = 9443
 
 webhook-debug: $(webhook_cert) ## Creates certificates, patches the webhook registrations and applies everything to the given kube cluster
 webhook-debug:
@@ -222,9 +223,18 @@ webhook-debug:
 	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-validation kubectl.kubernetes.io/last-applied-configuration- && \
 	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-validation cert-manager.io/inject-ca-from- && \
 	kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io appcat-validation -oyaml | \
-	yq e "with(.webhooks[]; .clientConfig.caBundle = \"$$cabundle\") | with(.webhooks[]; .clientConfig.url = \"https://$(webhook_service_name):9443\" + .clientConfig.service.path) | with(.webhooks[]; del(.clientConfig.service))"  | \
+	yq e "with(.webhooks[]; .clientConfig.caBundle = \"$$cabundle\") | with(.webhooks[]; .clientConfig.url = \"https://$(webhook_service_name):$(webhook_port)\" + .clientConfig.service.path) | with(.webhooks[]; del(.clientConfig.service))"  | \
 	kubectl replace -f - && \
 	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-validation kubectl.kubernetes.io/last-applied-configuration-
+	@if kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-sshgateway >/dev/null 2>&1; then \
+		cabundle=$$(cat .work/webhook/tls.crt | base64) && \
+		kubectl annotate mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-sshgateway cert-manager.io/inject-ca-from- 2>/dev/null || true && \
+		kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-sshgateway -oyaml | \
+		yq e "with(.webhooks[]; .clientConfig.caBundle = \"$$cabundle\") | with(.webhooks[]; .clientConfig.url = \"https://$(webhook_service_name):$(webhook_port)\" + .clientConfig.service.path) | with(.webhooks[]; del(.clientConfig.service))" | \
+		kubectl replace -f - ; \
+	else \
+		echo "appcat-sshgateway MutatingWebhookConfiguration not found, skipping"; \
+	fi
 
 .PHONY: clean
 clean:

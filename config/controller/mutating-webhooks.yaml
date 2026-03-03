@@ -2,7 +2,7 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: appcat-portalloc
+  name: appcat-sshgateway
 webhooks:
 - admissionReviewVersions:
   - v1

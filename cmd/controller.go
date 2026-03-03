@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -12,8 +13,8 @@ import (
 	"github.com/vshn/appcat/v4/pkg/controller/crossplane_metrics"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
-	"github.com/vshn/appcat/v4/pkg/webhook/portalloc"
 	"github.com/vshn/appcat/v4/pkg/odoo"
+	"github.com/vshn/appcat/v4/pkg/controller/webhooks/sshgateway"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -37,11 +38,10 @@ type controller struct {
 	enableCrossplaneMetrics bool
 	certDir                 string
 	webhookPort             int
-
-	// Port allocator webhook configuration
-	portRangeStart      int32
-	portRangeEnd        int32
-	enablePortAllocator bool
+	sshPortRangeStart       int32
+	sshPortRangeEnd         int32
+	sshGatewayCapacity      int
+	sshGateways             string
 }
 
 var c = controller{
@@ -69,9 +69,10 @@ func init() {
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
 	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", true, "Disable billing")
 	ControllerCMD.Flags().BoolVar(&c.enableCrossplaneMetrics, "crossplane-metrics", false, "Enable Crossplane resource metrics collector")
-	ControllerCMD.Flags().BoolVar(&c.enablePortAllocator, "port-allocator", false, "Enable the TCP port allocator webhook for XListenerSet resources")
-	ControllerCMD.Flags().Int32Var(&c.portRangeStart, "port-range-start", 10000, "Start of the TCP port allocation range")
-	ControllerCMD.Flags().Int32Var(&c.portRangeEnd, "port-range-end", 29999, "End of the TCP port allocation range")
+	ControllerCMD.Flags().StringVar(&c.sshGateways, "ssh-gateways", "", "Comma-separated namespace/name pairs of SSH gateways (enables port allocator when non-empty)")
+	ControllerCMD.Flags().Int32Var(&c.sshPortRangeStart, "ssh-port-range-start", 10000, "Start of the SSH TCP port allocation range")
+	ControllerCMD.Flags().Int32Var(&c.sshPortRangeEnd, "ssh-port-range-end", 10999, "End of the SSH TCP port allocation range")
+	ControllerCMD.Flags().IntVar(&c.sshGatewayCapacity, "ssh-gateway-capacity", 0, "Maximum listeners per Gateway for sharding. The default value 0 means no sharding is enabled")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
 		viper.Set("PLANS_NAMESPACE", "syn-appcat")
@@ -143,7 +144,6 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	}
 
 	if c.enableWebhooks {
-
 		if !viper.IsSet("PLANS_NAMESPACE") && c.enableQuotas {
 			return fmt.Errorf("PLANS_NAMESPACE env variable needs to be set for quota support")
 		}
@@ -154,8 +154,13 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	if c.enablePortAllocator {
-		err := portalloc.SetupXListenerSetWebhookWithManager(mgr, c.portRangeStart, c.portRangeEnd)
+	if c.sshGateways != "" {
+		gateways, err := parseGatewayKeys(c.sshGateways)
+		if err != nil {
+			return fmt.Errorf("parsing --ssh-gateways: %w", err)
+		}
+
+		err = sshgateway.SetupXListenerSetWebhookWithManager(mgr, c.sshPortRangeStart, c.sshPortRangeEnd, c.sshGatewayCapacity, gateways)
 		if err != nil {
 			return err
 		}
@@ -206,6 +211,27 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	}
 
 	return mgr.Start(ctrl.SetupSignalHandler())
+}
+
+// parseGatewayKeys parses a comma-separated list of "namespace/name" pairs
+// into a slice of GatewayKey.
+func parseGatewayKeys(s string) ([]sshgateway.GatewayKey, error) {
+	var keys []sshgateway.GatewayKey
+
+	for _, entry := range strings.Split(s, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+
+		parts := strings.SplitN(entry, "/", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return nil, fmt.Errorf("invalid gateway key %q: expected namespace/name", entry)
+		}
+
+		keys = append(keys, sshgateway.GatewayKey{Namespace: parts[0], Name: parts[1]})
+	}
+	return keys, nil
 }
 
 func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool, withProviderWebhooks bool) error {

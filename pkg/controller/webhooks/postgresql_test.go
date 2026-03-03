@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	cpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -821,6 +822,132 @@ func TestXVSHNPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 	deletingObj.DeletionTimestamp = &now
 	_, err = handler.ValidateUpdate(ctx, withRef, deletingObj)
 	assert.NoError(t, err)
+}
+
+func TestValidateCNPGExtensionFields(t *testing.T) {
+	tests := []struct {
+		name        string
+		pg          *vshnv1.VSHNPostgreSQL
+		expectErr   bool
+		errContains string
+	}{
+		{
+			name: "GivenNoExtensions_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{},
+			},
+			expectErr: false,
+		},
+		{
+			name: "GivenExtensionWithoutImageFields_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector"},
+							},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "GivenExtensionWithImageOnCNPG_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "GivenExtensionWithImagePullPolicyOnCNPG_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", ImagePullPolicy: "Always"},
+							},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "GivenExtensionWithImageOnStackGres_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "image is only supported for CloudNativePG",
+		},
+		{
+			name: "GivenExtensionWithImagePullPolicyOnStackGres_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", ImagePullPolicy: "IfNotPresent"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "imagePullPolicy is only supported for CloudNativePG",
+		},
+		{
+			name: "GivenExtensionWithImageAndNoCompositionRef_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "image is only supported for CloudNativePG",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validateCNPGExtensionFields(tt.pg)
+			if tt.expectErr {
+				assert.NotEmpty(t, errs)
+				assert.Contains(t, errs.ToAggregate().Error(), tt.errContains)
+			} else {
+				assert.Empty(t, errs)
+			}
+		})
+	}
 }
 
 // disabling this temporarily

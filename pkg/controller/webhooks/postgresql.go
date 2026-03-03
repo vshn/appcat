@@ -38,6 +38,8 @@ import (
 
 const (
 	maxPgResourceNameLength = 30
+
+	cnpgCompositionRef = "vshnpostgrescnpg.vshn.appcat.vshn.io"
 )
 
 var (
@@ -184,6 +186,9 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 	); err != nil {
 		allErrs.Add(err)
 	}
+
+	// Validate that image/imagePullPolicy on extensions are only used with CNPG
+	allErrs.Add(validateCNPGExtensionFields(newPg)...)
 
 	if !isCreate {
 		oldPg, ok := oldObj.(*vshnv1.VSHNPostgreSQL)
@@ -440,6 +445,33 @@ func validateCompositionRefImmutability(oldRef, newRef string) *field.Error {
 		return field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
 	}
 	return nil
+}
+
+// validateCNPGExtensionFields ensures that the image and imagePullPolicy fields on extensions
+// are only set when the CNPG composition is explicitly selected via compositionRef.
+func validateCNPGExtensionFields(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, ext := range pg.Spec.Parameters.Service.Extensions {
+		if ext.Image == "" && ext.ImagePullPolicy == "" {
+			continue
+		}
+		if pg.Spec.CompositionRef.Name != cnpgCompositionRef {
+			basePath := field.NewPath("spec", "parameters", "service", "extensions").Index(i)
+			if ext.Image != "" {
+				allErrs = append(allErrs, field.Forbidden(
+					basePath.Child("image"),
+					"image is only supported for CloudNativePG",
+				))
+			}
+			if ext.ImagePullPolicy != "" {
+				allErrs = append(allErrs, field.Forbidden(
+					basePath.Child("imagePullPolicy"),
+					"imagePullPolicy is only supported for CloudNativePG",
+				))
+			}
+		}
+	}
+	return allErrs
 }
 
 // validatePinImageTag validates that pinImageTag's major version matches the specified majorVersion

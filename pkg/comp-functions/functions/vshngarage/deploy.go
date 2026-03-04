@@ -35,7 +35,7 @@ func DeployGarage(ctx context.Context, comp *vshnv1.VSHNGarage, svc *runtime.Ser
 		return runtime.NewWarningResult(fmt.Errorf("cannot bootstrap instance namespace: %w", err).Error())
 	}
 
-	err = common.CustomCreateNetworkPolicy([]string{"syn-garage-operator"}, comp.GetInstanceNamespace(), "allow-garage-operator", "allow-garage-operator", false, svc)
+	err = common.CustomCreateNetworkPolicy([]string{"syn-garage-operator"}, comp.GetInstanceNamespace(), "allow-garage-operator", comp.GetName()+"-allow-garage-operator", false, svc)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create network policies for garage operator: %w", err))
 	}

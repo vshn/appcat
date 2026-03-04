@@ -16,6 +16,7 @@ import (
 //+kubebuilder:webhook:path=/mutate-gateway-networking-x-k8s-io-v1alpha1-xlistenerset,mutating=true,failurePolicy=fail,groups=gateway.networking.x-k8s.io,resources=xlistenersets,verbs=create,versions=v1alpha1,name=mxlistenerset.kb.io,admissionReviewVersions=v1,sideEffects=None
 
 //+kubebuilder:rbac:groups=gateway.networking.x-k8s.io,resources=xlistenersets,verbs=list;watch
+//+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=create;get;delete
 
 // XListenerSetHandler handles mutating admission requests for XListenerSet resources.
 // It allocates unique TCP ports for listeners that have port 0 (sentinel value).
@@ -23,18 +24,24 @@ type XListenerSetHandler struct {
 	allocator *PortAllocator
 	sharding  *GatewaySharding
 	log       logr.Logger
+	leaseNS   string
 }
 
 // SetupXListenerSetWebhookWithManager registers the XListenerSet mutating webhook.
 // gatewayCapacity of 0 disables gateway sharding.
-func SetupXListenerSetWebhookWithManager(mgr ctrl.Manager, portRangeStart, portRangeEnd int32, gatewayCapacity int, gateways []GatewayKey) error {
+func SetupXListenerSetWebhookWithManager(mgr ctrl.Manager, portRangeStart, portRangeEnd int32, gatewayCapacity int, gatewayNS string, gatewayNames []string) error {
 	allocator := NewPortAllocator(mgr.GetClient(), portRangeStart, portRangeEnd)
 	handler := &XListenerSetHandler{
 		allocator: allocator,
 		log:       mgr.GetLogger().WithName("webhook").WithName("xlistenerset-sshgateway"),
+		leaseNS:   gatewayNS,
 	}
 
-	if gatewayCapacity > 0 && len(gateways) > 0 {
+	if gatewayCapacity > 0 && len(gatewayNames) > 0 {
+		gateways := make([]GatewayKey, len(gatewayNames))
+		for i, name := range gatewayNames {
+			gateways[i] = GatewayKey{Namespace: gatewayNS, Name: name}
+		}
 		handler.sharding = NewGatewaySharding(gateways, gatewayCapacity)
 	}
 
@@ -82,6 +89,10 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 		parentNs, _ := parentRef["namespace"].(string)
 		parentName, _ := parentRef["name"].(string)
 
+		if parentName == "" {
+			return admission.Denied("spec.parentRef.name is required when gateway sharding is enabled")
+		}
+
 		currentRef := GatewayKey{
 			Namespace: parentNs,
 			Name:      parentName,
@@ -103,7 +114,6 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 	}
 
 	usedPorts := h.allocator.extractUsedPorts(items)
-	allocated := make(map[int32]bool)
 
 	listeners, _ := spec["listeners"].([]any)
 	for i, l := range listeners {
@@ -115,7 +125,7 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 		if port == 0 {
 			listenerName, _ := listenerMap["name"].(string)
 
-			newPort, err := h.allocator.AllocatePort(usedPorts, allocated)
+			newPort, err := h.allocator.AllocatePort(ctx, usedPorts, h.leaseNS, name)
 			if err != nil {
 				h.log.Error(err, "Failed to allocate port", "listener", listenerName)
 				return admission.Errored(http.StatusInternalServerError, fmt.Errorf("allocating port for listener %q: %w", listenerName, err))
@@ -125,7 +135,6 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 
 			listenerMap["port"] = float64(newPort)
 			listeners[i] = listenerMap
-			allocated[newPort] = true
 			modified = true
 		}
 	}

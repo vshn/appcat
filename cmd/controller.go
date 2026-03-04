@@ -13,8 +13,8 @@ import (
 	"github.com/vshn/appcat/v4/pkg/controller/crossplane_metrics"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
-	"github.com/vshn/appcat/v4/pkg/odoo"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks/sshgateway"
+	"github.com/vshn/appcat/v4/pkg/odoo"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,6 +41,7 @@ type controller struct {
 	sshPortRangeStart       int32
 	sshPortRangeEnd         int32
 	sshGatewayCapacity      int
+	sshGatewayNamespace     string
 	sshGateways             string
 }
 
@@ -69,7 +70,8 @@ func init() {
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
 	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", true, "Disable billing")
 	ControllerCMD.Flags().BoolVar(&c.enableCrossplaneMetrics, "crossplane-metrics", false, "Enable Crossplane resource metrics collector")
-	ControllerCMD.Flags().StringVar(&c.sshGateways, "ssh-gateways", "", "Comma-separated namespace/name pairs of SSH gateways (enables port allocator when non-empty)")
+	ControllerCMD.Flags().StringVar(&c.sshGatewayNamespace, "ssh-gateway-namespace", "", "Namespace of the SSH gateways and port-allocation leases")
+	ControllerCMD.Flags().StringVar(&c.sshGateways, "ssh-gateways", "", "Comma-separated names of SSH gateways (enables port allocator when non-empty)")
 	ControllerCMD.Flags().Int32Var(&c.sshPortRangeStart, "ssh-port-range-start", 10000, "Start of the SSH TCP port allocation range")
 	ControllerCMD.Flags().Int32Var(&c.sshPortRangeEnd, "ssh-port-range-end", 10999, "End of the SSH TCP port allocation range")
 	ControllerCMD.Flags().IntVar(&c.sshGatewayCapacity, "ssh-gateway-capacity", 0, "Maximum listeners per Gateway for sharding. The default value 0 means no sharding is enabled")
@@ -154,13 +156,10 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	if c.sshGateways != "" {
-		gateways, err := parseGatewayKeys(c.sshGateways)
-		if err != nil {
-			return fmt.Errorf("parsing --ssh-gateways: %w", err)
-		}
+	if c.sshGateways != "" && c.sshGatewayNamespace != "" {
+		gatewayNames := strings.Split(c.sshGateways, ",")
 
-		err = sshgateway.SetupXListenerSetWebhookWithManager(mgr, c.sshPortRangeStart, c.sshPortRangeEnd, c.sshGatewayCapacity, gateways)
+		err = sshgateway.SetupXListenerSetWebhookWithManager(mgr, c.sshPortRangeStart, c.sshPortRangeEnd, c.sshGatewayCapacity, c.sshGatewayNamespace, gatewayNames)
 		if err != nil {
 			return err
 		}
@@ -211,27 +210,6 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	}
 
 	return mgr.Start(ctrl.SetupSignalHandler())
-}
-
-// parseGatewayKeys parses a comma-separated list of "namespace/name" pairs
-// into a slice of GatewayKey.
-func parseGatewayKeys(s string) ([]sshgateway.GatewayKey, error) {
-	var keys []sshgateway.GatewayKey
-
-	for _, entry := range strings.Split(s, ",") {
-		entry = strings.TrimSpace(entry)
-		if entry == "" {
-			continue
-		}
-
-		parts := strings.SplitN(entry, "/", 2)
-		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			return nil, fmt.Errorf("invalid gateway key %q: expected namespace/name", entry)
-		}
-
-		keys = append(keys, sshgateway.GatewayKey{Namespace: parts[0], Name: parts[1]})
-	}
-	return keys, nil
 }
 
 func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool, withProviderWebhooks bool) error {

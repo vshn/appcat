@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -45,6 +46,7 @@ func newTestAllocator(t *testing.T, objects ...*unstructured.Unstructured) *Port
 		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
+	require.NoError(t, coordinationv1.AddToScheme(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
 	for _, obj := range objects {
@@ -61,7 +63,7 @@ func TestAllocatePort_EmptyCluster(t *testing.T) {
 	items, err := alloc.listXListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
-	port, err := alloc.AllocatePort(usedPorts, nil)
+	port, err := alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
 	assert.NoError(t, err)
 	assert.Equal(t, int32(10000), port)
 }
@@ -76,7 +78,7 @@ func TestAllocatePort_SkipsUsedPorts(t *testing.T) {
 	items, err := alloc.listXListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
-	port, err := alloc.AllocatePort(usedPorts, nil)
+	port, err := alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
 	assert.NoError(t, err)
 	// 10000, 10001 are taken; 10002 is the first free
 	assert.Equal(t, int32(10002), port)
@@ -88,6 +90,7 @@ func TestAllocatePort_RangeExhausted(t *testing.T) {
 		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
+	require.NoError(t, coordinationv1.AddToScheme(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
 	// Fill range 20000-20002 (3 ports)
@@ -103,7 +106,7 @@ func TestAllocatePort_RangeExhausted(t *testing.T) {
 	items, err := alloc.listXListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
-	_, err = alloc.AllocatePort(usedPorts, nil)
+	_, err = alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "port range exhausted")
 }
@@ -118,7 +121,7 @@ func TestAllocatePort_IgnoresZeroPorts(t *testing.T) {
 	items, err := alloc.listXListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
-	port, err := alloc.AllocatePort(usedPorts, nil)
+	port, err := alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
 	assert.NoError(t, err)
 	assert.Equal(t, int32(10000), port)
 }
@@ -131,7 +134,7 @@ func TestAllocatePort_MultipleListenersPerXLS(t *testing.T) {
 	items, err := alloc.listXListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
-	port, err := alloc.AllocatePort(usedPorts, nil)
+	port, err := alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
 	assert.NoError(t, err)
 	assert.Equal(t, int32(10002), port)
 }

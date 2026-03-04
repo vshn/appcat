@@ -10,9 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -25,6 +27,7 @@ func newTestHandler(t *testing.T, existingXLS ...*unstructured.Unstructured) *XL
 		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
+	require.NoError(t, coordinationv1.AddToScheme(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
 	for _, obj := range existingXLS {
@@ -35,6 +38,17 @@ func newTestHandler(t *testing.T, existingXLS ...*unstructured.Unstructured) *XL
 	return &XListenerSetHandler{
 		allocator: NewPortAllocator(c, 10000, 29999),
 		log:       logr.Discard(),
+		leaseNS:   "test-ns",
+	}
+}
+
+func newTestHandlerWithClient(t *testing.T, c client.Client) *XListenerSetHandler {
+	t.Helper()
+
+	return &XListenerSetHandler{
+		allocator: NewPortAllocator(c, 10000, 29999),
+		log:       logr.Discard(),
+		leaseNS:   "test-ns",
 	}
 }
 
@@ -46,6 +60,7 @@ func newTestHandlerWithSharding(t *testing.T, capacity int, xlsSets []*unstructu
 		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
+	require.NoError(t, coordinationv1.AddToScheme(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
 	for _, obj := range xlsSets {
@@ -56,6 +71,7 @@ func newTestHandlerWithSharding(t *testing.T, capacity int, xlsSets []*unstructu
 	handler := &XListenerSetHandler{
 		allocator: NewPortAllocator(c, 10000, 29999),
 		log:       logr.Discard(),
+		leaseNS:   "test-ns",
 	}
 	if capacity > 0 && len(gateways) > 0 {
 		handler.sharding = NewGatewaySharding(gateways, capacity)
@@ -299,6 +315,85 @@ func TestHandle_AllGatewaysFull_Denied(t *testing.T) {
 	resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
 	assert.False(t, resp.Allowed)
 	assert.Contains(t, resp.Result.Message, "all gateways are full")
+}
+
+func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
+	// Build a shared fake client — simulates shared etcd across replicas.
+	scheme := k8sruntime.NewScheme()
+	scheme.AddKnownTypeWithName(
+		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
+		&unstructured.UnstructuredList{},
+	)
+	require.NoError(t, coordinationv1.AddToScheme(scheme))
+
+	existing := newXListenerSet("existing", "gw-ns", 10000, 10001, 10002)
+	sharedClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existing).Build()
+
+	const numReplicas = 5
+
+	ports := make([]float64, numReplicas)
+	for i := range numReplicas {
+		handler := newTestHandlerWithClient(t, sharedClient)
+		xls := newXListenerSet(fmt.Sprintf("test-%d", i), "ns", 0)
+		raw, _ := json.Marshal(xls)
+
+		resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
+		require.True(t, resp.Allowed)
+		require.NotEmpty(t, resp.Patches)
+
+		patched := applyPatches(t, raw, resp)
+		listeners, _, _ := unstructured.NestedSlice(patched.Object, "spec", "listeners")
+		ports[i] = listeners[0].(map[string]any)["port"].(float64)
+	}
+
+	seen := make(map[float64]bool)
+	for _, p := range ports {
+		seen[p] = true
+	}
+
+	t.Logf("Allocated ports: %v", ports)
+	assert.Equal(t, numReplicas, len(seen),
+		"all replicas should allocate unique ports")
+
+	for i, expected := range []float64{10003, 10004, 10005, 10006, 10007} {
+		assert.Equal(t, expected, ports[i], "replica %d should get port %v", i, expected)
+	}
+}
+
+func TestHandle_ShardingMissingParentRef_Denied(t *testing.T) {
+	gateways := []GatewayKey{
+		{Namespace: "gw-ns", Name: "gw-1"},
+	}
+
+	handler := newTestHandlerWithSharding(t, 10, nil, gateways)
+
+	// XListenerSet without parentRef name
+	xls := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "gateway.networking.x-k8s.io/v1alpha1",
+			"kind":       "XListenerSet",
+			"metadata": map[string]any{
+				"name":      "test",
+				"namespace": "ns",
+			},
+			"spec": map[string]any{
+				"parentRef": map[string]any{
+					"namespace": "gw-ns",
+				},
+				"listeners": []any{
+					map[string]any{
+						"name":     "ssh",
+						"port":     float64(0),
+						"protocol": "TCP",
+					},
+				},
+			},
+		},
+	}
+
+	resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
+	assert.False(t, resp.Allowed)
+	assert.Contains(t, resp.Result.Message, "spec.parentRef.name is required")
 }
 
 // applyPatches applies JSON patches from the admission response to raw bytes

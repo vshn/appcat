@@ -3,7 +3,11 @@ package sshgateway
 import (
 	"context"
 	"fmt"
+	"time"
 
+	coordinationv1 "k8s.io/api/coordination/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,17 +56,66 @@ func (a *PortAllocator) listXListenerSets(ctx context.Context) ([]unstructured.U
 	return list.Items, nil
 }
 
-// AllocatePort finds the first free port in the range given the already used
-// ports. The exclude set allows callers to reserve ports that have been
-// allocated within the same request but not yet persisted.
-func (a *PortAllocator) AllocatePort(usedPorts map[int32]bool, exclude map[int32]bool) (int32, error) {
+// AllocatePort atomically reserves a port by creating a Lease.
+// If the Lease already exists, it tries the next port.
+func (a *PortAllocator) AllocatePort(ctx context.Context, usedPorts map[int32]bool, namespace, holder string) (int32, error) {
+	now := metav1.NewMicroTime(time.Now())
+	duration := int32(300)
+
 	for port := a.portRangeStart; port <= a.portRangeEnd; port++ {
-		if !usedPorts[port] && !exclude[port] {
+		if usedPorts[port] {
+			continue
+		}
+
+		lease := &coordinationv1.Lease{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("ssh-port-%d", port),
+				Namespace: namespace,
+				Labels:    map[string]string{"app.kubernetes.io/managed-by": "sshgateway-port-allocator"},
+			},
+			Spec: coordinationv1.LeaseSpec{
+				HolderIdentity:       &holder,
+				LeaseDurationSeconds: &duration,
+				AcquireTime:          &now,
+			},
+		}
+
+		err := a.client.Create(ctx, lease)
+		if err == nil {
 			return port, nil
 		}
+		if apierrors.IsAlreadyExists(err) {
+			if a.isStaleLease(ctx, lease.Name, namespace, usedPorts[port]) {
+				_ = a.client.Delete(ctx, lease)
+
+				if err := a.client.Create(ctx, lease); err == nil {
+					return port, nil
+				}
+			}
+			continue
+		}
+		return 0, fmt.Errorf("reserving port %d: %w", port, err)
+	}
+	return 0, fmt.Errorf("port range exhausted: all ports in %d-%d are in use", a.portRangeStart, a.portRangeEnd)
+}
+
+// isStaleLease checks if an existing Lease is stale and can be deleted to free up a port.
+func (a *PortAllocator) isStaleLease(ctx context.Context, name, namespace string, portInUse bool) bool {
+	if portInUse {
+		return false
 	}
 
-	return 0, fmt.Errorf("port range exhausted: all ports in %d-%d are in use", a.portRangeStart, a.portRangeEnd)
+	existing := &coordinationv1.Lease{}
+	if err := a.client.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, existing); err != nil {
+		return false
+	}
+
+	if existing.Spec.AcquireTime == nil || existing.Spec.LeaseDurationSeconds == nil {
+		return true
+	}
+
+	expiry := existing.Spec.AcquireTime.Add(time.Duration(*existing.Spec.LeaseDurationSeconds) * time.Second)
+	return time.Now().After(expiry)
 }
 
 // extractUsedPorts collects the ports from XListenerSet listeners.

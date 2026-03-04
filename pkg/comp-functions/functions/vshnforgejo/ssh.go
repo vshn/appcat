@@ -190,6 +190,7 @@ func createTCPRoute(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name,
 
 func createReferenceGrant(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name, gatewayNamespace string) error {
 	instanceNs := comp.GetInstanceNamespace()
+	sshServiceName := helmFullname(comp) + "-ssh"
 
 	refGrant := &unstructured.Unstructured{
 		Object: map[string]any{},
@@ -211,6 +212,7 @@ func createReferenceGrant(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo,
 			map[string]any{
 				"group": "",
 				"kind":  "Service",
+				"name":  sshServiceName,
 			},
 		},
 	}
@@ -228,7 +230,12 @@ func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNFo
 		},
 		Spec: netv1.NetworkPolicySpec{
 			PolicyTypes: []netv1.PolicyType{"Ingress"},
-			PodSelector: metav1.LabelSelector{},
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name":     comp.GetServiceName(),
+					"app.kubernetes.io/instance": helmFullname(comp),
+				},
+			},
 			Ingress: []netv1.NetworkPolicyIngressRule{
 				{
 					From: []netv1.NetworkPolicyPeer{

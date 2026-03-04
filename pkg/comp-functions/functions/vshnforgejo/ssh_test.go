@@ -100,11 +100,20 @@ func TestSSH(t *testing.T) {
 		assert.Equal(t, "TCPRoute", fromEntry["kind"])
 		assert.Equal(t, "gateway-system", fromEntry["namespace"])
 
+		to, _, _ := unstructured.NestedSlice(refGrant.Object, "spec", "to")
+		require.Len(t, to, 1)
+		toEntry := to[0].(map[string]any)
+		assert.Equal(t, "Service", toEntry["kind"])
+		assert.Equal(t, resourceBaseName, toEntry["name"], "ReferenceGrant should be scoped to the SSH service")
+
 		// Verify NetworkPolicy
 		netPol := &netv1.NetworkPolicy{}
 		require.NoError(t, svc.GetDesiredKubeObject(netPol, resourceBaseName+"-netpol"))
 		assert.Equal(t, resourceBaseName, netPol.Name)
 		assert.Equal(t, instanceNs, netPol.Namespace)
+		assert.Equal(t, "forgejo", netPol.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+		assert.Equal(t, comp.GetName(), netPol.Spec.PodSelector.MatchLabels["app.kubernetes.io/instance"],
+			"NetworkPolicy should target Forgejo pods")
 		require.Len(t, netPol.Spec.Ingress, 1)
 		require.Len(t, netPol.Spec.Ingress[0].From, 1)
 		assert.Equal(t, "gateway-system",

@@ -89,7 +89,10 @@ generate:  get-crds generate-stackgres-crds generate-cnpg-crds protobuf-gen ## G
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-sli-exporter paths="{./pkg/sliexporter/...}" output:artifacts:config=config/sliexporter/rbac
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-controller paths="{./pkg/controller/...}" output:rbac:stdout > config/controller/cluster-role.yaml
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen rbac:roleName=appcat-controller paths="{./pkg/apiserver/...}" output:rbac:stdout > config/apiserver/role.yaml
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen webhook paths="{./pkg/controller/...}" output:stdout > config/controller/webhooks.yaml
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen webhook paths="{./pkg/controller/...}" output:stdout > config/controller/.webhooks-all.yaml
+	yq -c 'select(.kind == "ValidatingWebhookConfiguration")' config/controller/.webhooks-all.yaml > config/controller/webhooks.yaml
+	yq -c 'select(.kind == "MutatingWebhookConfiguration")' config/controller/.webhooks-all.yaml > config/controller/mutating-webhooks.yaml
+	rm config/controller/.webhooks-all.yaml
 
 .PHONY: generate-stackgres-crds
 generate-stackgres-crds:

@@ -19,6 +19,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,6 +52,12 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	err = createCerts(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
+	}
+
+	l.Info("Creating SCC role binding for OpenShift")
+	err = createCnpgSCCRoleBinding(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot create SCC role binding: %w", err).Error())
 	}
 
 	return deployPostgresSQLUsingCNPG(ctx, comp, svc)
@@ -390,4 +397,31 @@ func getPsqlImage(version string) string {
 	}
 
 	return PsqlContainerRegistry + ":" + version
+}
+
+// createCnpgSCCRoleBinding binds the appcat-scc ClusterRole to the CNPG pod
+func createCnpgSCCRoleBinding(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	if !svc.GetBoolFromCompositionConfig("isOpenshift") {
+		return nil
+	}
+
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "appcat-scc",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "postgresql",
+				Namespace: comp.GetInstanceNamespace(),
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "appcat-scc",
+		},
+	}
+	return svc.SetDesiredKubeObject(rb, comp.GetName()+"-scc-rb")
 }

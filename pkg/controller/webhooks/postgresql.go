@@ -38,6 +38,9 @@ import (
 
 const (
 	maxPgResourceNameLength = 30
+
+	cnpgCompositionRef           = "vshnpostgrescnpg.vshn.appcat.vshn.io"
+	cnpgExtensionMinMajorVersion = "18"
 )
 
 var (
@@ -184,6 +187,9 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 	); err != nil {
 		allErrs.Add(err)
 	}
+
+	// Validate that image/imagePullPolicy on extensions are only used with CNPG
+	allErrs.Add(validateCNPGExtensionFields(newPg)...)
 
 	if !isCreate {
 		oldPg, ok := oldObj.(*vshnv1.VSHNPostgreSQL)
@@ -440,6 +446,62 @@ func validateCompositionRefImmutability(oldRef, newRef string) *field.Error {
 		return field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
 	}
 	return nil
+}
+
+// isMajorVersionAtLeast returns true if version >= minVersion (both as major version strings like "18").
+// Returns false if either value cannot be parsed.
+func isMajorVersionAtLeast(version, minVersion string) bool {
+	v, err := strconv.Atoi(version)
+	if err != nil {
+		return false
+	}
+	min, err := strconv.Atoi(minVersion)
+	if err != nil {
+		return false
+	}
+	return v >= min
+}
+
+// validateCNPGExtensionFields ensures that the image and imagePullPolicy fields on extensions
+// are only set when the CNPG composition is explicitly selected via compositionRef and
+// the PostgreSQL major version is at least cnpgExtensionMinMajorVersion.
+func validateCNPGExtensionFields(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, ext := range pg.Spec.Parameters.Service.Extensions {
+		if ext.Image == "" && ext.ImagePullPolicy == "" {
+			continue
+		}
+		basePath := field.NewPath("spec", "parameters", "service", "extensions").Index(i)
+		if pg.Spec.CompositionRef.Name != cnpgCompositionRef {
+			if ext.Image != "" {
+				allErrs = append(allErrs, field.Forbidden(
+					basePath.Child("image"),
+					"image is only supported for CloudNativePG",
+				))
+			}
+			if ext.ImagePullPolicy != "" {
+				allErrs = append(allErrs, field.Forbidden(
+					basePath.Child("imagePullPolicy"),
+					"imagePullPolicy is only supported for CloudNativePG",
+				))
+			}
+		}
+		if !isMajorVersionAtLeast(pg.Spec.Parameters.Service.MajorVersion, cnpgExtensionMinMajorVersion) {
+			if ext.Image != "" {
+				allErrs = append(allErrs, field.Forbidden(
+					basePath.Child("image"),
+					fmt.Sprintf("image is only supported for PostgreSQL %s and above", cnpgExtensionMinMajorVersion),
+				))
+			}
+			if ext.ImagePullPolicy != "" {
+				allErrs = append(allErrs, field.Forbidden(
+					basePath.Child("imagePullPolicy"),
+					fmt.Sprintf("imagePullPolicy is only supported for PostgreSQL %s and above", cnpgExtensionMinMajorVersion),
+				))
+			}
+		}
+	}
+	return allErrs
 }
 
 // validatePinImageTag validates that pinImageTag's major version matches the specified majorVersion

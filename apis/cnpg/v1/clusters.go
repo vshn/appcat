@@ -41,6 +41,31 @@ type ClusterSpec struct {
 
 	// Number of instances required in the cluster
 	Instances int `json:"instances"`
+
+	// PostgreSQL configuration, including extensions loaded via separate container images
+	Postgresql *ClusterSpecPostgresql `json:"postgresql,omitempty"`
+}
+
+// ClusterSpecPostgresql holds PostgreSQL-level configuration for a CNPG cluster.
+type ClusterSpecPostgresql struct {
+	// Extensions to be loaded by the cluster using volume mounts from separate container images.
+	Extensions []ClusterSpecPostgresqlExtension `json:"extensions,omitempty"`
+}
+
+// ClusterSpecPostgresqlExtension defines a single PostgreSQL extension loaded from a container image.
+type ClusterSpecPostgresqlExtension struct {
+	// Name of the extension.
+	Name string `json:"name"`
+	// Image holds the container image from which the extension is loaded.
+	Image *ClusterSpecPostgresqlExtensionImage `json:"image,omitempty"`
+}
+
+// ClusterSpecPostgresqlExtensionImage holds the image reference for a PostgreSQL extension.
+type ClusterSpecPostgresqlExtensionImage struct {
+	// Reference is the fully-qualified container image reference (e.g. ghcr.io/cloudnative-pg/pgvector:0.8.0-16).
+	Reference string `json:"reference"`
+	// PullPolicy is the optional image pull policy for this extension image.
+	PullPolicy string `json:"pullPolicy,omitempty"`
 }
 
 // ClusterSpecImageCatalogRef defines model for ClusterSpecImageCatalogRef.

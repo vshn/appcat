@@ -30,6 +30,7 @@ import (
 
 	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
 	exoscalev1 "github.com/vshn/provider-exoscale/apis/exoscale/v1"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	netv1 "k8s.io/api/networking/v1"
 	pdbv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -72,4 +73,5 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = spksv1alpha1.SchemeBuilder.AddToScheme(s)
 	_ = my1alpha1.SchemeBuilder.AddToScheme(s)
 	_ = codey.SchemeBuilder.AddToScheme(s)
+	_ = coordinationv1.AddToScheme(s)
 }

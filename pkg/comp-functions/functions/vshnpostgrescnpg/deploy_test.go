@@ -132,7 +132,7 @@ func Test_sizing(t *testing.T) {
 func Test_pinImageTag(t *testing.T) {
 	ctx := context.TODO()
 
-	t.Run("no pinImageTag uses default version", func(t *testing.T) {
+	t.Run("no pinImageTag uses major version tag", func(t *testing.T) {
 		svc, comp := getSvcCompCnpg(t)
 		comp.Spec.Parameters.Service.MajorVersion = "15"
 		comp.Spec.Parameters.Maintenance.PinImageTag = ""
@@ -141,25 +141,16 @@ func Test_pinImageTag(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, values)
 
-		// Check ImageCatalog has default version for major 15
 		imageCatalog := values["imageCatalog"].(map[string]any)
 		images := imageCatalog["images"].([]map[string]string)
 
-		var found15 bool
-		for _, img := range images {
-			if img["major"] == "15" {
-				// Should use default version "15.9"
-				assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:15.9", img["image"])
-				found15 = true
-			}
-		}
-		assert.True(t, found15, "should have image entry for major version 15")
-
-		// Check status is set to default version
-		assert.Equal(t, "15.9", comp.Status.CurrentVersion)
+		assert.Len(t, images, 1)
+		assert.Equal(t, "15", images[0]["major"])
+		assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:15", images[0]["image"])
+		assert.Equal(t, "15", comp.Status.CurrentVersion)
 	})
 
-	t.Run("pinImageTag overrides default version in ImageCatalog", func(t *testing.T) {
+	t.Run("pinImageTag overrides major version tag in ImageCatalog", func(t *testing.T) {
 		svc, comp := getSvcCompCnpg(t)
 		comp.Spec.Parameters.Service.MajorVersion = "15"
 		comp.Spec.Parameters.Maintenance.PinImageTag = "15.13"
@@ -168,25 +159,16 @@ func Test_pinImageTag(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, values)
 
-		// Check ImageCatalog has pinned version for major 15
 		imageCatalog := values["imageCatalog"].(map[string]any)
 		images := imageCatalog["images"].([]map[string]string)
 
-		var found15 bool
-		for _, img := range images {
-			if img["major"] == "15" {
-				// Should use pinned version "15.13" instead of default "15.9"
-				assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:15.13", img["image"])
-				found15 = true
-			}
-		}
-		assert.True(t, found15, "should have image entry for major version 15")
-
-		// Check status is set to pinned version
+		assert.Len(t, images, 1)
+		assert.Equal(t, "15", images[0]["major"])
+		assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:15.13", images[0]["image"])
 		assert.Equal(t, "15.13", comp.Status.CurrentVersion)
 	})
 
-	t.Run("pinImageTag only affects specified major version", func(t *testing.T) {
+	t.Run("pinImageTag with different major version", func(t *testing.T) {
 		svc, comp := getSvcCompCnpg(t)
 		comp.Spec.Parameters.Service.MajorVersion = "16"
 		comp.Spec.Parameters.Maintenance.PinImageTag = "16.4"
@@ -195,25 +177,12 @@ func Test_pinImageTag(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, values)
 
-		// Check ImageCatalog
 		imageCatalog := values["imageCatalog"].(map[string]any)
 		images := imageCatalog["images"].([]map[string]string)
 
-		for _, img := range images {
-			switch img["major"] {
-			case "16":
-				// Major 16 should use pinned version
-				assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:16.4", img["image"])
-			case "15":
-				// Major 15 should still use default version
-				assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:15.9", img["image"])
-			case "17":
-				// Major 17 should still use default version
-				assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:17.5", img["image"])
-			}
-		}
-
-		// Check status is set to pinned version
+		assert.Len(t, images, 1)
+		assert.Equal(t, "16", images[0]["major"])
+		assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:16.4", images[0]["image"])
 		assert.Equal(t, "16.4", comp.Status.CurrentVersion)
 	})
 
@@ -226,17 +195,14 @@ func Test_pinImageTag(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, values)
 
-		// Check version in helm values still uses major version
 		version := values["version"].(map[string]string)
 		assert.Equal(t, "17", version["postgresql"])
 
-		// Check imageCatalogRef is set correctly
 		cluster := values["cluster"].(map[string]any)
 		imageCatalogRef := cluster["imageCatalogRef"].(map[string]string)
 		assert.Equal(t, "ImageCatalog", imageCatalogRef["kind"])
 		assert.Equal(t, "postgresql", imageCatalogRef["name"])
 
-		// Check status is set to pinned version
 		assert.Equal(t, "17.2", comp.Status.CurrentVersion)
 	})
 }

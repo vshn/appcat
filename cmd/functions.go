@@ -11,6 +11,7 @@ import (
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spks/spksmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spks/spksredis"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnforgejo"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnkafkastrimzi"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnkeycloak"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnminio"

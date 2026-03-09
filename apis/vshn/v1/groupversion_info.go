@@ -59,5 +59,10 @@ func init() {
 		&XVSHNForgejoList{},
 		&VSHNForgejo{},
 		&VSHNForgejoList{},
+
+		&VSHNKafkaStrimzi{},
+		&VSHNKafkaStrimziList{},
+		&XVSHNKafkaStrimzi{},
+		&XVSHNKafkaStrimziList{},
 	)
 }

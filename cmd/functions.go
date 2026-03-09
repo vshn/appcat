@@ -11,6 +11,7 @@ import (
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spks/spksmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spks/spksredis"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnforgejo"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshngarage"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnkeycloak"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnminio"
@@ -61,5 +62,4 @@ func executeFunctionsServer(cmd *cobra.Command, _ []string) error {
 		function.Listen(network, address),
 		function.MTLSCertificates(tlsCertsDir),
 		function.Insecure(insecure))
-
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -355,8 +354,8 @@ func observeXListenerSet(svc *runtime.ServiceRuntime, name string) observedXList
 }
 
 func defaultGatewayName(svc *runtime.ServiceRuntime) string {
-	raw := svc.Config.Data["sshGateways"]
-	if raw == "" {
+	raw, ok := svc.Config.Data["sshGateways"]
+	if !ok || raw == "" {
 		return ""
 	}
 
@@ -366,16 +365,11 @@ func defaultGatewayName(svc *runtime.ServiceRuntime) string {
 		return ""
 	}
 
-	names := make([]string, 0, len(mapping))
 	for name := range mapping {
-		names = append(names, name)
+		return name
 	}
-	sort.Strings(names)
 
-	if len(names) == 0 {
-		return ""
-	}
-	return names[0]
+	return ""
 }
 
 func toInt32(v any) int32 {

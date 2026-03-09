@@ -84,38 +84,40 @@ func (a *PortAllocator) AllocatePort(ctx context.Context, usedPorts map[int32]bo
 		if err == nil {
 			return port, nil
 		}
-		if apierrors.IsAlreadyExists(err) {
-			if a.isStaleLease(ctx, lease.Name, namespace, usedPorts[port]) {
-				_ = a.client.Delete(ctx, lease)
 
+		if apierrors.IsAlreadyExists(err) {
+			if a.tryReclaimStaleLease(ctx, lease.Name, namespace) {
 				if err := a.client.Create(ctx, lease); err == nil {
 					return port, nil
 				}
 			}
 			continue
 		}
+
 		return 0, fmt.Errorf("reserving port %d: %w", port, err)
 	}
+
 	return 0, fmt.Errorf("port range exhausted: all ports in %d-%d are in use", a.portRangeStart, a.portRangeEnd)
 }
 
-// isStaleLease checks if an existing Lease is stale and can be deleted to free up a port.
-func (a *PortAllocator) isStaleLease(ctx context.Context, name, namespace string, portInUse bool) bool {
-	if portInUse {
-		return false
-	}
-
+// tryReclaimStaleLease checks if an existing Lease is expired and, if so,
+// deletes it using a UID precondition to prevent races with other replicas.
+// Returns true only if the stale lease was successfully deleted.
+func (a *PortAllocator) tryReclaimStaleLease(ctx context.Context, name, namespace string) bool {
 	existing := &coordinationv1.Lease{}
 	if err := a.client.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, existing); err != nil {
 		return false
 	}
 
-	if existing.Spec.AcquireTime == nil || existing.Spec.LeaseDurationSeconds == nil {
-		return true
+	if existing.Spec.AcquireTime != nil && existing.Spec.LeaseDurationSeconds != nil {
+		expiry := existing.Spec.AcquireTime.Add(time.Duration(*existing.Spec.LeaseDurationSeconds) * time.Second)
+		if !time.Now().After(expiry) {
+			return false
+		}
 	}
 
-	expiry := existing.Spec.AcquireTime.Add(time.Duration(*existing.Spec.LeaseDurationSeconds) * time.Second)
-	return time.Now().After(expiry)
+	uid := existing.UID
+	return a.client.Delete(ctx, existing, client.Preconditions{UID: &uid}) == nil
 }
 
 // extractUsedPorts collects the ports from XListenerSet listeners.

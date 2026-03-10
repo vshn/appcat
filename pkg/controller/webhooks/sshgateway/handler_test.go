@@ -276,7 +276,7 @@ func TestHandle_ShardingReassignsGateway(t *testing.T) {
 }
 
 func TestHandle_ShardingDisabled_NoReassignment(t *testing.T) {
-	// capacity=0 disables sharding — handler should not touch parentRef
+	// capacity=0 disables sharding, handler should not touch parentRef
 	existingXLS := []*unstructured.Unstructured{
 		newXListenerSetWithGateway("existing", "ns", "gw-1", "gw-ns", 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009),
 	}
@@ -330,7 +330,7 @@ func TestHandle_AllGatewaysFull_Denied(t *testing.T) {
 }
 
 func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
-	// Build a shared fake client — simulates shared etcd across replicas.
+	// simulates shared etcd across replicas.
 	scheme := k8sruntime.NewScheme()
 	scheme.AddKnownTypeWithName(
 		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},

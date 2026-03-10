@@ -16,7 +16,7 @@ import (
 //+kubebuilder:webhook:path=/mutate-gateway-networking-x-k8s-io-v1alpha1-xlistenerset,mutating=true,failurePolicy=fail,groups=gateway.networking.x-k8s.io,resources=xlistenersets,verbs=create,versions=v1alpha1,name=mxlistenerset.kb.io,admissionReviewVersions=v1,sideEffects=None
 
 //+kubebuilder:rbac:groups=gateway.networking.x-k8s.io,resources=xlistenersets,verbs=get;list;watch
-//+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=create;get;delete
+//+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=create;get;list;watch;delete
 
 // XListenerSetHandler handles mutating admission requests for XListenerSet resources.
 // It allocates unique TCP ports for listeners that have port 0 (sentinel value).

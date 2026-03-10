@@ -44,48 +44,38 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 
 	resourceBaseName := comp.GetName() + "-ssh"
 
-	// Observe the XListenerSet to get the allocated port and gateway (if it exists already).
-	// We need this before creating the desired XListenerSet so we preserve the
-	// webhook-assigned port and gateway instead of resetting them.
 	observed := observeXListenerSet(svc, resourceBaseName)
 
-	// Use observed gateway if available (webhook may have reassigned it via sharding),
-	// otherwise fall back to config.
 	effectiveGatewayName := tcpGatewayName
 	effectiveGatewayNamespace := gatewayNamespace
+
 	if observed.gatewayName != "" {
 		effectiveGatewayName = observed.gatewayName
 		effectiveGatewayNamespace = observed.gatewayNamespace
 	}
 
-	// Create XListenerSet — use allocated port if known, otherwise 0 (webhook will assign on CREATE)
 	err = createXListenerSet(svc, resourceBaseName, effectiveGatewayNamespace, effectiveGatewayName, observed.port)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err))
 	}
 
-	// Create TCPRoute pointing to the Forgejo SSH service
 	err = createTCPRoute(svc, comp, resourceBaseName, gatewayNamespace)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create TCPRoute: %s", err))
 	}
 
-	// Create ReferenceGrant allowing TCPRoute cross-namespace reference
 	err = createReferenceGrant(svc, comp, resourceBaseName, gatewayNamespace)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create ReferenceGrant: %s", err))
 	}
 
-	// Allow the gateway namespace to reach the Forgejo SSH service
 	err = createGatewayNetworkPolicy(svc, comp, resourceBaseName, gatewayNamespace)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create gateway NetworkPolicy: %s", err))
 	}
 
-	// Resolve the SSH domain for this gateway from the domain mapping
 	sshDomain := lookupSSHDomain(svc, effectiveGatewayName)
 
-	// Publish port/domain in status and connection details once we have an allocated port
 	if observed.port > 0 {
 		comp.Status.SSHPort = observed.port
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
@@ -97,7 +87,6 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 		svc.SetConnectionDetail("FORGEJO_SSH_PORT", []byte(strconv.FormatInt(int64(observed.port), 10)))
 	}
 
-	// Enable SSH in the Helm release values and set the clone URL domain/port
 	err = enableSSHInRelease(svc, comp, sshDomain, observed.port)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot enable SSH in release: %s", err))

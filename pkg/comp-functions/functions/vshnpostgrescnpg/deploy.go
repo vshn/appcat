@@ -217,7 +217,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 			},
 			"monitoring": map[string]any{
 				"enabled": true,
-				"prometheusRule": map[string]bool{
+				"prometheusRules": map[string]bool{
 					"enabled": false,
 				},
 			},

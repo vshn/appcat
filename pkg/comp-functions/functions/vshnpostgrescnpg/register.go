@@ -7,16 +7,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-var pgAlerts = nonsla.NewAlertSetBuilder("patroni").
-	AddAll().
-	AddCustomServiceRule("maxconnections", maxConnectionsAlert).
-	AddCustomServiceRule("longrunningtx", longRunningTransactionAlert).
-	AddCustomServiceRule("backendwaiting", backendsWaitingAlert).
-	AddCustomServiceRule("deadlocks", deadlockConflictsAlert).
-	AddCustomServiceRule("highconnectionswarning", highConnectionsWarningAlert).
-	AddCustomServiceRule("lowdiskwarning", lowDiskSpaceWarningAlert).
-	AddCustomServiceRule("lowdiskcritical", lowDiskSpaceCriticalAlert).
-	GetAlerts()
+var pgAlerts = nonsla.NewAlertSetBuilder("patroni").AddAll().AddCustomServiceRule("maxconnections", maxConnectionsAlert).GetAlerts()
 
 func init() {
 	runtime.RegisterService[*vshnv1.VSHNPostgreSQL]("postgresqlcnpg", runtime.Service[*vshnv1.VSHNPostgreSQL]{

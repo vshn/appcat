@@ -232,7 +232,7 @@ func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNFo
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app.kubernetes.io/name":     comp.GetServiceName(),
-					"app.kubernetes.io/instance": helmFullname(comp),
+					"app.kubernetes.io/instance": comp.GetName(),
 				},
 			},
 			Ingress: []netv1.NetworkPolicyIngressRule{

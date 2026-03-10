@@ -25,9 +25,10 @@ type Alerts struct {
 }
 
 const (
-	SynTeam                                                              string          = "schedar"
-	SeverityCritical                                                     string          = "critical"
-	MinuteInterval, FifteenMinuteInterval, HourInterval, TwoHourInterval promV1.Duration = "1m", "15m", "1h", "2h"
+	SynTeam                                                                                  string          = "schedar"
+	SeverityCritical                                                                         string          = "critical"
+	SeverityWarning                                                                          string          = "warning"
+	MinuteInterval, FiveMinuteInterval, FifteenMinuteInterval, HourInterval, TwoHourInterval promV1.Duration = "1m", "5m", "15m", "1h", "2h"
 )
 
 var (

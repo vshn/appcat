@@ -19,6 +19,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,6 +52,12 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	err = createCerts(comp, svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
+	}
+
+	l.Info("Creating SCC role binding for OpenShift")
+	err = createCnpgSCCRoleBinding(comp, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot create SCC role binding: %w", err).Error())
 	}
 
 	return deployPostgresSQLUsingCNPG(ctx, comp, svc)
@@ -172,40 +179,29 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		hibernation = "on"
 	}
 
-	// Default version mappings (major -> minor version)
-	defaultVersions := map[string]string{
-		"17": "17.5",
-		"16": "16.9",
-		"15": "15.9",
-	}
-
-	// Build ImageCatalog images, respecting pinImageTag if set
 	majorVersion := comp.Spec.Parameters.Service.MajorVersion
 	pinImageTag := comp.Spec.Parameters.Maintenance.PinImageTag
-	currentReleaseTag := defaultVersions[majorVersion]
 
-	// If pinImageTag is set, use it for the user's major version
+	// Use the major version tag by default (e.g. ":17"), or the pinned tag if set
+	imageTag := majorVersion
 	if pinImageTag != "" {
-		defaultVersions[majorVersion] = pinImageTag
-		currentReleaseTag = pinImageTag
+		imageTag = pinImageTag
 		svc.Log.Info("Using pinned image tag for PostgreSQL", "majorVersion", majorVersion, "pinnedTag", pinImageTag)
 	}
 
-	// Update status with current version (full minor version like "17.5")
-	if currentReleaseTag != "" {
-		comp.Status.CurrentVersion = currentReleaseTag
+	if imageTag != "" {
+		comp.Status.CurrentVersion = imageTag
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 			svc.Log.Error(err, "cannot update CurrentVersion in status")
 		}
 	}
 
-	// Build the images list for the ImageCatalog
-	imageCatalogImages := []map[string]string{}
-	for major, version := range defaultVersions {
-		imageCatalogImages = append(imageCatalogImages, map[string]string{
-			"image": getPsqlImage(version),
-			"major": major,
-		})
+	// Build the single-entry ImageCatalog for the cluster's major version
+	imageCatalogImages := []map[string]string{
+		{
+			"image": getPsqlImage(imageTag),
+			"major": majorVersion,
+		},
 	}
 
 	values := map[string]any{
@@ -221,7 +217,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 			},
 			"monitoring": map[string]any{
 				"enabled": true,
-				"prometheusRules": map[string]bool{
+				"prometheusRule": map[string]bool{
 					"enabled": false,
 				},
 			},
@@ -276,6 +272,15 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		err = common.SetNestedObjectValue(values, []string{"cluster", "postgresql", "parameters", k}, v)
 		if err != nil {
 			return map[string]any{}, fmt.Errorf("cannot set pg settings %s=%s: %w", k, v, err)
+		}
+	}
+
+	// Extensions
+	extensions := buildCNPGExtensionValues(comp.Spec.Parameters.Service.Extensions)
+	if len(extensions) > 0 {
+		err = common.SetNestedObjectValue(values, []string{"cluster", "postgresql", "extensions"}, extensions)
+		if err != nil {
+			return map[string]any{}, fmt.Errorf("cannot set extensions: %w", err)
 		}
 	}
 
@@ -352,6 +357,27 @@ func getPgSettingsMap(pgSettings k8sruntime.RawExtension) (map[string]string, er
 	return pgConf, nil
 }
 
+// buildCNPGExtensionValues converts the user-facing extension spec into the Helm chart values
+func buildCNPGExtensionValues(extensions []vshnv1.VSHNDBaaSPostgresExtension) []map[string]any {
+	result := []map[string]any{}
+	for _, ext := range extensions {
+		if ext.Image == "" {
+			continue
+		}
+		imageMap := map[string]any{
+			"reference": ext.Image,
+		}
+		if ext.ImagePullPolicy != "" {
+			imageMap["pullPolicy"] = ext.ImagePullPolicy
+		}
+		result = append(result, map[string]any{
+			"name":  ext.Name,
+			"image": imageMap,
+		})
+	}
+	return result
+}
+
 // Get PostgresQL image for a provided version
 func getPsqlImage(version string) string {
 	if after, ok := strings.CutPrefix(version, ":"); ok {
@@ -359,4 +385,31 @@ func getPsqlImage(version string) string {
 	}
 
 	return PsqlContainerRegistry + ":" + version
+}
+
+// createCnpgSCCRoleBinding binds the appcat-scc ClusterRole to the CNPG pod
+func createCnpgSCCRoleBinding(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+	if !svc.GetBoolFromCompositionConfig("isOpenshift") {
+		return nil
+	}
+
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "appcat-scc",
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "postgresql",
+				Namespace: comp.GetInstanceNamespace(),
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "appcat-scc",
+		},
+	}
+	return svc.SetDesiredKubeObject(rb, comp.GetName()+"-scc-rb")
 }

@@ -831,9 +831,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	if busyBoxImage := svc.Config.Data["busybox_image"]; busyBoxImage != "" {
-		err := common.SetNestedObjectValue(values, []string{"dbchecker", "image"}, map[string]any{
+		dbcheckerImage := map[string]any{
 			"repository": busyBoxImage,
-		})
+		}
+		if tag := svc.Config.Data["busybox_image_tag"]; tag != "" {
+			dbcheckerImage["tag"] = tag
+		}
+		err := common.SetNestedObjectValue(values, []string{"dbchecker", "image"}, dbcheckerImage)
 		if err != nil {
 			return nil, err
 		}
@@ -916,7 +920,7 @@ func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRu
 		ToFieldPath: ptr.To("data"),
 	}
 
-	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-custom-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef))
+	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-custom-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef), runtime.KubeOptionAllowDeletion)
 }
 
 func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {

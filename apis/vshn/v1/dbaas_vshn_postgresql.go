@@ -129,7 +129,7 @@ type VSHNPostgreSQLUpdateStrategy struct {
 
 // VSHNPostgreSQLServiceSpec contains PostgreSQL DBaaS specific properties
 type VSHNPostgreSQLServiceSpec struct {
-	// +kubebuilder:validation:Enum="12";"13";"14";"15";"16";"17"
+	// +kubebuilder:validation:Enum="12";"13";"14";"15";"16";"17";"18"
 	// +kubebuilder:default="15"
 
 	// MajorVersion contains supported version of PostgreSQL.
@@ -187,6 +187,12 @@ type VSHNDBaaSPostgresExtension struct {
 	// Name is the name of the extension to enable.
 	// For an extensive list, please consult https://stackgres.io/doc/latest/intro/extensions/
 	Name string `json:"name,omitempty"`
+	// Image containing the PostgreSQL extension.
+	// This is only available for CloudNativePG
+	// For a list of images, please consult https://github.com/cloudnative-pg/postgres-extensions-containers and https://github.com/vshn/cnpg_extensions
+	Image string `json:"image,omitempty"`
+	// Optional image pull policy for the extension image
+	ImagePullPolicy string `json:"imagePullPolicy,omitempty"`
 }
 
 type VSHNPostgreSQLBackup struct {

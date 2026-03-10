@@ -275,6 +275,61 @@ func Test_addCustomFiles(t *testing.T) {
 	assert.NotEqual(t, "null\n", v, "extraInitContainers should not be 'null\\n' when no custom files are added")
 }
 
+func Test_dbcheckerImage(t *testing.T) {
+	comp := &vshnv1.VSHNKeycloak{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycloak",
+			Namespace: "default",
+		},
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					Version: "23",
+				},
+			},
+		},
+	}
+
+	t.Run("busybox_image only sets repository", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+		svc.Config.Data["busybox_image"] = "my-registry/busybox"
+
+		values, err := newValues(context.TODO(), svc, comp, "mysecret", "mypgsecret")
+		assert.NoError(t, err)
+
+		dbchecker := values["dbchecker"].(map[string]any)
+		image := dbchecker["image"].(map[string]any)
+		assert.Equal(t, "my-registry/busybox", image["repository"])
+		_, hasTag := image["tag"]
+		assert.False(t, hasTag, "tag should not be set when busybox_image_tag is empty")
+	})
+
+	t.Run("busybox_image and busybox_image_tag sets both fields", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+		svc.Config.Data["busybox_image"] = "my-registry/busybox"
+		svc.Config.Data["busybox_image_tag"] = "1.36.1"
+
+		values, err := newValues(context.TODO(), svc, comp, "mysecret", "mypgsecret")
+		assert.NoError(t, err)
+
+		dbchecker := values["dbchecker"].(map[string]any)
+		image := dbchecker["image"].(map[string]any)
+		assert.Equal(t, "my-registry/busybox", image["repository"])
+		assert.Equal(t, "1.36.1", image["tag"])
+	})
+
+	t.Run("no busybox config leaves dbchecker image unset", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+
+		values, err := newValues(context.TODO(), svc, comp, "mysecret", "mypgsecret")
+		assert.NoError(t, err)
+
+		dbchecker := values["dbchecker"].(map[string]any)
+		_, hasImage := dbchecker["image"]
+		assert.False(t, hasImage, "image should not be set when busybox_image is empty")
+	})
+}
+
 func Test_configOrEnvChanged(t *testing.T) {
 	configHash1 := "0bee89b07a248e27c83fc3d5951213c1"
 	configHash2 := "b6273b589df2dfdbd8fe35b1011e3183"

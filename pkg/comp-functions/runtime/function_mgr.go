@@ -286,36 +286,12 @@ func (m *Manager) proxyFunction(ctx context.Context, req *fnv1.RunFunctionReques
 		return errResp, err
 	}
 
-	jsonReq, err := json.Marshal(req)
-	if err != nil {
-		return errResp, fmt.Errorf("cannot convert request to json for grpc reques: %w", err)
-	}
-
-	grpcReq := &fnv1.RunFunctionRequest{}
-
-	err = json.Unmarshal(jsonReq, grpcReq)
-	if err != nil {
-		return errResp, fmt.Errorf("cannot unmarshal grpc reques: %w", err)
-	}
-
-	rsp, err := fnv1.NewFunctionRunnerServiceClient(con).RunFunction(ctx, grpcReq)
+	rsp, err := fnv1.NewFunctionRunnerServiceClient(con).RunFunction(ctx, req)
 	if err != nil {
 		return errResp, err
 	}
 
-	jsonResp, err := json.Marshal(rsp)
-	if err != nil {
-		return errResp, fmt.Errorf("cannot marshal response to json: %w", err)
-	}
-
-	finalResponse := &xfnproto.RunFunctionResponse{}
-
-	err = json.Unmarshal(jsonResp, finalResponse)
-	if err != nil {
-		return errResp, fmt.Errorf("cannot unmarshal json response: %w", err)
-	}
-
-	return finalResponse, nil
+	return rsp, nil
 }
 
 // NewServiceRuntime returns a new runtime for a given service.
@@ -347,15 +323,15 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunc
 	}
 
 	return &ServiceRuntime{
-		Log:               l,
-		Config:            config,
-		req:               req,
-		desiredResources:  desiredResources,
-		connectionDetails: desiredComposite.ConnectionDetails,
-		results:           []*xfnproto.Result{},
-		desiredComposite:  desiredComposite.Resource,
-		observedComposite: observedComposite.Resource,
-		gvk:               observedComposite.Resource.GetObjectKind().GroupVersionKind(),
+		Log:                       l,
+		Config:                    config,
+		req:                       req,
+		desiredResources:          desiredResources,
+		connectionDetails:         desiredComposite.ConnectionDetails,
+		results:                   []*xfnproto.Result{},
+		desiredComposite:          desiredComposite.Resource,
+		observedComposite:         observedComposite.Resource,
+		gvk:                       observedComposite.Resource.GetObjectKind().GroupVersionKind(),
 		kubeOptionTracker: map[string][]KubeObjectOption{},
 	}, nil
 }
@@ -577,6 +553,14 @@ func KubeOptionObserve(obj *xkube.Object) {
 	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
 }
 
+// KubeOptionWatch enables watching the referenced or managed kubernetes resource.
+// When enabled, provider-kubernetes will reconcile the Object immediately when the
+// referenced resource changes, rather than waiting for the periodic poll interval.
+// Requires the "watches" feature gate to be enabled in provider-kubernetes.
+func KubeOptionWatch(obj *xkube.Object) {
+	obj.Spec.Watch = true
+}
+
 // KubeOptionProtectedBy protects the given kube objects from deletion as long
 // as resName exists.
 // resName is the name of the resource in the desired map.
@@ -660,10 +644,14 @@ func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string
 	// Crossplane uses apply to create and update objects.
 	// If we pass an object that already has a populated "kubectl.kubernetes.io/last-applied-configuration"
 	// annotation, then it will keep growing with each reconcile.
-	// So we reset it here to make sure this doesn't happen.
+	// We delete the key entirely (rather than setting it to "") so that
+	// provider-kubernetes can maintain its own apply tracking on the target
+	// resource. Setting it to "" would poison the three-way merge by erasing
+	// the "old applied" state, causing map keys (e.g. ConfigMap data) to
+	// never be removed on updates.
 	annotations := o.GetAnnotations()
 	if annotations != nil {
-		annotations["kubectl.kubernetes.io/last-applied-configuration"] = ""
+		delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
 		o.SetAnnotations(annotations)
 	}
 
@@ -1522,7 +1510,7 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 		ProviderConfigIgnoreLabel: "true",
 	}
 
-	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAllowDeletion, KubeOptionAddLabels(objectExtraLabels)); err != nil {
+	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAllowDeletion, KubeOptionWatch, KubeOptionAddLabels(objectExtraLabels)); err != nil {
 		return nil, err
 	}
 
@@ -1537,7 +1525,89 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 		return nil, err
 	}
 
+	// Provider-kubernetes (pre-v1.2.0) uses merge patches which don't remove
+	// map keys. If the source had keys removed, we must explicitly set them
+	// to null in the desired manifest so the merge patch deletes them.
+	if err := s.nullStaleCopyKeys(resourceName); err != nil {
+		s.Log.V(1).Info("Cannot null stale copy keys, skipping", "error", err)
+	}
+
 	return instObj, nil
+}
+
+// nullStaleCopyKeys detects keys present in the live copy but absent from the
+// desired source, and sets them to nil in the desired manifest. When serialized
+// to JSON this produces "key": null entries, which provider-kubernetes includes
+// in its merge patch, causing the API server to delete those keys.
+//
+// This is a workaround for provider-kubernetes <v1.2.0 which uses merge patches
+// instead of server-side apply. With SSA (v1.2.0+) this is unnecessary but harmless.
+func (s *ServiceRuntime) nullStaleCopyKeys(copyResourceName string) error {
+	escapedName := EscapeDNS1123(copyResourceName, false)
+
+	dr, ok := s.desiredResources[resource.Name(escapedName)]
+	if !ok {
+		return nil
+	}
+
+	// Read the observed copy Object to get live data
+	observed, err := request.GetObservedComposedResources(s.req)
+	if err != nil {
+		return err
+	}
+	res, ok := observed[resource.Name(escapedName)]
+	if !ok {
+		return nil // copy doesn't exist yet
+	}
+
+	kube := &xkube.Object{}
+	jsonBytes, err := res.Resource.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(jsonBytes, kube); err != nil {
+		return err
+	}
+	if len(kube.Status.AtProvider.Manifest.Raw) == 0 {
+		return nil
+	}
+
+	var liveManifest map[string]interface{}
+	if err := json.Unmarshal(kube.Status.AtProvider.Manifest.Raw, &liveManifest); err != nil {
+		return err
+	}
+
+	// Check both "data" (ConfigMap + Secret) and "stringData" (Secret)
+	for _, field := range []string{"data", "stringData"} {
+		liveField, ok := liveManifest[field].(map[string]interface{})
+		if !ok || len(liveField) == 0 {
+			continue
+		}
+
+		desiredField, found, err := unstructured.NestedMap(dr.Resource.Object, "spec", "forProvider", "manifest", field)
+		if err != nil {
+			continue
+		}
+		if !found {
+			desiredField = map[string]interface{}{}
+		}
+
+		changed := false
+		for key := range liveField {
+			if _, exists := desiredField[key]; !exists {
+				desiredField[key] = nil
+				changed = true
+			}
+		}
+
+		if changed {
+			if err := unstructured.SetNestedField(dr.Resource.Object, desiredField, "spec", "forProvider", "manifest", field); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // IsResourceReady checks if a resource exists in observed state with Ready=True condition.

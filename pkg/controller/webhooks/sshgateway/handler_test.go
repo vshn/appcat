@@ -27,6 +27,12 @@ func newTestHandler(t *testing.T, existingXLS ...*unstructured.Unstructured) *XL
 		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
+
+	scheme.AddKnownTypeWithName(
+		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSet"},
+		&unstructured.Unstructured{},
+	)
+
 	require.NoError(t, coordinationv1.AddToScheme(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
@@ -60,6 +66,12 @@ func newTestHandlerWithSharding(t *testing.T, capacity int, xlsSets []*unstructu
 		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
+
+	scheme.AddKnownTypeWithName(
+		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSet"},
+		&unstructured.Unstructured{},
+	)
+
 	require.NoError(t, coordinationv1.AddToScheme(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
@@ -323,6 +335,10 @@ func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
 	scheme.AddKnownTypeWithName(
 		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
 		&unstructured.UnstructuredList{},
+	)
+	scheme.AddKnownTypeWithName(
+		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSet"},
+		&unstructured.Unstructured{},
 	)
 	require.NoError(t, coordinationv1.AddToScheme(scheme))
 

@@ -74,6 +74,7 @@ rules:
   resources:
   - xlistenersets
   verbs:
+  - get
   - list
   - watch
 - apiGroups:

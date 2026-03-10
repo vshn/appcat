@@ -13,6 +13,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var xListenerSetSingleGVK = schema.GroupVersionKind{
+	Group:   "gateway.networking.x-k8s.io",
+	Version: "v1alpha1",
+	Kind:    "XListenerSet",
+}
+
 var xListenerSetGVK = schema.GroupVersionKind{
 	Group:   "gateway.networking.x-k8s.io",
 	Version: "v1alpha1",
@@ -60,7 +66,6 @@ func (a *PortAllocator) listXListenerSets(ctx context.Context) ([]unstructured.U
 // If the Lease already exists, it tries the next port.
 func (a *PortAllocator) AllocatePort(ctx context.Context, usedPorts map[int32]bool, namespace, holder string) (int32, error) {
 	now := metav1.NewMicroTime(time.Now())
-	duration := int32(300)
 
 	for port := a.portRangeStart; port <= a.portRangeEnd; port++ {
 		if usedPorts[port] {
@@ -74,9 +79,8 @@ func (a *PortAllocator) AllocatePort(ctx context.Context, usedPorts map[int32]bo
 				Labels:    map[string]string{"app.kubernetes.io/managed-by": "sshgateway-port-allocator"},
 			},
 			Spec: coordinationv1.LeaseSpec{
-				HolderIdentity:       &holder,
-				LeaseDurationSeconds: &duration,
-				AcquireTime:          &now,
+				HolderIdentity: &holder,
+				AcquireTime:    &now,
 			},
 		}
 
@@ -100,20 +104,33 @@ func (a *PortAllocator) AllocatePort(ctx context.Context, usedPorts map[int32]bo
 	return 0, fmt.Errorf("port range exhausted: all ports in %d-%d are in use", a.portRangeStart, a.portRangeEnd)
 }
 
-// tryReclaimStaleLease checks if an existing Lease is expired and, if so,
-// deletes it using a UID precondition to prevent races with other replicas.
-// Returns true only if the stale lease was successfully deleted.
+// tryReclaimStaleLease checks if the holder XListenerSet of an existing Lease
+// still exists. If the holder is gone/empty, the Lease is deleted.
 func (a *PortAllocator) tryReclaimStaleLease(ctx context.Context, name, namespace string) bool {
 	existing := &coordinationv1.Lease{}
 	if err := a.client.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, existing); err != nil {
 		return false
 	}
 
-	if existing.Spec.AcquireTime != nil && existing.Spec.LeaseDurationSeconds != nil {
-		expiry := existing.Spec.AcquireTime.Add(time.Duration(*existing.Spec.LeaseDurationSeconds) * time.Second)
-		if !time.Now().After(expiry) {
-			return false
-		}
+	if existing.Spec.HolderIdentity == nil || *existing.Spec.HolderIdentity == "" {
+		uid := existing.UID
+		return a.client.Delete(ctx, existing, client.Preconditions{UID: &uid}) == nil
+	}
+
+	holder := &unstructured.Unstructured{}
+	holder.SetGroupVersionKind(xListenerSetSingleGVK)
+
+	err := a.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: *existing.Spec.HolderIdentity}, holder)
+	if err == nil {
+		return false
+	}
+
+	if !apierrors.IsNotFound(err) {
+		return false
+	}
+
+	if existing.Spec.AcquireTime != nil && time.Since(existing.Spec.AcquireTime.Time) < 30*time.Second {
+		return false
 	}
 
 	uid := existing.UID

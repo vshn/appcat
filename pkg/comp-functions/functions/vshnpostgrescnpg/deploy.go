@@ -179,41 +179,29 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		hibernation = "on"
 	}
 
-	// Default version mappings (major -> minor version)
-	defaultVersions := map[string]string{
-		"18": "18.3",
-		"17": "17.5",
-		"16": "16.9",
-		"15": "15.9",
-	}
-
-	// Build ImageCatalog images, respecting pinImageTag if set
 	majorVersion := comp.Spec.Parameters.Service.MajorVersion
 	pinImageTag := comp.Spec.Parameters.Maintenance.PinImageTag
-	currentReleaseTag := defaultVersions[majorVersion]
 
-	// If pinImageTag is set, use it for the user's major version
+	// Use the major version tag by default (e.g. ":17"), or the pinned tag if set
+	imageTag := majorVersion
 	if pinImageTag != "" {
-		defaultVersions[majorVersion] = pinImageTag
-		currentReleaseTag = pinImageTag
+		imageTag = pinImageTag
 		svc.Log.Info("Using pinned image tag for PostgreSQL", "majorVersion", majorVersion, "pinnedTag", pinImageTag)
 	}
 
-	// Update status with current version (full minor version like "17.5")
-	if currentReleaseTag != "" {
-		comp.Status.CurrentVersion = currentReleaseTag
+	if imageTag != "" {
+		comp.Status.CurrentVersion = imageTag
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 			svc.Log.Error(err, "cannot update CurrentVersion in status")
 		}
 	}
 
-	// Build the images list for the ImageCatalog
-	imageCatalogImages := []map[string]string{}
-	for major, version := range defaultVersions {
-		imageCatalogImages = append(imageCatalogImages, map[string]string{
-			"image": getPsqlImage(version),
-			"major": major,
-		})
+	// Build the single-entry ImageCatalog for the cluster's major version
+	imageCatalogImages := []map[string]string{
+		{
+			"image": getPsqlImage(imageTag),
+			"major": majorVersion,
+		},
 	}
 
 	values := map[string]any{

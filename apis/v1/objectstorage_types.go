@@ -113,3 +113,21 @@ func (v *ObjectBucket) GetBucketName() string {
 	}
 	return v.GetName()
 }
+
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+type ObjectBucketList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []ObjectBucket `json:"items,omitempty"`
+}
+
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=true
+type XObjectBucketList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []XObjectBucket `json:"items,omitempty"`
+}

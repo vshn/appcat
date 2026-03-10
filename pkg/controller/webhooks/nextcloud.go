@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	valid "github.com/asaskevich/govalidator"
+	"github.com/blang/semver/v4"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -112,6 +113,12 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 		return nil, fmt.Errorf("provided old manifest is not a valid VSHNNextcloud object")
 	}
 
+	if nx.Spec.Parameters.Maintenance.PinImageTag == "" {
+		if err := validateNoVersionDowngrade(oldNx.Spec.Parameters.Service.Version, nx.Spec.Parameters.Service.Version); err != nil {
+			allErrs.Add(err)
+		}
+	}
+
 	if err := validateFQDNs(nx.Spec.Parameters.Service.FQDN); err != nil {
 		allErrs.Add(err)
 	}
@@ -140,6 +147,32 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 	}
 
 	return nil, allErrs.Get()
+}
+
+func validateNoVersionDowngrade(oldVersion, newVersion string) *field.Error {
+	if oldVersion == "" || newVersion == "" {
+		return nil
+	}
+	oldV, err := semver.ParseTolerant(oldVersion)
+	if err != nil {
+		return nil
+	}
+	newV, err := semver.ParseTolerant(newVersion)
+	if err != nil {
+		return field.Invalid(
+			field.NewPath("spec", "parameters", "service", "version"),
+			newVersion,
+			fmt.Sprintf("invalid version %q", newVersion),
+		)
+	}
+	if newV.LT(oldV) {
+		return field.Invalid(
+			field.NewPath("spec", "parameters", "service", "version"),
+			newVersion,
+			fmt.Sprintf("downgrading from %q to %q is not supported; set spec.parameters.maintenance.pinImageTag to override", oldVersion, newVersion),
+		)
+	}
+	return nil
 }
 
 func validateFQDNs(fqdns []string) *field.Error {

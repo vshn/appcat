@@ -73,6 +73,35 @@ func Test_hibernation(t *testing.T) {
 	})
 }
 
+func Test_enablePDB(t *testing.T) {
+	svc, comp := getSvcCompCnpg(t)
+	ctx := context.TODO()
+
+	t.Run("PDB disabled for single instance", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 1
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.Equal(t, false, values["cluster"].(map[string]any)["enablePDB"])
+	})
+
+	t.Run("PDB enabled for multiple instances", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 2
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.Equal(t, true, values["cluster"].(map[string]any)["enablePDB"])
+	})
+
+	t.Run("PDB disabled for paused instance", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 0
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.Equal(t, false, values["cluster"].(map[string]any)["enablePDB"])
+	})
+}
+
 func Test_version(t *testing.T) {
 	svc, comp := getSvcCompCnpg(t)
 	ctx := context.TODO()

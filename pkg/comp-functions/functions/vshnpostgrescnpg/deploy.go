@@ -208,6 +208,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		"fullnameOverride": "postgresql",
 		"cluster": map[string]any{
 			"instances": instances,
+			"enablePDB": instances > 1,
 			"annotations": map[string]string{
 				"cnpg.io/hibernation": hibernation,
 			},

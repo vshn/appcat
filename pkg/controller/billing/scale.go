@@ -21,7 +21,6 @@ func (b *BillingHandler) handleItemScaling(ctx context.Context, billingService *
 		Type:                 string(BillingEventTypeScaled),
 		ProductID:            item.ProductID,
 		Value:                item.Value,
-		Unit:                 item.Unit,
 		ItemDescription:      item.ItemDescription,
 		ItemGroupDescription: item.ItemGroupDescription,
 		Timestamp:            metav1.Now(),

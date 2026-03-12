@@ -49,9 +49,6 @@ type ItemSpec struct {
 	// ItemGroupDescription describes the billing item group
 	ItemGroupDescription string `json:"itemGroupDescription,omitempty"`
 
-	// Unit defines the billing unit type for this product
-	Unit string `json:"unit,omitempty"`
-
 	// Value represents the billable metric for this product
 	// Can be: replica count, disk size (e.g., "50Gi"), percentage, etc.
 	Value string `json:"value"`
@@ -95,9 +92,6 @@ type BillingEventStatus struct {
 	// Value represents the billable metric at the time of the event
 	// Generic field supporting replica count, disk size, percentages, etc.
 	Value string `json:"value"`
-
-	// Unit defines the billing unit type for this product
-	Unit string `json:"unit,omitempty"`
 
 	// ItemDescription is a human-readable description of the billing item
 	ItemDescription string `json:"itemDescription,omitempty"`

@@ -23,7 +23,6 @@ func (b *BillingHandler) handleDeletion(ctx context.Context, billingService *vsh
 				Type:                 string(BillingEventTypeDeleted),
 				ProductID:            item.ProductID,
 				Value:                lastValue,
-				Unit:                 item.Unit,
 				ItemDescription:      item.ItemDescription,
 				ItemGroupDescription: item.ItemGroupDescription,
 				Timestamp:            delTime,

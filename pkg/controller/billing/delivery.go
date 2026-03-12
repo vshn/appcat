@@ -68,7 +68,6 @@ func (b *BillingHandler) sendEventToOdoo(ctx context.Context, billingService *vs
 		SalesOrderID:         billingService.Spec.Odoo.SalesOrderID,
 		ItemDescription:      event.ItemDescription,
 		ItemGroupDescription: event.ItemGroupDescription,
-		UnitID:               event.Unit,
 		EventType:            event.Type,
 		Size:                 event.Value,
 		Timestamp:            event.Timestamp.Format(time.RFC3339),

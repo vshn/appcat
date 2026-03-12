@@ -16,7 +16,7 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 
 	// Single pass through events (newest-first order)
 	type eventInfo struct {
-		value, unit, itemDesc, itemGroupDesc string
+		value, itemDesc, itemGroupDesc string
 	}
 	createdProducts := make(map[string]bool)
 	lastSent := make(map[string]eventInfo)
@@ -33,7 +33,6 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 			(event.Type == string(BillingEventTypeCreated) || event.Type == string(BillingEventTypeScaled)) {
 			lastSent[event.ProductID] = eventInfo{
 				value:         event.Value,
-				unit:          event.Unit,
 				itemDesc:      event.ItemDescription,
 				itemGroupDesc: event.ItemGroupDescription,
 			}
@@ -50,7 +49,6 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 			Type:                 string(BillingEventTypeDeleted),
 			ProductID:            productID,
 			Value:                info.value,
-			Unit:                 info.unit,
 			ItemDescription:      info.itemDesc,
 			ItemGroupDescription: info.itemGroupDesc,
 			Timestamp:            metav1.Now(),

@@ -81,10 +81,6 @@ spec:
                           description: ProductID identifies the product in the billing
                             system
                           type: string
-                        unit:
-                          description: Unit defines the billing unit type for this
-                            product
-                          type: string
                         value:
                           description: |-
                             Value represents the billable metric for this product
@@ -216,9 +212,6 @@ spec:
                       - create
                       - delete
                       - scale
-                      type: string
-                    unit:
-                      description: Unit defines the billing unit type for this product
                       type: string
                     value:
                       description: |-

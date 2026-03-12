@@ -62,13 +62,6 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	namespace := comp.GetClaimNamespace()
 	service := comp.GetServiceName()
 
-	// Get unitID from config (for default item if no items specified)
-	unitID := svc.Config.Data["billingUnitID"]
-	if unitID == "" {
-		log.Error(fmt.Errorf("missing billing unitID"), "UnitID missing in composition")
-		return runtime.NewWarningResult(fmt.Sprintf("no billing unit id set in composition for %s", comp.GetName()))
-	}
-
 	// Get clusterName from config
 	clusterName := svc.Config.Data["clusterName"]
 	if clusterName == "" {
@@ -103,16 +96,12 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		if items[i].ItemGroupDescription == "" {
 			items[i].ItemGroupDescription = itemGroupDescription
 		}
-		if items[i].Unit == "" {
-			items[i].Unit = unitID
-		}
 	}
 
 	// Create default service item and add to any other items that come from each service
 	items = append(items, vshnv1.ItemSpec{
 		ProductID:            getProductID(comp, service),
 		Value:                strconv.Itoa(comp.GetInstances()),
-		Unit:                 unitID,
 		ItemDescription:      itemDescription,
 		ItemGroupDescription: itemGroupDescription,
 	})

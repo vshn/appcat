@@ -160,6 +160,11 @@ func (m *Maintenance) Run(ctx context.Context) *xfnproto.Result {
 	// Handle initial maintenance job
 	// Keep the job in desired state until 30 minutes after completion
 	if !m.resource.GetInitialMaintenanceRan() {
+		if m.resource.GetName() == "" {
+			log.Info("Composite resource not yet fully populated, deferring initial maintenance job")
+			return runtime.NewNormalResult("Composite resource not yet fully populated, deferring initial maintenance job")
+		}
+
 		// Job hasn't been created yet, create it
 		if err := m.createInitialMaintenanceJob(ctx); err != nil {
 			log.Error(err, "Failed to create initial maintenance job")

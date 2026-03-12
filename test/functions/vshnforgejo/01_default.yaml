@@ -40,7 +40,7 @@ observed:
                 openid:
                   ENABLE_OPENID_SIGNIN: "false"
                 oauth2:
-                  ENABLE_AUTO_REGISTRATION: "true"
+                  ENABLE: "true"
                 oauth2_client:
                   ENABLE_AUTO_REGISTRATION: "true"
                 service:

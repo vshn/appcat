@@ -59,7 +59,7 @@ func TestDeployment(t *testing.T) {
 		values := getReleaseValues(t, *release)
 		config := values["gitea"].(map[string]any)["config"].(map[string]any)
 		assert.Equal(t, map[string]any{"ENABLE_AUTO_REGISTRATION": "true"}, config["oauth2_client"])
-		assert.Equal(t, map[string]any{"ENABLE_AUTO_REGISTRATION": "true"}, config["oauth2"])
+		assert.Equal(t, map[string]any{"ENABLE": "true"}, config["oauth2"])
 	})
 
 	t.Run("GivenPlan_ExpectPlanResources", func(t *testing.T) {

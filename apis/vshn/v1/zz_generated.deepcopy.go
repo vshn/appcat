@@ -502,6 +502,20 @@ func (in *VSHNForgejoConfig) DeepCopyInto(out *VSHNForgejoConfig) {
 			(*out)[key] = val
 		}
 	}
+	if in.OAuth2 != nil {
+		in, out := &in.OAuth2, &out.OAuth2
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.OAuth2Client != nil {
+		in, out := &in.OAuth2Client, &out.OAuth2Client
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.Service != nil {
 		in, out := &in.Service, &out.Service
 		*out = make(map[string]string, len(*in))

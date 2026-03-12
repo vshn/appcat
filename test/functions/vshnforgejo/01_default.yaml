@@ -39,6 +39,10 @@ observed:
                   ENABLED: "true"
                 openid:
                   ENABLE_OPENID_SIGNIN: "false"
+                oauth2:
+                  ENABLE_AUTO_REGISTRATION: "true"
+                oauth2_client:
+                  ENABLE_AUTO_REGISTRATION: "true"
                 service:
                   REGISTER_EMAIL_CONFIRM: "true"
                 mailer:

@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	admissionv1 "k8s.io/api/admission/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -121,7 +122,7 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 		if !ok {
 			continue
 		}
-		port := toInt32(listenerMap["port"])
+		port := utils.ToInt32(listenerMap["port"])
 		if port == 0 {
 			listenerName, _ := listenerMap["name"].(string)
 

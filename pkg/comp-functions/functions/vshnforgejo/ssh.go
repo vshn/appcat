@@ -9,6 +9,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	netv1 "k8s.io/api/networking/v1"
@@ -104,31 +105,44 @@ func createXListenerSet(svc *runtime.ServiceRuntime, name, namespace, gatewayNam
 	xls.SetName(name)
 	xls.SetNamespace(namespace)
 
-	xls.Object["spec"] = map[string]any{
-		"parentRef": map[string]any{
-			"group":     "gateway.networking.k8s.io",
-			"kind":      "Gateway",
-			"namespace": namespace,
-			"name":      gatewayName,
+	err := unstructured.SetNestedMap(xls.Object, map[string]any{
+		"group":     "gateway.networking.k8s.io",
+		"kind":      "Gateway",
+		"namespace": namespace,
+		"name":      gatewayName,
+	}, "spec", "parentRef")
+
+	if err != nil {
+		return fmt.Errorf("setting parentRef: %w", err)
+	}
+
+	listener := map[string]any{
+		"name":     sshListenerName,
+		"port":     int64(port),
+		"protocol": "TCP",
+	}
+
+	err = unstructured.SetNestedField(listener, "All", "allowedRoutes", "namespaces", "from")
+
+	if err != nil {
+		return fmt.Errorf("setting allowedRoutes.namespaces: %w", err)
+	}
+
+	err = unstructured.SetNestedSlice(listener, []any{
+		map[string]any{
+			"group": "gateway.networking.k8s.io",
+			"kind":  "TCPRoute",
 		},
-		"listeners": []any{
-			map[string]any{
-				"name":     sshListenerName,
-				"port":     int64(port),
-				"protocol": "TCP",
-				"allowedRoutes": map[string]any{
-					"kinds": []any{
-						map[string]any{
-							"group": "gateway.networking.k8s.io",
-							"kind":  "TCPRoute",
-						},
-					},
-					"namespaces": map[string]any{
-						"from": "All",
-					},
-				},
-			},
-		},
+	}, "allowedRoutes", "kinds")
+
+	if err != nil {
+		return fmt.Errorf("setting allowedRoutes.kinds: %w", err)
+	}
+
+	err = unstructured.SetNestedSlice(xls.Object, []any{listener}, "spec", "listeners")
+
+	if err != nil {
+		return fmt.Errorf("setting listeners: %w", err)
 	}
 
 	return svc.SetDesiredKubeObject(xls, name)
@@ -148,29 +162,36 @@ func createTCPRoute(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name,
 	tcpRoute.SetName(name)
 	tcpRoute.SetNamespace(gatewayNamespace)
 
-	tcpRoute.Object["spec"] = map[string]any{
-		"parentRefs": []any{
-			map[string]any{
-				"group":       "gateway.networking.x-k8s.io",
-				"kind":        "XListenerSet",
-				"namespace":   gatewayNamespace,
-				"name":        name,
-				"sectionName": sshListenerName,
-			},
+	err := unstructured.SetNestedSlice(tcpRoute.Object, []any{
+		map[string]any{
+			"group":       "gateway.networking.x-k8s.io",
+			"kind":        "XListenerSet",
+			"namespace":   gatewayNamespace,
+			"name":        name,
+			"sectionName": sshListenerName,
 		},
-		"rules": []any{
-			map[string]any{
-				"backendRefs": []any{
-					map[string]any{
-						"group":     "",
-						"kind":      "Service",
-						"name":      sshServiceName,
-						"namespace": instanceNs,
-						"port":      int64(sshPort),
-					},
+	}, "spec", "parentRefs")
+
+	if err != nil {
+		return fmt.Errorf("setting parentRefs: %w", err)
+	}
+
+	err = unstructured.SetNestedSlice(tcpRoute.Object, []any{
+		map[string]any{
+			"backendRefs": []any{
+				map[string]any{
+					"group":     "",
+					"kind":      "Service",
+					"name":      sshServiceName,
+					"namespace": instanceNs,
+					"port":      int64(sshPort),
 				},
 			},
 		},
+	}, "spec", "rules")
+
+	if err != nil {
+		return fmt.Errorf("setting rules: %w", err)
 	}
 
 	return svc.SetDesiredKubeObject(tcpRoute, name+"-tcproute")
@@ -188,21 +209,28 @@ func createReferenceGrant(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo,
 	refGrant.SetName(name)
 	refGrant.SetNamespace(instanceNs)
 
-	refGrant.Object["spec"] = map[string]any{
-		"from": []any{
-			map[string]any{
-				"group":     "gateway.networking.k8s.io",
-				"kind":      "TCPRoute",
-				"namespace": gatewayNamespace,
-			},
+	err := unstructured.SetNestedSlice(refGrant.Object, []any{
+		map[string]any{
+			"group":     "gateway.networking.k8s.io",
+			"kind":      "TCPRoute",
+			"namespace": gatewayNamespace,
 		},
-		"to": []any{
-			map[string]any{
-				"group": "",
-				"kind":  "Service",
-				"name":  sshServiceName,
-			},
+	}, "spec", "from")
+
+	if err != nil {
+		return fmt.Errorf("setting from: %w", err)
+	}
+
+	err = unstructured.SetNestedSlice(refGrant.Object, []any{
+		map[string]any{
+			"group": "",
+			"kind":  "Service",
+			"name":  sshServiceName,
 		},
+	}, "spec", "to")
+
+	if err != nil {
+		return fmt.Errorf("setting to: %w", err)
 	}
 
 	return svc.SetDesiredKubeObject(refGrant, name+"-refgrant")
@@ -331,7 +359,7 @@ func observeXListenerSet(svc *runtime.ServiceRuntime, name string) observedXList
 		return state
 	}
 
-	state.port = toInt32(listenerMap["port"])
+	state.port = utils.ToInt32(listenerMap["port"])
 
 	if state.port == 0 {
 		return state
@@ -359,15 +387,4 @@ func defaultGatewayName(svc *runtime.ServiceRuntime) string {
 	}
 
 	return ""
-}
-
-func toInt32(v any) int32 {
-	switch p := v.(type) {
-	case int64:
-		return int32(p)
-	case float64:
-		return int32(p)
-	default:
-		return 0
-	}
 }

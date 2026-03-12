@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,7 +158,7 @@ func (a *PortAllocator) extractUsedPorts(items []unstructured.Unstructured) map[
 				continue
 			}
 
-			if p := toInt32(port); p > 0 {
+			if p := utils.ToInt32(port); p > 0 {
 				usedPorts[p] = true
 			}
 		}
@@ -197,16 +198,5 @@ func extractGatewayKey(obj unstructured.Unstructured) GatewayKey {
 	return GatewayKey{
 		Namespace: ns,
 		Name:      name,
-	}
-}
-
-func toInt32(v any) int32 {
-	switch p := v.(type) {
-	case int64:
-		return int32(p)
-	case float64:
-		return int32(p)
-	default:
-		return 0
 	}
 }

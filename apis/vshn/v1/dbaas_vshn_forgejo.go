@@ -127,6 +127,12 @@ type VSHNForgejoConfig struct {
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
 	OpenID map[string]string `json:"openid,omitempty"`
 
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#oauth2-oauth2
+	OAuth2 map[string]string `json:"oauth2,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#oauth2-client-oauth2_client
+	OAuth2Client map[string]string `json:"oauth2_client,omitempty"`
+
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
 	Service map[string]string `json:"service,omitempty"`
 

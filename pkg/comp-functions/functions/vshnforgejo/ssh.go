@@ -86,11 +86,10 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 			svc.SetConnectionDetail("FORGEJO_SSH_HOST", []byte(sshDomain))
 		}
 		svc.SetConnectionDetail("FORGEJO_SSH_PORT", []byte(strconv.FormatInt(int64(observed.port), 10)))
-	}
 
-	err = enableSSHInRelease(svc, comp, sshDomain, observed.port)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot enable SSH in release: %s", err))
+		if err := enableSSHInRelease(svc, comp, sshDomain, observed.port); err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot enable SSH in release: %s", err))
+		}
 	}
 
 	return nil

@@ -98,9 +98,19 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		}
 	}
 
+	// Determine product ID: use claim annotation if configured (e.g. Servala/Talos), otherwise compute standard ID
+	productID := getProductID(comp, service)
+	if annotationKey := svc.Config.Data["claimAnnotationProductID"]; annotationKey != "" {
+		val := comp.GetAnnotations()[annotationKey]
+		if val == "" {
+			return runtime.NewWarningResult(fmt.Sprintf("annotation %q required for billing but missing on composite %s", annotationKey, comp.GetName()))
+		}
+		productID = val
+	}
+
 	// Create default service item and add to any other items that come from each service
 	items = append(items, vshnv1.ItemSpec{
-		ProductID:            getProductID(comp, service),
+		ProductID:            productID,
 		Value:                strconv.Itoa(comp.GetInstances()),
 		ItemDescription:      itemDescription,
 		ItemGroupDescription: itemGroupDescription,

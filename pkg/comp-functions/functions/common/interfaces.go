@@ -24,6 +24,7 @@ type InfoGetter interface {
 	GetClaimName() string
 	GetSLA() string
 	GetBillingName() string
+	GetAnnotations() map[string]string
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create

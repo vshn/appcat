@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -83,12 +84,22 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		isAPPUiOCloud = true
 	}
 
+	// salesOrderID annotation overrides config-level salesOrder before any description computation
+	prefix := svc.Config.Data["claimAnnotationBillingPrefix"]
+	if prefix != "" {
+		if v := comp.GetAnnotations()[prefix+"/salesOrderID"]; v != "" {
+			salesOrder = v
+			isAPPUiOCloud = false // explicit sales order — not APPUiO Cloud billing
+		}
+	}
+
 	// Prepare ItemGroupDescription and ItemDescription for all items
 	itemGroupDescription := claim
 	itemDescription := GetItemDescription(isAPPUiOCloud, clusterName, namespace)
 
-	// Populate missing attributes with default values in case the attributes are missing
-	items := opts.Items
+	// Clone to avoid mutating the caller's slice elements when filling in defaults
+	items := make([]vshnv1.ItemSpec, len(opts.Items))
+	copy(items, opts.Items)
 	for i := range items {
 		if items[i].ItemDescription == "" {
 			items[i].ItemDescription = itemDescription
@@ -98,23 +109,36 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		}
 	}
 
-	// Determine product ID: use claim annotation if configured (e.g. Servala/Talos), otherwise compute standard ID
-	productID := getProductID(comp, service)
-	if annotationKey := svc.Config.Data["claimAnnotationProductID"]; annotationKey != "" {
-		val := comp.GetAnnotations()[annotationKey]
-		if val == "" {
-			return runtime.NewWarningResult(fmt.Sprintf("annotation %q required for billing but missing on composite %s", annotationKey, comp.GetName()))
+	if prefix != "" {
+		raw := comp.GetAnnotations()[prefix+"/items"]
+		if raw == "" {
+			return runtime.NewWarningResult(fmt.Sprintf("%s/items annotation missing on composite %s", prefix, comp.GetName()))
 		}
-		productID = val
+		var payload struct {
+			Items []vshnv1.ItemSpec `json:"items"`
+		}
+		if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot parse %s/items on %s: %v", prefix, comp.GetName(), err))
+		}
+		if len(payload.Items) == 0 {
+			return runtime.NewWarningResult(fmt.Sprintf("%s/items is empty on composite %s", prefix, comp.GetName()))
+		}
+		for _, ai := range payload.Items {
+			if ai.ProductID == "" {
+				return runtime.NewWarningResult(fmt.Sprintf("%s/items contains an item with empty productID on composite %s", prefix, comp.GetName()))
+			}
+		}
+		items = append(items, payload.Items...)
+	} else {
+		// Default: compute a single standard product item (non-Servala clusters)
+		productID := getProductID(comp, service)
+		items = append(items, vshnv1.ItemSpec{
+			ProductID:            productID,
+			Value:                strconv.Itoa(comp.GetInstances()),
+			ItemDescription:      itemDescription,
+			ItemGroupDescription: itemGroupDescription,
+		})
 	}
-
-	// Create default service item and add to any other items that come from each service
-	items = append(items, vshnv1.ItemSpec{
-		ProductID:            productID,
-		Value:                strconv.Itoa(comp.GetInstances()),
-		ItemDescription:      itemDescription,
-		ItemGroupDescription: itemGroupDescription,
-	})
 
 	// Build labels
 	labels := map[string]string{

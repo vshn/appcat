@@ -11,7 +11,7 @@ var (
 	// PostgreSQL alerts - most specific as currently those are the only ones where we have different container name and namespace
 	patroniPersistentVolumeExpectedToFillUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet",metrics_path="/metrics"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics"}) < 0.15 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job="kubelet",metrics_path="/metrics"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
 
-	patroniMemoryCritical = `label_replace( topk(1, (max(container_memory_working_set_bytes{container="patroni"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
+	patroniMemoryCritical = `label_replace( topk(1, (max(container_memory_rss{container="patroni"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
 
 	patroniPersistentVolumeFillingUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics"}) < 0.03 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
 
@@ -30,7 +30,7 @@ func TestNewAlertSetBuilder(t *testing.T) {
 	assert.Empty(t, builder.as.customRules)
 	assert.Empty(t, builder.as.alerts)
 
-	builder.AddAll()
+	builder.AddAllDB()
 	// if this test fail, please simply update order and count of alerts in this slice
 	expectedAlerts := []alert{pvFillUp, pvExpectedFillUp, memCritical}
 

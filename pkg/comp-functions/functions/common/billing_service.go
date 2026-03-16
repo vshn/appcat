@@ -85,7 +85,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	}
 
 	// salesOrderID annotation overrides config-level salesOrder before any description computation
-	prefix := svc.Config.Data["claimAnnotationBillingPrefix"]
+	prefix := svc.Config.Data["servalaBillingAnnotationPrefix"]
 	if prefix != "" {
 		if v := comp.GetAnnotations()[prefix+"/salesOrderID"]; v != "" {
 			salesOrder = v

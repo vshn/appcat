@@ -170,9 +170,9 @@ func (p *PostgreSQLCNPG) doVacuum(ctx context.Context) error {
 			return fmt.Errorf("failed to connect to database %s: %w", db, err)
 		}
 
-		if _, err := dbConn.Exec(ctx, "VACUUM"); err != nil {
+		if _, err := dbConn.Exec(ctx, "VACUUM ANALYZE"); err != nil {
 			_ = dbConn.Close(ctx)
-			return fmt.Errorf("failed to execute VACUUM on %s: %w", db, err)
+			return fmt.Errorf("failed to execute VACUUM ANALYZE on %s: %w", db, err)
 		}
 
 		if err := dbConn.Close(ctx); err != nil {

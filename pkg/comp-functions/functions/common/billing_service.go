@@ -109,23 +109,46 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		}
 	}
 
+	// Pre-fetch the existing billing service kube object before annotation checks.
+	// This allows us to preserve it in the desired state even when annotation validation fails,
+	// preventing Crossplane from garbage-collecting it.
+	observedResourceName := comp.GetName() + opts.ResourceNameSuffix
+	kubeObj := &xkube.Object{}
+	observedErr := svc.GetObservedComposedResource(kubeObj, observedResourceName)
+	if observedErr != nil && observedErr != runtime.ErrNotFound {
+		log.Error(observedErr, "cannot get billing service kube object", "service", comp.GetName())
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
+	}
+
+	// preserveExistingAndWarn re-adds the existing billing service to the desired state (if it
+	// exists) before returning a warning. This prevents Crossplane from garbage-collecting the
+	// billing service when annotation validation fails.
+	preserveExistingAndWarn := func(msg string) *xfnproto.Result {
+		if observedErr == nil {
+			if err := svc.SetDesiredComposedResourceWithName(kubeObj, observedResourceName); err != nil {
+				log.Error(err, "cannot preserve existing billing service", "service", comp.GetName())
+			}
+		}
+		return runtime.NewWarningResult(msg)
+	}
+
 	if prefix != "" {
 		raw := comp.GetAnnotations()[prefix+"/items"]
 		if raw == "" {
-			return runtime.NewWarningResult(fmt.Sprintf("%s/items annotation missing on composite %s", prefix, comp.GetName()))
+			return preserveExistingAndWarn(fmt.Sprintf("%s/items annotation missing on composite %s", prefix, comp.GetName()))
 		}
 		var payload struct {
 			Items []vshnv1.ItemSpec `json:"items"`
 		}
 		if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot parse %s/items on %s: %v", prefix, comp.GetName(), err))
+			return preserveExistingAndWarn(fmt.Sprintf("cannot parse %s/items on %s: %v", prefix, comp.GetName(), err))
 		}
 		if len(payload.Items) == 0 {
-			return runtime.NewWarningResult(fmt.Sprintf("%s/items is empty on composite %s", prefix, comp.GetName()))
+			return preserveExistingAndWarn(fmt.Sprintf("%s/items is empty on composite %s", prefix, comp.GetName()))
 		}
 		for _, ai := range payload.Items {
 			if ai.ProductID == "" {
-				return runtime.NewWarningResult(fmt.Sprintf("%s/items contains an item with empty productID on composite %s", prefix, comp.GetName()))
+				return preserveExistingAndWarn(fmt.Sprintf("%s/items contains an item with empty productID on composite %s", prefix, comp.GetName()))
 			}
 		}
 		items = append(items, payload.Items...)
@@ -177,19 +200,11 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		billingService.Spec.Odoo.Organization = org
 	}
 
-	kubeObj := &xkube.Object{}
-	observedResourceName := comp.GetName() + opts.ResourceNameSuffix
-	err := svc.GetObservedComposedResource(kubeObj, observedResourceName)
-	if err != nil && err != runtime.ErrNotFound {
-		log.Error(err, "cannot get billing service kube object", "service", comp.GetName())
-		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
-	}
-
 	kubeOpts := []runtime.KubeObjectOption{
 		runtime.KubeOptionDeployOnControlPlane,
 		runtime.KubeOptionObserveCreateUpdate,
 	}
-	if err == nil {
+	if observedErr == nil {
 		// Create owner reference pointing to the Crossplane Object itself
 		ownerRef := metav1.OwnerReference{
 			APIVersion:         "kubernetes.crossplane.io/v1alpha1",
@@ -203,11 +218,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	}
 
 	// Set the BillingService as a desired kube object
-	err = svc.SetDesiredKubeObject(billingService, observedResourceName,
-		kubeOpts...,
-	)
-
-	if err != nil {
+	if err := svc.SetDesiredKubeObject(billingService, observedResourceName, kubeOpts...); err != nil {
 		log.Error(err, "cannot set BillingService as desired object", "service", comp.GetName())
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create BillingService for %s: %v", comp.GetName(), err))
 	}

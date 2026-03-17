@@ -32,7 +32,7 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
 							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
@@ -67,7 +67,7 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
 							{ProductID: "prod-123", Value: "2", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
@@ -101,7 +101,7 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
 							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
@@ -135,7 +135,7 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
 							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
@@ -175,7 +175,7 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
 							{ProductID: "prod-storage", Value: "100Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
 						},
@@ -250,7 +250,7 @@ func TestHandleItemScaling_MultipleItems(t *testing.T) {
 		},
 		Spec: vshnv1.BillingServiceSpec{
 			Odoo: vshnv1.OdooSpec{
-				InstanceID: "test-instance",
+				ServiceID: "test-instance",
 				Items: []vshnv1.ItemSpec{
 					{ProductID: "prod-compute", Value: "4", ItemDescription: "Compute Item", ItemGroupDescription: "Compute Group"},
 					{ProductID: "prod-storage", Value: "100Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},

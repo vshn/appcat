@@ -20,6 +20,7 @@ func (b *BillingHandler) handleItemScaling(ctx context.Context, billingService *
 	ev := vshnv1.BillingEventStatus{
 		Type:                 string(BillingEventTypeScaled),
 		ProductID:            item.ProductID,
+		InstanceID:           item.InstanceID,
 		Value:                item.Value,
 		ItemDescription:      item.ItemDescription,
 		ItemGroupDescription: item.ItemGroupDescription,

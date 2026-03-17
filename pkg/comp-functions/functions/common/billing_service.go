@@ -2,6 +2,8 @@ package common
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -107,6 +109,9 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		if items[i].ItemGroupDescription == "" {
 			items[i].ItemGroupDescription = itemGroupDescription
 		}
+		if items[i].InstanceID == "" {
+			items[i].InstanceID = comp.GetName() + "-" + shortSHA(items[i].ProductID)
+		}
 	}
 
 	// Pre-fetch the existing billing service kube object before annotation checks.
@@ -151,7 +156,11 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 				return preserveExistingAndWarn(fmt.Sprintf("%s/items contains an item with empty productID on composite %s", prefix, comp.GetName()))
 			}
 		}
+		start := len(items)
 		items = append(items, payload.Items...)
+		for i := start; i < len(items); i++ {
+			items[i].InstanceID = comp.GetName() + "-" + shortSHA(items[i].ProductID)
+		}
 	} else {
 		// Default: compute a single standard product item (non-Servala clusters)
 		productID := getProductID(comp, service)
@@ -160,6 +169,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 			Value:                strconv.Itoa(comp.GetInstances()),
 			ItemDescription:      itemDescription,
 			ItemGroupDescription: itemGroupDescription,
+			InstanceID:           comp.GetName() + "-" + shortSHA(productID),
 		})
 	}
 
@@ -183,7 +193,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		Spec: vshnv1.BillingServiceSpec{
 			KeepAfterDeletion: keepAfterDeletion,
 			Odoo: vshnv1.OdooSpec{
-				InstanceID:   comp.GetName(),
+				ServiceID:    comp.GetName(),
 				SalesOrderID: salesOrder,
 				Items:        items,
 			},
@@ -243,4 +253,10 @@ func getProductID(comp InfoGetter, service string) string {
 	// Construct productID: appcat-vshn-{service}-{sla}
 	productID := fmt.Sprintf("appcat-vshn-%s-%s", service, sla)
 	return productID
+}
+
+// shortSHA returns the first 8 hex characters of the SHA-256 hash of s.
+func shortSHA(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])[:8]
 }

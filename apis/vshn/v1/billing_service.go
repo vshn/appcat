@@ -52,12 +52,15 @@ type ItemSpec struct {
 	// Value represents the billable metric for this product
 	// Can be: replica count, disk size (e.g., "50Gi"), percentage, etc.
 	Value string `json:"value"`
+
+	// InstanceID uniquely identifies this product event in Odoo. Format: <composite-name>-<shortSHA(productID)>
+	InstanceID string `json:"instanceID,omitempty"`
 }
 
 // OdooSpec defines Odoo-specific billing configuration
 type OdooSpec struct {
-	// InstanceID uniquely identifies the service instance in Odoo
-	InstanceID string `json:"instanceID"`
+	// ServiceID is a cosmetic label identifying the service instance in Odoo
+	ServiceID string `json:"serviceID"`
 
 	// SalesOrderID identifies the sales order in Odoo
 	SalesOrderID string `json:"salesOrderID,omitempty"`
@@ -88,6 +91,9 @@ type BillingEventStatus struct {
 
 	// ProductID identifies the product in the billing system
 	ProductID string `json:"productId"`
+
+	// InstanceID uniquely identifies this product event in Odoo. Format: <composite-name>-<shortSHA(productID)>
+	InstanceID string `json:"instanceID,omitempty"`
 
 	// Value represents the billable metric at the time of the event
 	// Generic field supporting replica count, disk size, percentages, etc.

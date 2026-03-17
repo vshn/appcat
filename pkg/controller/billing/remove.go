@@ -16,7 +16,7 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 
 	// Single pass through events (newest-first order)
 	type eventInfo struct {
-		value, itemDesc, itemGroupDesc string
+		value, itemDesc, itemGroupDesc, instanceID string
 	}
 	createdProducts := make(map[string]bool)
 	lastSent := make(map[string]eventInfo)
@@ -35,6 +35,7 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 				value:         event.Value,
 				itemDesc:      event.ItemDescription,
 				itemGroupDesc: event.ItemGroupDescription,
+				instanceID:    event.InstanceID,
 			}
 		}
 	}
@@ -44,10 +45,15 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 			continue
 		}
 
-		info := lastSent[productID]
+		info, ok := lastSent[productID]
+		if !ok {
+			// Never sent to Odoo — nothing to delete
+			continue
+		}
 		delEvent := vshnv1.BillingEventStatus{
 			Type:                 string(BillingEventTypeDeleted),
 			ProductID:            productID,
+			InstanceID:           info.instanceID,
 			Value:                info.value,
 			ItemDescription:      info.itemDesc,
 			ItemGroupDescription: info.itemGroupDesc,

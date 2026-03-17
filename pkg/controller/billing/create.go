@@ -15,6 +15,7 @@ func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService 
 	event := vshnv1.BillingEventStatus{
 		Type:                 string(BillingEventTypeCreated),
 		ProductID:            item.ProductID,
+		InstanceID:           item.InstanceID,
 		Value:                item.Value,
 		ItemDescription:      item.ItemDescription,
 		ItemGroupDescription: item.ItemGroupDescription,

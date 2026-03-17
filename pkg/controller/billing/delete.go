@@ -22,6 +22,7 @@ func (b *BillingHandler) handleDeletion(ctx context.Context, billingService *vsh
 			event := vshnv1.BillingEventStatus{
 				Type:                 string(BillingEventTypeDeleted),
 				ProductID:            item.ProductID,
+				InstanceID:           item.InstanceID,
 				Value:                lastValue,
 				ItemDescription:      item.ItemDescription,
 				ItemGroupDescription: item.ItemGroupDescription,

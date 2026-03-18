@@ -8,7 +8,7 @@ input:
     clusterName: "c-sv-test"
     salesOrder: "SO-12345"
     billingEnabled: "true"
-    claimAnnotationBillingPrefix: "billing.servala.com"
+    servalaBillingAnnotationPrefix: "billing.servala.com"
 observed:
   composite:
     resource:

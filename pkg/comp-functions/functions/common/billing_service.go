@@ -121,8 +121,8 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	kubeObj := &xkube.Object{}
 	observedErr := svc.GetObservedComposedResource(kubeObj, observedResourceName)
 	if observedErr != nil && observedErr != runtime.ErrNotFound {
-		log.Error(observedErr, "cannot get billing service kube object", "service", comp.GetName())
-		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
+		log.Error(observedErr, "cannot get billing service kube object, treating as not found", "service", comp.GetName())
+		observedErr = runtime.ErrNotFound // treat as not found; continue to create desired object
 	}
 
 	// preserveExistingAndWarn re-adds the existing billing service to the desired state (if it
@@ -217,7 +217,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	if observedErr == nil {
 		// Create owner reference pointing to the Crossplane Object itself
 		ownerRef := metav1.OwnerReference{
-			APIVersion:         "kubernetes.crossplane.io/v1alpha1",
+			APIVersion:         "kubernetes.crossplane.io/v1alpha2",
 			Kind:               "Object",
 			Name:               kubeObj.GetName(),
 			UID:                kubeObj.GetUID(),
@@ -230,7 +230,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	// Set the BillingService as a desired kube object
 	if err := svc.SetDesiredKubeObject(billingService, observedResourceName, kubeOpts...); err != nil {
 		log.Error(err, "cannot set BillingService as desired object", "service", comp.GetName())
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create BillingService for %s: %v", comp.GetName(), err))
+		return preserveExistingAndWarn(fmt.Sprintf("cannot create BillingService for %s: %v", comp.GetName(), err))
 	}
 
 	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s with %d items", comp.GetName(), len(items)))

@@ -193,6 +193,20 @@ type VSHNDBaaSPostgresExtension struct {
 	Image string `json:"image,omitempty"`
 	// Optional image pull policy for the extension image
 	ImagePullPolicy string `json:"imagePullPolicy,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// extension_control_path.
+	// If not defined, defaults to "/share".
+	ExtensionControlPath []string `json:"extension_control_path,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// dynamic_library_path.
+	// If not defined, defaults to "/lib".
+	DynamicLibraryPath []string `json:"dynamic_library_path,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// ld_library_path.
+	LdLibraryPath []string `json:"ld_library_path,omitempty"`
 }
 
 type VSHNPostgreSQLBackup struct {

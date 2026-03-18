@@ -58,6 +58,20 @@ type ClusterSpecPostgresqlExtension struct {
 	Name string `json:"name"`
 	// Image holds the container image from which the extension is loaded.
 	Image *ClusterSpecPostgresqlExtensionImage `json:"image,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// extension_control_path.
+	// If not defined, defaults to "/share".
+	ExtensionControlPath []string `json:"extension_control_path,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// dynamic_library_path.
+	// If not defined, defaults to "/lib".
+	DynamicLibraryPath []string `json:"dynamic_library_path,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// ld_library_path.
+	LdLibraryPath []string `json:"ld_library_path,omitempty"`
 }
 
 // ClusterSpecPostgresqlExtensionImage holds the image reference for a PostgreSQL extension.

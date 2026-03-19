@@ -13,15 +13,14 @@ import (
 )
 
 type OpenBaoConfig struct {
-	UI          bool   `hcl:"ui,optional"`
-	LogLevel    string `hcl:"log_level,optional"`
-	LogFormat   string `hcl:"log_format,optional"`
-	ClusterName string `hcl:"cluster_name,optional"`
-	APIAddr     string `hcl:"api_addr,optional"`
-	ClusterAddr string `hcl:"cluster_addr,optional"`
-	// PidFile     string          `hcl:"pid_file,optional"`
-	Listeners []ListenerBlock `hcl:"listener,block"`
-	Storage   []StorageBlock  `hcl:"storage,block"`
+	UI          bool            `hcl:"ui,optional"`
+	LogLevel    string          `hcl:"log_level,optional"`
+	LogFormat   string          `hcl:"log_format,optional"`
+	ClusterName string          `hcl:"cluster_name,optional"`
+	APIAddr     string          `hcl:"api_addr,optional"`
+	ClusterAddr string          `hcl:"cluster_addr,optional"`
+	Listeners   []ListenerBlock `hcl:"listener,block"`
+	Storage     []StorageBlock  `hcl:"storage,block"`
 }
 
 type OpenBaoConfigOption func(*OpenBaoConfig)

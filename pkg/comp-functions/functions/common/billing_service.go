@@ -99,18 +99,23 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	itemGroupDescription := claim
 	itemDescription := GetItemDescription(isAPPUiOCloud, clusterName, namespace)
 
-	// Clone to avoid mutating the caller's slice elements when filling in defaults
-	items := make([]vshnv1.ItemSpec, len(opts.Items))
-	copy(items, opts.Items)
-	for i := range items {
-		if items[i].ItemDescription == "" {
-			items[i].ItemDescription = itemDescription
-		}
-		if items[i].ItemGroupDescription == "" {
-			items[i].ItemGroupDescription = itemGroupDescription
-		}
-		if items[i].InstanceID == "" {
-			items[i].InstanceID = comp.GetName() + "-" + shortSHA(items[i].ProductID)
+	// For Servala deployments (prefix set), the annotation is the sole source of truth
+	// for items — opts.Items are skipped to avoid duplicating addon items already
+	// declared in the annotation. For non-Servala, include caller-supplied items.
+	var items []vshnv1.ItemSpec
+	if prefix == "" {
+		items = make([]vshnv1.ItemSpec, len(opts.Items))
+		copy(items, opts.Items)
+		for i := range items {
+			if items[i].ItemDescription == "" {
+				items[i].ItemDescription = itemDescription
+			}
+			if items[i].ItemGroupDescription == "" {
+				items[i].ItemGroupDescription = itemGroupDescription
+			}
+			if items[i].InstanceID == "" {
+				items[i].InstanceID = comp.GetName() + "-" + shortSHA(items[i].ProductID)
+			}
 		}
 	}
 

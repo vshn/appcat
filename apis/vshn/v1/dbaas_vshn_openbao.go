@@ -103,14 +103,8 @@ type VSHNOpenBaoSettings struct {
 
 // VSHNOpenBaoSettingsAutoUnseal contains OpenBao auto-unseal configuration
 type VSHNOpenBaoSettingsAutoUnseal struct {
-	// AWSKmsSecretRef references to secret containing AWS KMS credentials and configuration
-	AWSKmsSecretRef LocalObjectReference `json:"awsKmsSecretRef,omitempty"`
-	// AzureKeyVaultSecretRef references to secret containing Azure Key Vault credentials and configuration
-	AzureKeyVaultSecretRef LocalObjectReference `json:"azureKeyVaultSecretRef,omitempty"`
-	// GCPKmsSecretRef references to secret containing GCP KMS credentials and configuration
-	GCPKmsSecretRef LocalObjectReference `json:"gcpKmsSecretRef,omitempty"`
-	// TransitSecretRef references to secret containing Transit auto-unseal configuration
-	TransitSecretRef LocalObjectReference `json:"transitSecretRef,omitempty"`
+	// Enabled allows users to enable Autounseal with VSHN provided Vault instance (required for SLA)
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // VSHNOpenBaoSizeSpec contains settings to control the sizing of a service.

@@ -5,10 +5,9 @@ input:
   metadata:
     name: xfn-config
   data:
-    clusterName: "c-sv-test"
-    salesOrder: "SO-12345"
-    billingEnabled: "true"
-    servalaBillingAnnotationPrefix: "billing.servala.com"
+    clusterName: "c-managed-test"
+    salesOrder: "SO-99999"
+    billingEnabled: "false"
 observed:
   composite:
     resource:
@@ -17,20 +16,20 @@ observed:
       metadata:
         creationTimestamp: "2024-07-08T16:30:28Z"
         labels:
-          crossplane.io/claim-name: my-codey
-          crossplane.io/claim-namespace: test-ns
-        name: codey-abc12
+          crossplane.io/claim-name: my-nc
+          crossplane.io/claim-namespace: prod-ns
+        name: nc-xyz
       spec:
         parameters:
           instances: 1
           service:
             fqdn:
-              - codey.example.com
+              - nc.example.com
         claimRef:
           apiVersion: vshn.appcat.vshn.io/v1
           kind: VSHNNextcloud
-          name: my-codey
-          namespace: test-ns
+          name: my-nc
+          namespace: prod-ns
         compositionRef:
           name: vshnnextcloud.vshn.appcat.vshn.io
   resources: {}

@@ -242,7 +242,7 @@ func TestHandleRemovedItems(t *testing.T) {
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
-						Items:      []vshnv1.ItemSpec{},
+						Items:     []vshnv1.ItemSpec{},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
@@ -335,7 +335,7 @@ func TestHandleRemovedItems_EmptySpec(t *testing.T) {
 		Spec: vshnv1.BillingServiceSpec{
 			Odoo: vshnv1.OdooSpec{
 				ServiceID: "test-instance",
-				Items:      []vshnv1.ItemSpec{},
+				Items:     []vshnv1.ItemSpec{},
 			},
 		},
 		Status: vshnv1.BillingServiceStatus{

@@ -122,7 +122,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	observedErr := svc.GetObservedComposedResource(kubeObj, observedResourceName)
 	if observedErr != nil && observedErr != runtime.ErrNotFound {
 		log.Error(observedErr, "cannot get billing service kube object, treating as not found", "service", comp.GetName())
-		observedErr = runtime.ErrNotFound // treat as not found; continue to create desired object
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
 	}
 
 	// preserveExistingAndWarn re-adds the existing billing service to the desired state (if it

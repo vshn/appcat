@@ -59,7 +59,7 @@ type ItemSpec struct {
 
 // OdooSpec defines Odoo-specific billing configuration
 type OdooSpec struct {
-	// ServiceID is a cosmetic label identifying the service instance in Odoo
+	// ServiceID identifies the service instance in Odoo
 	ServiceID string `json:"serviceID"`
 
 	// SalesOrderID identifies the sales order in Odoo

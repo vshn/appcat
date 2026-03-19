@@ -99,8 +99,7 @@ spec:
                     description: SalesOrderID identifies the sales order in Odoo
                     type: string
                   serviceID:
-                    description: ServiceID is a cosmetic label identifying the service
-                      instance in Odoo
+                    description: ServiceID identifies the service instance in Odoo
                     type: string
                 required:
                 - items

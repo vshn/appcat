@@ -3,6 +3,9 @@ package billing
 import "time"
 
 const (
+	// InstanceCreationTimestampAnnotation holds the creation timestamp of the originating composite/claim.
+	InstanceCreationTimestampAnnotation = "appcat.vshn.io/instance-creation-timestamp"
+
 	ResendAnnotationKey = "appcat.vshn.io/resend"
 	ResendAll           = "all"
 	ResendNotSent       = "not-sent"

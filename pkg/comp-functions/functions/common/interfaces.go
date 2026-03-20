@@ -2,6 +2,7 @@ package common
 
 import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -25,6 +26,7 @@ type InfoGetter interface {
 	GetSLA() string
 	GetBillingName() string
 	GetAnnotations() map[string]string
+	GetCreationTimestamp() metav1.Time
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create

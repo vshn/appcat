@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -23,6 +24,10 @@ const (
 	// DefaultKeepAfterDeletion is the default number of days to keep billing records after deletion
 	// it is overwritten by the component value appcat.billing.customResourceDeletionAfter
 	DefaultKeepAfterDeletion = 365
+
+	// instanceCreationTimestampAnnotation is the annotation key stamped on BillingService CRs.
+	// Must match billing.InstanceCreationTimestampAnnotation in pkg/controller/billing/types.go.
+	instanceCreationTimestampAnnotation = "appcat.vshn.io/instance-creation-timestamp"
 )
 
 // BillingServiceOptions contains customization options for creating a BillingService CR
@@ -189,11 +194,16 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	}
 
 	// Create BillingService CR
+	annotations := map[string]string{}
+	if ts := comp.GetCreationTimestamp(); !ts.IsZero() {
+		annotations[instanceCreationTimestampAnnotation] = ts.UTC().Format(time.RFC3339)
+	}
 	billingService := &vshnv1.BillingService{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + opts.ResourceNameSuffix,
-			Namespace: BillingNamespace,
-			Labels:    labels,
+			Name:        comp.GetName() + opts.ResourceNameSuffix,
+			Namespace:   BillingNamespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: vshnv1.BillingServiceSpec{
 			KeepAfterDeletion: keepAfterDeletion,

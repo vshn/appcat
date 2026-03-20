@@ -63,6 +63,9 @@ type baaSServiceSpec struct {
 func (b *baaSComposite) GetAnnotations() map[string]string {
 	return b.ObjectMeta.GetAnnotations()
 }
+func (b *baaSComposite) GetCreationTimestamp() metav1.Time {
+	return b.ObjectMeta.GetCreationTimestamp()
+}
 func (b *baaSComposite) GetLabels() map[string]string {
 	return b.Labels
 }

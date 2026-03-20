@@ -98,12 +98,16 @@ type VSHNOpenBaoServiceSpec struct {
 // VSHNOpenBaoSettings contains OpenBao settings
 type VSHNOpenBaoSettings struct {
 	// AutoUnseal configures various auto unseal methods.
-	AutoUnseal VSHNOpenBaoSettingsAutoUnseal `json:"version,omitempty"`
+	AutoUnseal VSHNOpenBaoSettingsAutoUnseal `json:"autoUnseal,omitempty"`
 }
 
 // VSHNOpenBaoSettingsAutoUnseal contains OpenBao auto-unseal configuration
 type VSHNOpenBaoSettingsAutoUnseal struct {
 	// Enabled allows users to enable Autounseal with VSHN provided Vault instance (required for SLA)
+	VshnManaged VSHNOpenBaoSettingsAutoUnsealVshnManaged `json:"vshnManaged,omitempty"`
+}
+
+type VSHNOpenBaoSettingsAutoUnsealVshnManaged struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 

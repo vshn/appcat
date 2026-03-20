@@ -5318,15 +5318,18 @@ spec:
                       openBaoSettings:
                         description: OpenBaoSettings contains additional OpenBao settings.
                         properties:
-                          version:
+                          autoUnseal:
                             description: AutoUnseal configures various auto unseal
                               methods.
                             properties:
-                              enabled:
+                              vshnManaged:
                                 description: Enabled allows users to enable Autounseal
                                   with VSHN provided Vault instance (required for
                                   SLA)
-                                type: boolean
+                                properties:
+                                  enabled:
+                                    type: boolean
+                                type: object
                             type: object
                         type: object
                       serviceLevel:

@@ -1512,7 +1512,7 @@ func (s *ServiceRuntime) SetDesiredResourceReadiness(name string, ready Resource
 // It first creates an observer to fetch the current manifest, then strips out read-only metadata
 // (ResourceVersion, UID, SelfLink, Generation, CreationTimestamp) before declaring a new object
 // in the target namespace.
-func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object, resourceName, name, fromNS, toNS string) (client.Object, error) {
+func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object, resourceName, name, fromNS, toNS string, cd ...xkube.ConnectionDetail) (client.Object, error) {
 	observerName := resourceName + "-claim-observer"
 
 	observerObj := obj.DeepCopyObject().(client.Object)
@@ -1522,7 +1522,17 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 		ProviderConfigIgnoreLabel: "true",
 	}
 
-	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAllowDeletion, KubeOptionAddLabels(objectExtraLabels)); err != nil {
+	kubeOpts := []KubeObjectOption{
+		KubeOptionAddLabels(objectExtraLabels),
+		KubeOptionObserve,
+		KubeOptionAllowDeletion,
+	}
+
+	if len(cd) > 0 {
+		kubeOpts = append(kubeOpts, KubeOptionAddConnectionDetails(toNS, cd...))
+	}
+
+	if err := s.SetDesiredKubeObject(observerObj, observerName, kubeOpts...); err != nil {
 		return nil, err
 	}
 

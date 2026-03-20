@@ -26,7 +26,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -81,7 +81,7 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	// Only create SGObjectStorage if backups are enabled
 	if comp.Spec.Parameters.Backup.IsEnabled() {
 		l.Info("Create SgObjectStorage")
-		err = createSgObjectStorage(comp, svc)
+		err = createSgObjectStorage(ctx, comp, svc)
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Errorf("cannot create sgObjectStorage object: %w", err).Error())
 		}
@@ -668,51 +668,90 @@ func createObjectBucket(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *r
 		}
 	}
 
-	xObjectBucket := &appcatv1.XObjectBucket{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   comp.GetName(),
-			Labels: labels,
-		},
-		Spec: appcatv1.XObjectBucketSpec{
-			Parameters: appcatv1.ObjectBucketParameters{
-				BucketName: fmt.Sprintf("%s-%s-%s", comp.GetName(), svc.Config.Data["bucketRegion"], "backup"),
+	if comp.GetUnmanagedBucket() == nil {
+		xObjectBucket := &appcatv1.XObjectBucket{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   comp.GetName(),
+				Labels: labels,
 			},
-			ResourceSpec: xpv1.ResourceSpec{
-				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      "pgbucket-" + comp.GetName(),
-					Namespace: svc.GetCrossplaneNamespace(),
+			Spec: appcatv1.XObjectBucketSpec{
+				Parameters: appcatv1.ObjectBucketParameters{
+					BucketName: fmt.Sprintf("%s-%s-%s", comp.GetName(), svc.Config.Data["bucketRegion"], "backup"),
+				},
+				ResourceSpec: xpv1.ResourceSpec{
+					WriteConnectionSecretToReference: &xpv1.SecretReference{
+						Name:      "pgbucket-" + comp.GetName(),
+						Namespace: svc.GetCrossplaneNamespace(),
+					},
 				},
 			},
-		},
-	}
+		}
 
-	xObjectBucket.Spec.Parameters.BucketName = getBucketName(svc, xObjectBucket)
+		xObjectBucket.Spec.Parameters.BucketName = getBucketName(svc, xObjectBucket)
 
-	err := svc.SetDesiredComposedResourceWithName(xObjectBucket, "pg-bucket")
-	if err != nil {
-		err = fmt.Errorf("cannot create xObjectBucket: %w", err)
-		return err
+		err := svc.SetDesiredComposedResourceWithName(xObjectBucket, "pg-bucket")
+		if err != nil {
+			err = fmt.Errorf("cannot create xObjectBucket: %w", err)
+			return err
+		}
+
 	}
 
 	return nil
 }
 
-func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+func createSgObjectStorage(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 
 	certificateExists := svc.WaitForObservedDependencies("sgbackup-"+comp.GetName(), "certificate")
 	if !certificateExists {
 		return fmt.Errorf("waiting for dependencies: certificate")
 	}
 
-	cd, err := svc.GetObservedComposedResourceConnectionDetails("pg-bucket")
-	if err != nil {
-		svc.Log.Info(fmt.Sprintf("pg-bucket connection details not yet available: %s", err.Error()))
-	}
+	bucketInfo := backup.BucketInfo{}
 
-	bucket := &appcatv1.XObjectBucket{}
-	err = svc.GetDesiredComposedResourceByName(bucket, "pg-bucket")
-	if err != nil {
-		svc.Log.Info(fmt.Sprintf("pg-bucket cannot be read: %s", err.Error()))
+	if ub := comp.GetUnmanagedBucket(); ub != nil {
+		secret := &corev1.Secret{}
+
+		_, err := svc.CopyKubeResource(ctx, secret, comp.GetName()+"-bucket-credentials", ub.AccessKey.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		if err != nil {
+			return fmt.Errorf("cannot copy unmanaged bucket credentials: %w", err)
+		}
+
+		bucketInfo.Bucket = ub.Bucket
+		bucketInfo.Endpoint = ub.Endpoint
+		bucketInfo.SecretID = &ub.SecretKey
+		bucketInfo.KeyID = &ub.AccessKey
+		bucketInfo.Region = ub.Region
+
+	} else {
+		cd, err := svc.GetObservedComposedResourceConnectionDetails("pg-bucket")
+		if err != nil {
+			svc.Log.Info(fmt.Sprintf("pg-bucket connection details not yet available: %s", err.Error()))
+		}
+
+		bucket := &appcatv1.XObjectBucket{}
+		err = svc.GetDesiredComposedResourceByName(bucket, "pg-bucket")
+		if err != nil {
+			svc.Log.Info(fmt.Sprintf("pg-bucket cannot be read: %s", err.Error()))
+		}
+
+		bucketInfo.Bucket = bucket.Spec.Parameters.BucketName
+		bucketInfo.Region = string(cd["AWS_REGION"])
+		bucketInfo.Endpoint = string(cd["ENDPOINT_URL"])
+
+		bucketInfo.KeyID = &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: "pgbucket-" + comp.GetName(),
+			},
+			Key: "AWS_ACCESS_KEY_ID",
+		}
+
+		bucketInfo.SecretID = &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: "pgbucket-" + comp.GetName(),
+			},
+			Key: "AWS_SECRET_ACCESS_KEY",
+		}
 	}
 
 	sgObjectStorage := &sgv1beta1.SGObjectStorage{
@@ -723,26 +762,27 @@ func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRunt
 		Spec: sgv1beta1.SGObjectStorageSpec{
 			Type: "s3Compatible",
 			S3Compatible: &sgv1beta1.SGObjectStorageSpecS3Compatible{
-				Bucket:                    bucket.Spec.Parameters.BucketName,
+				Bucket:                    bucketInfo.Bucket,
 				EnablePathStyleAddressing: ptr.To(true),
-				Region:                    ptr.To(string(cd["AWS_REGION"])),
-				Endpoint:                  ptr.To(string(cd["ENDPOINT_URL"])),
+				Region:                    ptr.To(bucketInfo.Region),
+				Endpoint:                  ptr.To(bucketInfo.Endpoint),
 				AwsCredentials: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentials{
 					SecretKeySelectors: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectors{
 						AccessKeyId: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId{
-							Name: "pgbucket-" + comp.GetName(),
-							Key:  "AWS_ACCESS_KEY_ID",
+							Name: bucketInfo.KeyID.Name,
+							Key:  bucketInfo.KeyID.Key,
 						},
 						SecretAccessKey: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsSecretAccessKey{
-							Name: "pgbucket-" + comp.GetName(),
-							Key:  "AWS_SECRET_ACCESS_KEY",
+							Name: bucketInfo.SecretID.Name,
+							Key:  bucketInfo.SecretID.Key,
 						},
 					},
 				},
 			},
 		},
 	}
-	err = svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup", runtime.KubeOptionAllowDeletion)
+
+	err := svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup", runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		err = fmt.Errorf("cannot create backup: %w", err)
 		return err
@@ -808,17 +848,17 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 			Namespace: svc.Config.Data["controlNamespace"],
 		},
 		Spec: batchv1.JobSpec{
-			Template: v1.PodTemplateSpec{
-				Spec: v1.PodSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
 					RestartPolicy:      "Never",
 					ServiceAccountName: "copyserviceaccount",
-					Containers: []v1.Container{
+					Containers: []corev1.Container{
 						{
 							Name:    "copyjob",
 							Image:   svc.Config.Data["kubectl_image"],
 							Command: []string{"sh", "-c"},
 							Args:    []string{postgresqlCopyJobScript},
-							Env: []v1.EnvVar{
+							Env: []corev1.EnvVar{
 								{
 									Name:  "CLAIM_NAMESPACE",
 									Value: comp.GetClaimNamespace(),

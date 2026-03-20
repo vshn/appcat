@@ -2,8 +2,9 @@ package backup
 
 import (
 	"context"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"testing"
+
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 
 	"github.com/stretchr/testify/assert"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
@@ -128,6 +129,110 @@ func Test_setNestedValue(t *testing.T) {
 				t.Errorf("setNestedValue() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.Equal(t, tt.want, tt.args.values)
+		})
+	}
+}
+
+func TestGetBucketCredentials(t *testing.T) {
+	tests := []struct {
+		name    string
+		want    BucketInfo
+		wantErr bool
+		comp    common.InfoGetter
+	}{
+		{
+			name: "GivenNoCustomBucket_thenExpectGeneratedBucket",
+			// No region for k8up backups
+			want: BucketInfo{
+				Endpoint: "test",
+				Bucket:   "test",
+				KeyID: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "backup-bucket-credentials-redis-gc9x4",
+					},
+					Key: "AWS_ACCESS_KEY_ID",
+				},
+				SecretID: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "backup-bucket-credentials-redis-gc9x4",
+					},
+					Key: "AWS_SECRET_ACCESS_KEY",
+				},
+			},
+		},
+		{
+			name: "GivenCustomBucket_thenExpectCustomBucket",
+			want: BucketInfo{
+				Endpoint: "customTest",
+				Bucket:   "customTest",
+				KeyID: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "customName",
+					},
+					Key: "customKey",
+				},
+				SecretID: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "customName",
+					},
+					Key: "customKey",
+				},
+			},
+			// We don't have the secret in the state, so it will not find it
+			wantErr: true,
+			comp: &vshnv1.VSHNRedis{
+				Spec: vshnv1.VSHNRedisSpec{
+					Parameters: vshnv1.VSHNRedisParameters{
+						Backup: vshnv1.K8upBackupSpec{
+							UnmanagedBucket: &vshnv1.UnmanagedBucket{
+								Endpoint: "customTest",
+								Bucket:   "customTest",
+								AccessKey: corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "customName",
+									},
+									Key: "customKey",
+								},
+								SecretKey: corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "customName",
+									},
+									Key: "customKey",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := commontest.LoadRuntimeFromFile(t, "vshnredis/backup/02_backup-credentials.yaml")
+
+			var comp common.InfoGetter
+			if tt.comp == nil {
+				tmp := &vshnv1.VSHNRedis{}
+				err := svc.GetDesiredComposite(tmp)
+				assert.NoError(t, err)
+				comp = tmp
+			} else {
+				comp = tt.comp
+			}
+
+			got, gotErr := GetBucketCredentials(context.Background(), svc, comp)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("GetBucketCredentials() failed: %v", gotErr)
+				}
+				return
+			}
+			if tt.wantErr {
+				t.Fatal("GetBucketCredentials() succeeded unexpectedly")
+			}
+
+			assert.Equal(t, tt.want, got)
+
 		})
 	}
 }

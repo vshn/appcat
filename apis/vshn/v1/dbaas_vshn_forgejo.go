@@ -213,6 +213,10 @@ func (v *VSHNForgejo) SetInitialMaintenanceStatus(completedAt string, success bo
 	v.Status.InitialMaintenance.Success = &success
 }
 
+func (v *VSHNForgejo) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
+}
+
 // +kubebuilder:object:generate=true
 // +kubebuilder:object:root=true
 

@@ -228,3 +228,7 @@ func (v *VSHNGarage) GetFullMaintenanceSchedule() VSHNDBaaSMaintenanceScheduleSp
 func (v *VSHNGarage) IsBackupEnabled() bool {
 	return false
 }
+
+func (v *VSHNGarage) GetUnmanagedBucket() *UnmanagedBucket {
+	return nil
+}

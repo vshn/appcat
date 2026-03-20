@@ -5,6 +5,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type TimeOfDay string
@@ -21,6 +22,11 @@ type K8upBackupSpec struct {
 	Schedule string `json:"schedule,omitempty"`
 
 	Retention K8upRetentionPolicy `json:"retention,omitempty"`
+
+	// UnmanagedBucket specifies a bucket not managed by AppCat to be used for the backup.
+	// The user is responsible for the correctness of these values.
+	// +kubebuilder:validation:Optional
+	UnmanagedBucket *UnmanagedBucket `json:"unmanagedBucket,omitempty"`
 }
 
 // GetBackupSchedule returns the currently set schedule for this backup config
@@ -63,6 +69,28 @@ type K8upRestoreSpec struct {
 
 	// BackupName is the name of the specific backup you want to restore.
 	BackupName string `json:"backupName,omitempty"`
+}
+
+type UnmanagedBucket struct {
+	// Endpoint is the unmanaged buckets endpoint without the bucket name
+	// +kubebuilder:validation:Required
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// Bucket is the name of the bucket to be used
+	// +kubebuilder:validation:Required
+	Bucket string `json:"bucket,omitempty"`
+
+	// AccessKey is the AWS_ACCESS_KEY_ID
+	// +kubebuilder:validation:Required
+	AccessKey corev1.SecretKeySelector `json:"accessKey,omitempty"`
+
+	// SecretKey is the AWS_SECRET_ACCESS_KEY
+	// +kubebuilder:validation:Required
+	SecretKey corev1.SecretKeySelector `json:"secretKey,omitempty"`
+
+	// Region is the region of the bucket
+	// +kubebuilder:validation:Required
+	Region string `json:"region,omitempty"`
 }
 
 type VSHNDBaaSServiceLevel string

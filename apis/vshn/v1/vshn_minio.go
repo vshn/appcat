@@ -316,3 +316,7 @@ func (v *VSHNMinio) GetSLA() string {
 func (v *VSHNMinio) IsBackupEnabled() bool {
 	return false
 }
+
+func (v *VSHNMinio) GetUnmanagedBucket() *UnmanagedBucket {
+	return nil
+}

@@ -399,3 +399,7 @@ func (v *VSHNNextcloud) GetSLA() string {
 func (v *VSHNNextcloud) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
 }
+
+func (v *VSHNNextcloud) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
+}

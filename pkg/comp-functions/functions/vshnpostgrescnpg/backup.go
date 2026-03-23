@@ -64,7 +64,6 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 		"isWALArchiver": true,
 		"parameters": map[string]any{
 			"barmanObjectName": "postgresql-object-store",
-			"serverName":       "",
 		},
 	}}
 

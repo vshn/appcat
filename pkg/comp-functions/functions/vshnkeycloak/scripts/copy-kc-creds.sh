@@ -10,4 +10,4 @@ source_namespace=$(kubectl get xvshnkeycloak "${sourcexrdname}" -ojson | jq -r '
 
 
 echo "copy secret"
-kubectl -n "${source_namespace}" get secret "${sourcexrdname}"-credentials-secret -ojson | jq --arg targetxrdname "${targetxrdname}" 'del(.metadata.namespace) | del(.metadata.labels) | del(.metadata.annotations) | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.name = $targetxrdname + "-credentials-secret"' | kubectl -n "${TARGET_NAMESPACE}" apply -f -
+kubectl -n "${source_namespace}" get secret "${sourcexrdname}"-credentials-secret -ojson | jq --arg targetxrdname "${targetxrdname}" 'del(.metadata.namespace) | del(.metadata.labels) | del(.metadata.annotations) | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.name = $targetxrdname + "-restore-credentials"' | kubectl -n "${TARGET_NAMESPACE}" apply -f -

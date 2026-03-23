@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/sethvargo/go-password/password"
@@ -38,7 +39,7 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 
 	err := svc.GetObservedKubeObject(secret, secretObjectName)
 	if err != nil {
-		if err == runtime.ErrNotFound {
+		if errors.Is(err, runtime.ErrNotFound) {
 			svc.Log.Info("Could not find secret, generating new passwords", "secret", secretObjectName)
 		} else {
 			return secretObjectName, err
@@ -116,17 +117,6 @@ func AddCredentialsSecretFromValues(comp InfoGetter, svc *runtime.ServiceRuntime
 				return secretObjectName, fmt.Errorf("cannot generate pw for %s: %w", field, err)
 			}
 		}
-	}
-
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretObjectName,
-			Namespace: comp.GetInstanceNamespace(),
-		},
-		StringData: stringData,
-	}
-
-	for _, field := range fieldList {
 		cd = append(cd, xkube.ConnectionDetail{
 			ObjectReference: corev1.ObjectReference{
 				APIVersion: "v1",
@@ -137,6 +127,14 @@ func AddCredentialsSecretFromValues(comp InfoGetter, svc *runtime.ServiceRuntime
 			},
 			ToConnectionSecretKey: field,
 		})
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretObjectName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		StringData: stringData,
 	}
 
 	for _, o := range opts {

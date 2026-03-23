@@ -1191,7 +1191,7 @@ func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 	observed := &corev1.Secret{}
 	err = svc.GetObservedKubeObject(observed, stagingSecretName)
 	if err != nil {
-		if err == runtime.ErrNotFound {
+		if errors.Is(err, runtime.ErrNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("cannot observe restore credentials: %w", err)

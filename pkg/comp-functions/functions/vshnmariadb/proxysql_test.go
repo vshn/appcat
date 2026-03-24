@@ -103,6 +103,118 @@ func Test_createProxySQLStatefulset(t *testing.T) {
 	assert.Len(t, sts.Spec.Template.Spec.Volumes, 2)
 }
 
+func Test_createProxySQLStatefulset_resources(t *testing.T) {
+	tests := []struct {
+		name           string
+		claimResources vshnv1.VSHNMariaDBProxySQLResources
+		configData     map[string]string
+		wantCPULimit   string
+		wantMemLimit   string
+		wantCPUReq     string
+		wantMemReq     string
+	}{
+		{
+			name:         "defaults when nothing is set",
+			wantCPULimit: "500m",
+			wantMemLimit: "256Mi",
+			wantCPUReq:   "50m",
+			wantMemReq:   "64Mi",
+		},
+		{
+			name: "config map values override hardcoded defaults",
+			configData: map[string]string{
+				"proxysqlCPULimit":       "750m",
+				"proxysqlMemoryLimit":    "512Mi",
+				"proxysqlCPURequests":    "100m",
+				"proxysqlMemoryRequests": "128Mi",
+			},
+			wantCPULimit: "750m",
+			wantMemLimit: "512Mi",
+			wantCPUReq:   "100m",
+			wantMemReq:   "128Mi",
+		},
+		{
+			name: "claim resources override config map values",
+			configData: map[string]string{
+				"proxysqlCPULimit":       "750m",
+				"proxysqlMemoryLimit":    "512Mi",
+				"proxysqlCPURequests":    "100m",
+				"proxysqlMemoryRequests": "128Mi",
+			},
+			claimResources: vshnv1.VSHNMariaDBProxySQLResources{
+				Limits: vshnv1.VSHNMariaDBProxySQLResourceSpec{
+					CPU:    "2",
+					Memory: "1Gi",
+				},
+				Requests: vshnv1.VSHNMariaDBProxySQLResourceSpec{
+					CPU:    "200m",
+					Memory: "256Mi",
+				},
+			},
+			wantCPULimit: "2",
+			wantMemLimit: "1Gi",
+			wantCPUReq:   "200m",
+			wantMemReq:   "256Mi",
+		},
+		{
+			name: "claim resources override hardcoded defaults without config map",
+			claimResources: vshnv1.VSHNMariaDBProxySQLResources{
+				Limits: vshnv1.VSHNMariaDBProxySQLResourceSpec{
+					CPU:    "1",
+					Memory: "512Mi",
+				},
+				Requests: vshnv1.VSHNMariaDBProxySQLResourceSpec{
+					CPU:    "150m",
+					Memory: "96Mi",
+				},
+			},
+			wantCPULimit: "1",
+			wantMemLimit: "512Mi",
+			wantCPUReq:   "150m",
+			wantMemReq:   "96Mi",
+		},
+		{
+			name: "partial claim resources fall back per-field",
+			configData: map[string]string{
+				"proxysqlCPULimit": "750m",
+			},
+			claimResources: vshnv1.VSHNMariaDBProxySQLResources{
+				Limits: vshnv1.VSHNMariaDBProxySQLResourceSpec{
+					Memory: "1Gi",
+				},
+			},
+			wantCPULimit: "750m", // from config map
+			wantMemLimit: "1Gi",  // from claim
+			wantCPUReq:   "50m",  // hardcoded default
+			wantMemReq:   "64Mi", // hardcoded default
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := commontest.LoadRuntimeFromFile(t, "empty.yaml")
+			if tt.configData != nil {
+				svc.Config.Data = tt.configData
+			}
+
+			comp := getComp()
+			comp.Spec.Parameters.TLS.TLSEnabled = false
+			comp.Spec.Parameters.Service.ProxySQL.Resources = tt.claimResources
+
+			assert.NoError(t, createProxySQLStatefulset(comp, svc, "hash", false))
+
+			sts := &appsv1.StatefulSet{}
+			assert.NoError(t, svc.GetDesiredKubeObject(sts, comp.GetName()+"-proxysql-sts"))
+
+			resources := sts.Spec.Template.Spec.Containers[0].Resources
+			assert.Equal(t, tt.wantCPULimit, resources.Limits.Cpu().String(), "CPU limit")
+			assert.Equal(t, tt.wantMemLimit, resources.Limits.Memory().String(), "memory limit")
+			assert.Equal(t, tt.wantCPUReq, resources.Requests.Cpu().String(), "CPU request")
+			assert.Equal(t, tt.wantMemReq, resources.Requests.Memory().String(), "memory request")
+		})
+	}
+}
+
 func Test_createProxySQLPDB(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "empty.yaml")
 	comp := getComp()

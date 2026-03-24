@@ -11,6 +11,37 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func TestAddCredentialsSecretFromValues(t *testing.T) {
+	comp := &vshnv1.VSHNRedis{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mytest",
+		},
+	}
+
+	svc := commontest.LoadRuntimeFromFile(t, "empty.yaml")
+
+	values := map[string][]byte{
+		"adminPassword": []byte("oldpassword"),
+	}
+
+	res, err := AddCredentialsSecretFromValues(comp, svc, values, []string{"adminPassword", "missingField"}, DisallowDeletion)
+	assert.NoError(t, err)
+	assert.Equal(t, "mytest-credentials-secret", res)
+
+	secret := &corev1.Secret{}
+	assert.NoError(t, svc.GetDesiredKubeObject(secret, res))
+
+	// Provided value must be preserved exactly.
+	assert.Equal(t, "oldpassword", secret.StringData["adminPassword"])
+
+	// Missing field must be generated (non-empty).
+	assert.NotEmpty(t, secret.StringData["missingField"])
+
+	obj := &xkube.Object{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(obj, res))
+	assert.Len(t, obj.Spec.ConnectionDetails, 2)
+}
+
 func TestAddCredentialsSecret(t *testing.T) {
 	comp := &vshnv1.VSHNRedis{
 		ObjectMeta: metav1.ObjectMeta{

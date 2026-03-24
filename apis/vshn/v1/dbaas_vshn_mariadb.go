@@ -17,6 +17,8 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnmariadbs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnmariadbs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.properties.retention.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnmariadbs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnmariadbs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.proxySQL.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnmariadbs.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.proxySQL.properties.resources.default={})"
 
 // +kubebuilder:object:root=true
 
@@ -117,6 +119,34 @@ type VSHNMariaDBServiceSpec struct {
 
 	// Access defines additional users and databases for this instance.
 	Access []VSHNAccess `json:"access,omitempty"`
+
+	// ProxySQL contains settings to configure the ProxySQL instance.
+	// ProxySQL is deployed when instances > 1 to provide load balancing and seamless failover.
+	ProxySQL VSHNMariaDBProxySQLSpec `json:"proxySQL,omitempty"`
+}
+
+// VSHNMariaDBProxySQLSpec contains settings to configure the ProxySQL instance.
+type VSHNMariaDBProxySQLSpec struct {
+	// Resources defines resource limits and requests for the ProxySQL container.
+	Resources VSHNMariaDBProxySQLResources `json:"resources,omitempty"`
+}
+
+// VSHNMariaDBProxySQLResources defines resource limits and requests for the ProxySQL container.
+type VSHNMariaDBProxySQLResources struct {
+	// Limits defines the resource limits for the ProxySQL container.
+	Limits VSHNMariaDBProxySQLResourceSpec `json:"limits,omitempty"`
+
+	// Requests defines the resource requests for the ProxySQL container.
+	Requests VSHNMariaDBProxySQLResourceSpec `json:"requests,omitempty"`
+}
+
+// VSHNMariaDBProxySQLResourceSpec defines CPU and memory resources.
+type VSHNMariaDBProxySQLResourceSpec struct {
+	// CPU defines the amount of Kubernetes CPUs for the ProxySQL container (e.g. "500m").
+	CPU string `json:"cpu,omitempty"`
+
+	// Memory defines the amount of memory for the ProxySQL container (e.g. "256Mi").
+	Memory string `json:"memory,omitempty"`
 }
 
 // VSHNMariaDBTLSSpec contains settings to control tls traffic of a service.

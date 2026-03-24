@@ -405,6 +405,90 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 	assert.NoError(t, err, "Updating Collabora FQDN to another valid one should pass validation")
 }
 
+func TestNextcloudWebhookHandler_ValidateUpdate_VersionDowngrade(t *testing.T) {
+	ctx := context.TODO()
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		Build()
+
+	handler := NextcloudWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
+		},
+	}
+
+	newNC := func(version, pinImageTag string) *vshnv1.VSHNNextcloud {
+		return &vshnv1.VSHNNextcloud{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "myinstance",
+				Namespace: "testns",
+			},
+			Spec: vshnv1.VSHNNextcloudSpec{
+				Parameters: vshnv1.VSHNNextcloudParameters{
+					Service: vshnv1.VSHNNextcloudServiceSpec{
+						FQDN:    []string{"mynextcloud.example.tld"},
+						Version: version,
+					},
+					Maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+						PinImageTag: pinImageTag,
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name        string
+		oldVersion  string
+		newVersion  string
+		pinImageTag string
+		wantErr     bool
+		errContains string
+	}{
+		// --- happy path ---
+		{name: "major upgrade", oldVersion: "30", newVersion: "31", wantErr: false},
+		{name: "same major version", oldVersion: "31", newVersion: "31", wantErr: false},
+		{name: "major.minor upgrade", oldVersion: "30.0", newVersion: "31.0", wantErr: false},
+		{name: "minor upgrade within major", oldVersion: "30.0", newVersion: "30.1", wantErr: false},
+		{name: "same version different formats", oldVersion: "30", newVersion: "30.0", wantErr: false},
+		{name: "empty old version (first set)", oldVersion: "", newVersion: "31", wantErr: false},
+		{name: "both empty versions", oldVersion: "", newVersion: "", wantErr: false},
+		{name: "new version cleared", oldVersion: "31", newVersion: "", wantErr: false},
+		{name: "unparsable old version", oldVersion: "garbage", newVersion: "30", wantErr: false},
+
+		// --- downgrade blocked ---
+		{name: "major downgrade", oldVersion: "31", newVersion: "30", wantErr: true, errContains: "downgrading from"},
+		{name: "minor downgrade within major", oldVersion: "30.1", newVersion: "30.0", wantErr: true, errContains: "downgrading from"},
+		{name: "patch downgrade", oldVersion: "30.0.1", newVersion: "30.0.0", wantErr: true, errContains: "downgrading from"},
+
+		// --- invalid new version ---
+		{name: "unparsable new version", oldVersion: "30", newVersion: "garbage", wantErr: true, errContains: "invalid version"},
+
+		// --- pinImageTag bypasses check ---
+		{name: "downgrade allowed with pinImageTag", oldVersion: "31", newVersion: "30", pinImageTag: "nextcloud:30.0.5", wantErr: false},
+		{name: "invalid new version allowed with pinImageTag", oldVersion: "30", newVersion: "garbage", pinImageTag: "nextcloud:30.0.5", wantErr: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := handler.ValidateUpdate(ctx, newNC(tt.oldVersion, ""), newNC(tt.newVersion, tt.pinImageTag))
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.ErrorContains(t, err, tt.errContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestNextcloudWebhookHandler_ValidatePostgreSQLEncryptionChanges(t *testing.T) {
 	ctx := context.TODO()
 	fclient := fake.NewClientBuilder().

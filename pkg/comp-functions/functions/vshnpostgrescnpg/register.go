@@ -8,7 +8,7 @@ import (
 )
 
 var pgAlerts = nonsla.NewAlertSetBuilder("patroni").
-	AddAll().
+	AddAllDB().
 	AddCustomServiceRule("maxconnections", maxConnectionsAlert).
 	AddCustomServiceRule("longrunningtx", longRunningTransactionAlert).
 	AddCustomServiceRule("backendwaiting", backendsWaitingAlert).

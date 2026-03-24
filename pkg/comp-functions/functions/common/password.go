@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/sethvargo/go-password/password"
@@ -38,7 +39,7 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 
 	err := svc.GetObservedKubeObject(secret, secretObjectName)
 	if err != nil {
-		if err == runtime.ErrNotFound {
+		if errors.Is(err, runtime.ErrNotFound) {
 			svc.Log.Info("Could not find secret, generating new passwords", "secret", secretObjectName)
 		} else {
 			return secretObjectName, err
@@ -93,6 +94,57 @@ func AddGenericSecret(comp InfoGetter, svc *runtime.ServiceRuntime, suffix strin
 	}
 	return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...))
 
+}
+
+// AddCredentialsSecretFromValues creates the credentials-secret using pre-set values
+// instead of generating new passwords. Intended for restore scenarios where the
+// credentials from the source instance must be preserved.
+// Fields in fieldList that are missing from values will have new passwords generated.
+func AddCredentialsSecretFromValues(comp InfoGetter, svc *runtime.ServiceRuntime, values map[string][]byte, fieldList []string, allowDeletion bool, opts ...CredentialSecretOption) (string, error) {
+	secretObjectName := runtime.EscapeDNS1123(comp.GetName()+"-credentials-secret", false)
+
+	cd := []xkube.ConnectionDetail{}
+	stringData := map[string]string{}
+
+	var err error
+	for _, field := range fieldList {
+		if v, ok := values[field]; ok {
+			stringData[field] = string(v)
+		} else {
+			svc.Log.Info("Restore credentials missing field, generating new password", "secret", secretObjectName, "field", field)
+			stringData[field], err = genPassword()
+			if err != nil {
+				return secretObjectName, fmt.Errorf("cannot generate pw for %s: %w", field, err)
+			}
+		}
+		cd = append(cd, xkube.ConnectionDetail{
+			ObjectReference: corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  comp.GetInstanceNamespace(),
+				Name:       secretObjectName,
+				FieldPath:  "data." + field,
+			},
+			ToConnectionSecretKey: field,
+		})
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretObjectName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		StringData: stringData,
+	}
+
+	for _, o := range opts {
+		cd = o(secret, cd)
+	}
+
+	if allowDeletion {
+		return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...), runtime.KubeOptionAllowDeletion)
+	}
+	return secretObjectName, svc.SetDesiredKubeObject(secret, secretObjectName, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(), cd...))
 }
 
 func genPassword() (string, error) {

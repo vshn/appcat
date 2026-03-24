@@ -371,9 +371,13 @@ func buildCNPGExtensionValues(extensions []vshnv1.VSHNDBaaSPostgresExtension) []
 		if ext.ImagePullPolicy != "" {
 			imageMap["pullPolicy"] = ext.ImagePullPolicy
 		}
+
 		result = append(result, map[string]any{
-			"name":  ext.Name,
-			"image": imageMap,
+			"name":                   ext.Name,
+			"image":                  imageMap,
+			"extension_control_path": ext.ExtensionControlPath,
+			"dynamic_library_path":   ext.DynamicLibraryPath,
+			"ld_library_path":        ext.LdLibraryPath,
 		})
 	}
 	return result

@@ -7,10 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"gopkg.in/yaml.v2"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -399,4 +401,53 @@ func Test_configOrEnvChanged(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func newKeycloakCompWithRestore(name, sourceClaim string) *vshnv1.VSHNKeycloak {
+	return &vshnv1.VSHNKeycloak{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "default",
+		},
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Restore: &vshnv1.VSHNPostgreSQLRestore{
+					ClaimName: sourceClaim,
+				},
+			},
+		},
+	}
+}
+
+func Test_copyKeycloakCredentials_WaitingForCopyJob(t *testing.T) {
+	// Staging secret not yet in observed state — copy job has not run.
+	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+	comp := newKeycloakCompWithRestore("mycloak", "old-keycloak")
+
+	creds, err := copyKeycloakCredentials(comp, svc)
+	assert.NoError(t, err)
+	assert.Nil(t, creds, "expected nil credentials while waiting for copy job")
+
+	// Copy job must be scheduled.
+	copyJob := &batchv1.Job{}
+	assert.NoError(t, svc.GetDesiredKubeObject(copyJob, "copy-job"))
+
+	// Observer KubeObject must be scheduled with observe-only policy.
+	observer := &xkube.Object{}
+	stagingName := comp.GetName() + "-" + restoreCredentialsSuffix
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(observer, stagingName))
+	assert.Len(t, observer.Spec.ManagementPolicies, 1)
+	assert.Equal(t, "Observe", string(observer.Spec.ManagementPolicies[0]))
+}
+
+func Test_copyKeycloakCredentials_CredentialsReady(t *testing.T) {
+	// Staging secret is present in observed state — copy job has already run.
+	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/restore_with_staging_secret.yaml")
+	comp := newKeycloakCompWithRestore("mycloak", "old-keycloak")
+
+	creds, err := copyKeycloakCredentials(comp, svc)
+	assert.NoError(t, err)
+	assert.NotNil(t, creds)
+	assert.Equal(t, "secret1", string(creds[adminPWSecretField]))
+	assert.Equal(t, "secret2", string(creds[internalAdminPWSecretField]))
 }

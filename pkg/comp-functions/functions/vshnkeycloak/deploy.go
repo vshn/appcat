@@ -48,6 +48,7 @@ const (
 	providerInitName              = "copy-original-providers"
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"
+	restoreCredentialsSuffix      = "restore-credentials"
 	cdCertsSuffix                 = "-keycloakx-http-server-cert"
 	customMountTypeSecret         = "secret"
 	customMountTypeConfigMap      = "configMap"
@@ -138,14 +139,22 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 
 	var adminSecret string
 	if comp.Spec.Parameters.Restore != nil {
-		err := copyKeycloakCredentials(comp, svc)
+		oldCreds, err := copyKeycloakCredentials(comp, svc)
 		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot copy keycloak secret: %s", err))
+			return runtime.NewWarningResult(fmt.Sprintf("cannot copy keycloak credentials: %s", err))
 		}
-	}
-	adminSecret, err = common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin secret: %s", err))
+		if oldCreds == nil {
+			return runtime.NewWarningResult("waiting for restore credentials to be available")
+		}
+		adminSecret, err = common.AddCredentialsSecretFromValues(comp, svc, oldCreds, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot set restore admin secret: %s", err))
+		}
+	} else {
+		adminSecret, err = common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin secret: %s", err))
+		}
 	}
 
 	cd, err := svc.GetObservedComposedResourceConnectionDetails(adminSecret)
@@ -1114,7 +1123,10 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 	return extraInitContainersMap, nil
 }
 
-func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+// copyKeycloakCredentials schedules a Job to copy old credentials into a staging secret
+// and creates an observe-only KubeObject for it. Returns the credential data once the
+// copy job has run, or nil if the staging secret is not yet available.
+func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) (map[string][]byte, error) {
 	copyJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-copyjob",
@@ -1158,11 +1170,38 @@ func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 
 	err := svc.SetDesiredKubeObjectWithName(copyJob, comp.GetName()+"-copyjob", "copy-job")
 	if err != nil {
-		err = fmt.Errorf("cannot create copyJob: %w", err)
-		return err
+		return nil, fmt.Errorf("cannot create copyJob: %w", err)
 	}
 
-	return nil
+	// Observe-only KubeObject for the staging secret written by the copy job.
+	// KubeOptionObserve prevents provider-kubernetes from managing (and overwriting) it.
+	stagingSecretName := runtime.EscapeDNS1123(comp.GetName()+"-"+restoreCredentialsSuffix, false)
+	stagingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      stagingSecretName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+	}
+	err = svc.SetDesiredKubeObject(stagingSecret, stagingSecretName, runtime.KubeOptionObserve)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create restore credentials observer: %w", err)
+	}
+
+	// Returns nil until the copy job has run and the secret exists.
+	observed := &corev1.Secret{}
+	err = svc.GetObservedKubeObject(observed, stagingSecretName)
+	if err != nil {
+		if errors.Is(err, runtime.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("cannot observe restore credentials: %w", err)
+	}
+
+	if len(observed.Data) == 0 {
+		return nil, nil
+	}
+
+	return observed.Data, nil
 }
 
 func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {

@@ -594,8 +594,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 		},
 		{
-			"name":  "KC_DB_URL_PROPERTIES",
-			"value": "?sslmode=verify-full&sslrootcert=/certs/pg/ca.crt",
+			"name": "KC_DB_URL_PROPERTIES",
+			// targetServerType=any is necessary only for stackgres based instances, remove once stackgres is gone
+			"value": "?sslmode=verify-full&sslrootcert=/certs/pg/ca.crt&targetServerType=any",
 		},
 		{
 			"name": "JAVA_OPTS_APPEND",

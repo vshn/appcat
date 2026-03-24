@@ -366,6 +366,11 @@ func validatePgConf(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
 }
 
 func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSHNPostgreSQL) (errList field.ErrorList) {
+	// CNPG supports major version upgrades; StackGres does not.
+	if newPg.Spec.CompositionRef.Name == cnpgCompositionRef {
+		return nil
+	}
+
 	newVersion, err := strconv.Atoi(newPg.Spec.Parameters.Service.MajorVersion)
 	if err != nil {
 		errList = append(errList, field.Invalid(

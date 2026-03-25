@@ -29,6 +29,9 @@ func TestHandleItemCreation(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-service",
 					Namespace: "test-ns",
+					Annotations: map[string]string{
+						InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
+					},
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
@@ -91,6 +94,9 @@ func TestHandleItemCreation(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-service",
 					Namespace: "test-ns",
+					Annotations: map[string]string{
+						InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
+					},
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
@@ -167,6 +173,9 @@ func TestHandleItemCreation_MultipleItems(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-service",
 			Namespace: "test-ns",
+			Annotations: map[string]string{
+				InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
+			},
 		},
 		Spec: vshnv1.BillingServiceSpec{
 			Odoo: vshnv1.OdooSpec{

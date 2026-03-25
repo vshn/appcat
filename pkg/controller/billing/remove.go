@@ -48,6 +48,9 @@ func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService 
 		info, ok := lastSent[productID]
 		if !ok {
 			// Never sent to Odoo — nothing to delete
+			b.log.Info("Skipping delete event for product never sent to Odoo",
+				"productID", productID,
+				"billingService", billingService.Name)
 			continue
 		}
 		delEvent := vshnv1.BillingEventStatus{

@@ -7,6 +7,11 @@ import (
 const (
 	// BillingServiceFinalizer is the finalizer used to protect BillingService resources from deletion
 	BillingServiceFinalizer = "billing.appcat.vshn.io/delete-protection"
+
+	// InstanceCreationTimestampAnnotation is the annotation key stamped on BillingService CRs.
+	// It holds the RFC3339 creation timestamp of the originating composite/claim,
+	// set by the comp-function and consumed by the billing controller.
+	InstanceCreationTimestampAnnotation = "appcat.vshn.io/instance-creation-timestamp"
 )
 
 // +kubebuilder:object:root=true

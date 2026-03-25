@@ -30,7 +30,7 @@ func TestHandleItemCreation(t *testing.T) {
 					Name:      "test-service",
 					Namespace: "test-ns",
 					Annotations: map[string]string{
-						InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
+						vshnv1.InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
 					},
 				},
 				Spec: vshnv1.BillingServiceSpec{
@@ -95,7 +95,7 @@ func TestHandleItemCreation(t *testing.T) {
 					Name:      "test-service",
 					Namespace: "test-ns",
 					Annotations: map[string]string{
-						InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
+						vshnv1.InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
 					},
 				},
 				Spec: vshnv1.BillingServiceSpec{
@@ -174,7 +174,7 @@ func TestHandleItemCreation_MultipleItems(t *testing.T) {
 			Name:      "test-service",
 			Namespace: "test-ns",
 			Annotations: map[string]string{
-				InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
+				vshnv1.InstanceCreationTimestampAnnotation: "2024-01-01T00:00:00Z",
 			},
 		},
 		Spec: vshnv1.BillingServiceSpec{

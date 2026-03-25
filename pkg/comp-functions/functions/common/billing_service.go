@@ -24,10 +24,6 @@ const (
 	// DefaultKeepAfterDeletion is the default number of days to keep billing records after deletion
 	// it is overwritten by the component value appcat.billing.customResourceDeletionAfter
 	DefaultKeepAfterDeletion = 365
-
-	// instanceCreationTimestampAnnotation is the annotation key stamped on BillingService CRs.
-	// Must match billing.InstanceCreationTimestampAnnotation in pkg/controller/billing/types.go.
-	instanceCreationTimestampAnnotation = "appcat.vshn.io/instance-creation-timestamp"
 )
 
 // BillingServiceOptions contains customization options for creating a BillingService CR
@@ -109,8 +105,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	// declared in the annotation. For non-Servala, include caller-supplied items.
 	var items []vshnv1.ItemSpec
 	if prefix == "" {
-		items = make([]vshnv1.ItemSpec, len(opts.Items))
-		copy(items, opts.Items)
+		items = opts.Items
 		for i := range items {
 			if items[i].ItemDescription == "" {
 				items[i].ItemDescription = itemDescription
@@ -196,7 +191,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	// Create BillingService CR
 	annotations := map[string]string{}
 	if ts := comp.GetCreationTimestamp(); !ts.IsZero() {
-		annotations[instanceCreationTimestampAnnotation] = ts.UTC().Format(time.RFC3339)
+		annotations[vshnv1.InstanceCreationTimestampAnnotation] = ts.UTC().Format(time.RFC3339)
 	}
 	billingService := &vshnv1.BillingService{
 		ObjectMeta: metav1.ObjectMeta{

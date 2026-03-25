@@ -21,7 +21,7 @@ func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService 
 		// the manifest in two reconcile steps, creating the object before the annotation lands).
 		// Return an error so the controller requeues until the annotation is present.
 		return fmt.Errorf("instance creation timestamp annotation %q not yet set on %s — requeueing",
-			InstanceCreationTimestampAnnotation, billingService.Name)
+			vshnv1.InstanceCreationTimestampAnnotation, billingService.Name)
 	}
 
 	event := vshnv1.BillingEventStatus{
@@ -43,7 +43,7 @@ func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService 
 // from the annotation set by the comp-function, plus true.
 // Returns zero time and false if the annotation is absent or unparseable (caller should requeue).
 func instanceCreationTimestamp(svc *vshnv1.BillingService) (metav1.Time, bool) {
-	if raw := svc.Annotations[InstanceCreationTimestampAnnotation]; raw != "" {
+	if raw := svc.Annotations[vshnv1.InstanceCreationTimestampAnnotation]; raw != "" {
 		if t, err := time.Parse(time.RFC3339, raw); err == nil && !t.IsZero() {
 			return metav1.Time{Time: t}, true
 		}

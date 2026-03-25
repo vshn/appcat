@@ -76,6 +76,10 @@ func (b *BillingHandler) SetupWithManager(mgr ctrl.Manager) error {
 		&workqueue.TypedBucketRateLimiter[reconcile.Request]{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
 	)
 
+	// Note: InstanceCreationTimestampAnnotation updates are intentionally not watched here.
+	// Annotation-only changes do not bump metadata.generation, so GenerationChangedPredicate
+	// filters them out. create.go returns an error when the annotation is absent, which causes
+	// controller-runtime to requeue via the rate limiter — no watch event is needed.
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vshnv1.BillingService{}, builder.WithPredicates(
 			predicate.Or(predicate.GenerationChangedPredicate{}, updateOnDeletionOrResend),

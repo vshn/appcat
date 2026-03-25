@@ -35,5 +35,4 @@ func instanceCreationTimestamp(svc *vshnv1.BillingService) metav1.Time {
 			return metav1.Time{Time: t}
 		}
 	}
-	return svc.ObjectMeta.CreationTimestamp
-}
+	return metav1.Date(2015)

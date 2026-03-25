@@ -464,7 +464,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            ptr.To(int32(10)),
-			TTLSecondsAfterFinished: ptr.To(int32(3600)),
+			TTLSecondsAfterFinished: ptr.To(int32(43200)),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy:    corev1.RestartPolicyOnFailure,

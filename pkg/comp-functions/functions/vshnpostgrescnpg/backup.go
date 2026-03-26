@@ -60,12 +60,16 @@ func insertBackupValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *
 	}
 
 	// Enable the barman-cloud plugin in the cluster configuration
+	// serverName determines the path within the object store: {destinationPath}/{serverName}/
+	// By including the major version, each major version upgrade writes to a separate path,
+	// preventing WAL timeline conflicts after pg_upgrade resets the timeline to 1.
 	clusterPlugins := []map[string]any{{
 		"name":          "barman-cloud.cloudnative-pg.io",
 		"enabled":       true,
 		"isWALArchiver": true,
 		"parameters": map[string]any{
 			"barmanObjectName": "postgresql-object-store",
+			"serverName":       "postgresql-" + comp.Spec.Parameters.Service.MajorVersion,
 		},
 	}}
 

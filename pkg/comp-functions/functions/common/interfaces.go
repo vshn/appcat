@@ -27,7 +27,7 @@ type InfoGetter interface {
 	GetBillingName() string
 	GetAnnotations() map[string]string
 	GetCreationTimestamp() metav1.Time
-	UnamangedBucketProvider
+	UnmangedBucketProvider
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create
@@ -73,7 +73,7 @@ type Alerter interface {
 	GetInstanceNamespace() string
 }
 
-// UnamangedBucketProvider will return an unmanaged bucket or nil if it's not defined
-type UnamangedBucketProvider interface {
+// UnmangedBucketProvider will return an unmanaged bucket or nil if it's not defined
+type UnmangedBucketProvider interface {
 	GetUnmanagedBucket() *vshnv1.UnmanagedBucket
 }

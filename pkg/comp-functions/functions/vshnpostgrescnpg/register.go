@@ -34,6 +34,10 @@ func init() {
 				Execute: AddConnectionSecrets,
 			},
 			{
+				Name:    "user-management",
+				Execute: UserManagement,
+			},
+			{
 				Name:    "maintenance",
 				Execute: addSchedules,
 			},

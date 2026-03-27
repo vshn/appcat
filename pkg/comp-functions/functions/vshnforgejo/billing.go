@@ -1,4 +1,4 @@
-package vshnmariadb
+package vshnforgejo
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 // AddBilling enables billing for this service
 // It runs both the legacy Prometheus-based billing and the BillingService CR-based billing
-func AddBilling(ctx context.Context, comp *v1.VSHNMariaDB, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func AddBilling(ctx context.Context, comp *v1.VSHNForgejo, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))

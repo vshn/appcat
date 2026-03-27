@@ -18,19 +18,11 @@ func AddBilling(ctx context.Context, comp *v1.VSHNPostgreSQL, svc *runtime.Servi
 		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
 	}
 
-	// Keep the existing Prometheus-based billing
-	prometheusResult := common.CreateBillingRecord(ctx, svc, comp)
-	if prometheusResult != nil && prometheusResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {
-		return prometheusResult
-	}
-	// Add BillingService CR-based billing
-	billingServiceResult := common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
-		ResourceNameSuffix: "-billing-service",
-	})
-
-	if billingServiceResult != nil && billingServiceResult.Severity != xfnproto.Severity_SEVERITY_NORMAL {
-		return billingServiceResult
+	if svc.Config.Data["billingEnabled"] == "true" {
+		return common.CreateOrUpdateBillingServiceWithOptions(ctx, svc, comp, common.BillingServiceOptions{
+			ResourceNameSuffix: "-billing-service",
+		})
 	}
 
-	return runtime.NewNormalResult(fmt.Sprintf("Billing enabled for instance %s", comp.GetName()))
+	return common.CreateBillingRecord(ctx, svc, comp)
 }

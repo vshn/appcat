@@ -32,9 +32,9 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "3", Unit: "instance", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
@@ -44,7 +44,6 @@ func TestHandleItemScaling(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "1",
-							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -53,7 +52,6 @@ func TestHandleItemScaling(t *testing.T) {
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
 				Value:                "3",
-				Unit:                 "instance",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
 			},
@@ -69,9 +67,9 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", Unit: "instance", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", Value: "2", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
@@ -81,7 +79,6 @@ func TestHandleItemScaling(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-123",
 							Value:     "2",
-							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -90,7 +87,6 @@ func TestHandleItemScaling(t *testing.T) {
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
 				Value:                "2",
-				Unit:                 "instance",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
 			},
@@ -105,9 +101,9 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "3", Unit: "instance", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
@@ -125,7 +121,6 @@ func TestHandleItemScaling(t *testing.T) {
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
 				Value:                "3",
-				Unit:                 "instance",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
 			},
@@ -140,9 +135,9 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "3", Unit: "instance", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
@@ -166,7 +161,6 @@ func TestHandleItemScaling(t *testing.T) {
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
 				Value:                "3",
-				Unit:                 "instance",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
 			},
@@ -181,9 +175,9 @@ func TestHandleItemScaling(t *testing.T) {
 				},
 				Spec: vshnv1.BillingServiceSpec{
 					Odoo: vshnv1.OdooSpec{
-						InstanceID: "test-instance",
+						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-storage", Value: "100Gi", Unit: "storage", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+							{ProductID: "prod-storage", Value: "100Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
 						},
 					},
 				},
@@ -193,7 +187,6 @@ func TestHandleItemScaling(t *testing.T) {
 							Type:      string(BillingEventTypeCreated),
 							ProductID: "prod-storage",
 							Value:     "50Gi",
-							Unit:      "instance",
 							State:     string(BillingEventStateSent),
 						},
 					},
@@ -202,7 +195,6 @@ func TestHandleItemScaling(t *testing.T) {
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-storage",
 				Value:                "100Gi",
-				Unit:                 "storage",
 				ItemDescription:      "Storage Item",
 				ItemGroupDescription: "Storage Group",
 			},
@@ -236,7 +228,6 @@ func TestHandleItemScaling(t *testing.T) {
 				assert.Equal(t, string(BillingEventTypeScaled), newEvent.Type)
 				assert.Equal(t, tt.item.ProductID, newEvent.ProductID)
 				assert.Equal(t, tt.expectedValue, newEvent.Value)
-				assert.Equal(t, tt.item.Unit, newEvent.Unit)
 				assert.Equal(t, tt.item.ItemDescription, newEvent.ItemDescription)
 				assert.Equal(t, tt.item.ItemGroupDescription, newEvent.ItemGroupDescription)
 				assert.Equal(t, string(BillingEventStatePending), newEvent.State)
@@ -259,11 +250,11 @@ func TestHandleItemScaling_MultipleItems(t *testing.T) {
 		},
 		Spec: vshnv1.BillingServiceSpec{
 			Odoo: vshnv1.OdooSpec{
-				InstanceID: "test-instance",
+				ServiceID: "test-instance",
 				Items: []vshnv1.ItemSpec{
-					{ProductID: "prod-compute", Value: "4", Unit: "instance", ItemDescription: "Compute Item", ItemGroupDescription: "Compute Group"},
-					{ProductID: "prod-storage", Value: "100Gi", Unit: "storage", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
-					{ProductID: "prod-backup", Value: "enabled", Unit: "boolean", ItemDescription: "Backup Item", ItemGroupDescription: "Backup Group"},
+					{ProductID: "prod-compute", Value: "4", ItemDescription: "Compute Item", ItemGroupDescription: "Compute Group"},
+					{ProductID: "prod-storage", Value: "100Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+					{ProductID: "prod-backup", Value: "enabled", ItemDescription: "Backup Item", ItemGroupDescription: "Backup Group"},
 				},
 			},
 		},
@@ -273,7 +264,6 @@ func TestHandleItemScaling_MultipleItems(t *testing.T) {
 					Type:      string(BillingEventTypeCreated),
 					ProductID: "prod-compute",
 					Value:     "2",
-					Unit:      "instance",
 					State:     string(BillingEventStateSent),
 				},
 				{

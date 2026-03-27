@@ -9,6 +9,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -37,7 +38,6 @@ type ForgejoWebhookHandler struct {
 
 // SetupForgejoWebhookHandlerWithManager registers the validation webhook with the manager.
 func SetupForgejoWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&vshnv1.VSHNForgejo{}).
 		WithValidator(&ForgejoWebhookHandler{
@@ -49,6 +49,7 @@ func SetupForgejoWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) err
 				"forgejo",
 				forgejoGK,
 				forgejoGR,
+				maxNestedNameLength,
 			),
 		}).
 		Complete()
@@ -56,25 +57,31 @@ func SetupForgejoWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) err
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
 func (n *ForgejoWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
-	if warning != nil || err != nil {
-		return warning, err
-	}
-
 	forgejo, ok := obj.(*vshnv1.VSHNForgejo)
 	if !ok {
 		return nil, fmt.Errorf("provided manifest is not a valid VSHNForgejo object")
 	}
 
+	allErrs := newFielErrors(forgejo.GetName(), forgejoGK)
+
+	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
+	if err != nil {
+		tmpErr := err.(*fieldErrors)
+		allErrs.Add(tmpErr.List()...)
+	}
+	if warning != nil && err == nil {
+		return warning, nil
+	}
+
 	if err := validateFQDNs(forgejo.Spec.Parameters.Service.FQDN); err != nil {
-		return nil, err
+		allErrs.Add(err)
 	}
 
 	if err := validateForgejoConfig(forgejo.Spec.Parameters.Service.ForgejoSettings); err != nil {
-		return nil, err
+		allErrs.Add(err)
 	}
 
-	return nil, nil
+	return nil, allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -88,23 +95,41 @@ func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		return nil, fmt.Errorf("not a valid VSHNForgejo object")
 	}
 
+	if newForgejo.GetDeletionTimestamp() != nil {
+		return nil, nil
+	}
+
+	allErrs := newFielErrors(newForgejo.GetName(), forgejoGK)
+
+	warnings, err := p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	if err != nil {
+		tmpErr := err.(*fieldErrors)
+		allErrs.Add(tmpErr.List()...)
+	}
+	if warnings != nil && err == nil {
+		return warnings, nil
+	}
+
 	if err := validateFQDNs(newForgejo.Spec.Parameters.Service.FQDN); err != nil {
-		return nil, err
+		allErrs.Add(err)
 	}
 
 	if err := validateForgejoConfig(newForgejo.Spec.Parameters.Service.ForgejoSettings); err != nil {
-		return nil, err
+		allErrs.Add(err)
 	}
 
-	return p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	return nil, allErrs.Get()
 }
 
-func validateForgejoConfig(settings vshnv1.VSHNForgejoSettings) error {
+func validateForgejoConfig(settings vshnv1.VSHNForgejoSettings) *field.Error {
 	// Mailer
 	for k, v := range settings.Config.Mailer {
 		if strings.EqualFold(k, "PROTOCOL") {
 			if slices.Contains(denied_mailer_protocols, v) {
-				return fmt.Errorf("bad mailer.PROTOCOL specified: %s. May not be any of: %v", v, denied_mailer_protocols)
+				return field.Invalid(
+					field.NewPath("spec", "paramaters", "service", "config", "mailer"),
+					v,
+					fmt.Sprintf("bad mailer.PROTOCOL specified: %s. May not be any of: %v", v, denied_mailer_protocols))
 			}
 		}
 	}

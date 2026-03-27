@@ -58,8 +58,10 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 
 	disableProtection := comp.Status.CurrentInstances != 0 && comp.GetInstances() != comp.Status.CurrentInstances
 
-	if comp.GetInstances() == 1 && !disableProtection {
+	if comp.GetInstances() <= 1 && !disableProtection {
 		// nothing else to do here
+		// instances=0: suspended, no ProxySQL needed
+		// instances=1: single instance, no ProxySQL needed
 		return nil
 	}
 
@@ -94,6 +96,12 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 	err = createProxySQLPDB(comp, svc, disableProtection)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create PDB for ProxySQL: %s", err))
+	}
+
+	// Setting the version may be lost in other functions, reinforce it here
+	// TODO Fix status field being overwritten every time SetDesiredCompositeStatus() function is called
+	if comp.Spec.Parameters.Maintenance.PinImageTag != "" {
+		comp.Status.MariaDBVersion = comp.Spec.Parameters.Maintenance.PinImageTag
 	}
 
 	svc.Log.Info("Updating composite status")
@@ -224,22 +232,34 @@ func createProxySQLHeadlessService(comp *vshnv1.VSHNMariaDB, svc *runtime.Servic
 
 func createProxySQLStatefulset(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, configHash string, disableProtection bool) error {
 
-	cpuLimit := svc.Config.Data["proxysqlCPULimit"]
+	cpuLimit := comp.Spec.Parameters.Service.ProxySQL.Resources.Limits.CPU
+	if cpuLimit == "" {
+		cpuLimit = svc.Config.Data["proxysqlCPULimit"]
+	}
 	if cpuLimit == "" {
 		cpuLimit = "500m"
 	}
 
-	memoryLimit := svc.Config.Data["proxysqlMemoryLimit"]
+	memoryLimit := comp.Spec.Parameters.Service.ProxySQL.Resources.Limits.Memory
+	if memoryLimit == "" {
+		memoryLimit = svc.Config.Data["proxysqlMemoryLimit"]
+	}
 	if memoryLimit == "" {
 		memoryLimit = "256Mi"
 	}
 
-	cpuRequests := svc.Config.Data["proxysqlCPURequests"]
+	cpuRequests := comp.Spec.Parameters.Service.ProxySQL.Resources.Requests.CPU
+	if cpuRequests == "" {
+		cpuRequests = svc.Config.Data["proxysqlCPURequests"]
+	}
 	if cpuRequests == "" {
 		cpuRequests = "50m"
 	}
 
-	memoryRequests := svc.Config.Data["proxysqlMemoryRequests"]
+	memoryRequests := comp.Spec.Parameters.Service.ProxySQL.Resources.Requests.Memory
+	if memoryRequests == "" {
+		memoryRequests = svc.Config.Data["proxysqlMemoryRequests"]
+	}
 	if memoryRequests == "" {
 		memoryRequests = "64Mi"
 	}

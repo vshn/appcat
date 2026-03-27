@@ -7,10 +7,12 @@ import (
 	"github.com/spf13/viper"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/cloudscalebucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/exoscalebucket"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/garagebucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/miniobucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spks/spksmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/spks/spksredis"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnforgejo"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshngarage"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnkeycloak"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnmariadb"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnminio"
@@ -62,5 +64,4 @@ func executeFunctionsServer(cmd *cobra.Command, _ []string) error {
 		function.Listen(network, address),
 		function.MTLSCertificates(tlsCertsDir),
 		function.Insecure(insecure))
-
 }

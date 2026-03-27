@@ -2,6 +2,7 @@ package common
 
 import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -13,7 +14,7 @@ type InfoGetter interface {
 	GetServiceName() string
 	GetLabels() map[string]string
 	GetSize() vshnv1.VSHNSizeSpec
-	GetInstances() int
+	InstancesGetter
 	GetFullMaintenanceSchedule() vshnv1.VSHNDBaaSMaintenanceScheduleSpec
 	GetMonitoring() vshnv1.VSHNMonitoring
 	GetSecurity() *vshnv1.Security
@@ -24,6 +25,9 @@ type InfoGetter interface {
 	GetClaimName() string
 	GetSLA() string
 	GetBillingName() string
+	GetAnnotations() map[string]string
+	GetCreationTimestamp() metav1.Time
+	UnmangedBucketProvider
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create
@@ -38,6 +42,11 @@ type InstanceNamespaceInfo interface {
 // InstanceNamespaceGetter returns the instance namespace of the given object
 type InstanceNamespaceGetter interface {
 	GetInstanceNamespace() string
+}
+
+// InstancesGetter returns the number of instances of the given object
+type InstancesGetter interface {
+	GetInstances() int
 }
 
 // CompositionNameGetter returns the composition name of the given object
@@ -62,4 +71,9 @@ type AllowedNamespaceGetter interface {
 type Alerter interface {
 	GetVSHNMonitoring() vshnv1.VSHNMonitoring
 	GetInstanceNamespace() string
+}
+
+// UnmangedBucketProvider will return an unmanaged bucket or nil if it's not defined
+type UnmangedBucketProvider interface {
+	GetUnmanagedBucket() *vshnv1.UnmanagedBucket
 }

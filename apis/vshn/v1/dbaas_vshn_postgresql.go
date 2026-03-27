@@ -75,7 +75,7 @@ type VSHNPostgreSQLParameters struct {
 	UpdateStrategy VSHNPostgreSQLUpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=3
 
 	// Instances configures the number of PostgreSQL instances for the cluster.
@@ -129,7 +129,7 @@ type VSHNPostgreSQLUpdateStrategy struct {
 
 // VSHNPostgreSQLServiceSpec contains PostgreSQL DBaaS specific properties
 type VSHNPostgreSQLServiceSpec struct {
-	// +kubebuilder:validation:Enum="12";"13";"14";"15";"16";"17"
+	// +kubebuilder:validation:Enum="12";"13";"14";"15";"16";"17";"18"
 	// +kubebuilder:default="15"
 
 	// MajorVersion contains supported version of PostgreSQL.
@@ -168,9 +168,11 @@ type VSHNPostgreSQLServiceSpec struct {
 	EnableEnvoy bool `json:"enableEnvoy,omitempty"`
 
 	// +kubebuilder:default=true
-	// This is default option if neither repack or vacuum are selected
+	// RepackEnabled defines if `pg_repack` should be performed during the maintenance. Defaults to true.
 	RepackEnabled bool `json:"repackEnabled,omitempty"`
+
 	// +kubebuilder:default=false
+	// VacuumEnabled defines if `VACUUM` should be performed during the maintenace. Defaults to false.
 	VacuumEnabled bool `json:"vacuumEnabled,omitempty"`
 
 	// Access defines additional users and databases for this instance.
@@ -185,6 +187,29 @@ type VSHNDBaaSPostgresExtension struct {
 	// Name is the name of the extension to enable.
 	// For an extensive list, please consult https://stackgres.io/doc/latest/intro/extensions/
 	Name string `json:"name,omitempty"`
+	// Image containing the PostgreSQL extension.
+	// This is only available for CloudNativePG
+	// For a list of images, please consult https://github.com/cloudnative-pg/postgres-extensions-containers and https://github.com/vshn/cnpg_extensions
+	Image string `json:"image,omitempty"`
+	// Optional image pull policy for the extension image
+	ImagePullPolicy string `json:"imagePullPolicy,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// extension_control_path.
+	// This is only available for CloudNativePG
+	// If not defined, defaults to "/share".
+	ExtensionControlPath []string `json:"extension_control_path,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// dynamic_library_path.
+	// This is only available for CloudNativePG
+	// If not defined, defaults to "/lib".
+	DynamicLibraryPath []string `json:"dynamic_library_path,omitempty"`
+
+	// The list of directories inside the image which should be added to
+	// ld_library_path.
+	// This is only available for CloudNativePG
+	LdLibraryPath []string `json:"ld_library_path,omitempty"`
 }
 
 type VSHNPostgreSQLBackup struct {
@@ -212,6 +237,11 @@ type VSHNPostgreSQLBackup struct {
 	// The default is keeping it one week.
 	// +kubebuilder:default=7
 	DeletionRetention int `json:"deletionRetention,omitempty"`
+
+	// UnmanagedBucket specifies a bucket not managed by AppCat to be used for the backup.
+	// The user is responsible for the correctness of these values.
+	// +kubebuilder:validation:Optional
+	UnmanagedBucket *UnmanagedBucket `json:"unmanagedBucket,omitempty"`
 }
 
 // GetBackupSchedule gets the currently set schedule
@@ -435,6 +465,10 @@ func (v *XVSHNPostgreSQL) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
 }
 
+func (v *XVSHNPostgreSQL) GetInstances() int {
+	return v.Spec.Parameters.Instances
+}
+
 // GetBackupRetention returns the retention definition for this backup.
 func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
 	return K8upRetentionPolicy{}
@@ -499,4 +533,8 @@ func (v *VSHNPostgreSQL) GetSLA() string {
 // IsBackupEnabled returns true if backups are enabled for this instance
 func (v *VSHNPostgreSQL) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
+}
+
+func (v *VSHNPostgreSQL) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
 }

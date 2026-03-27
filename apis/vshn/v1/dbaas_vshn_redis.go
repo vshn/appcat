@@ -80,7 +80,7 @@ type VSHNRedisParameters struct {
 	Security Security `json:"security,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Enum=1;3;
+	// +kubebuilder:validation:Enum=0;1;3;
 
 	// Instances configures the number of Redis instances for the cluster.
 	Instances int `json:"instances,omitempty"`
@@ -156,6 +156,8 @@ type VSHNRedisStatus struct {
 	// InitialMaintenance tracks the status of the initial maintenance job,
 	// including when it ran and whether it succeeded or failed.
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
+	// CurrentReleaseTag contains the currently deployed image tag.
+	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 }
@@ -186,6 +188,10 @@ func (v *XVSHNRedis) GetInstanceNamespace() string {
 
 func (v *XVSHNRedis) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
+}
+
+func (v *XVSHNRedis) GetInstances() int {
+	return v.Spec.Parameters.Instances
 }
 
 // XVSHNRedisSpec defines the desired state of a VSHNRedis.
@@ -360,4 +366,8 @@ func (v *VSHNRedis) GetSLA() string {
 // IsBackupEnabled returns true if backups are enabled for this instance
 func (v *VSHNRedis) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
+}
+
+func (v *VSHNRedis) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
 }

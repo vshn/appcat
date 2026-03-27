@@ -7,6 +7,11 @@ import (
 const (
 	// BillingServiceFinalizer is the finalizer used to protect BillingService resources from deletion
 	BillingServiceFinalizer = "billing.appcat.vshn.io/delete-protection"
+
+	// InstanceCreationTimestampAnnotation is the annotation key stamped on BillingService CRs.
+	// It holds the RFC3339 creation timestamp of the originating composite/claim,
+	// set by the comp-function and consumed by the billing controller.
+	InstanceCreationTimestampAnnotation = "appcat.vshn.io/instance-creation-timestamp"
 )
 
 // +kubebuilder:object:root=true
@@ -38,13 +43,29 @@ type BillingServiceSpec struct {
 	Odoo OdooSpec `json:"odoo,omitempty"`
 }
 
-// OdooSpec defines Odoo-specific billing configuration
-type OdooSpec struct {
-	// InstanceID uniquely identifies the service instance in Odoo
-	InstanceID string `json:"instanceID"`
-
+// ItemSpec defines a single billable product/item
+type ItemSpec struct {
 	// ProductID identifies the product in the billing system
 	ProductID string `json:"productID"`
+
+	// ItemDescription is a human-readable description of the billing item
+	ItemDescription string `json:"itemDescription,omitempty"`
+
+	// ItemGroupDescription describes the billing item group
+	ItemGroupDescription string `json:"itemGroupDescription,omitempty"`
+
+	// Value represents the billable metric for this product
+	// Can be: replica count, disk size (e.g., "50Gi"), percentage, etc.
+	Value string `json:"value"`
+
+	// InstanceID uniquely identifies this product event in Odoo. Format: <composite-name>-<shortSHA(productID)>
+	InstanceID string `json:"instanceID,omitempty"`
+}
+
+// OdooSpec defines Odoo-specific billing configuration
+type OdooSpec struct {
+	// ServiceID identifies the service instance in Odoo
+	ServiceID string `json:"serviceID"`
 
 	// SalesOrderID identifies the sales order in Odoo
 	SalesOrderID string `json:"salesOrderID,omitempty"`
@@ -52,17 +73,10 @@ type OdooSpec struct {
 	// Organization used to identify sales order
 	Organization string `json:"organization,omitempty"`
 
-	// UnitID defines the billing unit type in Odoo
-	UnitID string `json:"unitID"`
-
-	// Size represents the size of the service instance
-	Size string `json:"size,omitempty"`
-
-	// ItemGroupDescription describes the billing item group
-	ItemGroupDescription string `json:"itemGroupDescription"`
-
-	// ItemDescription is a human readable description of the billing item
-	ItemDescription string `json:"itemDescription"`
+	// Items defines list of billable products for this instance
+	// Each item represents a product with independent lifecycle and event tracking
+	// +kubebuilder:validation:MinItems=1
+	Items []ItemSpec `json:"items"`
 }
 
 // BillingServiceStatus defines the observed state of a BillingService
@@ -76,15 +90,25 @@ type BillingServiceStatus struct {
 
 // BillingEventStatus represents the status of a billing event
 type BillingEventStatus struct {
-	// Type is the type of billing event (created, deleted, scaled)
-	// +kubebuilder:validation:Enum="created";"deleted";"scaled"
+	// Type is the type of billing event (create, delete, scale)
+	// +kubebuilder:validation:Enum="create";"delete";"scale"
 	Type string `json:"type"`
 
 	// ProductID identifies the product in the billing system
 	ProductID string `json:"productId"`
 
-	// Size represents the size/plan at the time of the event
-	Size string `json:"size"`
+	// InstanceID uniquely identifies this product event in Odoo. Format: <composite-name>-<shortSHA(productID)>
+	InstanceID string `json:"instanceID,omitempty"`
+
+	// Value represents the billable metric at the time of the event
+	// Generic field supporting replica count, disk size, percentages, etc.
+	Value string `json:"value"`
+
+	// ItemDescription is a human-readable description of the billing item
+	ItemDescription string `json:"itemDescription,omitempty"`
+
+	// ItemGroupDescription describes the billing item group
+	ItemGroupDescription string `json:"itemGroupDescription,omitempty"`
 
 	// Timestamp when the event occurred
 	Timestamp metav1.Time `json:"timestamp"`

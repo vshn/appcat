@@ -253,7 +253,7 @@ require (
 	github.com/opencontainers/runc v1.1.7 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_model v0.6.1 // indirect
+	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/redis/go-redis/v9 v9.0.5
 	github.com/rs/xid v1.5.0 // indirect

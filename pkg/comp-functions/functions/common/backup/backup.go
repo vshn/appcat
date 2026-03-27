@@ -12,6 +12,7 @@ import (
 	"github.com/sethvargo/go-password/password"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +29,16 @@ const (
 	backupScriptCMName           = "backup-script"
 	BackupDisabledTimestampLabel = "appcat.vshn.io/backup-disabled-timestamp"
 )
+
+type BucketInfo struct {
+	Endpoint string
+	Bucket   string
+	KeyID    *corev1.SecretKeySelector
+	SecretID *corev1.SecretKeySelector
+	Region   string
+}
+
+var _ common.InfoGetter = &vshnv1.VSHNRedis{}
 
 // AddK8upBackup creates an S3 bucket and a K8up schedule according to the composition spec.
 // When backup is disabled, it only creates/preserves the bucket for retention but skips other backup objects.
@@ -63,7 +74,8 @@ func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common
 		}
 	}
 
-	if comp.IsBackupEnabled() {
+	// Remove the backup schedule for suspended instances
+	if comp.IsBackupEnabled() && comp.GetInstances() != 0 {
 		l.Info("Creating backup schedule - backups enabled")
 		err = createK8upSchedule(ctx, comp, svc)
 		if err != nil {
@@ -79,6 +91,10 @@ func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common
 // Create object bucket for backups
 func CreateObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
 	l := controllerruntime.LoggerFrom(ctx)
+
+	if comp.GetUnmanagedBucket() != nil {
+		return nil
+	}
 
 	if comp.GetName() == "" {
 		return fmt.Errorf("could not get composite name")
@@ -230,7 +246,7 @@ func createK8upSchedule(ctx context.Context, comp common.InfoGetter, svc *runtim
 
 	l := controllerruntime.LoggerFrom(ctx)
 
-	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-backup")
+	bucket, err := GetBucketCredentials(ctx, svc, comp)
 	if err != nil && err == runtime.ErrNotFound {
 		l.V(1).Info("credential secret not found, skipping schedule")
 		return nil
@@ -238,11 +254,7 @@ func createK8upSchedule(ctx context.Context, comp common.InfoGetter, svc *runtim
 		return err
 	}
 
-	bucket := string(cd["BUCKET_NAME"])
-	endpoint := string(cd["ENDPOINT_URL"])
 	retention := comp.GetBackupRetention()
-
-	endpoint, _ = strings.CutSuffix(endpoint, "/")
 
 	schedule := &k8upv1.Schedule{
 		ObjectMeta: metav1.ObjectMeta{
@@ -258,20 +270,10 @@ func createK8upSchedule(ctx context.Context, comp common.InfoGetter, svc *runtim
 					Key: k8upRepoSecretKey,
 				},
 				S3: &k8upv1.S3Spec{
-					Endpoint: endpoint,
-					Bucket:   bucket,
-					AccessKeyIDSecretRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: credentialSecretName + "-" + comp.GetName(),
-						},
-						Key: "AWS_ACCESS_KEY_ID",
-					},
-					SecretAccessKeySecretRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: credentialSecretName + "-" + comp.GetName(),
-						},
-						Key: "AWS_SECRET_ACCESS_KEY",
-					},
+					Endpoint:                 bucket.Endpoint,
+					Bucket:                   bucket.Bucket,
+					AccessKeyIDSecretRef:     bucket.KeyID,
+					SecretAccessKeySecretRef: bucket.SecretID,
 				},
 			},
 			Backup: &k8upv1.BackupSchedule{
@@ -425,4 +427,54 @@ func PatchConnectionSecretWithAllowDeletion(ctx context.Context, comp common.Inf
 
 	return svc.SetDesiredKubeObject(secretObject, secretObjectName,
 		runtime.KubeOptionAllowDeletion)
+}
+
+// GetBucketCredentials will return the bucket information for the given composite.
+// It detects if there's an unmanaged bucket defined and will return these credentials accordingly.
+func GetBucketCredentials(ctx context.Context, svc *runtime.ServiceRuntime, comp common.InfoGetter) (BucketInfo, error) {
+
+	if ub := comp.GetUnmanagedBucket(); ub != nil {
+		secret := &corev1.Secret{}
+
+		_, err := svc.CopyKubeResource(ctx, secret, comp.GetName()+"-bucket-credentials", ub.AccessKey.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+
+		// No region for K8up backups.
+		return BucketInfo{
+			Bucket:   ub.Bucket,
+			Endpoint: ub.Endpoint,
+			SecretID: &ub.SecretKey,
+			KeyID:    &ub.AccessKey,
+		}, err
+	}
+
+	l := controllerruntime.LoggerFrom(ctx)
+
+	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-backup")
+	if err != nil && err == runtime.ErrNotFound {
+		l.V(1).Info("credential secret not found, skipping schedule")
+		return BucketInfo{}, nil
+	} else if err != nil {
+		return BucketInfo{}, err
+	}
+
+	bucket := string(cd["BUCKET_NAME"])
+	endpoint := string(cd["ENDPOINT_URL"])
+	endpoint, _ = strings.CutSuffix(endpoint, "/")
+
+	return BucketInfo{
+		Bucket:   bucket,
+		Endpoint: endpoint,
+		KeyID: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: credentialSecretName + "-" + comp.GetName(),
+			},
+			Key: "AWS_ACCESS_KEY_ID",
+		},
+		SecretID: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: credentialSecretName + "-" + comp.GetName(),
+			},
+			Key: "AWS_SECRET_ACCESS_KEY",
+		},
+	}, nil
 }

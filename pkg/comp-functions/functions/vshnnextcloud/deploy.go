@@ -137,9 +137,6 @@ func configureDatabase(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *run
 }
 
 func createNewPGService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) (pgSecret string, err error) {
-	var pgTime vshnv1.TimeOfDay
-	pgTime.SetTime(comp.GetMaintenanceTimeOfDay().GetTime().Add(20 * time.Minute))
-
 	pgBouncerConfig, pgSettings, pgDiskSize, err := getObservedPostgresSettings(svc, comp)
 	if err != nil {
 		return "", fmt.Errorf("cannot get observed postgres settings: %s", err)
@@ -151,7 +148,7 @@ func createNewPGService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime)
 		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
 		AddPGBouncerConfig(pgBouncerConfig).
 		AddPGSettings(pgSettings).
-		SetCustomMaintenanceSchedule(pgTime)
+		SetCustomMaintenanceSchedule(20 * time.Minute)
 
 	if pgDiskSize != "" {
 		pgBuilder.SetDiskSize(pgDiskSize)
@@ -478,6 +475,22 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
+	cronjobSecurityContext := map[string]any{}
+	if !isOpenShift {
+		cronjobSecurityContext = map[string]any{
+			"runAsUser":                33,
+			"runAsGroup":               33,
+			"runAsNonRoot":             true,
+			"allowPrivilegeEscalation": false,
+			"capabilities": map[string]any{
+				"drop": []string{"ALL"},
+			},
+			"seccompProfile": map[string]any{
+				"type": "RuntimeDefault",
+			},
+		}
+	}
+
 	trustedDomain := []string{
 		comp.GetName() + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
 	}
@@ -485,6 +498,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	updatedNextcloudConfig := setBackgroundJobMaintenance(*comp.GetMaintenanceTimeOfDay(), nextcloudConfig)
 	values = map[string]any{
+		"replicaCount": comp.GetInstances(),
 		"nextcloud": map[string]any{
 			"host":           comp.Spec.Parameters.Service.FQDN[0],
 			"trustedDomains": trustedDomain,
@@ -606,9 +620,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 		},
 		"cronjob": map[string]any{
-			"enabled": true,
+			"enabled": comp.GetInstances() > 0,
 			"type":    "cronjob",
 			"cronjob": map[string]any{
+				"securityContext": cronjobSecurityContext,
 				"affinity": map[string]any{
 					"podAffinity": map[string]any{
 						"requiredDuringSchedulingIgnoredDuringExecution": []map[string]any{
@@ -640,22 +655,24 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
-	if image := svc.Config.Data["nextcloud_image"]; image != "" {
-		values["image"] = map[string]interface{}{
-			"repository": image,
-		}
-	}
-
+	// Chart 8.6.0+ uses separate registry and repository instead of combined image path
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
-		image := fmt.Sprintf("%s/%s", registry, "xperimental/nextcloud-exporter")
+		// Nextcloud image
+		if repository := svc.Config.Data["nextcloud_image_repository"]; repository != "" {
+			values["image"] = map[string]any{
+				"registry":   registry,
+				"repository": repository,
+			}
+		}
 
+		// Metrics exporter image
 		err := common.SetNestedObjectValue(values, []string{"metrics", "image"}, map[string]any{
-			"repository": image,
+			"registry":   registry,
+			"repository": "xperimental/nextcloud-exporter",
 		})
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
 	return values, nil
@@ -672,9 +689,17 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot get observed release values: %w", err)
 	}
 
-	_, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	releaseTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.PinImageTag)
 	if err != nil {
-		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
+		return nil, fmt.Errorf("cannot set nextcloud version for release: %w", err)
+	}
+
+	// Update status with current release tag
+	if releaseTag != "" {
+		comp.Status.CurrentReleaseTag = releaseTag
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+		}
 	}
 
 	release, err := common.NewRelease(ctx, svc, comp, values, comp.GetName()+"-release")

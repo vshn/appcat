@@ -42,6 +42,12 @@ func NewMinio(c client.Client, hc *http.Client, vh release.VersionHandler, logge
 	}
 }
 
+// Skip MinIO backups
+func (m *Minio) RunBackup(ctx context.Context) error {
+	m.log.Info("MinIO backup not implemented, skipping pre-maintenance backup")
+	return nil
+}
+
 // DoMaintenance will run minio's maintenance script.
 func (m *Minio) DoMaintenance(ctx context.Context) error {
 	maintenanceURL, err := getMaintenanceURL()

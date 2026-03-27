@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -62,15 +63,17 @@ func (b *BillingHandler) deliverQueuedEvent(ctx context.Context, billingService 
 }
 
 func (b *BillingHandler) sendEventToOdoo(ctx context.Context, billingService *vshnv1.BillingService, event vshnv1.BillingEventStatus) error {
+	if event.InstanceID == "" {
+		return fmt.Errorf("event for product %q on %s/%s has no instanceID", event.ProductID, billingService.Namespace, billingService.Name)
+	}
 	return b.odooClient.SendInstanceEvent(ctx, odoo.InstanceEvent{
 		ProductID:            event.ProductID,
-		InstanceID:           billingService.Spec.Odoo.InstanceID,
+		InstanceID:           event.InstanceID,
 		SalesOrderID:         billingService.Spec.Odoo.SalesOrderID,
-		ItemDescription:      billingService.Spec.Odoo.ItemDescription,
-		ItemGroupDescription: billingService.Spec.Odoo.ItemGroupDescription,
-		UnitID:               billingService.Spec.Odoo.UnitID,
+		ItemDescription:      event.ItemDescription,
+		ItemGroupDescription: event.ItemGroupDescription,
 		EventType:            event.Type,
-		Size:                 event.Size,
+		Size:                 event.Value,
 		Timestamp:            event.Timestamp.Format(time.RFC3339),
 	})
 }

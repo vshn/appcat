@@ -3,10 +3,12 @@ package maintenance
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg/auth/stackgres"
+	"github.com/vshn/appcat/v4/pkg/maintenance/backup"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
-	"time"
 
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -15,7 +17,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -32,10 +34,11 @@ var (
 
 // PostgreSQL handles the maintenance of postgresql services
 type PostgreSQL struct {
-	k8sClient client.WithWatch
-	sClient   *stackgres.StackgresClient
-	log       logr.Logger
-	timeout   time.Duration
+	backupHelper *backup.Helper
+	k8sClient    client.WithWatch
+	sClient      *stackgres.StackgresClient
+	log          logr.Logger
+	timeout      time.Duration
 	release.VersionHandler
 	instanceNamespace string
 	apiUserName       string
@@ -49,7 +52,9 @@ type PostgreSQL struct {
 
 // NewPostgreSQL returns a new PostgreSQL maintenance job runner
 func NewPostgreSQL(c client.WithWatch, sClient *stackgres.StackgresClient, versionHandler release.VersionHandler, log logr.Logger) *PostgreSQL {
+	runner := backup.NewStackGresBackupRunner(c, log)
 	return &PostgreSQL{
+		backupHelper:      backup.NewHelper(runner, log),
 		k8sClient:         c,
 		sClient:           sClient,
 		timeout:           time.Hour,
@@ -66,6 +71,11 @@ func NewPostgreSQL(c client.WithWatch, sClient *stackgres.StackgresClient, versi
 	}
 }
 
+// RunBackup executes a pre-maintenance backup
+func (p *PostgreSQL) RunBackup(ctx context.Context) error {
+	return p.backupHelper.RunBackup(ctx)
+}
+
 // DoMaintenance will run postgresql's maintenance script.
 func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
@@ -78,9 +88,15 @@ func (p *PostgreSQL) DoMaintenance(ctx context.Context) error {
 
 	if len(sgclusters.Items) == 0 {
 		p.log.Info("No sgcluster found in namespace, skipping maintenance")
+		return nil
 	}
 
+	// Check if cluster is suspended (instances == 0)
 	sgCluster := sgclusters.Items[0]
+	if sgCluster.Spec.Instances == 0 {
+		p.log.Info("Cluster is suspended (instances=0), skipping all database maintenance operations")
+		return nil
+	}
 	currentVersion := sgclusters.Items[0].Spec.Postgres.Version
 
 	p.log.Info("Checking for pending upgrades...")
@@ -267,7 +283,7 @@ func (p *PostgreSQL) createVacuum(ctx context.Context, clusterName string) error
 func (p *PostgreSQL) createMinorUpgrade(ctx context.Context, clusterName, minorVersion string) error {
 	minorMaint := p.getDbOpsObject(clusterName, "minorupgrade", mvu)
 	minorMaint.Spec.MinorVersionUpgrade = &stackgresv1.SGDbOpsSpecMinorVersionUpgrade{
-		Method:          pointer.String("InPlace"),
+		Method:          ptr.To("InPlace"),
 		PostgresVersion: &minorVersion,
 	}
 	return p.applyDbOps(ctx, minorMaint)
@@ -276,7 +292,7 @@ func (p *PostgreSQL) createMinorUpgrade(ctx context.Context, clusterName, minorV
 func (p *PostgreSQL) createSecurityUpgrade(ctx context.Context, clusterName string) error {
 	secMaint := p.getDbOpsObject(clusterName, "securitymaintenance", su)
 	secMaint.Spec.SecurityUpgrade = &stackgresv1.SGDbOpsSpecSecurityUpgrade{
-		Method: pointer.String("InPlace"),
+		Method: ptr.To("InPlace"),
 	}
 	return p.applyDbOps(ctx, secMaint)
 }
@@ -290,7 +306,7 @@ func (p *PostgreSQL) getDbOpsObject(clusterName, objectName string, op OpName) *
 		Spec: stackgresv1.SGDbOpsSpec{
 			SgCluster:  clusterName,
 			Op:         string(op),
-			MaxRetries: pointer.Int(1),
+			MaxRetries: ptr.To(1),
 		},
 	}
 

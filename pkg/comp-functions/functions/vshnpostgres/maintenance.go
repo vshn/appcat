@@ -53,6 +53,45 @@ var (
 				"get",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"cronjobs",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+			},
+		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs/status",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
 	}
 
 	extraEnvVars = []corev1.EnvVar{
@@ -109,14 +148,18 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 		return runtime.NewWarningResult(fmt.Errorf("cannot get cluster object: %w", err).Error())
 	}
 
+	// Disable repack and vacuum for suspended instances
+	repackEnabled := comp.Spec.Parameters.Service.RepackEnabled && comp.Spec.Parameters.Instances != 0
+	vacuumEnabled := comp.Spec.Parameters.Service.VacuumEnabled && comp.Spec.Parameters.Instances != 0
+
 	additionalVars := append(extraEnvVars, []corev1.EnvVar{
 		{
 			Name:  "REPACK_ENABLED",
-			Value: strconv.FormatBool(comp.Spec.Parameters.Service.RepackEnabled),
+			Value: strconv.FormatBool(repackEnabled),
 		},
 		{
 			Name:  "VACUUM_ENABLED",
-			Value: strconv.FormatBool(comp.Spec.Parameters.Service.VacuumEnabled),
+			Value: strconv.FormatBool(vacuumEnabled),
 		},
 	}...)
 

@@ -2,7 +2,6 @@ package webhooks
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -35,11 +34,12 @@ func TestWebhookHandlerWithManager_ValidateCreate_FQDN(t *testing.T) {
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 
@@ -66,7 +66,7 @@ func TestWebhookHandlerWithManager_ValidateCreate_FQDN(t *testing.T) {
 
 	_, err := handler.ValidateCreate(ctx, nextcloudOrig)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
 	// When FQDN invalid
@@ -77,7 +77,7 @@ func TestWebhookHandlerWithManager_ValidateCreate_FQDN(t *testing.T) {
 
 	_, err = handler.ValidateCreate(ctx, nextcloudInvalid)
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Errorf("FQDN n€xtcloud.example.tld is not a valid DNS name"), err)
+	assert.ErrorContains(t, err, "FQDN n€xtcloud.example.tld is not a valid DNS name")
 }
 
 func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
@@ -100,11 +100,12 @@ func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 
@@ -133,7 +134,7 @@ func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
 
 	_, err := handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudNew)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
 	// When FQDN invalid
@@ -144,7 +145,7 @@ func TestWebhookHandlerWithManager_ValidateUpdate_FQDN(t *testing.T) {
 
 	_, err = handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudInvalid)
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Errorf("FQDN n€xtcloud.example.tld is not a valid DNS name"), err)
+	assert.ErrorContains(t, err, "FQDN n€xtcloud.example.tld is not a valid DNS name")
 }
 
 func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
@@ -167,11 +168,12 @@ func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 
@@ -255,7 +257,7 @@ func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateCreate(ctx, nextcloudCollaboraInvalid)
 	assert.Error(t, err, "Collabora enabled with invalid FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("FQDN c€llabora.example.tld is not a valid DNS name"), err)
+	assert.ErrorContains(t, err, "FQDN c€llabora.example.tld is not a valid DNS name")
 
 	// Test 4: Collabora enabled with empty FQDN - should fail
 	nextcloudCollaboraEmpty := &vshnv1.VSHNNextcloud{
@@ -283,7 +285,7 @@ func TestNextcloudWebhookHandler_ValidateCreate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateCreate(ctx, nextcloudCollaboraEmpty)
 	assert.Error(t, err, "Collabora enabled with empty FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("Collabora FQDN is required when Collabora is enabled"), err)
+	assert.ErrorContains(t, err, "Collabora FQDN is required when Collabora is enabled")
 }
 
 func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
@@ -306,11 +308,12 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 
@@ -360,7 +363,7 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudEnableInvalid)
 	assert.Error(t, err, "Enabling Collabora with invalid FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("FQDN c€llabora.example.tld is not a valid DNS name"), err)
+	assert.ErrorContains(t, err, "FQDN c€llabora.example.tld is not a valid DNS name")
 
 	// Test 4: Enable Collabora with empty FQDN - should fail
 	nextcloudEnableEmpty := nextcloudOrig.DeepCopy()
@@ -369,7 +372,7 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 
 	_, err = handler.ValidateUpdate(ctx, nextcloudOrig, nextcloudEnableEmpty)
 	assert.Error(t, err, "Enabling Collabora with empty FQDN should fail validation")
-	assert.Equal(t, fmt.Errorf("Collabora FQDN is required when Collabora is enabled"), err)
+	assert.ErrorContains(t, err, "Collabora FQDN is required when Collabora is enabled")
 
 	// Test 5: Update Collabora FQDN to another valid one - should pass
 	nextcloudWithCollabora := &vshnv1.VSHNNextcloud{
@@ -402,6 +405,90 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 	assert.NoError(t, err, "Updating Collabora FQDN to another valid one should pass validation")
 }
 
+func TestNextcloudWebhookHandler_ValidateUpdate_VersionDowngrade(t *testing.T) {
+	ctx := context.TODO()
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		Build()
+
+	handler := NextcloudWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
+		},
+	}
+
+	newNC := func(version, pinImageTag string) *vshnv1.VSHNNextcloud {
+		return &vshnv1.VSHNNextcloud{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "myinstance",
+				Namespace: "testns",
+			},
+			Spec: vshnv1.VSHNNextcloudSpec{
+				Parameters: vshnv1.VSHNNextcloudParameters{
+					Service: vshnv1.VSHNNextcloudServiceSpec{
+						FQDN:    []string{"mynextcloud.example.tld"},
+						Version: version,
+					},
+					Maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+						PinImageTag: pinImageTag,
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name        string
+		oldVersion  string
+		newVersion  string
+		pinImageTag string
+		wantErr     bool
+		errContains string
+	}{
+		// --- happy path ---
+		{name: "major upgrade", oldVersion: "30", newVersion: "31", wantErr: false},
+		{name: "same major version", oldVersion: "31", newVersion: "31", wantErr: false},
+		{name: "major.minor upgrade", oldVersion: "30.0", newVersion: "31.0", wantErr: false},
+		{name: "minor upgrade within major", oldVersion: "30.0", newVersion: "30.1", wantErr: false},
+		{name: "same version different formats", oldVersion: "30", newVersion: "30.0", wantErr: false},
+		{name: "empty old version (first set)", oldVersion: "", newVersion: "31", wantErr: false},
+		{name: "both empty versions", oldVersion: "", newVersion: "", wantErr: false},
+		{name: "new version cleared", oldVersion: "31", newVersion: "", wantErr: false},
+		{name: "unparsable old version", oldVersion: "garbage", newVersion: "30", wantErr: false},
+
+		// --- downgrade blocked ---
+		{name: "major downgrade", oldVersion: "31", newVersion: "30", wantErr: true, errContains: "downgrading from"},
+		{name: "minor downgrade within major", oldVersion: "30.1", newVersion: "30.0", wantErr: true, errContains: "downgrading from"},
+		{name: "patch downgrade", oldVersion: "30.0.1", newVersion: "30.0.0", wantErr: true, errContains: "downgrading from"},
+
+		// --- invalid new version ---
+		{name: "unparsable new version", oldVersion: "30", newVersion: "garbage", wantErr: true, errContains: "invalid version"},
+
+		// --- pinImageTag bypasses check ---
+		{name: "downgrade allowed with pinImageTag", oldVersion: "31", newVersion: "30", pinImageTag: "nextcloud:30.0.5", wantErr: false},
+		{name: "invalid new version allowed with pinImageTag", oldVersion: "30", newVersion: "garbage", pinImageTag: "nextcloud:30.0.5", wantErr: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := handler.ValidateUpdate(ctx, newNC(tt.oldVersion, ""), newNC(tt.newVersion, tt.pinImageTag))
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.ErrorContains(t, err, tt.errContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestNextcloudWebhookHandler_ValidatePostgreSQLEncryptionChanges(t *testing.T) {
 	ctx := context.TODO()
 	fclient := fake.NewClientBuilder().
@@ -410,11 +497,12 @@ func TestNextcloudWebhookHandler_ValidatePostgreSQLEncryptionChanges(t *testing.
 
 	handler := NextcloudWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: false,
-			obj:       &vshnv1.VSHNNextcloud{},
-			name:      "nextcloud",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
 		},
 	}
 

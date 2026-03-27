@@ -70,6 +70,10 @@ type VSHNForgejoParameters struct {
 	// Monitoring contains settings to control the monitoring of a service.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=1
+
 	// Instances defines the number of instances to run.
 	Instances int `json:"instances,omitempty"`
 }
@@ -99,8 +103,8 @@ type VSHNForgejoServiceSpec struct {
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 
 	// Version contains supported version of Forgejo.
-	// Multiple versions are supported. Defaults to 12.0.0 if not set.
-	// +kubebuilder:default="12.0.0"
+	// Multiple versions are supported. Defaults to 14.0.0 if not set.
+	// +kubebuilder:default="14.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
 }
 
@@ -122,6 +126,12 @@ type VSHNForgejoConfig struct {
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
 	OpenID map[string]string `json:"openid,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#oauth2-oauth2
+	OAuth2 map[string]string `json:"oauth2,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#oauth2-client-oauth2_client
+	OAuth2Client map[string]string `json:"oauth2_client,omitempty"`
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#service-service
 	Service map[string]string `json:"service,omitempty"`
@@ -168,6 +178,8 @@ type VSHNForgejoStatus struct {
 	// InitialMaintenance tracks the status of the initial maintenance job,
 	// including when it ran and whether it succeeded or failed.
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
+	// CurrentReleaseTag contains the currently deployed image tag.
+	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
 
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
@@ -199,6 +211,10 @@ func (v *VSHNForgejo) GetInitialMaintenanceCompletedAt() string {
 func (v *VSHNForgejo) SetInitialMaintenanceStatus(completedAt string, success bool) {
 	v.Status.InitialMaintenance.CompletedAt = &completedAt
 	v.Status.InitialMaintenance.Success = &success
+}
+
+func (v *VSHNForgejo) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
 }
 
 // +kubebuilder:object:generate=true

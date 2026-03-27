@@ -7,7 +7,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-var pgAlerts = nonsla.NewAlertSetBuilder("patroni").AddAll().AddCustomServiceRule("maxconnections", maxConnectionsAlert).GetAlerts()
+var pgAlerts = nonsla.NewAlertSetBuilder("patroni").AddAllDB().AddCustomServiceRule("maxconnections", maxConnectionsAlert).GetAlerts()
 
 func init() {
 	runtime.RegisterService[*vshnv1.VSHNPostgreSQL]("postgresql", runtime.Service[*vshnv1.VSHNPostgreSQL]{

@@ -93,7 +93,7 @@ type VSHNNextcloudParameters struct {
 	Security Security `json:"security,omitempty"`
 
 	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=3
 
 	// Instances configures the number of Nextcloud instances for the cluster.
@@ -184,6 +184,8 @@ type VSHNNextcloudStatus struct {
 	// InitialMaintenance tracks the status of the initial maintenance job,
 	// including when it ran and whether it succeeded or failed.
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
+	// CurrentReleaseTag contains the currently deployed image tag.
+	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 }
@@ -396,4 +398,8 @@ func (v *VSHNNextcloud) GetSLA() string {
 // IsBackupEnabled returns true if backups are enabled for this instance
 func (v *VSHNNextcloud) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
+}
+
+func (v *VSHNNextcloud) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
 }

@@ -38,11 +38,12 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 
 	handler := KeycloakWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNKeycloak{},
-			name:      "keycloak",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNKeycloak{},
+			name:       "keycloak",
+			nameLength: 30,
 		},
 	}
 
@@ -65,7 +66,7 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateCreate(ctx, keycloakOrig)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
 	// When quota breached
@@ -99,7 +100,7 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
-	//When invalid size
+	// When invalid size
 	// CPU Requests
 	keycloakInvalid = keycloakOrig.DeepCopy()
 	keycloakInvalid.Spec.Parameters.Size.Requests.CPU = "foo"
@@ -129,7 +130,6 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	keycloakInvalid.Spec.Parameters.Size.Disk = "foo"
 	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
-
 }
 
 func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
@@ -152,11 +152,12 @@ func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 
 	handler := KeycloakWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNKeycloak{},
-			name:      "keycloak",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNKeycloak{},
+			name:       "keycloak",
+			nameLength: 30,
 		},
 	}
 
@@ -177,16 +178,16 @@ func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateDelete(ctx, keycloakOrig)
 
-	//Then err
+	// Then err
 	assert.Error(t, err)
 
-	//Instances
+	// Instances
 	keycloakDeletable := keycloakOrig.DeepCopy()
 	keycloakDeletable.Spec.Parameters.Security.DeletionProtection = false
 
 	_, err = handler.ValidateDelete(ctx, keycloakDeletable)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 }
 
@@ -368,4 +369,56 @@ func createTestProviderConfigNoCredentials(group, version, name string) *unstruc
 	obj.Object["spec"] = map[string]interface{}{}
 
 	return obj
+}
+
+func TestCheckManualVersionManagementWarnings(t *testing.T) {
+	tests := []struct {
+		name         string
+		maintenance  vshnv1.VSHNDBaaSMaintenanceScheduleSpec
+		wantWarnings int
+		wantContains []string
+	}{
+		{
+			name:         "GivenDefaultValues_ThenNoWarnings",
+			maintenance:  vshnv1.VSHNDBaaSMaintenanceScheduleSpec{},
+			wantWarnings: 0,
+		},
+		{
+			name: "GivenPinImageTagOnly_ThenOneWarning",
+			maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+				PinImageTag: "7.2.5",
+			},
+			wantWarnings: 1,
+			wantContains: []string{"Image tag pinned to"},
+		},
+		{
+			name: "GivenDisableAppcatReleaseOnly_ThenOneWarning",
+			maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+				DisableAppcatRelease: true,
+			},
+			wantWarnings: 1,
+			wantContains: []string{"AppCat release updates disabled"},
+		},
+		{
+			name: "GivenBothPinnedAndDisabled_ThenTwoWarnings",
+			maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+				PinImageTag:          "7.2.5",
+				DisableAppcatRelease: true,
+			},
+			wantWarnings: 2,
+			wantContains: []string{"Image tag pinned to", "AppCat release updates disabled"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings := checkManualVersionManagementWarnings(tt.maintenance)
+
+			assert.Len(t, warnings, tt.wantWarnings)
+
+			for i, expectedSubstr := range tt.wantContains {
+				assert.Contains(t, string(warnings[i]), expectedSubstr)
+			}
+		})
+	}
 }

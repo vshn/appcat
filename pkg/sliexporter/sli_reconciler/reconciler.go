@@ -82,6 +82,19 @@ func (r *Reconciler) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	// Check if instance is suspended (instances = 0)
+	// When suspended, we stop probing to prevent false monitoring alerts
+	if instancesGetter, ok := r.inst.(common.InstancesGetter); ok {
+		if instancesGetter.GetInstances() == 0 {
+			r.l.Info("Instance is suspended, stopping probe")
+			r.pm.StopProbe(probes.ProbeInfo{
+				Service: r.serviceKey,
+				Name:    r.nn.Name,
+			})
+			return ctrl.Result{}, nil
+		}
+	}
+
 	if time.Since(r.inst.GetCreationTimestamp().Time) < r.startupGracePeriod {
 		retry := r.startupGracePeriod - time.Since(r.inst.GetCreationTimestamp().Time)
 		r.l.Info(fmt.Sprintf("Instance is starting up. Postpone probing until ready, retry in %s", retry.String()))

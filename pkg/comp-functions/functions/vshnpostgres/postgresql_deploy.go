@@ -26,7 +26,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -81,7 +81,7 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 	// Only create SGObjectStorage if backups are enabled
 	if comp.Spec.Parameters.Backup.IsEnabled() {
 		l.Info("Create SgObjectStorage")
-		err = createSgObjectStorage(comp, svc)
+		err = createSgObjectStorage(ctx, comp, svc)
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Errorf("cannot create sgObjectStorage object: %w", err).Error())
 		}
@@ -99,6 +99,19 @@ func DeployPostgreSQL(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *run
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Errorf("cannot create copyJob object: %w", err).Error())
 		}
+	}
+
+	l.Info("Create NetworkPolicy for Stackgres Operator access")
+
+	sgNamespace := svc.Config.Data["sgNamespace"]
+
+	if sgNamespace == "" {
+		return runtime.NewFatalResult(fmt.Errorf("\"sgNamespace\" parameter missing or empty. Ensure it's set correctly"))
+	}
+
+	err = common.CustomCreateNetworkPolicy([]string{sgNamespace}, comp.GetInstanceNamespace(), "allow-stackgres-operator", comp.GetName()+"-sg-netpol", false, svc)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Errorf("cannot create NetworkPolicy object: %w", err).Error())
 	}
 	return nil
 }
@@ -205,6 +218,16 @@ func createStackgresObjects(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, sv
 	return nil
 }
 
+// Returns true only when user explicitly specifies equal limits and requests for both CPU and memory.
+func isQoSGuaranteed(comp *vshnv1.VSHNPostgreSQL, res common.Resources) bool {
+	return comp.Spec.Parameters.Size.Requests.CPU != "" &&
+		comp.Spec.Parameters.Size.Requests.Memory != "" &&
+		comp.Spec.Parameters.Size.CPU != "" &&
+		comp.Spec.Parameters.Size.Memory != "" &&
+		res.CPU.Cmp(res.ReqCPU) == 0 &&
+		res.Mem.Cmp(res.ReqMem) == 0
+}
+
 func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 	l := svc.Log
 	plan := comp.Spec.Parameters.Size.GetPlan(svc.Config.Data["defaultPlan"])
@@ -255,20 +278,14 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 	if len(errs) != 0 {
 		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
 	}
-	containersRequests := generateContainers(*containers, sideCarMap, false)
 
-	containersRequestsBytes, err := json.Marshal(containersRequests)
-	if err != nil {
-		return err
-	}
+	guaranteedQoS := isQoSGuaranteed(comp, res)
+
+	// Determine resource configuration based on whether limits == requests
+	var containersRequestsBytes, initContainersRequestsBytes []byte
+
 	containersLimits := generateContainers(*containers, sideCarMap, true)
 	containersLimitsBytes, err := json.Marshal(containersLimits)
-	if err != nil {
-		return err
-	}
-
-	initContainersRequests := generateContainers(*initContainers, initContainerMap, false)
-	initContainersRequestsBytes, err := json.Marshal(initContainersRequests)
 	if err != nil {
 		return err
 	}
@@ -277,6 +294,30 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 	initContainersLimitsBytes, err := json.Marshal(initContainersLimits)
 	if err != nil {
 		return err
+	}
+
+	// Configure requests based on whether limits == requests
+	var reqCPU, reqMem string
+	if guaranteedQoS {
+		// For QoS Guaranteed: requests = limits for all containers
+		reqCPU = res.CPU.String()
+		reqMem = res.Mem.String()
+		containersRequestsBytes = containersLimitsBytes
+		initContainersRequestsBytes = initContainersLimitsBytes
+	} else {
+		// Default behavior: separate requests and limits
+		reqCPU = res.ReqCPU.String()
+		reqMem = res.ReqMem.String()
+		containersRequests := generateContainers(*containers, sideCarMap, false)
+		containersRequestsBytes, err = json.Marshal(containersRequests)
+		if err != nil {
+			return err
+		}
+		initContainersRequests := generateContainers(*initContainers, initContainerMap, false)
+		initContainersRequestsBytes, err = json.Marshal(initContainersRequests)
+		if err != nil {
+			return err
+		}
 	}
 
 	sgInstanceProfile := &sgv1.SGInstanceProfile{
@@ -288,8 +329,8 @@ func createSgInstanceProfile(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, s
 			Cpu:    res.CPU.String(),
 			Memory: res.Mem.String(),
 			Requests: &sgv1.SGInstanceProfileSpecRequests{
-				Cpu:    ptr.To(res.ReqCPU.String()),
-				Memory: ptr.To(res.ReqMem.String()),
+				Cpu:    ptr.To(reqCPU),
+				Memory: ptr.To(reqMem),
 				Containers: k8sruntime.RawExtension{
 					Raw: containersRequestsBytes,
 				},
@@ -407,6 +448,9 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 	if len(errs) != 0 {
 		l.Error(errors.Join(errs...), "Cannot get Resources from plan and claim")
 	}
+
+	guaranteedQoS := isQoSGuaranteed(comp, res)
+
 	nodeSelector, err := utils.FetchNodeSelectorFromConfig(ctx, svc, plan, comp.Spec.Parameters.Scheduling.NodeSelector)
 
 	if err != nil {
@@ -438,8 +482,8 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 		Backups:          nil, // Explicitly initialize as nil
 	}
 
-	// Only add backup configuration if backups are enabled
-	if comp.Spec.Parameters.Backup.IsEnabled() {
+	// Only add backup configuration if backups are enabled and instance is not suspended
+	if comp.Spec.Parameters.Backup.IsEnabled() && comp.GetInstances() != 0 {
 		l.Info("Backup is enabled - adding backup configuration to SGCluster")
 		configurations.Backups = &[]sgv1.SGClusterSpecConfigurationsBackupsItem{
 			{
@@ -470,7 +514,9 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 					Size: res.Disk.String(),
 				},
 				Resources: &sgv1.SGClusterSpecPodsResources{
-					DisableResourcesRequestsSplitFromTotal: ptr.To(comp.Spec.Parameters.Service.DedicatedPatroniResources),
+					// When limits == requests (QoS Guaranteed), disable split to use exact values from SGInstanceProfile
+					// Otherwise use DedicatedPatroniResources setting
+					DisableResourcesRequestsSplitFromTotal: ptr.To(guaranteedQoS || comp.Spec.Parameters.Service.DedicatedPatroniResources),
 					EnableClusterLimitsRequirements:        ptr.To(true),
 				},
 				Scheduling: &sgv1.SGClusterSpecPodsScheduling{
@@ -480,8 +526,10 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 				DisableEnvoy:             ptr.To(!comp.Spec.Parameters.Service.EnableEnvoy),
 			},
 			NonProductionOptions: &sgv1.SGClusterSpecNonProductionOptions{
-				EnableSetPatroniCpuRequests:    ptr.To(true),
-				EnableSetPatroniMemoryRequests: ptr.To(true),
+				// When limits == requests (QoS Guaranteed), disable automatic request calculation
+				// Otherwise enable it to allow StackGres to calculate proportional requests
+				EnableSetPatroniCpuRequests:    ptr.To(!guaranteedQoS),
+				EnableSetPatroniMemoryRequests: ptr.To(!guaranteedQoS),
 				EnableSetClusterCpuRequests:    ptr.To(true),
 				EnableSetClusterMemoryRequests: ptr.To(true),
 			},
@@ -620,51 +668,90 @@ func createObjectBucket(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *r
 		}
 	}
 
-	xObjectBucket := &appcatv1.XObjectBucket{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   comp.GetName(),
-			Labels: labels,
-		},
-		Spec: appcatv1.XObjectBucketSpec{
-			Parameters: appcatv1.ObjectBucketParameters{
-				BucketName: fmt.Sprintf("%s-%s-%s", comp.GetName(), svc.Config.Data["bucketRegion"], "backup"),
+	if comp.GetUnmanagedBucket() == nil {
+		xObjectBucket := &appcatv1.XObjectBucket{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   comp.GetName(),
+				Labels: labels,
 			},
-			ResourceSpec: xpv1.ResourceSpec{
-				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      "pgbucket-" + comp.GetName(),
-					Namespace: svc.GetCrossplaneNamespace(),
+			Spec: appcatv1.XObjectBucketSpec{
+				Parameters: appcatv1.ObjectBucketParameters{
+					BucketName: fmt.Sprintf("%s-%s-%s", comp.GetName(), svc.Config.Data["bucketRegion"], "backup"),
+				},
+				ResourceSpec: xpv1.ResourceSpec{
+					WriteConnectionSecretToReference: &xpv1.SecretReference{
+						Name:      "pgbucket-" + comp.GetName(),
+						Namespace: svc.GetCrossplaneNamespace(),
+					},
 				},
 			},
-		},
-	}
+		}
 
-	xObjectBucket.Spec.Parameters.BucketName = getBucketName(svc, xObjectBucket)
+		xObjectBucket.Spec.Parameters.BucketName = getBucketName(svc, xObjectBucket)
 
-	err := svc.SetDesiredComposedResourceWithName(xObjectBucket, "pg-bucket")
-	if err != nil {
-		err = fmt.Errorf("cannot create xObjectBucket: %w", err)
-		return err
+		err := svc.SetDesiredComposedResourceWithName(xObjectBucket, "pg-bucket")
+		if err != nil {
+			err = fmt.Errorf("cannot create xObjectBucket: %w", err)
+			return err
+		}
+
 	}
 
 	return nil
 }
 
-func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
+func createSgObjectStorage(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error {
 
 	certificateExists := svc.WaitForObservedDependencies("sgbackup-"+comp.GetName(), "certificate")
 	if !certificateExists {
 		return fmt.Errorf("waiting for dependencies: certificate")
 	}
 
-	cd, err := svc.GetObservedComposedResourceConnectionDetails("pg-bucket")
-	if err != nil {
-		svc.Log.Info(fmt.Sprintf("pg-bucket connection details not yet available: %s", err.Error()))
-	}
+	bucketInfo := backup.BucketInfo{}
 
-	bucket := &appcatv1.XObjectBucket{}
-	err = svc.GetDesiredComposedResourceByName(bucket, "pg-bucket")
-	if err != nil {
-		svc.Log.Info(fmt.Sprintf("pg-bucket cannot be read: %s", err.Error()))
+	if ub := comp.GetUnmanagedBucket(); ub != nil {
+		secret := &corev1.Secret{}
+
+		_, err := svc.CopyKubeResource(ctx, secret, comp.GetName()+"-bucket-credentials", ub.AccessKey.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+		if err != nil {
+			return fmt.Errorf("cannot copy unmanaged bucket credentials: %w", err)
+		}
+
+		bucketInfo.Bucket = ub.Bucket
+		bucketInfo.Endpoint = ub.Endpoint
+		bucketInfo.SecretID = &ub.SecretKey
+		bucketInfo.KeyID = &ub.AccessKey
+		bucketInfo.Region = ub.Region
+
+	} else {
+		cd, err := svc.GetObservedComposedResourceConnectionDetails("pg-bucket")
+		if err != nil {
+			svc.Log.Info(fmt.Sprintf("pg-bucket connection details not yet available: %s", err.Error()))
+		}
+
+		bucket := &appcatv1.XObjectBucket{}
+		err = svc.GetDesiredComposedResourceByName(bucket, "pg-bucket")
+		if err != nil {
+			svc.Log.Info(fmt.Sprintf("pg-bucket cannot be read: %s", err.Error()))
+		}
+
+		bucketInfo.Bucket = bucket.Spec.Parameters.BucketName
+		bucketInfo.Region = string(cd["AWS_REGION"])
+		bucketInfo.Endpoint = string(cd["ENDPOINT_URL"])
+
+		bucketInfo.KeyID = &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: "pgbucket-" + comp.GetName(),
+			},
+			Key: "AWS_ACCESS_KEY_ID",
+		}
+
+		bucketInfo.SecretID = &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: "pgbucket-" + comp.GetName(),
+			},
+			Key: "AWS_SECRET_ACCESS_KEY",
+		}
 	}
 
 	sgObjectStorage := &sgv1beta1.SGObjectStorage{
@@ -675,26 +762,27 @@ func createSgObjectStorage(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRunt
 		Spec: sgv1beta1.SGObjectStorageSpec{
 			Type: "s3Compatible",
 			S3Compatible: &sgv1beta1.SGObjectStorageSpecS3Compatible{
-				Bucket:                    bucket.Spec.Parameters.BucketName,
+				Bucket:                    bucketInfo.Bucket,
 				EnablePathStyleAddressing: ptr.To(true),
-				Region:                    ptr.To(string(cd["AWS_REGION"])),
-				Endpoint:                  ptr.To(string(cd["ENDPOINT_URL"])),
+				Region:                    ptr.To(bucketInfo.Region),
+				Endpoint:                  ptr.To(bucketInfo.Endpoint),
 				AwsCredentials: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentials{
 					SecretKeySelectors: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectors{
 						AccessKeyId: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsAccessKeyId{
-							Name: "pgbucket-" + comp.GetName(),
-							Key:  "AWS_ACCESS_KEY_ID",
+							Name: bucketInfo.KeyID.Name,
+							Key:  bucketInfo.KeyID.Key,
 						},
 						SecretAccessKey: sgv1beta1.SGObjectStorageSpecS3CompatibleAwsCredentialsSecretKeySelectorsSecretAccessKey{
-							Name: "pgbucket-" + comp.GetName(),
-							Key:  "AWS_SECRET_ACCESS_KEY",
+							Name: bucketInfo.SecretID.Name,
+							Key:  bucketInfo.SecretID.Key,
 						},
 					},
 				},
 			},
 		},
 	}
-	err = svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup", runtime.KubeOptionAllowDeletion)
+
+	err := svc.SetDesiredKubeObjectWithName(sgObjectStorage, comp.GetName()+"-object-storage", "sg-backup", runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		err = fmt.Errorf("cannot create backup: %w", err)
 		return err
@@ -760,17 +848,17 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 			Namespace: svc.Config.Data["controlNamespace"],
 		},
 		Spec: batchv1.JobSpec{
-			Template: v1.PodTemplateSpec{
-				Spec: v1.PodSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
 					RestartPolicy:      "Never",
 					ServiceAccountName: "copyserviceaccount",
-					Containers: []v1.Container{
+					Containers: []corev1.Container{
 						{
 							Name:    "copyjob",
 							Image:   svc.Config.Data["kubectl_image"],
 							Command: []string{"sh", "-c"},
 							Args:    []string{postgresqlCopyJobScript},
-							Env: []v1.EnvVar{
+							Env: []corev1.EnvVar{
 								{
 									Name:  "CLAIM_NAMESPACE",
 									Value: comp.GetClaimNamespace(),
@@ -799,7 +887,8 @@ func createCopyJob(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) err
 		},
 	}
 
-	err := svc.SetDesiredKubeObjectWithName(copyJob, comp.GetName()+"-copyjob", "copy-job")
+	// Allow copy job to be removed after restore is done
+	err := svc.SetDesiredKubeObjectWithName(copyJob, comp.GetName()+"-copyjob", "copy-job", runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		err = fmt.Errorf("cannot create copyJob: %w", err)
 		return err

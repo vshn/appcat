@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
+	"github.com/vshn/appcat/v4/pkg/maintenance/backup"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -12,20 +13,28 @@ import (
 
 // MariaDB holds all the necessary objects to do a MariaDB maintenance
 type MariaDB struct {
-	k8sClient  client.Client
-	httpClient *http.Client
-	log        logr.Logger
+	backupHelper *backup.Helper
+	k8sClient    client.WithWatch
+	httpClient   *http.Client
+	log          logr.Logger
 	release.VersionHandler
 }
 
 // NewMariaDB returns a new MariaDB maintenance job runner
-func NewMariaDB(c client.Client, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *MariaDB {
+func NewMariaDB(c client.WithWatch, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *MariaDB {
+	runner := backup.NewK8upBackupRunner(c, logger)
 	return &MariaDB{
+		backupHelper:   backup.NewHelper(runner, logger),
 		k8sClient:      c,
 		httpClient:     hc,
 		log:            logger,
 		VersionHandler: vh,
 	}
+}
+
+// RunBackup executes a pre-maintenance backup
+func (m *MariaDB) RunBackup(ctx context.Context) error {
+	return m.backupHelper.RunBackup(ctx)
 }
 
 // DoMaintenance will run MariaDB's maintenance script.

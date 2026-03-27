@@ -1,0 +1,129 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters:
+          service:
+            extensions:
+            - name: ltree
+        writeConnectionSecretToRef: {}
+      status: {}
+  resources:
+    cluster:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-cluster
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: stackgres.io/v1
+              kind: SGCluster
+              metadata:
+                name: psql-gc9x4
+                namespace: vshn-postgresql-psql-gc9x4
+              spec:
+                postgres:
+                  version: "15"
+                sgInstanceProfile: psql-gc9x4
+          managementPolicy: Default
+          providerConfigRef:
+            name: kubernetes
+input:
+  apiVersion: v1
+  data:
+    imageTag: v4.1.0
+    sgNamespace: stackgres
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        annotations: null
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: unit-test
+        compositionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io
+        compositionRevisionRef:
+          name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
+        compositionUpdatePolicy: Automatic
+        parameters:
+          maintenance:
+            dayOfWeek: tuesday
+            timeOfDay: "23:32:00"
+  resources:
+    pg-conf:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata:
+          generateName: pgsql-app1-prod-wdhkp-
+          name: pgsql-app1-prod-wdhkp-pgconf
+        spec:
+          deletionPolicy: Delete
+          forProvider:
+            manifest:
+              apiVersion: stackgres.io/v1
+              kind: SGPostgresConfig
+              metadata:
+                name: pgsql-app1-prod-wdhkp
+                namespace: vshn-postgresql-pgsql-app1-prod-wdhkp
+              spec:
+                postgresVersion: "15"
+                postgresql.conf:
+                  shared_preload_libraries: pg_stat_statements, auto_explain
+          managementPolicy: Default
+          providerConfigRef:
+            name: kubernetes
+        status:
+          atProvider:
+            manifest:
+              apiVersion: stackgres.io/v1
+              kind: SGPostgresConfig
+              metadata:
+                name: pgsql-app1-prod-wdhkp
+              spec:
+                postgresVersion: "15"
+                postgresql.conf:
+                  shared_preload_libraries: pg_stat_statements, auto_explain
+              status:
+                defaultParameters:
+                  shared_preload_libraries: pg_stat_statements, auto_explain
+

@@ -150,7 +150,8 @@ func (q *QuotaChecker) getNamespaceOverrides(ctx context.Context, c client.Clien
 
 // AddInitalNamespaceQuotas will add the default quotas to the namespace annotations.
 // It will only add them, if there are currently no such annotations in place.
-func AddInitalNamespaceQuotas(ctx context.Context, ns *corev1.Namespace, s *utils.Sidecars, kind string) bool {
+// For Exoscale clusters, it also adds storage-class-specific quotas.
+func AddInitalNamespaceQuotas(ctx context.Context, ns *corev1.Namespace, s *utils.Sidecars, kind string, cloudProvider string) bool {
 	annotations := ns.GetAnnotations()
 	if annotations == nil {
 		annotations = map[string]string{}
@@ -188,6 +189,14 @@ func AddInitalNamespaceQuotas(ctx context.Context, ns *corev1.Namespace, s *util
 	if _, ok := annotations[utils.CpuRequestTerminationQuota]; !ok {
 		annotations[utils.CpuRequestTerminationQuota] = "1000m"
 		added = true
+	}
+
+	// Add Exoscale-specific storage class quotas
+	if cloudProvider == "exoscale" {
+		if _, ok := annotations[utils.StorageClassesAnnotation]; !ok {
+			annotations[utils.StorageClassesAnnotation] = utils.GetExoscaleStorageClassQuota()
+			added = true
+		}
 	}
 
 	ns.SetAnnotations(annotations)

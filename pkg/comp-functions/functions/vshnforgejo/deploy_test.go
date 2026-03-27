@@ -49,6 +49,19 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, appName, values["gitea"].(map[string]any)["config"].(map[string]any)["APP_NAME"])
 	})
 
+	t.Run("GivenOAuth2ClientSettings_ExpectInHelmValues", func(t *testing.T) {
+		svc, comp, secretName := bootstrapTest(t)
+		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))
+
+		release := &xhelmv1.Release{}
+		assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
+
+		values := getReleaseValues(t, *release)
+		config := values["gitea"].(map[string]any)["config"].(map[string]any)
+		assert.Equal(t, map[string]any{"ENABLE_AUTO_REGISTRATION": "true"}, config["oauth2_client"])
+		assert.Equal(t, map[string]any{"ENABLE": "true"}, config["oauth2"])
+	})
+
 	t.Run("GivenPlan_ExpectPlanResources", func(t *testing.T) {
 		const (
 			plan = "small"

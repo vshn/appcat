@@ -51,6 +51,20 @@ var (
 		},
 		{
 			APIGroups: []string{
+				"postgresql.cnpg.io",
+			},
+			Resources: []string{
+				"backups",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
 				"",
 			},
 			Resources: []string{
@@ -68,19 +82,29 @@ var (
 
 // addSchedules will add a job to do the maintenance for the instance
 func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	err := svc.GetObservedComposite(comp)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+	// Try desired first to preserve status set by deploy step (including CurrentVersion),
+	// fall back to observed if desired is not available.
+	if err := svc.GetDesiredComposite(comp); err != nil {
+		if err := svc.GetObservedComposite(comp); err != nil {
+			return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+		}
 	}
 
 	common.SetRandomMaintenanceSchedule(comp)
 	instanceNamespace := comp.GetInstanceNamespace()
 	schedule := comp.GetFullMaintenanceSchedule()
 
+	if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+		svc.Log.Error(err, "cannot set composite status")
+	}
+
+	// Disable vacuum for suspended instances
+	vacuumEnabled := comp.Spec.Parameters.Service.VacuumEnabled && comp.Spec.Parameters.Instances != 0
+
 	additionalVars := append(extraEnvVars, []corev1.EnvVar{
 		{
 			Name:  "VACUUM_ENABLED",
-			Value: strconv.FormatBool(comp.Spec.Parameters.Service.VacuumEnabled),
+			Value: strconv.FormatBool(vacuumEnabled),
 		},
 	}...)
 

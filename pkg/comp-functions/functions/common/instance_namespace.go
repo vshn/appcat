@@ -336,7 +336,8 @@ func addInitialNamespaceQuotas(ctx context.Context, svc *runtime.ServiceRuntime,
 
 	// We only act if either the quotas were missing or the organization label is not on the
 	// namespace. Otherwise we ignore updates. This is to prevent any unwanted overwriting.
-	if quotas.AddInitalNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind) {
+	cloudProvider := svc.Config.Data["cloudProvider"]
+	if quotas.AddInitalNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind, cloudProvider) {
 		err = svc.SetDesiredKubeObjectWithName(ns, ns.GetName(), namespaceKon)
 		if err != nil {
 			return fmt.Errorf("cannot save namespace quotas: %w", err)

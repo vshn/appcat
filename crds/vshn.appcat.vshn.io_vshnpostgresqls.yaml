@@ -122,6 +122,71 @@ spec:
                         schedule:
                           pattern: ^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
                           type: string
+                        unmanagedBucket:
+                          description: |-
+                            UnmanagedBucket specifies a bucket not managed by AppCat to be used for the backup.
+                            The user is responsible for the correctness of these values.
+                          properties:
+                            accessKey:
+                              description: AccessKey is the AWS_ACCESS_KEY_ID
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            bucket:
+                              description: Bucket is the name of the bucket to be used
+                              type: string
+                            endpoint:
+                              description: Endpoint is the unmanaged buckets endpoint without the bucket name
+                              type: string
+                            region:
+                              description: Region is the region of the bucket
+                              type: string
+                            secretKey:
+                              description: SecretKey is the AWS_SECRET_ACCESS_KEY
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                          required:
+                            - accessKey
+                            - bucket
+                            - endpoint
+                            - region
+                            - secretKey
+                          type: object
                       type: object
                       default: {}
                     encryption:
@@ -138,7 +203,7 @@ spec:
                         Each instance contains one Postgres server.
                         Out of all Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
                       maximum: 3
-                      minimum: 1
+                      minimum: 0
                       type: integer
                     maintenance:
                       description: Maintenance contains settings to control the maintenance of an instance.
@@ -155,6 +220,21 @@ spec:
                             - friday
                             - saturday
                             - sunday
+                          type: string
+                        disableAppcatRelease:
+                          default: false
+                          description: |-
+                            DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
+                            When enabled, the instance will not automatically receive new AppCat composition revisions
+                            which may contain bug fixes, security patches, and new features.
+                            WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
+                          type: boolean
+                        pinImageTag:
+                          description: |-
+                            PinImageTag allows pinning the service to a specific image tag.
+                            When set, the exact specified tag will be used, even if it's older than the currently deployed version.
+                            WARNING: User takes full responsibility for version management and security updates.
+                            Downgrades are allowed when pinning - the customer assumes all risk.
                           type: string
                         timeOfDay:
                           description: |-
@@ -4792,6 +4872,41 @@ spec:
                           items:
                             description: VSHNDBaaSPostgresExtension contains the name of a single extension.
                             properties:
+                              dynamic_library_path:
+                                description: |-
+                                  The list of directories inside the image which should be added to
+                                  dynamic_library_path.
+                                  This is only available for CloudNativePG
+                                  If not defined, defaults to "/lib".
+                                items:
+                                  type: string
+                                type: array
+                              extension_control_path:
+                                description: |-
+                                  The list of directories inside the image which should be added to
+                                  extension_control_path.
+                                  This is only available for CloudNativePG
+                                  If not defined, defaults to "/share".
+                                items:
+                                  type: string
+                                type: array
+                              image:
+                                description: |-
+                                  Image containing the PostgreSQL extension.
+                                  This is only available for CloudNativePG
+                                  For a list of images, please consult https://github.com/cloudnative-pg/postgres-extensions-containers and https://github.com/vshn/cnpg_extensions
+                                type: string
+                              imagePullPolicy:
+                                description: Optional image pull policy for the extension image
+                                type: string
+                              ld_library_path:
+                                description: |-
+                                  The list of directories inside the image which should be added to
+                                  ld_library_path.
+                                  This is only available for CloudNativePG
+                                items:
+                                  type: string
+                                type: array
                               name:
                                 description: |-
                                   Name is the name of the extension to enable.
@@ -4812,6 +4927,7 @@ spec:
                             - "15"
                             - "16"
                             - "17"
+                            - "18"
                           type: string
                         pgBouncerSettings:
                           description: PgBouncerSettings passes additional configuration to the pgBouncer instance.
@@ -4844,7 +4960,7 @@ spec:
                           x-kubernetes-preserve-unknown-fields: true
                         repackEnabled:
                           default: true
-                          description: This is default option if neither repack or vacuum are selected
+                          description: RepackEnabled defines if `pg_repack` should be performed during the maintenance. Defaults to true.
                           type: boolean
                         serviceLevel:
                           default: besteffort
@@ -4866,6 +4982,7 @@ spec:
                           default: {}
                         vacuumEnabled:
                           default: false
+                          description: VacuumEnabled defines if `VACUUM` should be performed during the maintenace. Defaults to false.
                           type: boolean
                       type: object
                       default: {}
@@ -5571,6 +5688,21 @@ spec:
                             - friday
                             - saturday
                             - sunday
+                          type: string
+                        disableAppcatRelease:
+                          default: false
+                          description: |-
+                            DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
+                            When enabled, the instance will not automatically receive new AppCat composition revisions
+                            which may contain bug fixes, security patches, and new features.
+                            WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
+                          type: boolean
+                        pinImageTag:
+                          description: |-
+                            PinImageTag allows pinning the service to a specific image tag.
+                            When set, the exact specified tag will be used, even if it's older than the currently deployed version.
+                            WARNING: User takes full responsibility for version management and security updates.
+                            Downgrades are allowed when pinning - the customer assumes all risk.
                           type: string
                         timeOfDay:
                           description: |-

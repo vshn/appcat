@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	cpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -131,11 +132,12 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 
 	handler := PostgreSQLWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNPostgreSQL{},
-			name:      "postgresql",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
 		},
 	}
 
@@ -161,72 +163,72 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateCreate(ctx, pgOrig)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
 
-	//When quota breached
+	// When quota breached
 	// CPU Limits
 	pgInvalid := pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.CPU = "15000m"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//CPU Requests
+	// CPU Requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.CPU = "6500m"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Memory Limits
+	// Memory Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Memory = "25Gi"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Memory requests
+	// Memory requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.Memory = "25Gi"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Disk
+	// Disk
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Disk = "25Ti"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//When invalid size
+	// When invalid size
 	// CPU Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.CPU = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//CPU Requests
+	// CPU Requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.CPU = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Memory Limits
+	// Memory Limits
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Memory = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Memory requests
+	// Memory requests
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Requests.Memory = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Disk
+	// Disk
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Size.Disk = "foo"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
-	//Instances
+	// Instances
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Instances = 1
 	pgInvalid.Spec.Parameters.Service.ServiceLevel = "guaranteed"
@@ -279,11 +281,12 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 
 	handler := PostgreSQLWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: false,
-			obj:       &vshnv1.VSHNPostgreSQL{},
-			name:      "postgresql",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
 		},
 	}
 	pgOrig := &vshnv1.VSHNPostgreSQL{
@@ -464,11 +467,12 @@ func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {
 
 	handler := PostgreSQLWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: true,
-			obj:       &vshnv1.VSHNPostgreSQL{},
-			name:      "postgresql",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  true,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
 		},
 	}
 
@@ -497,18 +501,17 @@ func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {
 	// When within quota
 	_, err := handler.ValidateDelete(ctx, pgOrig)
 
-	//Then err
+	// Then err
 	assert.Error(t, err)
 
-	//Instances
+	// Instances
 	pgDeletable := pgOrig.DeepCopy()
 	pgDeletable.Spec.Parameters.Security.DeletionProtection = false
 
 	_, err = handler.ValidateDelete(ctx, pgDeletable)
 
-	//Then no err
+	// Then no err
 	assert.NoError(t, err)
-
 }
 
 func TestPostgreSQLWebhookHandler_ValidateEncryptionChanges(t *testing.T) {
@@ -528,11 +531,12 @@ func TestPostgreSQLWebhookHandler_ValidateEncryptionChanges(t *testing.T) {
 
 	handler := PostgreSQLWebhookHandler{
 		DefaultWebhookHandler: DefaultWebhookHandler{
-			client:    fclient,
-			log:       logr.Discard(),
-			withQuota: false,
-			obj:       &vshnv1.VSHNPostgreSQL{},
-			name:      "postgresql",
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
 		},
 	}
 
@@ -586,6 +590,422 @@ func TestPostgreSQLWebhookHandler_ValidateEncryptionChanges(t *testing.T) {
 
 	_, err = handler.ValidateUpdate(ctx, pgOrigEncrypted, pgSameEncryption)
 	assert.NoError(t, err)
+}
+
+func TestValidatePinImageTag(t *testing.T) {
+	tests := []struct {
+		name         string
+		pinImageTag  string
+		majorVersion string
+		expectErr    bool
+		errContains  string
+	}{
+		{
+			name:         "GivenEmptyPinImageTag_ThenNoError",
+			pinImageTag:  "",
+			majorVersion: "15",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMatchingMajorVersion_ThenNoError",
+			pinImageTag:  "15.13",
+			majorVersion: "15",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMatchingMajorVersionDifferentMinor_ThenNoError",
+			pinImageTag:  "15.9",
+			majorVersion: "15",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMajorVersion16Match_ThenNoError",
+			pinImageTag:  "16.4",
+			majorVersion: "16",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMajorVersion17Match_ThenNoError",
+			pinImageTag:  "17.2",
+			majorVersion: "17",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenMismatchedMajorVersion_ThenError",
+			pinImageTag:  "16.4",
+			majorVersion: "15",
+			expectErr:    true,
+			errContains:  "pinImageTag major version \"16\" must match majorVersion \"15\"",
+		},
+		{
+			name:         "GivenPinImageTagWithDifferentMajor_ThenError",
+			pinImageTag:  "15.13",
+			majorVersion: "16",
+			expectErr:    true,
+			errContains:  "pinImageTag major version \"15\" must match majorVersion \"16\"",
+		},
+		{
+			name:         "GivenPinImageTagWithMajorOnly_ThenNoError",
+			pinImageTag:  "15",
+			majorVersion: "15",
+			expectErr:    false,
+		},
+		{
+			name:         "GivenPinImageTagWithMajorOnlyMismatch_ThenError",
+			pinImageTag:  "16",
+			majorVersion: "15",
+			expectErr:    true,
+			errContains:  "pinImageTag major version \"16\" must match majorVersion \"15\"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePinImageTag(tt.pinImageTag, tt.majorVersion)
+			if tt.expectErr {
+				assert.NotNil(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestPostgreSQLWebhookHandler_ValidateCreateWithPinImageTag(t *testing.T) {
+	ctx := context.TODO()
+	claimNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "claimns",
+			Labels: map[string]string{
+				utils.OrgLabelName: "myorg",
+			},
+		},
+	}
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(claimNS).
+		Build()
+
+	handler := PostgreSQLWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
+		},
+	}
+
+	pgBase := &vshnv1.VSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "claimns",
+		},
+		Spec: vshnv1.VSHNPostgreSQLSpec{
+			Parameters: vshnv1.VSHNPostgreSQLParameters{
+				Service: vshnv1.VSHNPostgreSQLServiceSpec{
+					MajorVersion:  "15",
+					RepackEnabled: true,
+				},
+			},
+		},
+	}
+
+	// Test: Valid pinImageTag matching majorVersion
+	pgValid := pgBase.DeepCopy()
+	pgValid.Spec.Parameters.Maintenance.PinImageTag = "15.13"
+	_, err := handler.ValidateCreate(ctx, pgValid)
+	assert.NoError(t, err)
+
+	// Test: Invalid pinImageTag not matching majorVersion
+	pgInvalid := pgBase.DeepCopy()
+	pgInvalid.Spec.Parameters.Maintenance.PinImageTag = "16.4"
+	_, err = handler.ValidateCreate(ctx, pgInvalid)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "pinImageTag major version")
+
+	// Test: No pinImageTag set (should be valid)
+	pgNoPin := pgBase.DeepCopy()
+	pgNoPin.Spec.Parameters.Maintenance.PinImageTag = ""
+	_, err = handler.ValidateCreate(ctx, pgNoPin)
+	assert.NoError(t, err)
+}
+
+func TestValidateCompositionRefImmutability(t *testing.T) {
+	tests := []struct {
+		name      string
+		oldRef    string
+		newRef    string
+		expectErr bool
+	}{
+		{
+			name:      "GivenBothEmpty_ThenNoError",
+			oldRef:    "",
+			newRef:    "",
+			expectErr: false,
+		},
+		{
+			name:      "GivenOldEmptyNewSet_ThenNoError",
+			oldRef:    "",
+			newRef:    "vshnpostgrescnpg.vshn.appcat.vshn.io",
+			expectErr: false,
+		},
+		{
+			name:      "GivenSameRef_ThenNoError",
+			oldRef:    "vshnpostgres.vshn.appcat.vshn.io",
+			newRef:    "vshnpostgres.vshn.appcat.vshn.io",
+			expectErr: false,
+		},
+		{
+			name:      "GivenOldSetNewDifferent_ThenError",
+			oldRef:    "vshnpostgres.vshn.appcat.vshn.io",
+			newRef:    "vshnpostgrescnpg.vshn.appcat.vshn.io",
+			expectErr: true,
+		},
+		{
+			name:      "GivenOldSetNewEmpty_ThenError",
+			oldRef:    "vshnpostgres.vshn.appcat.vshn.io",
+			newRef:    "",
+			expectErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCompositionRefImmutability(tt.oldRef, tt.newRef)
+			if tt.expectErr {
+				assert.NotNil(t, err)
+				assert.Contains(t, err.Error(), "compositionRef is immutable")
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestXVSHNPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
+	ctx := context.TODO()
+	handler := XVSHNPostgreSQLWebhookHandler{}
+
+	base := &vshnv1.XVSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "keycloak-pg",
+			Namespace: "vshn-keycloak-myinstance",
+		},
+	}
+
+	// Allow: compositionRef not yet set on either side
+	_, err := handler.ValidateUpdate(ctx, base, base.DeepCopy())
+	assert.NoError(t, err)
+
+	// Allow: first assignment (old empty, new set)
+	withRef := base.DeepCopy()
+	withRef.Spec.CompositionRef.Name = "vshnpostgrescnpg.vshn.appcat.vshn.io"
+	_, err = handler.ValidateUpdate(ctx, base, withRef)
+	assert.NoError(t, err)
+
+	// Allow: compositionRef unchanged
+	_, err = handler.ValidateUpdate(ctx, withRef, withRef.DeepCopy())
+	assert.NoError(t, err)
+
+	// Reject: compositionRef changed on existing instance
+	changedRef := base.DeepCopy()
+	changedRef.Spec.CompositionRef.Name = "vshnpostgres.vshn.appcat.vshn.io"
+	_, err = handler.ValidateUpdate(ctx, withRef, changedRef)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "compositionRef is immutable")
+
+	// Allow: object is being deleted even if compositionRef would change
+	deletingObj := changedRef.DeepCopy()
+	now := metav1.Now()
+	deletingObj.DeletionTimestamp = &now
+	_, err = handler.ValidateUpdate(ctx, withRef, deletingObj)
+	assert.NoError(t, err)
+}
+
+func TestValidateCNPGExtensionFields(t *testing.T) {
+	tests := []struct {
+		name        string
+		pg          *vshnv1.VSHNPostgreSQL
+		expectErr   bool
+		errContains string
+	}{
+		{
+			name: "GivenNoExtensions_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{},
+			},
+			expectErr: false,
+		},
+		{
+			name: "GivenExtensionWithoutImageFields_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector"},
+							},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "GivenExtensionWithImageOnCNPGAndVersion18_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "GivenExtensionWithImagePullPolicyOnCNPGAndVersion18_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", ImagePullPolicy: "Always"},
+							},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "GivenExtensionWithImageOnStackGres_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "image is only supported for CloudNativePG",
+		},
+		{
+			name: "GivenExtensionWithImagePullPolicyOnStackGres_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", ImagePullPolicy: "IfNotPresent"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "imagePullPolicy is only supported for CloudNativePG",
+		},
+		{
+			name: "GivenExtensionWithImageAndNoCompositionRef_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "18",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "image is only supported for CloudNativePG",
+		},
+		{
+			name: "GivenExtensionWithImageOnCNPGButVersionBelow18_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "17",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "image is only supported for PostgreSQL 18 and above",
+		},
+		{
+			name: "GivenExtensionWithImagePullPolicyOnCNPGButVersionBelow18_ThenError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "16",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", ImagePullPolicy: "Always"},
+							},
+						},
+					},
+				},
+			},
+			expectErr:   true,
+			errContains: "imagePullPolicy is only supported for PostgreSQL 18 and above",
+		},
+		{
+			name: "GivenExtensionWithImageOnCNPGAndVersion19_ThenNoError",
+			pg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters: vshnv1.VSHNPostgreSQLParameters{
+						Service: vshnv1.VSHNPostgreSQLServiceSpec{
+							MajorVersion: "19",
+							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
+								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
+							},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validateCNPGExtensionFields(tt.pg)
+			if tt.expectErr {
+				assert.NotEmpty(t, errs)
+				assert.Contains(t, errs.ToAggregate().Error(), tt.errContains)
+			} else {
+				assert.Empty(t, errs)
+			}
+		})
+	}
 }
 
 // disabling this temporarily

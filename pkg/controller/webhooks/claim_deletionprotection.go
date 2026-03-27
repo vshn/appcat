@@ -5,13 +5,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-func GetClaimDeletionProtection(security *vshnv1.Security, allErrs field.ErrorList) field.ErrorList {
+func GetClaimDeletionProtection(security *vshnv1.Security) *field.Error {
 	if security.DeletionProtection {
-		allErrs = append(allErrs, &field.Error{
+		return &field.Error{
 			Field:  "spec.parameters.security.deletionProtection",
 			Detail: "DeletionProtection is enabled. To delete the instance, disable the deletionProtection in spec.parameters.security.deletionProtection",
 			Type:   field.ErrorTypeForbidden,
-		})
+		}
 	}
-	return allErrs
+	return nil
 }

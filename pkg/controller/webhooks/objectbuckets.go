@@ -7,7 +7,6 @@ import (
 	"github.com/go-logr/logr"
 	appcatv1 "github.com/vshn/appcat/v4/apis/v1"
 	v1 "github.com/vshn/appcat/v4/apis/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,7 +29,6 @@ type ObjectbucketDeletionProtectionHandler struct {
 
 // SetupObjectbucketDeletionProtectionHandlerWithManager registers the validation webhook with the manager.
 func SetupObjectbucketDeletionProtectionHandlerWithManager(mgr ctrl.Manager) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&appcatv1.ObjectBucket{}).
 		WithValidator(&ObjectbucketDeletionProtectionHandler{
@@ -48,8 +46,6 @@ func (p *ObjectbucketDeletionProtectionHandler) ValidateCreate(_ context.Context
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
 func (p *ObjectbucketDeletionProtectionHandler) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	allErrs := field.ErrorList{}
-
 	oldBucket, ok := oldObj.(*v1.ObjectBucket)
 	if !ok {
 		return nil, fmt.Errorf("old object is not valid")
@@ -60,45 +56,32 @@ func (p *ObjectbucketDeletionProtectionHandler) ValidateUpdate(_ context.Context
 		return nil, fmt.Errorf("new object is not valid")
 	}
 
+	allErrs := newFielErrors(newBucket.GetName(), oldBucket.GroupVersionKind().GroupKind())
+
 	// Prevent changing bucketName after creation
 	if oldBucket.Spec.Parameters.BucketName != newBucket.Spec.Parameters.BucketName {
-		allErrs = append(allErrs, field.Invalid(
+		allErrs.Add(field.Invalid(
 			field.NewPath("spec", "parameters", "bucketName"),
 			newBucket.Spec.Parameters.BucketName,
 			"bucketName cannot be changed after bucket is created",
 		))
 	}
 
-	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
-			newBucket.GetObjectKind().GroupVersionKind().GroupKind(),
-			newBucket.GetName(),
-			allErrs,
-		)
-	}
-
-	return nil, nil
+	return nil, allErrs.Get()
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
 func (p *ObjectbucketDeletionProtectionHandler) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-
-	allErrs := field.ErrorList{}
-
 	bucket, ok := obj.(*v1.ObjectBucket)
 	if !ok {
 		return nil, fmt.Errorf("object is not valid")
 	}
 
-	allErrs = GetClaimDeletionProtection(&bucket.Spec.Parameters.Security, allErrs)
+	allErr := newFielErrors(bucket.GetName(), bucket.GroupVersionKind().GroupKind())
 
-	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
-			bucket.GetObjectKind().GroupVersionKind().GroupKind(),
-			bucket.GetName(),
-			allErrs,
-		)
+	if err := GetClaimDeletionProtection(&bucket.Spec.Parameters.Security); err != nil {
+		allErr.Add(err)
 	}
 
-	return nil, nil
+	return nil, allErr.Get()
 }

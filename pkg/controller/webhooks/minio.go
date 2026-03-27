@@ -26,7 +26,6 @@ type MinioWebhookHandler struct {
 
 // SetupMinioWebhookHandlerWithManager registers the validation webhook with the manager.
 func SetupMinioWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
-
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&vshnv1.VSHNMinio{}).
 		WithValidator(&MinioWebhookHandler{
@@ -38,6 +37,7 @@ func SetupMinioWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error
 				"minio",
 				minioGK,
 				minioGR,
+				maxResourceNameLength,
 			),
 		}).
 		Complete()

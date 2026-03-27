@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/spf13/viper"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgrescnpg"
+	"github.com/vshn/appcat/v4/pkg/maintenance/backup"
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 	"gopkg.in/yaml.v2"
 
@@ -18,15 +19,17 @@ import (
 	cnpgv1 "github.com/vshn/appcat/v4/apis/cnpg/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // PostgreSQLCNPG handles the maintenance of postgresql services
 type PostgreSQLCNPG struct {
-	k8sClient  client.WithWatch
-	httpClient *http.Client
-	log        logr.Logger
-	timeout    time.Duration
+	backupHelper *backup.Helper
+	k8sClient    client.WithWatch
+	httpClient   *http.Client
+	log          logr.Logger
+	timeout      time.Duration
 	release.VersionHandler
 	instanceNamespace string
 	claimNamespace    string
@@ -39,7 +42,9 @@ type PostgreSQLCNPG struct {
 
 // NewPostgreSQL returns a new PostgreSQL maintenance job runner
 func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler release.VersionHandler, log logr.Logger) *PostgreSQLCNPG {
+	runner := backup.NewCNPGBackupRunner(c, log)
 	return &PostgreSQLCNPG{
+		backupHelper:      backup.NewHelper(runner, log),
 		k8sClient:         c,
 		httpClient:        hc,
 		timeout:           time.Hour,
@@ -54,13 +59,18 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 	}
 }
 
+// RunBackup executes a pre-maintenance backup
+func (p *PostgreSQLCNPG) RunBackup(ctx context.Context) error {
+	return p.backupHelper.RunBackup(ctx)
+}
+
 // DoMaintenance will run postgresql's maintenance script.
 func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 	p.log.Info("Starting maintenance on postgresql instance")
 
-	claim := &vshnv1.VSHNPostgreSQL{}
-	if err := p.k8sClient.Get(ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim); err != nil {
-		return fmt.Errorf("couldn't get claim: %w", err)
+	comp := &vshnv1.XVSHNPostgreSQL{}
+	if err := p.k8sClient.Get(ctx, client.ObjectKey{Name: p.compName}, comp); err != nil {
+		return fmt.Errorf("couldn't get composite: %w", err)
 	}
 
 	instanceCluster, err := p.getCompositeCluster(ctx)
@@ -68,7 +78,7 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 		return fmt.Errorf("couldn't get instance cluster: %w", err)
 	}
 
-	version, err := strconv.Atoi(claim.Spec.Parameters.Service.MajorVersion)
+	version, err := strconv.Atoi(comp.Spec.Parameters.Service.MajorVersion)
 	if err != nil {
 		return fmt.Errorf("cannot parse postgresql major version: %w", err)
 	}
@@ -93,14 +103,13 @@ func (p *PostgreSQLCNPG) DoMaintenance(ctx context.Context) error {
 	// EOL handling
 
 	if isEol := p.isEOL(version, latestCatalog); isEol {
-		p.log.Info("Setting EOL on claim")
 		if err := p.setEOLStatus(ctx); err != nil {
 			return fmt.Errorf("couldn't set EOL status on claim: %w", err)
 		}
 	}
 
 	// Vacuum
-	if p.vacuum == "true" {
+	if p.vacuum == "true" && instanceCluster.Spec.Instances != 0 {
 		p.log.Info("Starting vacuum")
 
 		if instanceCluster.Status.ReadyInstances > 0 {
@@ -161,9 +170,9 @@ func (p *PostgreSQLCNPG) doVacuum(ctx context.Context) error {
 			return fmt.Errorf("failed to connect to database %s: %w", db, err)
 		}
 
-		if _, err := dbConn.Exec(ctx, "VACUUM"); err != nil {
+		if _, err := dbConn.Exec(ctx, "VACUUM ANALYZE"); err != nil {
 			_ = dbConn.Close(ctx)
-			return fmt.Errorf("failed to execute VACUUM on %s: %w", db, err)
+			return fmt.Errorf("failed to execute VACUUM ANALYZE on %s: %w", db, err)
 		}
 
 		if err := dbConn.Close(ctx); err != nil {
@@ -240,7 +249,7 @@ func (p *PostgreSQLCNPG) getCompositeCluster(ctx context.Context) (*cnpgv1.Clust
 	cluster := &cnpgv1.Cluster{}
 	err := p.k8sClient.Get(ctx, client.ObjectKey{
 		Namespace: p.instanceNamespace,
-		Name:      p.compName + "-cluster",
+		Name:      "postgresql",
 	}, cluster)
 	if err != nil {
 		return nil, err
@@ -261,11 +270,15 @@ func (p *PostgreSQLCNPG) isEOL(currentVersion int, imageCatalog *cnpgv1.ImageCat
 func (p *PostgreSQLCNPG) setEOLStatus(ctx context.Context) error {
 	claim := &vshnv1.VSHNPostgreSQL{}
 	err := p.k8sClient.Get(ctx, client.ObjectKey{Name: p.claimName, Namespace: p.claimNamespace}, claim)
+	if apierrors.IsNotFound(err) {
+		// There's no claim for nested services
+		p.log.Info("VSHNPostgreSQL claim not found, skipping EOL status update")
+		return nil
+	}
 	if err != nil {
 		return err
 	}
 
 	claim.Status.IsEOL = true
-
-	return p.k8sClient.Update(ctx, claim)
+	return p.k8sClient.Status().Update(ctx, claim)
 }

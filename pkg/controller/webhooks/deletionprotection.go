@@ -54,34 +54,34 @@ func checkManagedObject(ctx context.Context, obj client.Object, c client.Client,
 	// Unfortunately we can't rely on Crossplane's own annotation anymore, as they
 	// remove it prior to the deletion call.
 	// Ref https://github.com/crossplane/crossplane/blob/de90305317da944eb88031bd7e615584b5dfe1dd/internal/controller/apiextensions/composite/composition_functions.go#L875
-	ownerName, ok := obj.GetLabels()[runtime.OwnerCompositeAnnotation]
+	ownerName, ok := obj.GetLabels()[runtime.OwnerCompositeLabel]
 	if !ok || ownerName == "" {
-		l.Info(runtime.OwnerCompositeAnnotation + " label not found, blocking deletion")
-		return compositeInfo{Exists: isDeletionProtected(obj), Name: "unknown", Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionAnnotation)}, nil
+		l.Info(runtime.OwnerCompositeLabel + " label not found, blocking deletion")
+		return compositeInfo{Exists: isDeletionProtected(obj), Name: "unknown", Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerCompositeLabel)}, nil
 	}
 
-	ownerKind, ok := obj.GetLabels()[runtime.OwnerKindAnnotation]
+	ownerKind, ok := obj.GetLabels()[runtime.OwnerKindLabel]
 	if !ok || ownerKind == "" {
-		l.Info(runtime.OwnerKindAnnotation + " label not set, blocking deletion")
-		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerKindAnnotation)}, nil
+		l.Info(runtime.OwnerKindLabel + " label not set, blocking deletion")
+		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerKindLabel)}, nil
 	}
 
-	ownerVersion, ok := obj.GetLabels()[runtime.OwnerVersionAnnotation]
+	ownerVersion, ok := obj.GetLabels()[runtime.OwnerVersionLabel]
 	if !ok || ownerVersion == "" {
-		l.Info(runtime.OwnerVersionAnnotation + " label not found, blocking deletion")
-		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionAnnotation)}, nil
+		l.Info(runtime.OwnerVersionLabel + " label not found, blocking deletion")
+		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionLabel)}, nil
 	}
 
-	onwerGroup, ok := obj.GetLabels()[runtime.OwnerGroupAnnotation]
-	if !ok || onwerGroup == "" {
-		l.Info(runtime.OwnerGroupAnnotation + " label not found, blocking deletion")
-		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionAnnotation)}, nil
+	ownerGroup, ok := obj.GetLabels()[runtime.OwnerGroupLabel]
+	if !ok || ownerGroup == "" {
+		l.Info(runtime.OwnerGroupLabel + " label not found, blocking deletion")
+		return compositeInfo{Exists: isDeletionProtected(obj), Name: ownerName, Reason: fmt.Sprintf("%s label not set, blocking deletion", runtime.OwnerVersionLabel)}, nil
 	}
 
 	gvk := schema.GroupVersionKind{
 		Kind:    ownerKind,
 		Version: ownerVersion,
-		Group:   onwerGroup,
+		Group:   ownerGroup,
 	}
 
 	rcomp, err := c.Scheme().New(gvk)

@@ -69,7 +69,7 @@ func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *ru
 		return runtime.NewFatalResult(fmt.Errorf("Cannot put service into function io: %w", err))
 	}
 
-	if comp.Spec.Parameters.Network.ServiceType == "ClusterIP" {
+	if comp.Spec.Parameters.Network.ServiceType == "" || comp.Spec.Parameters.Network.ServiceType == "ClusterIP" {
 		return nil
 	}
 

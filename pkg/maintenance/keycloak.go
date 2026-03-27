@@ -29,7 +29,13 @@ func NewKeycloak(c client.Client, hc *http.Client, vh release.VersionHandler, lo
 	}
 }
 
-// DoMaintenance will run minios's maintenance script.
+// Skip pre-maintenance backup for keycloak
+func (k *Keycloak) RunBackup(ctx context.Context) error {
+	k.log.Info("Pre-maintenance backup disabled")
+	return nil
+}
+
+// DoMaintenance will run Keycloak's maintenance script.
 func (k *Keycloak) DoMaintenance(ctx context.Context) error {
 	maintenanceURL, err := getMaintenanceURL()
 	if err != nil {

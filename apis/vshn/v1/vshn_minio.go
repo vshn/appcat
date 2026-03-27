@@ -105,6 +105,8 @@ type VSHNMinioStatus struct {
 	// InitialMaintenance tracks the status of the initial maintenance job,
 	// including when it ran and whether it succeeded or failed.
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
+	// CurrentReleaseTag contains the currently deployed image tag.
+	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 }
@@ -159,6 +161,10 @@ func (v *XVSHNMinio) GetInstanceNamespace() string {
 
 func (v *XVSHNMinio) GetCompositionName() string {
 	return v.Spec.CompositionRef.Name
+}
+
+func (v *XVSHNMinio) GetInstances() int {
+	return v.Spec.Parameters.Instances
 }
 
 // XVSHNMinioSpec defines the desired state of a VSHNMinio.
@@ -309,4 +315,8 @@ func (v *VSHNMinio) GetSLA() string {
 // MinIO doesn't currently support backups via K8up, so this always returns false
 func (v *VSHNMinio) IsBackupEnabled() bool {
 	return false
+}
+
+func (v *VSHNMinio) GetUnmanagedBucket() *UnmanagedBucket {
+	return nil
 }

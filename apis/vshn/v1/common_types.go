@@ -5,6 +5,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	alertmanagerv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type TimeOfDay string
@@ -21,6 +22,11 @@ type K8upBackupSpec struct {
 	Schedule string `json:"schedule,omitempty"`
 
 	Retention K8upRetentionPolicy `json:"retention,omitempty"`
+
+	// UnmanagedBucket specifies a bucket not managed by AppCat to be used for the backup.
+	// The user is responsible for the correctness of these values.
+	// +kubebuilder:validation:Optional
+	UnmanagedBucket *UnmanagedBucket `json:"unmanagedBucket,omitempty"`
 }
 
 // GetBackupSchedule returns the currently set schedule for this backup config
@@ -65,6 +71,28 @@ type K8upRestoreSpec struct {
 	BackupName string `json:"backupName,omitempty"`
 }
 
+type UnmanagedBucket struct {
+	// Endpoint is the unmanaged buckets endpoint without the bucket name
+	// +kubebuilder:validation:Required
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// Bucket is the name of the bucket to be used
+	// +kubebuilder:validation:Required
+	Bucket string `json:"bucket,omitempty"`
+
+	// AccessKey is the AWS_ACCESS_KEY_ID
+	// +kubebuilder:validation:Required
+	AccessKey corev1.SecretKeySelector `json:"accessKey,omitempty"`
+
+	// SecretKey is the AWS_SECRET_ACCESS_KEY
+	// +kubebuilder:validation:Required
+	SecretKey corev1.SecretKeySelector `json:"secretKey,omitempty"`
+
+	// Region is the region of the bucket
+	// +kubebuilder:validation:Required
+	Region string `json:"region,omitempty"`
+}
+
 type VSHNDBaaSServiceLevel string
 
 const (
@@ -86,6 +114,19 @@ type VSHNDBaaSMaintenanceScheduleSpec struct {
 	// TimeOfDay for installing updates in UTC.
 	// Format: "hh:mm:ss".
 	TimeOfDay TimeOfDay `json:"timeOfDay,omitempty"`
+
+	// PinImageTag allows pinning the service to a specific image tag.
+	// When set, the exact specified tag will be used, even if it's older than the currently deployed version.
+	// WARNING: User takes full responsibility for version management and security updates.
+	// Downgrades are allowed when pinning - the customer assumes all risk.
+	PinImageTag string `json:"pinImageTag,omitempty"`
+
+	// +kubebuilder:default=false
+	// DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
+	// When enabled, the instance will not automatically receive new AppCat composition revisions
+	// which may contain bug fixes, security patches, and new features.
+	// WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
+	DisableAppcatRelease bool `json:"disableAppcatRelease,omitempty"`
 }
 
 // GetMaintenanceDayOfWeek returns the currently set day of week
@@ -106,6 +147,21 @@ func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceDayOfWeek(dow string) {
 // SetMaintenanceTimeOfDay sets the time of day to the given value
 func (n *VSHNDBaaSMaintenanceScheduleSpec) SetMaintenanceTimeOfDay(tod TimeOfDay) {
 	n.TimeOfDay = tod
+}
+
+// GetPinImageTag returns the pinned image tag if set
+func (n *VSHNDBaaSMaintenanceScheduleSpec) GetPinImageTag() string {
+	return n.PinImageTag
+}
+
+// IsPinImageTagSet returns true if an image tag is pinned
+func (n *VSHNDBaaSMaintenanceScheduleSpec) IsPinImageTagSet() bool {
+	return n.PinImageTag != ""
+}
+
+// IsAppcatReleaseDisabled returns true if AppCat release updates are disabled
+func (n *VSHNDBaaSMaintenanceScheduleSpec) IsAppcatReleaseDisabled() bool {
+	return n.DisableAppcatRelease
 }
 
 // VSHNSizeSpec contains settings to control the sizing of a service.
@@ -283,8 +339,25 @@ func (a *TimeOfDay) SetTime(t time.Time) {
 	*a = TimeOfDay(t.Format(time.TimeOnly))
 }
 
-// AddTime adds duration to current time
-func (a *TimeOfDay) AddTime(d time.Duration) TimeOfDay {
-	a.SetTime(a.GetTime().Add(d))
-	return *a
+// AddDuration adds duration to current time and returns the new time plus day offset.
+func (a TimeOfDay) AddDuration(d time.Duration) (TimeOfDay, int) {
+	start := a.GetTime()
+	end := start.Add(d)
+
+	startDate := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, time.UTC)
+	dayOffset := int(endDate.Sub(startDate) / (24 * time.Hour))
+
+	return TimeOfDay(end.Format(time.TimeOnly)), dayOffset
+}
+
+// AddDaysToWeekday adds days to a weekday and returns the new weekday.
+func AddDaysToWeekday(weekday string, days int) string {
+	weekdays := []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
+	for i, w := range weekdays {
+		if w == weekday {
+			return weekdays[((i+days)%7+7)%7]
+		}
+	}
+	return weekday
 }

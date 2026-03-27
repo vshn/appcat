@@ -147,25 +147,6 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate--v1-persistentvolumeclaim
-  failurePolicy: Fail
-  name: pvc.vshn.appcat.vshn.io
-  rules:
-  - apiGroups:
-    - ""
-    apiVersions:
-    - v1
-    operations:
-    - DELETE
-    resources:
-    - persistentvolumeclaims
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
       path: /validate-helm-crossplane-io-v1beta1-release
   failurePolicy: Fail
   name: releases.vshn.appcat.vshn.io
@@ -342,4 +323,23 @@ webhooks:
     - DELETE
     resources:
     - xobjectbuckets
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-xvshnpostgresql
+  failurePolicy: Fail
+  name: xvshnpostgresql.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - UPDATE
+    resources:
+    - xvshnpostgresqls
   sideEffects: None

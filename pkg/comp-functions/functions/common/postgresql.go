@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"dario.cat/mergo"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -27,6 +28,7 @@ type PostgreSQLDependencyBuilder struct {
 	pgBouncerConfig      map[string]string
 	pgSettings           map[string]string
 	timeOfDayMaintenance vshnv1.TimeOfDay
+	dayOfWeekOverride    string
 	restore              *vshnv1.VSHNPostgreSQLRestore
 }
 
@@ -60,8 +62,16 @@ func (a *PostgreSQLDependencyBuilder) AddPGSettings(pgSettings map[string]string
 	return a
 }
 
-func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(timeOfDayMaintenance vshnv1.TimeOfDay) *PostgreSQLDependencyBuilder {
-	a.timeOfDayMaintenance = timeOfDayMaintenance
+// SetCustomMaintenanceSchedule offsets the maintenance schedule by the given duration.
+func (a *PostgreSQLDependencyBuilder) SetCustomMaintenanceSchedule(duration time.Duration) *PostgreSQLDependencyBuilder {
+	parentSchedule := a.comp.GetFullMaintenanceSchedule()
+	newTime, dayOffset := parentSchedule.TimeOfDay.AddDuration(duration)
+	a.timeOfDayMaintenance = newTime
+
+	if dayOffset != 0 {
+		a.dayOfWeekOverride = vshnv1.AddDaysToWeekday(parentSchedule.DayOfWeek, dayOffset)
+	}
+
 	return a
 }
 
@@ -145,9 +155,26 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 	if a.timeOfDayMaintenance != "" {
 		params.Maintenance.TimeOfDay = a.timeOfDayMaintenance
 	}
+	if a.dayOfWeekOverride != "" {
+		params.Maintenance.DayOfWeek = a.dayOfWeekOverride
+	}
 	// We need to set this after the merge, as the default instance count for PostgreSQL is always 1
 	// and would therefore override any value we set before the merge.
 	params.Instances = a.comp.GetInstances()
+
+	// Preserve the compositionRef of an already-existing nested PostgreSQL composite.
+	compositionName := a.svc.Config.Data["defaultPGComposition"]
+	observedPg := &vshnv1.XVSHNPostgreSQL{}
+	err := a.svc.GetObservedComposedResource(observedPg, a.comp.GetName()+PgInstanceNameSuffix)
+	if err != nil && err != runtime.ErrNotFound {
+		return "", fmt.Errorf("couldn't read observed nested postgresql composite: %w", err)
+	}
+	if err == nil {
+		if observedPg.Spec.CompositionRef.Name == "" {
+			return "", fmt.Errorf("observed nested postgresql composite %q has no compositionRef, refusing to overwrite with default", observedPg.GetName())
+		}
+		compositionName = observedPg.Spec.CompositionRef.Name
+	}
 
 	// We have to ignore the providerconfig on the composite itself.
 	pg := &vshnv1.XVSHNPostgreSQL{
@@ -160,7 +187,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		Spec: vshnv1.XVSHNPostgreSQLSpec{
 			Parameters: *params,
 			CompositionRef: v1.CompositionReference{
-				Name: a.svc.Config.Data["defaultPGComposition"],
+				Name: compositionName,
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
@@ -176,7 +203,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		pg.Labels[runtime.ProviderConfigLabel] = v
 	}
 
-	err := CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), "", false, a.svc)
+	err = CustomCreateNetworkPolicy([]string{a.comp.GetInstanceNamespace()}, pg.GetInstanceNamespace(), pg.GetName()+"-"+a.comp.GetServiceName(), "", false, a.svc)
 	if err != nil {
 		return "", err
 	}

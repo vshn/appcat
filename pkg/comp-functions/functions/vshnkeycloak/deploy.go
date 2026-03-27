@@ -48,6 +48,7 @@ const (
 	providerInitName              = "copy-original-providers"
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"
+	restoreCredentialsSuffix      = "restore-credentials"
 	cdCertsSuffix                 = "-keycloakx-http-server-cert"
 	customMountTypeSecret         = "secret"
 	customMountTypeConfigMap      = "configMap"
@@ -96,7 +97,7 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 		AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).
 		AddPGBouncerConfig(pgBuncerConfig).
 		AddRestore(comp.Spec.Parameters.Restore, comp.Kind).
-		SetCustomMaintenanceSchedule(comp.Spec.Parameters.Maintenance.TimeOfDay.AddTime(20 * time.Minute)).
+		SetCustomMaintenanceSchedule(20 * time.Minute).
 		CreateDependency()
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create postgresql instance: %s", err))
@@ -138,14 +139,22 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 
 	var adminSecret string
 	if comp.Spec.Parameters.Restore != nil {
-		err := copyKeycloakCredentials(comp, svc)
+		oldCreds, err := copyKeycloakCredentials(comp, svc)
 		if err != nil {
-			return runtime.NewWarningResult(fmt.Sprintf("cannot copy keycloak secret: %s", err))
+			return runtime.NewWarningResult(fmt.Sprintf("cannot copy keycloak credentials: %s", err))
 		}
-	}
-	adminSecret, err = common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin secret: %s", err))
+		if oldCreds == nil {
+			return runtime.NewWarningResult("waiting for restore credentials to be available")
+		}
+		adminSecret, err = common.AddCredentialsSecretFromValues(comp, svc, oldCreds, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot set restore admin secret: %s", err))
+		}
+	} else {
+		adminSecret, err = common.AddCredentialsSecret(comp, svc, []string{internalAdminPWSecretField, adminPWSecretField}, common.DisallowDeletion)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin secret: %s", err))
+		}
 	}
 
 	cd, err := svc.GetObservedComposedResourceConnectionDetails(adminSecret)
@@ -197,8 +206,9 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	l := svc.Log
 	customConfigurationRef := comp.Spec.Parameters.Service.CustomConfigurationRef
 	customEnvVariablesRef := comp.Spec.Parameters.Service.CustomEnvVariablesRef
+	envFrom := comp.Spec.Parameters.Service.EnvFrom
 
-	if customConfigurationRef == nil && customEnvVariablesRef == nil {
+	if customConfigurationRef == nil && customEnvVariablesRef == nil && envFrom == nil {
 		return nil
 	}
 
@@ -240,6 +250,50 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 			return nil
 		}
 		currentEnvHash = fmt.Sprintf("%x", md5.Sum(dataBytes))
+	}
+
+	if envFrom != nil {
+		var envFromData []byte
+		for _, ef := range *envFrom {
+			if ef.SecretRef != nil {
+				sec := &corev1.Secret{}
+				obj, err := svc.CopyKubeResource(ctx, sec, comp.GetName()+"-env-secret-"+ef.SecretRef.Name, ef.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					l.Error(err, "cannot copy envFrom Secret", "secretName", ef.SecretRef.Name)
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy envFrom Secret %q: %s", ef.SecretRef.Name, err)))
+					continue
+				}
+				dataBytes, err := json.Marshal(obj.(*corev1.Secret).Data)
+				if err != nil {
+					l.Error(err, "cannot marshal Secret data for hashing", "secretName", ef.SecretRef.Name)
+					continue
+				}
+				envFromData = append(envFromData, dataBytes...)
+			}
+			if ef.ConfigMapRef != nil {
+				cm := &corev1.ConfigMap{}
+				obj, err := svc.CopyKubeResource(ctx, cm, comp.GetName()+"-env-cm-"+ef.ConfigMapRef.Name, ef.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
+				if err != nil {
+					l.Error(err, "cannot copy envFrom ConfigMap", "configMapName", ef.ConfigMapRef.Name)
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot copy envFrom ConfigMap %q: %s", ef.ConfigMapRef.Name, err)))
+					continue
+				}
+				dataBytes, err := json.Marshal(obj.(*corev1.ConfigMap).Data)
+				if err != nil {
+					l.Error(err, "cannot marshal ConfigMap data for hashing", "configMapName", ef.ConfigMapRef.Name)
+					continue
+				}
+				envFromData = append(envFromData, dataBytes...)
+			}
+		}
+		if len(envFromData) > 0 {
+			envFromHash := fmt.Sprintf("%x", md5.Sum(envFromData))
+			if currentEnvHash != "" {
+				currentEnvHash = fmt.Sprintf("%x", md5.Sum([]byte(currentEnvHash+envFromHash)))
+			} else {
+				currentEnvHash = envFromHash
+			}
+		}
 	}
 
 	lastConfigHash := comp.GetLastConfigHash()
@@ -540,8 +594,9 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 		},
 		{
-			"name":  "KC_DB_URL_PROPERTIES",
-			"value": "?sslmode=verify-full&sslrootcert=/certs/pg/ca.crt",
+			"name": "KC_DB_URL_PROPERTIES",
+			// targetServerType=any is necessary only for stackgres based instances, remove once stackgres is gone
+			"value": "?sslmode=verify-full&sslrootcert=/certs/pg/ca.crt&targetServerType=any",
 		},
 		{
 			"name": "JAVA_OPTS_APPEND",
@@ -786,9 +841,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	if busyBoxImage := svc.Config.Data["busybox_image"]; busyBoxImage != "" {
-		err := common.SetNestedObjectValue(values, []string{"dbchecker", "image"}, map[string]any{
+		dbcheckerImage := map[string]any{
 			"repository": busyBoxImage,
-		})
+		}
+		if tag := svc.Config.Data["busybox_image_tag"]; tag != "" {
+			dbcheckerImage["tag"] = tag
+		}
+		err := common.SetNestedObjectValue(values, []string{"dbchecker", "image"}, dbcheckerImage)
 		if err != nil {
 			return nil, err
 		}
@@ -798,25 +857,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 }
 
 func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak, adminSecret, pgSecret string) (*xhelmv1.Release, error) {
-	if comp.Spec.Parameters.Service.EnvFrom != nil {
-		for _, r := range *comp.Spec.Parameters.Service.EnvFrom {
-			if r.SecretRef != nil {
-				obj := &corev1.Secret{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-secret-"+r.SecretRef.Name, r.SecretRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("cannot copy Keycloak env variable Secret to instance namespace: %w", err)
-				}
-			}
-			if r.ConfigMapRef != nil {
-				obj := &corev1.ConfigMap{}
-				_, err := svc.CopyKubeResource(ctx, obj, comp.GetName()+"-env-cm-"+r.ConfigMapRef.Name, r.ConfigMapRef.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("cannot copy Keycloak env variable ConfigMap to instance namespace: %w", err)
-				}
-			}
-		}
-	}
-
 	values, err := newValues(ctx, svc, comp, adminSecret, pgSecret)
 	if err != nil {
 		return nil, err
@@ -827,12 +867,20 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, fmt.Errorf("cannot get observed release values: %w", err)
 	}
 
-	observedVersion, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"})
+	releaseTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.PinImageTag)
 	if err != nil {
 		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
 	}
 
-	err = addInitContainer(comp, values, observedVersion)
+	// Update status with current release tag
+	if releaseTag != "" {
+		comp.Status.CurrentReleaseTag = releaseTag
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+		}
+	}
+
+	err = addInitContainer(comp, values, releaseTag)
 	if err != nil {
 		return nil, err
 	}
@@ -882,7 +930,7 @@ func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRu
 		ToFieldPath: ptr.To("data"),
 	}
 
-	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-custom-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef))
+	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-custom-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef), runtime.KubeOptionAllowDeletion)
 }
 
 func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
@@ -1076,7 +1124,10 @@ func addCustomFileCopyInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContaine
 	return extraInitContainersMap, nil
 }
 
-func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+// copyKeycloakCredentials schedules a Job to copy old credentials into a staging secret
+// and creates an observe-only KubeObject for it. Returns the credential data once the
+// copy job has run, or nil if the staging secret is not yet available.
+func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) (map[string][]byte, error) {
 	copyJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-copyjob",
@@ -1120,11 +1171,38 @@ func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 
 	err := svc.SetDesiredKubeObjectWithName(copyJob, comp.GetName()+"-copyjob", "copy-job")
 	if err != nil {
-		err = fmt.Errorf("cannot create copyJob: %w", err)
-		return err
+		return nil, fmt.Errorf("cannot create copyJob: %w", err)
 	}
 
-	return nil
+	// Observe-only KubeObject for the staging secret written by the copy job.
+	// KubeOptionObserve prevents provider-kubernetes from managing (and overwriting) it.
+	stagingSecretName := runtime.EscapeDNS1123(comp.GetName()+"-"+restoreCredentialsSuffix, false)
+	stagingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      stagingSecretName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+	}
+	err = svc.SetDesiredKubeObject(stagingSecret, stagingSecretName, runtime.KubeOptionObserve)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create restore credentials observer: %w", err)
+	}
+
+	// Returns nil until the copy job has run and the secret exists.
+	observed := &corev1.Secret{}
+	err = svc.GetObservedKubeObject(observed, stagingSecretName)
+	if err != nil {
+		if errors.Is(err, runtime.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("cannot observe restore credentials: %w", err)
+	}
+
+	if len(observed.Data) == 0 {
+		return nil, nil
+	}
+
+	return observed.Data, nil
 }
 
 func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
@@ -1153,6 +1231,12 @@ func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) e
 							InsecureSkipVerify: true,
 						},
 					},
+				},
+				{
+					Port:     "http",
+					Path:     "/realms/master/metrics",
+					Interval: "15s",
+					Scheme:   "http",
 				},
 			},
 		},

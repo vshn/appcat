@@ -71,6 +71,71 @@ spec:
                         schedule:
                           pattern: ^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
                           type: string
+                        unmanagedBucket:
+                          description: |-
+                            UnmanagedBucket specifies a bucket not managed by AppCat to be used for the backup.
+                            The user is responsible for the correctness of these values.
+                          properties:
+                            accessKey:
+                              description: AccessKey is the AWS_ACCESS_KEY_ID
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            bucket:
+                              description: Bucket is the name of the bucket to be used
+                              type: string
+                            endpoint:
+                              description: Endpoint is the unmanaged buckets endpoint without the bucket name
+                              type: string
+                            region:
+                              description: Region is the region of the bucket
+                              type: string
+                            secretKey:
+                              description: SecretKey is the AWS_SECRET_ACCESS_KEY
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                          required:
+                            - accessKey
+                            - bucket
+                            - endpoint
+                            - region
+                            - secretKey
+                          type: object
                       type: object
                       default: {}
                     instances:
@@ -95,6 +160,21 @@ spec:
                             - friday
                             - saturday
                             - sunday
+                          type: string
+                        disableAppcatRelease:
+                          default: false
+                          description: |-
+                            DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
+                            When enabled, the instance will not automatically receive new AppCat composition revisions
+                            which may contain bug fixes, security patches, and new features.
+                            WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
+                          type: boolean
+                        pinImageTag:
+                          description: |-
+                            PinImageTag allows pinning the service to a specific image tag.
+                            When set, the exact specified tag will be used, even if it's older than the currently deployed version.
+                            WARNING: User takes full responsibility for version management and security updates.
+                            Downgrades are allowed when pinning - the customer assumes all risk.
                           type: string
                         timeOfDay:
                           description: |-
@@ -4700,6 +4780,9 @@ spec:
                   x-kubernetes-list-map-keys:
                     - type
                   x-kubernetes-list-type: map
+                currentReleaseTag:
+                  description: CurrentReleaseTag contains the currently deployed image tag.
+                  type: string
                 initialMaintenance:
                   description: |-
                     InitialMaintenance tracks the status of the initial maintenance job,
@@ -4831,6 +4914,21 @@ spec:
                             - friday
                             - saturday
                             - sunday
+                          type: string
+                        disableAppcatRelease:
+                          default: false
+                          description: |-
+                            DisableAppcatRelease disables automatic AppCat composition revision rollouts during maintenance windows.
+                            When enabled, the instance will not automatically receive new AppCat composition revisions
+                            which may contain bug fixes, security patches, and new features.
+                            WARNING: Strongly discouraged - may leave instance without security patches and bug fixes.
+                          type: boolean
+                        pinImageTag:
+                          description: |-
+                            PinImageTag allows pinning the service to a specific image tag.
+                            When set, the exact specified tag will be used, even if it's older than the currently deployed version.
+                            WARNING: User takes full responsibility for version management and security updates.
+                            Downgrades are allowed when pinning - the customer assumes all risk.
                           type: string
                         timeOfDay:
                           description: |-

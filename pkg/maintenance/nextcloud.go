@@ -7,21 +7,25 @@ import (
 	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 
 	"github.com/go-logr/logr"
+	"github.com/vshn/appcat/v4/pkg/maintenance/backup"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Nextcloud contains all necessary dependencies to successfully run a Nextcloud maintenance
 type Nextcloud struct {
-	k8sClient  client.Client
-	httpClient *http.Client
-	log        logr.Logger
+	backupHelper *backup.Helper
+	k8sClient    client.WithWatch
+	httpClient   *http.Client
+	log          logr.Logger
 	release.VersionHandler
 }
 
 // NewNextcloud returns a new Nextcloud object
-func NewNextcloud(c client.Client, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *Nextcloud {
+func NewNextcloud(c client.WithWatch, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *Nextcloud {
+	runner := backup.NewK8upBackupRunner(c, logger)
 	return &Nextcloud{
+		backupHelper:   backup.NewHelper(runner, logger),
 		k8sClient:      c,
 		httpClient:     hc,
 		log:            logger,
@@ -29,7 +33,12 @@ func NewNextcloud(c client.Client, hc *http.Client, vh release.VersionHandler, l
 	}
 }
 
-// DoMaintenance will run minios's maintenance script.
+// RunBackup executes a pre-maintenance backup
+func (n *Nextcloud) RunBackup(ctx context.Context) error {
+	return n.backupHelper.RunBackup(ctx)
+}
+
+// DoMaintenance will run Nextcloud's maintenance script.
 func (n *Nextcloud) DoMaintenance(ctx context.Context) error {
 	maintenanceURL, err := getMaintenanceURL()
 	if err != nil {

@@ -48,10 +48,10 @@ var (
 )
 
 const (
-	OwnerKindAnnotation               = "appcat.vshn.io/ownerkind"
-	OwnerVersionAnnotation            = "appcat.vshn.io/ownerapiversion"
-	OwnerGroupAnnotation              = "appcat.vshn.io/ownergroup"
-	OwnerCompositeAnnotation          = "appcat.vshn.io/ownercomposite"
+	OwnerKindLabel                    = "appcat.vshn.io/ownerkind"
+	OwnerVersionLabel                 = "appcat.vshn.io/ownerapiversion"
+	OwnerGroupLabel                   = "appcat.vshn.io/ownergroup"
+	OwnerCompositeLabel               = "appcat.vshn.io/ownercomposite"
 	ProtectedByAnnotation             = "appcat.vshn.io/protectedby"
 	ProtectsAnnotation                = "appcat.vshn.io/protects"
 	EventForwardAnnotation            = "appcat.vshn.io/forward-events-to"
@@ -1058,7 +1058,8 @@ func (s *ServiceRuntime) DeleteDesiredCompososedResource(name string) {
 
 // isResourceSyncedAndReady checks if the given resource is synced and ready.
 func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
-	obj, ok := s.req.Observed.Resources[name]
+	resName := EscapeDNS1123(name, false)
+	obj, ok := s.req.Observed.Resources[resName]
 	if !ok {
 		return false
 	}
@@ -1079,10 +1080,10 @@ func (s *ServiceRuntime) isResourceSyncedAndReady(name string) bool {
 	}
 
 	for _, cond := range status.Conditions {
-		if cond.Type == xpv1.TypeSynced && cond.Status == "false" {
+		if cond.Type == xpv1.TypeSynced && cond.Status == corev1.ConditionFalse {
 			return false
 		}
-		if cond.Type == xpv1.TypeReady && cond.Status == "false" {
+		if cond.Type == xpv1.TypeReady && cond.Status == corev1.ConditionFalse {
 			return false
 		}
 	}
@@ -1174,10 +1175,10 @@ func (s *ServiceRuntime) addOwnerReferenceAnnotation(obj client.Object, composed
 		labels = map[string]string{}
 	}
 
-	labels[OwnerKindAnnotation] = s.Config.Data["ownerKind"]
-	labels[OwnerVersionAnnotation] = s.Config.Data["ownerVersion"]
-	labels[OwnerGroupAnnotation] = s.Config.Data["ownerGroup"]
-	labels[OwnerCompositeAnnotation] = s.observedComposite.GetName()
+	labels[OwnerKindLabel] = s.Config.Data["ownerKind"]
+	labels[OwnerVersionLabel] = s.Config.Data["ownerVersion"]
+	labels[OwnerGroupLabel] = s.Config.Data["ownerGroup"]
+	labels[OwnerCompositeLabel] = s.observedComposite.GetName()
 
 	obj.SetLabels(labels)
 }
@@ -1511,7 +1512,7 @@ func (s *ServiceRuntime) SetDesiredResourceReadiness(name string, ready Resource
 // It first creates an observer to fetch the current manifest, then strips out read-only metadata
 // (ResourceVersion, UID, SelfLink, Generation, CreationTimestamp) before declaring a new object
 // in the target namespace.
-func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object, resourceName, name, fromNS, toNS string) (client.Object, error) {
+func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object, resourceName, name, fromNS, toNS string, cd ...xkube.ConnectionDetail) (client.Object, error) {
 	observerName := resourceName + "-claim-observer"
 
 	observerObj := obj.DeepCopyObject().(client.Object)
@@ -1521,7 +1522,17 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 		ProviderConfigIgnoreLabel: "true",
 	}
 
-	if err := s.SetDesiredKubeObject(observerObj, observerName, KubeOptionObserve, KubeOptionAddLabels(objectExtraLabels)); err != nil {
+	kubeOpts := []KubeObjectOption{
+		KubeOptionAddLabels(objectExtraLabels),
+		KubeOptionObserve,
+		KubeOptionAllowDeletion,
+	}
+
+	if len(cd) > 0 {
+		kubeOpts = append(kubeOpts, KubeOptionAddConnectionDetails(toNS, cd...))
+	}
+
+	if err := s.SetDesiredKubeObject(observerObj, observerName, kubeOpts...); err != nil {
 		return nil, err
 	}
 
@@ -1532,7 +1543,7 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 	instObj := obj.DeepCopyObject().(client.Object)
 	instObj.SetNamespace(toNS)
 
-	if err := s.SetDesiredKubeObject(instObj, resourceName); err != nil {
+	if err := s.SetDesiredKubeObject(instObj, resourceName, KubeOptionAllowDeletion); err != nil {
 		return nil, err
 	}
 
@@ -1540,7 +1551,8 @@ func (s *ServiceRuntime) CopyKubeResource(ctx context.Context, obj client.Object
 }
 
 // IsResourceReady checks if a resource exists in observed state with Ready=True condition.
-func (s *ServiceRuntime) IsResourceReady(resourceName string) (bool, error) {
+func (s *ServiceRuntime) IsResourceReady(name string) (bool, error) {
+	resourceName := EscapeDNS1123(name, false)
 	observed, err := s.GetAllObserved()
 	if err != nil {
 		return false, fmt.Errorf("cannot get observed resources: %w", err)
@@ -1562,7 +1574,8 @@ func (s *ServiceRuntime) IsResourceReady(resourceName string) (bool, error) {
 // ResourceExistsInObserved checks if a resource exists in observed state.
 // Useful for preventing deletion when dependencies become temporarily unavailable.
 // If GetAllObserved fails, returns true (safer default) and adds a fatal result to halt composition.
-func (s *ServiceRuntime) ResourceExistsInObserved(resourceName string) bool {
+func (s *ServiceRuntime) ResourceExistsInObserved(name string) bool {
+	resourceName := EscapeDNS1123(name, false)
 	observed, err := s.GetAllObserved()
 	if err != nil {
 		s.Log.Error(err, "Failed to get observed resources, halting composition", "resourceName", resourceName)

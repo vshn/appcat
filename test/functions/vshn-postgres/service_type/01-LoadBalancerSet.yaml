@@ -18,7 +18,7 @@ desired:
       spec:
         parameters:
           network:
-            serviceType: ClusterIP
+            serviceType: LoadBalancer
           service:
             extensions:
             - name: ltree
@@ -87,6 +87,8 @@ observed:
           name: vshnpostgres.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
         parameters:
+          network:
+            serviceType: LoadBalancer
           maintenance:
             dayOfWeek: tuesday
             timeOfDay: "23:32:00"

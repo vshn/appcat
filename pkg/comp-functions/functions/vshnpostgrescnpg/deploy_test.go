@@ -37,7 +37,69 @@ func Test_instances(t *testing.T) {
 		assert.NotNil(t, values)
 
 		assert.Equal(t, i, values["cluster"].(map[string]any)["instances"])
+		// When instances > 0, hibernation should be off
+		assert.Equal(t, "off", values["cluster"].(map[string]any)["annotations"].(map[string]string)["cnpg.io/hibernation"])
 	}
+}
+
+func Test_hibernation(t *testing.T) {
+	svc, comp := getSvcCompCnpg(t)
+	ctx := context.TODO()
+
+	t.Run("instances=0 enables hibernation", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 0
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		// CNPG doesn't support instances=0, so it should be set to 1
+		assert.Equal(t, 1, values["cluster"].(map[string]any)["instances"])
+		// Hibernation annotation should be on
+		assert.Equal(t, "on", values["cluster"].(map[string]any)["annotations"].(map[string]string)["cnpg.io/hibernation"])
+	})
+
+	t.Run("instances>0 disables hibernation", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 2
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		// Instances should match spec
+		assert.Equal(t, 2, values["cluster"].(map[string]any)["instances"])
+		// Hibernation annotation should be off
+		assert.Equal(t, "off", values["cluster"].(map[string]any)["annotations"].(map[string]string)["cnpg.io/hibernation"])
+	})
+}
+
+func Test_enablePDB(t *testing.T) {
+	svc, comp := getSvcCompCnpg(t)
+	ctx := context.TODO()
+
+	t.Run("PDB disabled for single instance", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 1
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.Equal(t, false, values["cluster"].(map[string]any)["enablePDB"])
+	})
+
+	t.Run("PDB enabled for multiple instances", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 2
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.Equal(t, true, values["cluster"].(map[string]any)["enablePDB"])
+	})
+
+	t.Run("PDB disabled for paused instance", func(t *testing.T) {
+		comp.Spec.Parameters.Instances = 0
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.Equal(t, false, values["cluster"].(map[string]any)["enablePDB"])
+	})
 }
 
 func Test_version(t *testing.T) {
@@ -94,6 +156,84 @@ func Test_sizing(t *testing.T) {
 	assert.NotNil(t, values)
 	assert.Equal(t, ourDiskSize, res.Disk.String())
 	assert.Equal(t, ourDiskSize, values["cluster"].(map[string]any)["storage"].(map[string]any)["size"])
+}
+
+func Test_pinImageTag(t *testing.T) {
+	ctx := context.TODO()
+
+	t.Run("no pinImageTag uses major version tag", func(t *testing.T) {
+		svc, comp := getSvcCompCnpg(t)
+		comp.Spec.Parameters.Service.MajorVersion = "15"
+		comp.Spec.Parameters.Maintenance.PinImageTag = ""
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		imageCatalog := values["imageCatalog"].(map[string]any)
+		images := imageCatalog["images"].([]map[string]string)
+
+		assert.Len(t, images, 1)
+		assert.Equal(t, "15", images[0]["major"])
+		assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:15", images[0]["image"])
+		assert.Equal(t, "15", comp.Status.CurrentVersion)
+	})
+
+	t.Run("pinImageTag overrides major version tag in ImageCatalog", func(t *testing.T) {
+		svc, comp := getSvcCompCnpg(t)
+		comp.Spec.Parameters.Service.MajorVersion = "15"
+		comp.Spec.Parameters.Maintenance.PinImageTag = "15.13"
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		imageCatalog := values["imageCatalog"].(map[string]any)
+		images := imageCatalog["images"].([]map[string]string)
+
+		assert.Len(t, images, 1)
+		assert.Equal(t, "15", images[0]["major"])
+		assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:15.13", images[0]["image"])
+		assert.Equal(t, "15.13", comp.Status.CurrentVersion)
+	})
+
+	t.Run("pinImageTag with different major version", func(t *testing.T) {
+		svc, comp := getSvcCompCnpg(t)
+		comp.Spec.Parameters.Service.MajorVersion = "16"
+		comp.Spec.Parameters.Maintenance.PinImageTag = "16.4"
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		imageCatalog := values["imageCatalog"].(map[string]any)
+		images := imageCatalog["images"].([]map[string]string)
+
+		assert.Len(t, images, 1)
+		assert.Equal(t, "16", images[0]["major"])
+		assert.Equal(t, "ghcr.io/cloudnative-pg/postgresql:16.4", images[0]["image"])
+		assert.Equal(t, "16.4", comp.Status.CurrentVersion)
+	})
+
+	t.Run("majorVersion is correctly set in helm values", func(t *testing.T) {
+		svc, comp := getSvcCompCnpg(t)
+		comp.Spec.Parameters.Service.MajorVersion = "17"
+		comp.Spec.Parameters.Maintenance.PinImageTag = "17.2"
+
+		values, err := createCnpgHelmValues(ctx, svc, comp)
+		assert.NoError(t, err)
+		assert.NotNil(t, values)
+
+		version := values["version"].(map[string]string)
+		assert.Equal(t, "17", version["postgresql"])
+
+		cluster := values["cluster"].(map[string]any)
+		imageCatalogRef := cluster["imageCatalogRef"].(map[string]string)
+		assert.Equal(t, "ImageCatalog", imageCatalogRef["kind"])
+		assert.Equal(t, "postgresql", imageCatalogRef["name"])
+
+		assert.Equal(t, "17.2", comp.Status.CurrentVersion)
+	})
 }
 
 // Obtain svc and comp for CNPG tests

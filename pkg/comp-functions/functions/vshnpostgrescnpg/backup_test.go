@@ -45,7 +45,7 @@ func TestBackupBooststrapEnabled(t *testing.T) {
 	assert.Equal(t, "6d", backupValues["retentionPolicy"])
 
 	// Bucket configuration
-	cd, err := getBackupBucketConnectionDetails(svc, comp)
+	cd, err := getBackupBucketConnectionDetails(ctx, svc, comp)
 	assert.NoError(t, err)
 	assert.Equal(t, cd.endpoint, "https://s3.minio.local") // No trailing /
 	assert.Equal(t, cd.bucket, "backupBucket")

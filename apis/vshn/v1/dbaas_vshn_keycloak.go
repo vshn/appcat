@@ -450,3 +450,7 @@ func (v *VSHNKeycloak) GetSLA() string {
 func (v *VSHNKeycloak) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
 }
+
+func (v *VSHNKeycloak) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
+}

@@ -382,3 +382,7 @@ func (v *VSHNMariaDB) GetSLA() string {
 func (v *VSHNMariaDB) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
 }
+
+func (v *VSHNMariaDB) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
+}

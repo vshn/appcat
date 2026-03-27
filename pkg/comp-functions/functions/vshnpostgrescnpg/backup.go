@@ -6,10 +6,12 @@ import (
 	"maps"
 	"strings"
 
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/backup"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Backup bucket connection details
@@ -37,7 +39,7 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 
 	if comp.IsBackupEnabled() && comp.GetInstances() != 0 {
 		// Configure barman cloud plugin via helm values
-		if err := insertBackupValues(svc, comp, values); err != nil {
+		if err := insertBackupValues(ctx, svc, comp, values); err != nil {
 			return err
 		}
 	}
@@ -45,8 +47,8 @@ func SetupBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.
 }
 
 // Add backup config to helm values
-func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, values map[string]any) error {
-	connectionDetails, err := getBackupBucketConnectionDetails(svc, comp)
+func insertBackupValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, values map[string]any) error {
+	connectionDetails, err := getBackupBucketConnectionDetails(ctx, svc, comp)
 	if err != nil {
 		return err
 	}
@@ -117,13 +119,67 @@ func insertBackupValues(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL
 	return nil
 }
 
-func getBackupBucketConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (backupCredentials, error) {
+func getBackupBucketConnectionDetails(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL) (backupCredentials, error) {
 	backupCredentials := backupCredentials{}
-	cd, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-backup")
-	if err != nil && err == runtime.ErrNotFound {
-		return backupCredentials, fmt.Errorf("backup bucket connection details not found")
-	} else if err != nil {
-		return backupCredentials, err
+
+	cd := map[string][]byte{}
+
+	if ub := comp.GetUnmanagedBucket(); ub != nil {
+		secret := &corev1.Secret{}
+
+		kubeCDs := []xkube.ConnectionDetail{
+			{
+				ToConnectionSecretKey: "AWS_ACCESS_KEY_ID",
+				ObjectReference: corev1.ObjectReference{
+					Kind:       "Secret",
+					APIVersion: "v1",
+					Namespace:  comp.GetClaimNamespace(),
+					Name:       ub.AccessKey.Name,
+					FieldPath:  fmt.Sprintf("data.%s", ub.AccessKey.Key),
+				},
+			},
+			{
+				ToConnectionSecretKey: "AWS_SECRET_ACCESS_KEY",
+				ObjectReference: corev1.ObjectReference{
+					Kind:       "Secret",
+					APIVersion: "v1",
+					Namespace:  comp.GetClaimNamespace(),
+					Name:       ub.SecretKey.Name,
+					FieldPath:  fmt.Sprintf("data.%s", ub.SecretKey.Key),
+				},
+			},
+		}
+
+		_, err := svc.CopyKubeResource(ctx, secret, comp.GetName()+"-bucket-credentials", ub.AccessKey.Name, comp.GetClaimNamespace(), comp.GetInstanceNamespace(), kubeCDs...)
+		if err != nil {
+			return backupCredentials, err
+		}
+
+		cd, err = svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-bucket-credentials-claim-observer")
+		if err != nil && err == runtime.ErrNotFound {
+			return backupCredentials, fmt.Errorf("backup bucket connection details not found")
+		} else if err != nil {
+			return backupCredentials, err
+		}
+
+		if cd == nil {
+			// On first reconcile the connection details will be nil
+			cd = map[string][]byte{}
+		}
+
+		cd["ENDPOINT_URL"] = []byte(ub.Endpoint)
+		cd["BUCKET_NAME"] = []byte(ub.Bucket)
+		cd["AWS_REGION"] = []byte(ub.Region)
+
+	} else {
+		var err error
+		cd, err = svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-backup")
+		if err != nil && err == runtime.ErrNotFound {
+			return backupCredentials, fmt.Errorf("backup bucket connection details not found")
+		} else if err != nil {
+			return backupCredentials, err
+		}
+
 	}
 
 	endpoint, _ := strings.CutSuffix(string(cd["ENDPOINT_URL"]), "/")

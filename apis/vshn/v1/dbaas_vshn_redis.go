@@ -367,3 +367,7 @@ func (v *VSHNRedis) GetSLA() string {
 func (v *VSHNRedis) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
 }
+
+func (v *VSHNRedis) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
+}

@@ -27,6 +27,7 @@ type InfoGetter interface {
 	GetBillingName() string
 	GetAnnotations() map[string]string
 	GetCreationTimestamp() metav1.Time
+	UnmangedBucketProvider
 }
 
 // InstanceNamespaceInfo provides all the necessary information to create
@@ -70,4 +71,9 @@ type AllowedNamespaceGetter interface {
 type Alerter interface {
 	GetVSHNMonitoring() vshnv1.VSHNMonitoring
 	GetInstanceNamespace() string
+}
+
+// UnmangedBucketProvider will return an unmanaged bucket or nil if it's not defined
+type UnmangedBucketProvider interface {
+	GetUnmanagedBucket() *vshnv1.UnmanagedBucket
 }

@@ -62,17 +62,17 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err))
 	}
 
-	err = createTCPRoute(svc, comp, resourceBaseName, gatewayNamespace)
+	err = createTCPRoute(svc, comp, resourceBaseName, effectiveGatewayNamespace)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create TCPRoute: %s", err))
 	}
 
-	err = createReferenceGrant(svc, comp, resourceBaseName, gatewayNamespace)
+	err = createReferenceGrant(svc, comp, resourceBaseName, effectiveGatewayNamespace)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create ReferenceGrant: %s", err))
 	}
 
-	err = createGatewayNetworkPolicy(svc, comp, resourceBaseName, gatewayNamespace)
+	err = createGatewayNetworkPolicy(svc, comp, resourceBaseName, effectiveGatewayNamespace)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create gateway NetworkPolicy: %s", err))
 	}

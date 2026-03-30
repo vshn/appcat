@@ -12,9 +12,11 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -238,6 +240,9 @@ func createReferenceGrant(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo,
 func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name, gatewayNamespace string) error {
 	instanceNs := comp.GetInstanceNamespace()
 
+	protocol := corev1.ProtocolTCP
+	port := intstr.FromInt(sshPort)
+
 	netPol := &netv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -260,6 +265,12 @@ func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNFo
 									"kubernetes.io/metadata.name": gatewayNamespace,
 								},
 							},
+						},
+					},
+					Ports: []netv1.NetworkPolicyPort{
+						{
+							Protocol: &protocol,
+							Port:     &port,
 						},
 					},
 				},

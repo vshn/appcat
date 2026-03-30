@@ -120,12 +120,12 @@ func TestSSH(t *testing.T) {
 		assert.Equal(t, resourceBaseName, netPol.Name)
 		assert.Equal(t, instanceNs, netPol.Namespace)
 		assert.Equal(t, "forgejo", netPol.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
-		assert.Equal(t, comp.GetName(), netPol.Spec.PodSelector.MatchLabels["app.kubernetes.io/instance"],
-			"NetworkPolicy should target Forgejo pods")
+		assert.Equal(t, comp.GetName(), netPol.Spec.PodSelector.MatchLabels["app.kubernetes.io/instance"], "NetworkPolicy should target Forgejo pods")
 		require.Len(t, netPol.Spec.Ingress, 1)
 		require.Len(t, netPol.Spec.Ingress[0].From, 1)
-		assert.Equal(t, "gateway-system",
-			netPol.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"])
+		assert.Equal(t, "gateway-system", netPol.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"])
+		require.Len(t, netPol.Spec.Ingress[0].Ports, 1)
+		assert.Equal(t, int32(2222), netPol.Spec.Ingress[0].Ports[0].Port.IntVal, "NetworkPolicy should allow traffic on the SSH pod listen port")
 
 	})
 

@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	sshListenerName = "ssh"
-	sshPort         = 22
+	sshListenerName  = "ssh"
+	sshServicePort   = 22
+	sshPodListenPort = 2222
 )
 
 // ConfigureSSHAccess creates the Gateway API resources needed for TCP routing
@@ -186,7 +187,7 @@ func createTCPRoute(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name,
 					"kind":      "Service",
 					"name":      sshServiceName,
 					"namespace": instanceNs,
-					"port":      int64(sshPort),
+					"port":      int64(sshServicePort),
 				},
 			},
 		},
@@ -242,7 +243,7 @@ func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNFo
 	instanceNs := comp.GetInstanceNamespace()
 
 	protocol := corev1.ProtocolTCP
-	port := intstr.FromInt(sshPort)
+	port := intstr.FromInt(sshPodListenPort)
 
 	netPol := &netv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{

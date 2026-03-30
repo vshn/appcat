@@ -106,6 +106,14 @@ func TestSSH(t *testing.T) {
 		assert.Equal(t, "Service", toEntry["kind"])
 		assert.Equal(t, resourceBaseName, toEntry["name"], "ReferenceGrant should be scoped to the SSH service")
 
+		// Verify Helm release does not have SSH enabled yet
+		release := &xhelmv1.Release{}
+		require.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
+		values := getReleaseValues(t, *release)
+		serverConfig := values["gitea"].(map[string]any)["config"].(map[string]any)["server"].(map[string]any)
+		assert.Equal(t, true, serverConfig["DISABLE_SSH"], "SSH should stay disabled until a port is allocated")
+		assert.Nil(t, serverConfig["START_SSH_SERVER"], "START_SSH_SERVER should not be set until a port is allocated")
+
 		// Verify NetworkPolicy
 		netPol := &netv1.NetworkPolicy{}
 		require.NoError(t, svc.GetDesiredKubeObject(netPol, resourceBaseName+"-netpol"))
@@ -119,15 +127,6 @@ func TestSSH(t *testing.T) {
 		assert.Equal(t, "gateway-system",
 			netPol.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"])
 
-		// Verify Helm release values
-		release := &xhelmv1.Release{}
-		require.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
-		values := getReleaseValues(t, *release)
-
-		serverConfig := values["gitea"].(map[string]any)["config"].(map[string]any)["server"].(map[string]any)
-		assert.Equal(t, false, serverConfig["DISABLE_SSH"])
-		assert.Equal(t, true, serverConfig["START_SSH_SERVER"])
-		assert.Equal(t, "ssh.example.com", serverConfig["SSH_DOMAIN"])
 	})
 
 	t.Run("SSHEnabled_GatewayConfigMissing_WarningResult", func(t *testing.T) {
@@ -158,11 +157,14 @@ func TestSSH(t *testing.T) {
 		l0 := listeners[0].(map[string]any)
 		assert.Equal(t, int64(10005), l0["port"])
 
-		// Verify Helm release has SSH_PORT set
+		// Verify Helm release has SSH settings
 		release := &xhelmv1.Release{}
 		require.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
 		values := getReleaseValues(t, *release)
 		serverConfig := values["gitea"].(map[string]any)["config"].(map[string]any)["server"].(map[string]any)
+		assert.Equal(t, false, serverConfig["DISABLE_SSH"])
+		assert.Equal(t, true, serverConfig["START_SSH_SERVER"])
+		assert.Equal(t, "ssh.example.com", serverConfig["SSH_DOMAIN"])
 		// json.Marshal produces float64 for numbers
 		assert.Equal(t, float64(10005), serverConfig["SSH_PORT"])
 

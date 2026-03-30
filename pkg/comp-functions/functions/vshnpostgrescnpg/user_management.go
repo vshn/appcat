@@ -40,8 +40,13 @@ func UserManagement(_ context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 	return nil
 }
 
+// userpassSecretName returns the KubeObject resource name for the password secret of a given user.
+func userpassSecretName(compName, username string) string {
+	return runtime.EscapeDNS1123(compName+"-userpass-"+username, false)
+}
+
 // addCnpgUser creates a password secret in the instance namespace for the given username.
-// The secret requires both "username" and "password" keys — CNPG's managed roles controller
+// The secret requires both "username" and "password" keys - CNPG's managed roles controller
 // reads the referenced passwordSecret expecting both keys to be present.
 // Returns the KubeObject resource name so callers can reference it later.
 func addCnpgUser(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, username string) string {
@@ -54,9 +59,11 @@ func addCnpgUser(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, usern
 	return secretName
 }
 
-// addCnpgConnectionDetail creates a user-facing connection secret in the claim namespace.
+// addCnpgConnectionDetail creates a user-facing connection secret.
 // It defers creation until the password secret is available in the observed state.
 func addCnpgConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, secretName, username, dbname string, connectionDetailRef *xpv1.SecretReference) error {
+	connectionSecretResourceName := fmt.Sprintf("%s-user-%s", comp.GetName(), username)
+
 	userpassCD, err := svc.GetObservedComposedResourceConnectionDetails(secretName)
 	if err != nil {
 		svc.Log.Error(err, "cannot get user password from secret")
@@ -64,8 +71,17 @@ func addCnpgConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRu
 	}
 
 	// Password not yet available — mark unready and skip; will retry on next reconcile.
+	// If the connection secret already exists in observed state, preserve it to prevent
+	// deletion while the password secret is temporarily unavailable.
 	if len(userpassCD) == 0 {
 		svc.SetDesiredResourceReadiness(secretName, runtime.ResourceUnReady)
+		if svc.ResourceExistsInObserved(connectionSecretResourceName) {
+			existingSecret := &corev1.Secret{}
+			if err := svc.GetObservedKubeObject(existingSecret, connectionSecretResourceName); err == nil {
+				_ = svc.SetDesiredKubeObject(existingSecret, connectionSecretResourceName,
+					runtime.KubeOptionAllowDeletion)
+			}
+		}
 		return nil
 	}
 
@@ -73,10 +89,11 @@ func addCnpgConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRu
 
 	host := string(compositeCD[PostgresqlHost])
 	port := string(compositeCD[PostgresqlPort])
-	url := buildPostgresURL(host, username, string(userpassCD["password"]), dbname)
+	password := string(userpassCD["password"])
+	url := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", username, password, host, port, dbname)
 
 	om := metav1.ObjectMeta{
-		Name:      comp.GetLabels()["crossplane.io/claim-name"] + "-" + username,
+		Name:      comp.GetClaimName() + "-" + username,
 		Namespace: comp.GetClaimNamespace(),
 	}
 	if connectionDetailRef != nil {
@@ -89,7 +106,7 @@ func addCnpgConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRu
 		Type:       corev1.SecretType("connection.crossplane.io/v1alpha1"),
 		Data: map[string][]byte{
 			"POSTGRESQL_USER":     []byte(username),
-			"POSTGRESQL_PASSWORD": userpassCD["password"],
+			"POSTGRESQL_PASSWORD": []byte(password),
 			"POSTGRESQL_DB":       []byte(dbname),
 			"POSTGRESQL_HOST":     []byte(host),
 			"POSTGRESQL_PORT":     []byte(port),
@@ -100,22 +117,11 @@ func addCnpgConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRu
 		},
 	}
 
-	err = svc.SetDesiredKubeObject(userpassSecret, fmt.Sprintf("%s-user-%s", comp.GetName(), username),
-		runtime.KubeOptionAllowDeletion,
-		runtime.KubeOptionDeployOnControlPlane)
+	err = svc.SetDesiredKubeObject(userpassSecret, connectionSecretResourceName, runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		svc.Log.Error(err, "cannot set user connection secret")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set user connection secret: %s", err)))
 	}
 
 	return nil
-}
-
-// buildPostgresURL constructs a postgres:// connection URL.
-// Returns an empty string if the password is empty (not yet available).
-func buildPostgresURL(host, user, password, db string) string {
-	if password == "" {
-		return ""
-	}
-	return "postgres://" + user + ":" + password + "@" + host + ":5432/" + db
 }

@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 )
 
 const (
+	cnpgUserMgmtEmptyFixture         = "vshn-postgres/usermanagement-cnpg/00_cnpg_usermgmt_empty.yaml"
 	cnpgUserMgmtFixture              = "vshn-postgres/usermanagement-cnpg/01_cnpg_usermgmt.yaml"
 	cnpgUserMgmtPasswordReadyFixture = "vshn-postgres/usermanagement-cnpg/02_cnpg_usermgmt_password_ready.yaml"
 )
@@ -75,15 +75,21 @@ func Test_addCnpgConnectionDetail_PasswordReady(t *testing.T) {
 	assert.Equal(t, []byte("testdb"), userSecret.Data["POSTGRESQL_DB"])
 	assert.Equal(t, []byte("localhost"), userSecret.Data["POSTGRESQL_HOST"])
 	assert.Equal(t, []byte("5432"), userSecret.Data["POSTGRESQL_PORT"])
-	assert.Equal(t, []byte("postgres://testuser:testpassword@localhost:5432/testdb"), userSecret.Data["POSTGRESQL_URL"])
+	assert.Equal(t, []byte("postgresql://testuser:testpassword@localhost:5432/testdb"), userSecret.Data["POSTGRESQL_URL"])
 }
 
 func TestUserManagement_EmptyAccess(t *testing.T) {
-	svc := commontest.LoadRuntimeFromFile(t, cnpgUserMgmtFixture)
+	svc := commontest.LoadRuntimeFromFile(t, cnpgUserMgmtEmptyFixture)
 
-	// Composite with no access entries
-	result := UserManagement(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc)
+	comp := &vshnv1.VSHNPostgreSQL{}
+	require.NoError(t, svc.GetObservedComposite(comp))
+	assert.Empty(t, comp.Spec.Parameters.Service.Access)
+
+	result := UserManagement(context.TODO(), comp, svc)
 	assert.Nil(t, result)
+
+	// No password or connection secrets should be created when access is empty
+	assert.Empty(t, svc.GetAllDesired())
 }
 
 func TestUserManagement_SingleUser(t *testing.T) {
@@ -95,7 +101,7 @@ func TestUserManagement_SingleUser(t *testing.T) {
 	assert.Nil(t, result)
 
 	// Password secret KubeObject should exist
-	secretName := runtime.EscapeDNS1123(comp.GetName()+"-userpass-testuser", false)
+	secretName := userpassSecretName(comp.GetName(), "testuser")
 	secret := &corev1.Secret{}
 	assert.NoError(t, svc.GetDesiredKubeObject(secret, secretName))
 
@@ -127,7 +133,7 @@ func Test_addUserManagementValues_Roles(t *testing.T) {
 	assert.Equal(t, true, roles[0]["login"])
 	assert.Equal(t, "present", roles[0]["ensure"])
 	aliceSecret := roles[0]["passwordSecret"].(map[string]any)
-	assert.Equal(t, runtime.EscapeDNS1123(comp.GetName()+"-userpass-alice", false), aliceSecret["name"])
+	assert.Equal(t, userpassSecretName(comp.GetName(), "alice"), aliceSecret["name"])
 
 	// Bob's role
 	assert.Equal(t, "bob", roles[1]["name"])
@@ -173,12 +179,4 @@ func Test_addUserManagementValues_EmptyAccess(t *testing.T) {
 	assert.False(t, hasRoles)
 	_, hasDatabases := values["databases"]
 	assert.False(t, hasDatabases)
-}
-
-func Test_buildPostgresURL(t *testing.T) {
-	assert.Equal(t, "", buildPostgresURL("host", "user", "", "db"), "empty password should return empty string")
-	assert.Equal(t,
-		"postgres://alice:s3cr3t@myhost:5432/mydb",
-		buildPostgresURL("myhost", "alice", "s3cr3t", "mydb"),
-	)
 }

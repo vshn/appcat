@@ -321,8 +321,7 @@ func addUserManagementValues(comp *vshnv1.VSHNPostgreSQL, values map[string]any)
 
 	for _, a := range access {
 		username := *a.User
-		// The secret name must match what common.AddGenericSecret produces for suffix "userpass-"+username.
-		secretName := runtime.EscapeDNS1123(comp.GetName()+"-userpass-"+username, false)
+		secretName := userpassSecretName(comp.GetName(), username)
 
 		roles = append(roles, map[string]any{
 			"name":   username,

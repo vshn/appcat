@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -392,9 +393,14 @@ func defaultGatewayName(svc *runtime.ServiceRuntime) string {
 		return ""
 	}
 
+	names := make([]string, 0, len(mapping))
 	for name := range mapping {
-		return name
+		names = append(names, name)
 	}
+	sort.Strings(names)
 
-	return ""
+	if len(names) == 0 {
+		return ""
+	}
+	return names[0]
 }

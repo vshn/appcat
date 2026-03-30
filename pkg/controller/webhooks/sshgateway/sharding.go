@@ -1,6 +1,9 @@
 package sshgateway
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // GatewaySharding selects the best Gateway for new XListenerSets based on
 // per-gateway listener capacity.
@@ -23,7 +26,7 @@ func NewGatewaySharding(gateways []GatewayKey, capacity int) *GatewaySharding {
 // Otherwise it picks the gateway with the fewest listeners that still has capacity.
 // Returns an error if all gateways are full.
 func (gs *GatewaySharding) SelectGateway(currentRef GatewayKey, newListenerCount int, listenerCounts map[GatewayKey]int) (GatewayKey, bool, error) {
-	if listenerCounts[currentRef]+newListenerCount <= gs.capacity {
+	if slices.Contains(gs.gateways, currentRef) && listenerCounts[currentRef]+newListenerCount <= gs.capacity {
 		return currentRef, false, nil
 	}
 

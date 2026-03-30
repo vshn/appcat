@@ -137,6 +137,25 @@ func TestSelectGateway_LeastListeners(t *testing.T) {
 	assert.Equal(t, GatewayKey{Namespace: "gw-ns", Name: "gw-3"}, selected)
 }
 
+func TestSelectGateway_UnknownCurrentRef_Reassigns(t *testing.T) {
+	gs := newTestSharding([]GatewayKey{
+		{Namespace: "gw-ns", Name: "gw-1"},
+		{Namespace: "gw-ns", Name: "gw-2"},
+	}, 10)
+
+	// currentRef points to a gateway not in the configured list.
+	unknown := GatewayKey{Namespace: "gw-ns", Name: "gw-unknown"}
+	counts := map[GatewayKey]int{
+		{Namespace: "gw-ns", Name: "gw-1"}: 3,
+		{Namespace: "gw-ns", Name: "gw-2"}: 5,
+	}
+
+	selected, changed, err := gs.SelectGateway(unknown, 1, counts)
+	require.NoError(t, err)
+	assert.True(t, changed, "should reassign away from unknown gateway")
+	assert.Equal(t, GatewayKey{Namespace: "gw-ns", Name: "gw-1"}, selected, "should pick least-loaded known gateway")
+}
+
 func TestCountListenersPerGateway(t *testing.T) {
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(

@@ -422,10 +422,16 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
 		}
 
+		dbcheckerImage := svc.Config.Data["busybox_image"]
+
+		if tag := svc.Config.Data["busybox_image_tag"]; tag != "" {
+			dbcheckerImage = fmt.Sprintf("%s:%s", dbcheckerImage, tag)
+		}
+
 		extraInitContainers = []map[string]any{
 			{
 				"name":  "dbchecker",
-				"image": svc.Config.Data["busybox_image"],
+				"image": dbcheckerImage,
 				"command": []string{
 					"sh",
 					"-c",

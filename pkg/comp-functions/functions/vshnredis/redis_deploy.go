@@ -304,9 +304,14 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			return nil, err
 		}
 
+		exporterTag := svc.Config.Data["exporter_tag"]
+		if exporterTag == "" {
+			exporterTag = "1.76.0-debian-12-r0"
+		}
+
 		if err := common.SetNestedObjectValue(values, []string{"metrics", "image"}, map[string]any{
 			"repository": fmt.Sprintf("%s/redis-exporter", imageRepositoryPrefix),
-			"tag":        "1.76.0-debian-12-r0",
+			"tag":        exporterTag,
 		}); err != nil {
 			return nil, err
 		}

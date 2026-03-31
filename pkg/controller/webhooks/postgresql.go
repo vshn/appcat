@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/blang/semver/v4"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -536,5 +537,26 @@ func validatePinImageTag(pinImageTag, majorVersion string) *field.Error {
 		)
 	}
 
+	return nil
+}
+
+// validateNoDowngrade returns an error if newVersion is lower than oldVersion.
+// Both versions are parsed tolerantly, so plain major versions ("15"), semver ("15.9"), and full versions ("15.9.1") are all accepted.
+// If either version is empty or unparseable as an old version, the check is skipped.
+func validateNoDowngrade(oldVersion, newVersion string, path *field.Path) *field.Error {
+	if oldVersion == "" || newVersion == "" {
+		return nil
+	}
+	oldV, err := semver.ParseTolerant(oldVersion)
+	if err != nil {
+		return nil
+	}
+	newV, err := semver.ParseTolerant(newVersion)
+	if err != nil {
+		return field.Invalid(path, newVersion, fmt.Sprintf("invalid version %q", newVersion))
+	}
+	if newV.LT(oldV) {
+		return field.Invalid(path, newVersion, fmt.Sprintf("downgrading from %q to %q is not supported", oldVersion, newVersion))
+	}
 	return nil
 }

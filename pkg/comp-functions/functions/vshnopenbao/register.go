@@ -9,6 +9,10 @@ func init() {
 	runtime.RegisterService[*vshnv1.VSHNOpenBao]("openbao", runtime.Service[*vshnv1.VSHNOpenBao]{
 		Steps: []runtime.Step[*vshnv1.VSHNOpenBao]{
 			{
+				Name:    "create-hcl-cm",
+				Execute: CreateHCLConfigMap,
+			},
+			{
 				Name:    "deploy",
 				Execute: DeployOpenBao,
 			},

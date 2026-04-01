@@ -56,7 +56,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 		{
 			name: "GivenNotInstancenamespace_WhenCheckingAgainstDefault_ThenError",
 			requested: utils.Resources{
-				CPURequests:    *resource.NewMilliQuantity(5000, resource.DecimalSI),
+				CPURequests:    *resource.NewMilliQuantity(5500, resource.DecimalSI),
 				CPULimits:      *resource.NewMilliQuantity(400, resource.DecimalSI),
 				Disk:           *resource.NewQuantity(21474836480, resource.BinarySI),
 				MemoryRequests: *resource.NewQuantity(1811939328, resource.BinarySI),
@@ -87,7 +87,7 @@ func TestQuotaChecker_CheckQuotas(t *testing.T) {
 		{
 			name: "GivenInstancenamespace_WhenCheckingAgainst_ThenError",
 			requested: utils.Resources{
-				CPURequests:    *resource.NewMilliQuantity(5000, resource.DecimalSI),
+				CPURequests:    *resource.NewMilliQuantity(5500, resource.DecimalSI),
 				CPULimits:      *resource.NewMilliQuantity(400, resource.DecimalSI),
 				Disk:           *resource.NewQuantity(21474836480, resource.BinarySI),
 				MemoryRequests: *resource.NewQuantity(1811939328, resource.BinarySI),

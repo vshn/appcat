@@ -290,6 +290,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-vshn-appcat-vshn-io-v1-vshnopenbaoes
+  failurePolicy: Fail
+  name: vshnopenbaoes.vshn.appcat.vshn.io
+  rules:
+  - apiGroups:
+    - vshn.appcat.vshn.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - vshnopenbaoes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-vshn-appcat-vshn-io-v1-vshnredis
   failurePolicy: Fail
   name: vshnredis.vshn.appcat.vshn.io

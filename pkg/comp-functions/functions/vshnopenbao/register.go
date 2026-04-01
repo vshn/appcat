@@ -13,6 +13,10 @@ func init() {
 				Execute: CreateHCLConfigMap,
 			},
 			{
+				Name:    "setup-tls-certificates",
+				Execute: setupTLSCertificates,
+			},
+			{
 				Name:    "deploy",
 				Execute: DeployOpenBao,
 			},

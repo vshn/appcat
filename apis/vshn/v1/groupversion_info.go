@@ -64,5 +64,10 @@ func init() {
 		&VSHNGarageList{},
 		&XVSHNGarage{},
 		&XVSHNGarageList{},
+
+		&VSHNOpenBao{},
+		&VSHNOpenBaoList{},
+		&XVSHNOpenBao{},
+		&XVSHNOpenBaoList{},
 	)
 }

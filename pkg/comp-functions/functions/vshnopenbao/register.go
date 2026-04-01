@@ -9,6 +9,10 @@ func init() {
 	runtime.RegisterService[*vshnv1.VSHNOpenBao]("openbao", runtime.Service[*vshnv1.VSHNOpenBao]{
 		Steps: []runtime.Step[*vshnv1.VSHNOpenBao]{
 			{
+				Name:    "bootstrap-namespace",
+				Execute: BootstrapNamespace,
+			},
+			{
 				Name:    "create-hcl-cm",
 				Execute: CreateHCLConfigMap,
 			},
@@ -17,7 +21,7 @@ func init() {
 				Execute: setupTLSCertificates,
 			},
 			{
-				Name:    "deploy",
+				Name:    "deploy-openbao",
 				Execute: DeployOpenBao,
 			},
 		},

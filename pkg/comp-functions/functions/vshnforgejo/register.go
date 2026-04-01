@@ -22,8 +22,8 @@ func init() {
 				Execute: AddBackup,
 			},
 			{
-				Name:    "billing",
-				Execute: AddBilling,
+				Name:    "ssh",
+				Execute: ConfigureSSHAccess,
 			},
 		},
 	})

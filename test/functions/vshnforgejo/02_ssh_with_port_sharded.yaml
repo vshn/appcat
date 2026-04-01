@@ -10,6 +10,8 @@ input:
   data:
     defaultPlan: mini
     controlNamespace: appcat-control
+    sshGatewayNamespace: gateway-system
+    sshGateways: '{"tcp-gateway":"ssh.example.com","tcp-gateway-2":"ssh2.example.com"}'
     plans: |
       {"large": {"size": {"cpu": "4", "disk": "500Gi", "enabled": true, "memory": "16Gi"}}, "medium": {"size": {"cpu": "2", "disk": "200Gi", "enabled": true, "memory": "8Gi"}}, "mini": {"size": {"cpu": "500m", "disk": "10Gi", "enabled": true, "memory": "2Gi"}}, "small": {"size": {"cpu": "1", "disk": "50Gi", "enabled": true, "memory": "4Gi"}}}
 observed:
@@ -32,6 +34,8 @@ observed:
       spec:
         parameters:
           service:
+            ssh:
+              enabled: true
             forgejoSettings:
               APP_NAME: "My_App"
               config:
@@ -39,15 +43,11 @@ observed:
                   ENABLED: "true"
                 openid:
                   ENABLE_OPENID_SIGNIN: "false"
-                oauth2:
-                  ENABLE: "true"
-                oauth2_client:
-                  ENABLE_AUTO_REGISTRATION: "true"
                 service:
                   REGISTER_EMAIL_CONFIRM: "true"
                 mailer:
                   ENABLED: "true"
-                  PROTOCOL: sendmail # Field should be removed due to bad value
+                  PROTOCOL: sendmail
             fqdn: ["forgejo.example.com"]
             majorVersion: "14.0.0"
         claimRef:
@@ -60,3 +60,34 @@ observed:
         compositionRevisionRef:
           name: VSHNForgejo.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
+  resources:
+    forgejo-unit-test-ssh:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: forgejo-unit-test-ssh
+        status:
+          atProvider:
+            manifest:
+              apiVersion: gateway.networking.x-k8s.io/v1alpha1
+              kind: XListenerSet
+              metadata:
+                name: forgejo-unit-test-ssh
+                namespace: gateway-system
+              spec:
+                parentRef:
+                  group: gateway.networking.k8s.io
+                  kind: Gateway
+                  namespace: gateway-system
+                  name: tcp-gateway-2
+                listeners:
+                  - name: ssh
+                    port: 10005
+                    protocol: TCP
+                    allowedRoutes:
+                      kinds:
+                        - kind: TCPRoute
+                          group: gateway.networking.k8s.io
+                      namespaces:
+                        from: All

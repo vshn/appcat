@@ -7,21 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 )
-
-func getOpenBaoTestComp(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNOpenBao) {
-	svc := commontest.LoadRuntimeFromFile(t, "vshnopenbao/deploy/01_default.yaml")
-
-	comp := &vshnv1.VSHNOpenBao{}
-	err := svc.GetObservedComposite(comp)
-	assert.NoError(t, err)
-
-	return svc, comp
-}
 
 func TestBuildHclConfig(t *testing.T) {
 	svc, comp := getOpenBaoTestComp(t)

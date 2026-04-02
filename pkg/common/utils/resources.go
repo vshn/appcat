@@ -67,12 +67,12 @@ const (
 
 var (
 	// Now all the permutations for the annotations
-	CpuRequestAnnotation       = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPURequests)
-	CpuLimitAnnotation         = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPULimits)
-	MemoryRequestAnnotation    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
-	MemoryLimitAnnotation      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
-	DiskAnnotation             = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
-	StorageClassesAnnotation   = fmt.Sprintf("%s%s.storageclasses", quotaAnnotationPrefix, resourceQuotaNameObjects)
+	CpuRequestAnnotation          = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPURequests)
+	CpuLimitAnnotation            = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPULimits)
+	MemoryRequestAnnotation       = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
+	MemoryLimitAnnotation         = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
+	DiskAnnotation                = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
+	StorageClassesAnnotation      = fmt.Sprintf("%s%s.storageclasses", quotaAnnotationPrefix, resourceQuotaNameObjects)
 	CpuRequestTerminationQuota    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceCPURequests)
 	CpuLimitTerminationQuota      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceCPULimits)
 	MemoryRequestTerminationQuota = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceMemoryRequests)

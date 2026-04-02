@@ -26,6 +26,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/go-version v1.7.0
+	github.com/hashicorp/hcl/v2 v2.21.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/k8up-io/k8up/v2 v2.7.1
@@ -77,12 +78,14 @@ require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
+	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
 	github.com/alecthomas/kong v0.9.0 // indirect
 	github.com/alecthomas/repr v0.4.0 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
+	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.30.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.27.21 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.21 // indirect
@@ -153,6 +156,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/openshift/api v0.0.0-20230213134911-7ba313770556 // indirect
@@ -174,6 +178,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
+	github.com/zclconf/go-cty v1.14.4 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.16 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.16 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.16 // indirect

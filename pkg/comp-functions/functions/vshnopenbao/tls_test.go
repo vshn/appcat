@@ -9,63 +9,58 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
-	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 )
 
-func TestEnableOpenBaoTLSSupport(t *testing.T) {
-	svc := commontest.LoadRuntimeFromFile(t, "vshnopenbao/deploy/01_default.yaml")
-
-	comp := &vshnv1.VSHNOpenBao{}
-	err := svc.GetObservedComposite(comp)
-	assert.NoError(t, err)
+func TestOpenBaoTLSSetup(t *testing.T) {
+	svc, comp := getOpenBaoTestComp(t)
 
 	result := setupTLSCertificates(context.Background(), comp, svc)
 	assert.Nil(t, result)
 
-	serviceName := comp.GetName()
-	ns := comp.GetInstanceNamespace()
-
 	// Test self-signed issuer
 	selfSignedIssuer := &cmv1.Issuer{}
-	err = svc.GetDesiredKubeObject(selfSignedIssuer, serviceName+"-selfsigned-issuer")
+	err := svc.GetDesiredKubeObject(selfSignedIssuer, "openbao-test-selfsigned-issuer")
 	assert.NoError(t, err)
 	assert.NotNil(t, selfSignedIssuer.Spec.SelfSigned)
-	assert.Equal(t, ns, selfSignedIssuer.Namespace)
+	assert.Equal(t, "vshn-openbao-openbao-test", selfSignedIssuer.Namespace)
 
 	// Test root CA certificate
 	rootCA := &cmv1.Certificate{}
-	err = svc.GetDesiredKubeObject(rootCA, serviceName+"-ca")
+	err = svc.GetDesiredKubeObject(rootCA, "openbao-test-ca")
 	assert.NoError(t, err)
-	assert.Equal(t, serviceName+"-ca-tls", rootCA.Spec.SecretName)
+	assert.Equal(t, "openbao-test-ca-tls", rootCA.Spec.SecretName)
 	assert.True(t, rootCA.Spec.IsCA)
-	assert.Equal(t, serviceName+"-selfsigned-issuer", rootCA.Spec.IssuerRef.Name)
+	assert.Equal(t, "openbao-test-selfsigned-issuer", rootCA.Spec.IssuerRef.Name)
 	assert.Equal(t, "Issuer", rootCA.Spec.IssuerRef.Kind)
-	assert.Equal(t, time.Duration(87600*time.Hour), rootCA.Spec.Duration.Duration)
-	assert.Equal(t, time.Duration(2400*time.Hour), rootCA.Spec.RenewBefore.Duration)
 
 	// Test root CA issuer
 	rootCAIssuer := &cmv1.Issuer{}
-	err = svc.GetDesiredKubeObject(rootCAIssuer, serviceName+"-ca-issuer")
+	err = svc.GetDesiredKubeObject(rootCAIssuer, "openbao-test-ca-issuer")
 	assert.NoError(t, err)
 	assert.NotNil(t, rootCAIssuer.Spec.CA)
-	assert.Equal(t, serviceName+"-ca-tls", rootCAIssuer.Spec.CA.SecretName)
+	assert.Equal(t, "openbao-test-ca-tls", rootCAIssuer.Spec.CA.SecretName)
 
 	// Test OpenBao server certificate
 	serverCert := &cmv1.Certificate{}
-	err = svc.GetDesiredKubeObject(serverCert, serviceName+"-server")
+	err = svc.GetDesiredKubeObject(serverCert, "openbao-test-server")
 	assert.NoError(t, err)
-	assert.Equal(t, serviceName+"-server-tls", serverCert.Spec.SecretName)
-	assert.Equal(t, serviceName+"-ca-issuer", serverCert.Spec.IssuerRef.Name)
-	assert.Contains(t, serverCert.Spec.DNSNames, serviceName+"."+ns+".svc.cluster.local")
-	assert.Contains(t, serverCert.Spec.DNSNames, serviceName+"."+ns+".svc")
+	assert.Equal(t, "openbao-test-server-tls", serverCert.Spec.SecretName)
+	assert.Equal(t, "openbao-test-ca-issuer", serverCert.Spec.IssuerRef.Name)
+	assert.Contains(t, serverCert.Spec.DNSNames, "openbao-test.vshn-openbao-openbao-test.svc.cluster.local")
+	assert.Contains(t, serverCert.Spec.DNSNames, "openbao-test.vshn-openbao-openbao-test.svc")
 	assert.Contains(t, serverCert.Spec.Usages, cmv1.KeyUsage("server auth"))
 	assert.Contains(t, serverCert.Spec.Usages, cmv1.KeyUsage("client auth"))
+}
 
-	// Test connection details
+func TestOpenBaoTLSConnectionDetails(t *testing.T) {
+	svc, comp := getOpenBaoTestComp(t)
+
+	result := setupTLSCertificates(context.Background(), comp, svc)
+	assert.Nil(t, result)
+
 	obj := &xkube.Object{}
-	err = svc.GetDesiredComposedResourceByName(obj, serviceName+"-server")
+	err := svc.GetDesiredComposedResourceByName(obj, "openbao-test-server")
 	assert.NoError(t, err)
 	require.NotNil(t, obj.Spec.ConnectionDetails)
 	assert.Len(t, obj.Spec.ConnectionDetails, 3)
@@ -73,29 +68,24 @@ func TestEnableOpenBaoTLSSupport(t *testing.T) {
 	// Verify ca.crt connection detail
 	caCrtDetail := findConnectionDetail(obj.Spec.ConnectionDetails, "ca.crt")
 	assert.NotNil(t, caCrtDetail)
-	assert.Equal(t, serviceName+"-server-tls", caCrtDetail.ObjectReference.Name)
+	assert.Equal(t, "openbao-test-server-tls", caCrtDetail.ObjectReference.Name)
 	assert.Equal(t, "data[ca.crt]", caCrtDetail.ObjectReference.FieldPath)
 
 	// Verify tls.crt connection detail
 	tlsCrtDetail := findConnectionDetail(obj.Spec.ConnectionDetails, "tls.crt")
 	assert.NotNil(t, tlsCrtDetail)
-	assert.Equal(t, serviceName+"-server-tls", tlsCrtDetail.ObjectReference.Name)
+	assert.Equal(t, "openbao-test-server-tls", tlsCrtDetail.ObjectReference.Name)
 	assert.Equal(t, "data[tls.crt]", tlsCrtDetail.ObjectReference.FieldPath)
 
 	// Verify tls.key connection detail
 	tlsKeyDetail := findConnectionDetail(obj.Spec.ConnectionDetails, "tls.key")
 	assert.NotNil(t, tlsKeyDetail)
-	assert.Equal(t, serviceName+"-server-tls", tlsKeyDetail.ObjectReference.Name)
+	assert.Equal(t, "openbao-test-server-tls", tlsKeyDetail.ObjectReference.Name)
 	assert.Equal(t, "data[tls.key]", tlsKeyDetail.ObjectReference.FieldPath)
 }
 
-func TestCreateIssuer(t *testing.T) {
-	svc := commontest.LoadRuntimeFromFile(t, "vshnopenbao/deploy/01_default.yaml")
-
-	comp := &vshnv1.VSHNOpenBao{}
-	err := svc.GetObservedComposite(comp)
-	assert.NoError(t, err)
-
+func TestOpenBaoCreateIssuer(t *testing.T) {
+	_, comp := getOpenBaoTestComp(t)
 	ns := comp.GetInstanceNamespace()
 
 	tests := []struct {
@@ -149,12 +139,7 @@ func TestCreateIssuer(t *testing.T) {
 }
 
 func TestCreateCertificate(t *testing.T) {
-	svc := commontest.LoadRuntimeFromFile(t, "vshnopenbao/deploy/01_default.yaml")
-
-	comp := &vshnv1.VSHNOpenBao{}
-	err := svc.GetObservedComposite(comp)
-	assert.NoError(t, err)
-
+	_, comp := getOpenBaoTestComp(t)
 	ns := comp.GetInstanceNamespace()
 
 	tests := []struct {

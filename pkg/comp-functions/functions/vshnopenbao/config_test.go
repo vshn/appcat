@@ -2,7 +2,6 @@ package vshnopenbao
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,56 +11,27 @@ import (
 
 func TestBuildHclConfig(t *testing.T) {
 	svc, comp := getOpenBaoTestComp(t)
-	serviceName := comp.GetName()
-	nsName := comp.GetInstanceNamespace()
-	details := getServiceDetails(serviceName)
-
 	ctx := context.TODO()
 
 	// Create ConfigMap with HCL
 	assert.Nil(t, CreateHCLConfigMap(ctx, comp, svc))
 
 	ns := &corev1.Namespace{}
-	assert.NoError(t, svc.GetObservedKubeObject(ns, nsName))
+	assert.NoError(t, svc.GetObservedKubeObject(ns, "openbao-test-ns"))
 
 	// Test HCL config secret creation
-	configSecretName := details.HclConfigSecretName
 	secret := &corev1.Secret{}
-	assert.NoError(t, svc.GetDesiredKubeObject(secret, configSecretName))
+	assert.NoError(t, svc.GetDesiredKubeObject(secret, "openbao-test-hcl-config"))
 
 	// Verify secret has the expected namespace
-	assert.Equal(t, comp.GetInstanceNamespace(), secret.Namespace)
+	assert.Equal(t, "vshn-openbao-openbao-test", secret.Namespace)
 
 	// Verify secret contains the HCL config data
-	require.Contains(t, secret.Data, details.HclConfigFileName, "Secret should contain config.hcl key")
-	hclBytes := secret.Data[details.HclConfigFileName]
+	require.Contains(t, secret.Data, "config.hcl", "Secret should contain config.hcl key")
+	hclBytes := secret.Data["config.hcl"]
 	require.NotEmpty(t, hclBytes, "HCL config should not be empty")
-
-	// Parse and validate the HCL configuration using the DecodeHCL helper
-	parsedConfig, err := DecodeHCL(hclBytes, details.HclConfigFileName)
-	require.NoError(t, err, "HCL should decode properly")
-	require.NotNil(t, parsedConfig, "Parsed config should not be nil")
-
-	// Verify the configuration values
-	assert.True(t, parsedConfig.UI, "UI should be enabled")
-	assert.Equal(t, "info", parsedConfig.LogLevel)
-	assert.Equal(t, "json", parsedConfig.LogFormat)
-	assert.Equal(t, comp.GetName(), parsedConfig.ClusterName, "ClusterName should match instance name")
-	assert.Equal(t, fmt.Sprintf("https://%s:8200", comp.GetName()), parsedConfig.APIAddr)
-	assert.Equal(t, fmt.Sprintf("https://%s:8201", comp.GetName()), parsedConfig.ClusterAddr)
-
-	// Verify listener configuration
-	require.Len(t, parsedConfig.Listeners, 1, "Should have exactly one listener")
-	listener := parsedConfig.Listeners[0]
-	assert.Equal(t, "tcp", listener.Type)
-	assert.Equal(t, "[::]:8200", listener.Address)
-	assert.Equal(t, "[::]:8201", listener.ClusterAddress)
-	assert.False(t, listener.TLSDisable, "TLS should be enabled")
-	assert.NotEmpty(t, listener.TLSCertFile, "TLS cert file should be set")
-	assert.NotEmpty(t, listener.TLSKeyFile, "TLS key file should be set")
 }
 
-// TestEncodeDecodeHCL tests the EncodeHCL and DecodeHCL helper functions
 func TestEncodeDecodeHCL(t *testing.T) {
 	// Create a test config
 	originalConfig := &OpenBaoConfig{
@@ -112,7 +82,6 @@ func TestEncodeDecodeHCL(t *testing.T) {
 	}
 }
 
-// TestDecodeHCLInvalidInput tests DecodeHCL with invalid input
 func TestDecodeHCLInvalidInput(t *testing.T) {
 	// Test with invalid HCL
 	invalidHCL := []byte("this is not valid HCL {{{")

@@ -15,13 +15,14 @@ func TestDeployOpenBao(t *testing.T) {
 
 	ctx := context.TODO()
 
+	assert.Nil(t, BootstrapNamespace(ctx, comp, svc))
 	assert.Nil(t, DeployOpenBao(ctx, comp, svc))
 
 	ns := &corev1.Namespace{}
-	assert.NoError(t, svc.GetObservedKubeObject(ns, comp.Name+"-ns"))
+	assert.NoError(t, svc.GetObservedKubeObject(ns, "openbao-test-ns"))
 
 	r := &xhelmbeta1.Release{}
-	assert.NoError(t, svc.GetDesiredComposedResourceByName(r, comp.Name+"-release"))
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(r, "openbao-test-release"))
 
 	var values map[string]interface{}
 	assert.NoError(t, json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values))

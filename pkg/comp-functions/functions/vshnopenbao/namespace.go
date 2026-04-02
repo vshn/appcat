@@ -10,6 +10,8 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
+const namespaceSuffix = "-ns"
+
 func BootstrapNamespace(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	serviceName := comp.GetName()
 
@@ -19,7 +21,7 @@ func BootstrapNamespace(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runt
 	}
 
 	svc.Log.Info("Bootstrapping instance namespace and rbac rules")
-	err = common.BootstrapInstanceNs(ctx, comp, serviceName, comp.GetName()+"-ns", svc)
+	err = common.BootstrapInstanceNs(ctx, comp, serviceName, serviceName+namespaceSuffix, svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot bootstrap instance namespace: %s", err))
 	}

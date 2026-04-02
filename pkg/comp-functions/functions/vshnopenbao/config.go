@@ -14,6 +14,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	hclConfigApiPort           = "8200"
+	hclConfigClusterPort       = "8201"
+	hclConfigFileName          = "config.hcl"
+	hclConfigVolumeName        = "userconfig-openbao-storage-config"
+	hclConfigTlsVolumeName     = "userconfig-openbao-tls-secret"
+	hclConfigMountPath         = "/openbao/userconfig/openbao-hcl-config"
+	hclConfigTlsCertsMountPath = "/openbao/userconfig/openbao-tls"
+	hclConfigRaftDataPath      = "/openbao/data"
+	hclConfigSecretSuffix      = "-hcl-config"
+)
+
 type OpenBaoConfig struct {
 	UI          bool            `hcl:"ui,optional"`
 	LogLevel    string          `hcl:"log_level,optional"`
@@ -47,29 +59,29 @@ type RetryJoin struct {
 func CreateHCLConfigMap(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	serviceName := comp.GetName()
 	ns := comp.GetInstanceNamespace()
-	details := getServiceDetails(serviceName)
+	hclConfigSecretName := serviceName + hclConfigSecretSuffix
 
 	config := &OpenBaoConfig{
 		UI:          true,
 		LogLevel:    "info",
 		LogFormat:   "json",
 		ClusterName: serviceName,
-		APIAddr:     fmt.Sprintf("https://%s:%s", serviceName, details.ApiPort),
-		ClusterAddr: fmt.Sprintf("https://%s:%s", serviceName, details.ClusterPort),
+		APIAddr:     fmt.Sprintf("https://%s:%s", serviceName, hclConfigApiPort),
+		ClusterAddr: fmt.Sprintf("https://%s:%s", serviceName, hclConfigClusterPort),
 		Listeners: []ListenerBlock{
 			{
 				Type:           "tcp",
-				Address:        fmt.Sprintf("[::]:%s", details.ApiPort),
-				ClusterAddress: fmt.Sprintf("[::]:%s", details.ClusterPort),
+				Address:        fmt.Sprintf("[::]:%s", hclConfigApiPort),
+				ClusterAddress: fmt.Sprintf("[::]:%s", hclConfigClusterPort),
 				TLSDisable:     false,
-				TLSCertFile:    fmt.Sprintf("%s/tls.crt", details.TlsCertsMountPath),
-				TLSKeyFile:     fmt.Sprintf("%s/tls.key", details.TlsCertsMountPath),
+				TLSCertFile:    hclConfigTlsCertsMountPath + "/tls.crt",
+				TLSKeyFile:     hclConfigTlsCertsMountPath + "/tls.key",
 			},
 		},
 		Storage: []StorageBlock{
 			{
 				Type: "raft",
-				Path: details.RaftDataPath,
+				Path: hclConfigRaftDataPath,
 			},
 		},
 	}
@@ -78,17 +90,17 @@ func CreateHCLConfigMap(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runt
 
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      details.HclConfigSecretName,
+			Name:      hclConfigSecretName,
 			Namespace: ns,
 		},
 		Data: map[string][]byte{
-			details.HclConfigFileName: hclBytes,
+			hclConfigFileName: hclBytes,
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(secret, details.HclConfigSecretName)
+	err := svc.SetDesiredKubeObject(secret, hclConfigSecretName)
 	if err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot add %s secret object: %w", details.HclConfigSecretName, err).Error())
+		return runtime.NewWarningResult(fmt.Errorf("cannot add %s secret object: %w", hclConfigSecretName, err).Error())
 	}
 
 	return nil

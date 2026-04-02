@@ -18,7 +18,6 @@ import (
 
 func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	serviceName := comp.GetName()
-	details := getServiceDetails(serviceName)
 
 	// The Components Appcat defines plans (how much CPU, memory etc)
 	// The XR object (created by user) defines only the plan.
@@ -70,32 +69,32 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 				"enabled": true,
 				"size":    disk,
 			},
-			"extraArgs": fmt.Sprintf("-config=%s/%s", details.HclConfigMountPath, details.HclConfigFileName),
+			"extraArgs": fmt.Sprintf("-config=%s/%s", hclConfigMountPath, hclConfigFileName),
 			"volumes": []map[string]any{
 				{
-					"name": details.HclVolumeName,
+					"name": hclConfigVolumeName,
 					"secret": map[string]any{
 						"defaultMode": 420,
-						"secretName":  details.HclConfigSecretName,
+						"secretName":  serviceName + hclConfigSecretSuffix,
 					},
 				},
 				{
-					"name": details.TlsVolumeName,
+					"name": hclConfigTlsVolumeName,
 					"secret": map[string]any{
 						"defaultMode": 420,
-						"secretName":  details.ServerCertSecretName,
+						"secretName":  serviceName + tlsServerCertSecretSuffix,
 					},
 				},
 			},
 			"volumeMounts": []map[string]any{
 				{
-					"mountPath": details.HclConfigMountPath,
-					"name":      details.HclVolumeName,
+					"mountPath": hclConfigMountPath,
+					"name":      hclConfigVolumeName,
 					"readOnly":  true,
 				},
 				{
-					"mountPath": details.TlsCertsMountPath,
-					"name":      details.TlsVolumeName,
+					"mountPath": hclConfigTlsCertsMountPath,
+					"name":      hclConfigTlsVolumeName,
 					"readOnly":  true,
 				},
 			},
@@ -114,6 +113,7 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 		Spec: xhelmbeta1.ReleaseSpec{
 			ForProvider: xhelmbeta1.ReleaseParameters{
 				Chart: xhelmbeta1.ChartSpec{
+					// TODO set default values. Test what happens if not set
 					Repository: svc.Config.Data["chartRepository"],
 					Version:    svc.Config.Data["chartVersion"],
 					Name:       "openbao",
@@ -130,7 +130,7 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 					Name: "helm",
 				},
 				WriteConnectionSecretToReference: &xpv1.SecretReference{
-					Name:      comp.GetName() + "-connection",
+					Name:      serviceName + "-connection",
 					Namespace: comp.GetInstanceNamespace(),
 				},
 			},

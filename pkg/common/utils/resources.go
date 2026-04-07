@@ -67,25 +67,29 @@ const (
 
 var (
 	// Now all the permutations for the annotations
-	CpuRequestAnnotation       = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPURequests)
-	CpuLimitAnnotation         = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPULimits)
-	MemoryRequestAnnotation    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
-	MemoryLimitAnnotation      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
-	DiskAnnotation             = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
-	StorageClassesAnnotation   = fmt.Sprintf("%s%s.storageclasses", quotaAnnotationPrefix, resourceQuotaNameObjects)
-	CpuRequestTerminationQuota = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceCPURequests)
+	CpuRequestAnnotation          = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPURequests)
+	CpuLimitAnnotation            = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceCPULimits)
+	MemoryRequestAnnotation       = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryRequests)
+	MemoryLimitAnnotation         = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute, quotaResourceMemoryLimits)
+	DiskAnnotation                = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameObjects, quotaResourceDisk)
+	StorageClassesAnnotation      = fmt.Sprintf("%s%s.storageclasses", quotaAnnotationPrefix, resourceQuotaNameObjects)
+	CpuRequestTerminationQuota    = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceCPURequests)
+	CpuLimitTerminationQuota      = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceCPULimits)
+	MemoryRequestTerminationQuota = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceMemoryRequests)
+	MemoryLimitTerminationQuota   = fmt.Sprintf("%s%s.%s", quotaAnnotationPrefix, resourceQuotaNameCompute+"-terminating", quotaResourceMemoryLimits)
 
 	ErrNSLimitReached = fmt.Errorf("creating a new instance will violate the namespace quota." +
 		"Please contact VSHN support to increase the amounts of namespaces you can create.")
 
-	// These defaults allow up to a PostgreSQL or Redis standard-8 with one replica.
+	// These defaults allow up to a PostgreSQL or Redis standard-8 with one replica
+	// plus headroom for jobs and maintenance. Agreed with aldebaran: 22Gi memory, 5 CPU.
 
-	// defaultCPURequests 2* standard-8 will request 4 CPUs. This default has 500m as spare for jobs
-	DefaultCPURequests = resource.NewMilliQuantity(4500, resource.DecimalSI)
+	// defaultCPURequests 5 CPU total budget for the namespace
+	DefaultCPURequests = resource.NewMilliQuantity(5000, resource.DecimalSI)
 	// defaultCPULimit by default same as DefaultCPURequests
 	DefaultCPULimits = DefaultCPURequests
-	// defaultMemoryRequests 2* standard-8 will request 16Gb. This default has 500mb as spare for jobs
-	DefaultMemoryRequests = resource.NewQuantity(17301504000, resource.BinarySI)
+	// defaultMemoryRequests 22Gi total memory budget for the namespace
+	DefaultMemoryRequests = resource.NewQuantity(23622320128, resource.BinarySI)
 	// defaultMemoryLimits same as DefaultMemoryRequests
 	DefaultMemoryLimits = DefaultMemoryRequests
 	// defaultDiskRequests should be plenty for a large amount of replicas for any service

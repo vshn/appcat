@@ -181,7 +181,7 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 
 	// Memory Limits
 	pgInvalid = pgOrig.DeepCopy()
-	pgInvalid.Spec.Parameters.Size.Memory = "25Gi"
+	pgInvalid.Spec.Parameters.Size.Memory = "30Gi"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 

@@ -72,13 +72,13 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	// When quota breached
 	// CPU Requests
 	keycloakInvalid := keycloakOrig.DeepCopy()
-	keycloakInvalid.Spec.Parameters.Size.Requests.CPU = "5000m"
+	keycloakInvalid.Spec.Parameters.Size.Requests.CPU = "6000m"
 	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 
 	// CPU Limit
 	keycloakInvalid = keycloakOrig.DeepCopy()
-	keycloakInvalid.Spec.Parameters.Size.CPU = "5000m"
+	keycloakInvalid.Spec.Parameters.Size.CPU = "6000m"
 	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
 

@@ -181,7 +181,7 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 
 	// Memory Limits
 	pgInvalid = pgOrig.DeepCopy()
-	pgInvalid.Spec.Parameters.Size.Memory = "25Gi"
+	pgInvalid.Spec.Parameters.Size.Memory = "30Gi"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 
@@ -1176,3 +1176,148 @@ func TestValidateCNPGExtensionFields(t *testing.T) {
 // 		})
 // 	}
 // }
+
+func TestValidateMajorVersionUpgrade(t *testing.T) {
+	stackgresRef := "vshnpostgres.vshn.appcat.vshn.io"
+
+	tests := []struct {
+		name        string
+		newPg       *vshnv1.VSHNPostgreSQL
+		oldPg       *vshnv1.VSHNPostgreSQL
+		wantErr     bool
+		errContains string
+	}{
+		// --- StackGres: any version change blocked ---
+		{
+			name: "GivenStackGres_SameVersion_ThenNoError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: stackgresRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "15"}},
+				},
+			},
+			oldPg: &vshnv1.VSHNPostgreSQL{
+				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GivenStackGres_MajorUpgrade_ThenError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: stackgresRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "16"}},
+				},
+			},
+			oldPg: &vshnv1.VSHNPostgreSQL{
+				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
+			},
+			wantErr:     true,
+			errContains: "major version upgrade is not allowed",
+		},
+		{
+			name: "GivenStackGres_MajorDowngrade_ThenError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: stackgresRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "14"}},
+				},
+			},
+			oldPg: &vshnv1.VSHNPostgreSQL{
+				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
+			},
+			wantErr:     true,
+			errContains: "major version upgrade is not allowed",
+		},
+		// --- CNPG: upgrades allowed, downgrades blocked ---
+		{
+			name: "GivenCNPG_SameVersion_ThenNoError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "15"}},
+				},
+			},
+			oldPg: &vshnv1.VSHNPostgreSQL{
+				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GivenCNPG_MajorUpgrade_ThenNoError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "16"}},
+				},
+			},
+			oldPg: &vshnv1.VSHNPostgreSQL{
+				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GivenCNPG_MajorDowngrade_ThenError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "14"}},
+				},
+			},
+			oldPg: &vshnv1.VSHNPostgreSQL{
+				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
+			},
+			wantErr:     true,
+			errContains: "downgrading from",
+		},
+		{
+			name: "GivenCNPG_FullCurrentVersion_MajorUpgrade_ThenNoError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "16"}},
+				},
+			},
+			oldPg: &vshnv1.VSHNPostgreSQL{
+				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15.9"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GivenCNPG_FullCurrentVersion_MajorDowngrade_ThenError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "14"}},
+				},
+			},
+			oldPg: &vshnv1.VSHNPostgreSQL{
+				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15.9"},
+			},
+			wantErr:     true,
+			errContains: "downgrading from",
+		},
+		{
+			name: "GivenCNPG_NoCurrentVersion_ThenNoError",
+			newPg: &vshnv1.VSHNPostgreSQL{
+				Spec: vshnv1.VSHNPostgreSQLSpec{
+					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "16"}},
+				},
+			},
+			oldPg:   &vshnv1.VSHNPostgreSQL{},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validateMajorVersionUpgrade(tt.newPg, tt.oldPg)
+			if tt.wantErr {
+				assert.NotEmpty(t, errs)
+				assert.Contains(t, errs.ToAggregate().Error(), tt.errContains)
+			} else {
+				assert.Empty(t, errs)
+			}
+		})
+	}
+}

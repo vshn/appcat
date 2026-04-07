@@ -187,7 +187,22 @@ func AddInitalNamespaceQuotas(ctx context.Context, ns *corev1.Namespace, s *util
 	}
 
 	if _, ok := annotations[utils.CpuRequestTerminationQuota]; !ok {
-		annotations[utils.CpuRequestTerminationQuota] = "1000m"
+		annotations[utils.CpuRequestTerminationQuota] = r.CPURequests.String()
+		added = true
+	}
+
+	if _, ok := annotations[utils.CpuLimitTerminationQuota]; !ok {
+		annotations[utils.CpuLimitTerminationQuota] = r.CPULimits.String()
+		added = true
+	}
+
+	if _, ok := annotations[utils.MemoryRequestTerminationQuota]; !ok {
+		annotations[utils.MemoryRequestTerminationQuota] = r.MemoryRequests.String()
+		added = true
+	}
+
+	if _, ok := annotations[utils.MemoryLimitTerminationQuota]; !ok {
+		annotations[utils.MemoryLimitTerminationQuota] = r.MemoryLimits.String()
 		added = true
 	}
 

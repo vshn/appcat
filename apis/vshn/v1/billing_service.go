@@ -7,6 +7,11 @@ import (
 const (
 	// BillingServiceFinalizer is the finalizer used to protect BillingService resources from deletion
 	BillingServiceFinalizer = "billing.appcat.vshn.io/delete-protection"
+
+	// InstanceCreationTimestampAnnotation is the annotation key stamped on BillingService CRs.
+	// It holds the RFC3339 creation timestamp of the originating composite/claim,
+	// set by the comp-function and consumed by the billing controller.
+	InstanceCreationTimestampAnnotation = "appcat.vshn.io/instance-creation-timestamp"
 )
 
 // +kubebuilder:object:root=true
@@ -49,18 +54,18 @@ type ItemSpec struct {
 	// ItemGroupDescription describes the billing item group
 	ItemGroupDescription string `json:"itemGroupDescription,omitempty"`
 
-	// Unit defines the billing unit type for this product
-	Unit string `json:"unit,omitempty"`
-
 	// Value represents the billable metric for this product
 	// Can be: replica count, disk size (e.g., "50Gi"), percentage, etc.
 	Value string `json:"value"`
+
+	// InstanceID uniquely identifies this product event in Odoo. Format: <composite-name>-<shortSHA(productID)>
+	InstanceID string `json:"instanceID,omitempty"`
 }
 
 // OdooSpec defines Odoo-specific billing configuration
 type OdooSpec struct {
-	// InstanceID uniquely identifies the service instance in Odoo
-	InstanceID string `json:"instanceID"`
+	// ServiceID identifies the service instance in Odoo
+	ServiceID string `json:"serviceID"`
 
 	// SalesOrderID identifies the sales order in Odoo
 	SalesOrderID string `json:"salesOrderID,omitempty"`
@@ -92,12 +97,12 @@ type BillingEventStatus struct {
 	// ProductID identifies the product in the billing system
 	ProductID string `json:"productId"`
 
+	// InstanceID uniquely identifies this product event in Odoo. Format: <composite-name>-<shortSHA(productID)>
+	InstanceID string `json:"instanceID,omitempty"`
+
 	// Value represents the billable metric at the time of the event
 	// Generic field supporting replica count, disk size, percentages, etc.
 	Value string `json:"value"`
-
-	// Unit defines the billing unit type for this product
-	Unit string `json:"unit,omitempty"`
 
 	// ItemDescription is a human-readable description of the billing item
 	ItemDescription string `json:"itemDescription,omitempty"`

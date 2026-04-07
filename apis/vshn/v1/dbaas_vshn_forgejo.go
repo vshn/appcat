@@ -14,6 +14,7 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnforgejoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnforgejoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnforgejoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.security.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnforgejoes.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.ssh.default={})"
 
 // +kubebuilder:object:root=true
 
@@ -106,6 +107,17 @@ type VSHNForgejoServiceSpec struct {
 	// Multiple versions are supported. Defaults to 14.0.0 if not set.
 	// +kubebuilder:default="14.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
+
+	// SSH contains settings for SSH access to the Forgejo instance.
+	SSH VSHNForgejoSSHSpec `json:"ssh,omitempty"`
+}
+
+// VSHNForgejoSSHSpec defines SSH access settings for a Forgejo instance.
+type VSHNForgejoSSHSpec struct {
+	// Enabled controls whether SSH access is available for this instance.
+	// Requires the cluster to have a TCP gateway configured.
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // +kubebuilder:validation:Optional
@@ -180,6 +192,8 @@ type VSHNForgejoStatus struct {
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
 	// CurrentReleaseTag contains the currently deployed image tag.
 	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
+	// SSHPort contains the allocated SSH gateway port for this instance.
+	SSHPort int32 `json:"sshPort,omitempty"`
 
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
@@ -211,6 +225,10 @@ func (v *VSHNForgejo) GetInitialMaintenanceCompletedAt() string {
 func (v *VSHNForgejo) SetInitialMaintenanceStatus(completedAt string, success bool) {
 	v.Status.InitialMaintenance.CompletedAt = &completedAt
 	v.Status.InitialMaintenance.Success = &success
+}
+
+func (v *VSHNForgejo) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
 }
 
 // +kubebuilder:object:generate=true

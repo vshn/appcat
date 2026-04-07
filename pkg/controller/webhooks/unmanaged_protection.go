@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// UnamanagedHandler implements the admission UnmanagedHandler for unmanaged objects (PVC, services, etc).
-type UnamanagedHandler struct {
+// UnmanagedHandler implements the admission UnmanagedHandler for unmanaged objects (PVC, services, etc).
+type UnmanagedHandler struct {
 	client             client.Client
 	controlPlaneClient client.Client
 	log                logr.Logger
@@ -30,7 +30,7 @@ func SetupUnmanagedProtectionWebhookWithManager(mgr ctrl.Manager) error {
 	}
 
 	mgr.GetWebhookServer().Register("/unmanaged-deletion-protection",
-		&webhook.Admission{Handler: &UnamanagedHandler{
+		&webhook.Admission{Handler: &UnmanagedHandler{
 			client:             mgr.GetClient(),
 			controlPlaneClient: cpClient,
 			log:                mgr.GetLogger().WithName("webhook").WithName("unmanaged"),
@@ -38,7 +38,7 @@ func SetupUnmanagedProtectionWebhookWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func (u *UnamanagedHandler) Handle(ctx context.Context, request admission.Request) admission.Response {
+func (u *UnmanagedHandler) Handle(ctx context.Context, request admission.Request) admission.Response {
 
 	switch request.Operation {
 	case admissionv1.Delete:

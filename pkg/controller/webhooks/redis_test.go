@@ -72,13 +72,13 @@ func TestSetupRedisWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	// When quota breached
 	// CPU Requests
 	redisInvalid = redisOrig.DeepCopy()
-	redisInvalid.Spec.Parameters.Size.CPURequests = "5000m"
+	redisInvalid.Spec.Parameters.Size.CPURequests = "6000m"
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
 
 	// CPU Limit
 	redisInvalid = redisOrig.DeepCopy()
-	redisInvalid.Spec.Parameters.Size.CPULimits = "5000m"
+	redisInvalid.Spec.Parameters.Size.CPULimits = "6000m"
 	_, err = handler.ValidateCreate(ctx, redisInvalid)
 	assert.Error(t, err)
 

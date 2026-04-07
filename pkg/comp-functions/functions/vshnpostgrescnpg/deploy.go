@@ -298,7 +298,64 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		return map[string]any{}, fmt.Errorf("cannot set resources: %w", err)
 	}
 
+	// User management: inject roles into Cluster spec and databases as separate CRDs
+	if err := addUserManagementValues(comp, values); err != nil {
+		return map[string]any{}, fmt.Errorf("cannot add user management values: %w", err)
+	}
+
 	return values, nil
+}
+
+// addUserManagementValues injects managed roles (into the Cluster spec) and databases
+// (as postgresql.cnpg.io/v1 Database CRDs via the chart's databases.yaml template)
+// into the Helm values, based on the access list in the composite spec.
+func addUserManagementValues(comp *vshnv1.VSHNPostgreSQL, values map[string]any) error {
+	access := comp.Spec.Parameters.Service.Access
+	if len(access) == 0 {
+		return nil
+	}
+
+	roles := []map[string]any{}
+	seenDatabases := map[string]bool{}
+	databases := []map[string]any{}
+
+	for _, a := range access {
+		username := *a.User
+		secretName := userpassSecretName(comp.GetName(), username)
+
+		roles = append(roles, map[string]any{
+			"name":   username,
+			"login":  true,
+			"ensure": "present",
+			"passwordSecret": map[string]any{
+				"name": secretName,
+			},
+		})
+
+		dbname := username
+		if a.Database != nil {
+			dbname = *a.Database
+		}
+
+		if !seenDatabases[dbname] {
+			seenDatabases[dbname] = true
+			databases = append(databases, map[string]any{
+				"name":                  dbname,
+				"owner":                 username,
+				"ensure":                "present",
+				"databaseReclaimPolicy": "retain",
+			})
+		}
+	}
+
+	if err := common.SetNestedObjectValue(values, []string{"cluster", "roles"}, roles); err != nil {
+		return fmt.Errorf("cannot set cluster roles: %w", err)
+	}
+	if err := common.SetNestedObjectValue(values, []string{"databases"}, databases); err != nil {
+		return fmt.Errorf("cannot set databases: %w", err)
+	}
+
+	return nil
 }
 
 // Set compute resources in the values map

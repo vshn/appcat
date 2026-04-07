@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -12,6 +13,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/controller/crossplane_metrics"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
+	"github.com/vshn/appcat/v4/pkg/controller/webhooks/sshgateway"
 	"github.com/vshn/appcat/v4/pkg/odoo"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
@@ -35,6 +37,12 @@ type controller struct {
 	enableBilling           bool
 	enableCrossplaneMetrics bool
 	certDir                 string
+	webhookPort             int
+	sshPortRangeStart       int32
+	sshPortRangeEnd         int32
+	sshGatewayCapacity      int
+	sshGatewayNamespace     string
+	sshGateways             string
 }
 
 var c = controller{
@@ -57,10 +65,16 @@ func init() {
 	ControllerCMD.Flags().BoolVar(&c.enableAppcatWebhooks, "appcat-webhooks", true, "Disable the appcat validation webhooks")
 	ControllerCMD.Flags().BoolVar(&c.enableProviderWebhooks, "provider-webhooks", true, "Disable the provider validation webhooks")
 	ControllerCMD.Flags().StringVar(&c.certDir, "certdir", "/etc/webhook/certs", "Set the webhook certificate directory")
+	ControllerCMD.Flags().IntVar(&c.webhookPort, "webhook-port", 9443, "Set the webhook server port")
 	ControllerCMD.Flags().BoolVar(&c.enableQuotas, "quotas", false, "Enable the quota webhooks, is only active if webhooks is also true")
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
 	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", true, "Disable billing")
 	ControllerCMD.Flags().BoolVar(&c.enableCrossplaneMetrics, "crossplane-metrics", false, "Enable Crossplane resource metrics collector")
+	ControllerCMD.Flags().StringVar(&c.sshGatewayNamespace, "ssh-gateway-namespace", "", "Namespace of the SSH gateways and port-allocation leases")
+	ControllerCMD.Flags().StringVar(&c.sshGateways, "ssh-gateways", "", "Comma-separated names of SSH gateways (enables port allocator when non-empty)")
+	ControllerCMD.Flags().Int32Var(&c.sshPortRangeStart, "ssh-port-range-start", 10000, "Start of the SSH TCP port allocation range")
+	ControllerCMD.Flags().Int32Var(&c.sshPortRangeEnd, "ssh-port-range-end", 10999, "End of the SSH TCP port allocation range")
+	ControllerCMD.Flags().IntVar(&c.sshGatewayCapacity, "ssh-gateway-capacity", 0, "Maximum listeners per Gateway for sharding. The default value 0 means no sharding is enabled")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
 		viper.Set("PLANS_NAMESPACE", "syn-appcat")
@@ -81,7 +95,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 			BindAddress: c.metricsAddr,
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
-			Port:    9443,
+			Port:    c.webhookPort,
 			CertDir: c.certDir,
 		}),
 	})
@@ -132,12 +146,20 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	}
 
 	if c.enableWebhooks {
-
 		if !viper.IsSet("PLANS_NAMESPACE") && c.enableQuotas {
 			return fmt.Errorf("PLANS_NAMESPACE env variable needs to be set for quota support")
 		}
 
 		err := setupWebhooks(mgr, c.enableQuotas, c.enableAppcatWebhooks, c.enableProviderWebhooks)
+		if err != nil {
+			return err
+		}
+	}
+
+	if c.sshGateways != "" && c.sshGatewayNamespace != "" {
+		gatewayNames := strings.Split(c.sshGateways, ",")
+
+		err = sshgateway.SetupXListenerSetWebhookWithManager(mgr, c.sshPortRangeStart, c.sshPortRangeEnd, c.sshGatewayCapacity, c.sshGatewayNamespace, gatewayNames)
 		if err != nil {
 			return err
 		}

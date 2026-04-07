@@ -1,0 +1,36 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: xfn-config
+  data:
+    clusterName: "c-managed-test"
+    salesOrder: "SO-99999"
+    billingEnabled: "true"
+    ignoreNamespaceForBilling: "prod-ns"
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNNextcloud
+      metadata:
+        creationTimestamp: "2024-07-08T16:30:28Z"
+        labels:
+          crossplane.io/claim-name: my-nc
+          crossplane.io/claim-namespace: prod-ns
+        name: nc-xyz
+      spec:
+        parameters:
+          instances: 1
+          service:
+            fqdn:
+              - nc.example.com
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNNextcloud
+          name: my-nc
+          namespace: prod-ns
+        compositionRef:
+          name: vshnnextcloud.vshn.appcat.vshn.io
+  resources: {}

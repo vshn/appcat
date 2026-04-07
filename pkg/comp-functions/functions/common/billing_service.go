@@ -2,8 +2,12 @@ package common
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -62,13 +66,6 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	namespace := comp.GetClaimNamespace()
 	service := comp.GetServiceName()
 
-	// Get unitID from config (for default item if no items specified)
-	unitID := svc.Config.Data["billingUnitID"]
-	if unitID == "" {
-		log.Error(fmt.Errorf("missing billing unitID"), "UnitID missing in composition")
-		return runtime.NewWarningResult(fmt.Sprintf("no billing unit id set in composition for %s", comp.GetName()))
-	}
-
 	// Get clusterName from config
 	clusterName := svc.Config.Data["clusterName"]
 	if clusterName == "" {
@@ -90,32 +87,96 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		isAPPUiOCloud = true
 	}
 
+	// salesOrderID annotation overrides config-level salesOrder before any description computation
+	prefix := svc.Config.Data["servalaBillingAnnotationPrefix"]
+	if prefix != "" {
+		if v := comp.GetAnnotations()[prefix+"/salesOrderID"]; v != "" {
+			salesOrder = v
+			isAPPUiOCloud = false // explicit sales order — not APPUiO Cloud billing
+		}
+	}
+
 	// Prepare ItemGroupDescription and ItemDescription for all items
 	itemGroupDescription := claim
 	itemDescription := GetItemDescription(isAPPUiOCloud, clusterName, namespace)
 
-	// Populate missing attributes with default values in case the attributes are missing
-	items := opts.Items
-	for i := range items {
-		if items[i].ItemDescription == "" {
-			items[i].ItemDescription = itemDescription
-		}
-		if items[i].ItemGroupDescription == "" {
-			items[i].ItemGroupDescription = itemGroupDescription
-		}
-		if items[i].Unit == "" {
-			items[i].Unit = unitID
+	// For Servala deployments (prefix set), the annotation is the sole source of truth
+	// for items — opts.Items are skipped to avoid duplicating addon items already
+	// declared in the annotation. For non-Servala, include caller-supplied items.
+	var items []vshnv1.ItemSpec
+	if prefix == "" {
+		items = opts.Items
+		for i := range items {
+			if items[i].ItemDescription == "" {
+				items[i].ItemDescription = itemDescription
+			}
+			if items[i].ItemGroupDescription == "" {
+				items[i].ItemGroupDescription = itemGroupDescription
+			}
+			if items[i].InstanceID == "" {
+				items[i].InstanceID = comp.GetName() + "-" + shortSHA(items[i].ProductID)
+			}
 		}
 	}
 
-	// Create default service item and add to any other items that come from each service
-	items = append(items, vshnv1.ItemSpec{
-		ProductID:            getProductID(comp, service),
-		Value:                strconv.Itoa(comp.GetInstances()),
-		Unit:                 unitID,
-		ItemDescription:      itemDescription,
-		ItemGroupDescription: itemGroupDescription,
-	})
+	// Pre-fetch the existing billing service kube object before annotation checks.
+	// This allows us to preserve it in the desired state even when annotation validation fails,
+	// preventing Crossplane from garbage-collecting it.
+	observedResourceName := comp.GetName() + opts.ResourceNameSuffix
+	kubeObj := &xkube.Object{}
+	observedErr := svc.GetObservedComposedResource(kubeObj, observedResourceName)
+	if observedErr != nil && observedErr != runtime.ErrNotFound {
+		log.Error(observedErr, "cannot get billing service kube object, treating as not found", "service", comp.GetName())
+		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
+	}
+
+	// preserveExistingAndWarn re-adds the existing billing service to the desired state (if it
+	// exists) before returning a warning. This prevents Crossplane from garbage-collecting the
+	// billing service when annotation validation fails.
+	preserveExistingAndWarn := func(msg string) *xfnproto.Result {
+		if observedErr == nil {
+			if err := svc.SetDesiredComposedResourceWithName(kubeObj, observedResourceName); err != nil {
+				log.Error(err, "cannot preserve existing billing service", "service", comp.GetName())
+			}
+		}
+		return runtime.NewWarningResult(msg)
+	}
+
+	if prefix != "" {
+		raw := comp.GetAnnotations()[prefix+"/items"]
+		if raw == "" {
+			return preserveExistingAndWarn(fmt.Sprintf("%s/items annotation missing on composite %s", prefix, comp.GetName()))
+		}
+		var payload struct {
+			Items []vshnv1.ItemSpec `json:"items"`
+		}
+		if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+			return preserveExistingAndWarn(fmt.Sprintf("cannot parse %s/items on %s: %v", prefix, comp.GetName(), err))
+		}
+		if len(payload.Items) == 0 {
+			return preserveExistingAndWarn(fmt.Sprintf("%s/items is empty on composite %s", prefix, comp.GetName()))
+		}
+		for _, ai := range payload.Items {
+			if ai.ProductID == "" {
+				return preserveExistingAndWarn(fmt.Sprintf("%s/items contains an item with empty productID on composite %s", prefix, comp.GetName()))
+			}
+		}
+		start := len(items)
+		items = append(items, payload.Items...)
+		for i := start; i < len(items); i++ {
+			items[i].InstanceID = comp.GetName() + "-" + shortSHA(items[i].ProductID)
+		}
+	} else {
+		// Default: compute a single standard product item (non-Servala clusters)
+		productID := getProductID(comp, service)
+		items = append(items, vshnv1.ItemSpec{
+			ProductID:            productID,
+			Value:                strconv.Itoa(comp.GetInstances()),
+			ItemDescription:      itemDescription,
+			ItemGroupDescription: itemGroupDescription,
+			InstanceID:           comp.GetName() + "-" + shortSHA(productID),
+		})
+	}
 
 	// Build labels
 	labels := map[string]string{
@@ -128,16 +189,21 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	}
 
 	// Create BillingService CR
+	annotations := map[string]string{}
+	if ts := comp.GetCreationTimestamp(); !ts.IsZero() {
+		annotations[vshnv1.InstanceCreationTimestampAnnotation] = ts.UTC().Format(time.RFC3339)
+	}
 	billingService := &vshnv1.BillingService{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      comp.GetName() + opts.ResourceNameSuffix,
-			Namespace: BillingNamespace,
-			Labels:    labels,
+			Name:        comp.GetName() + opts.ResourceNameSuffix,
+			Namespace:   BillingNamespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: vshnv1.BillingServiceSpec{
 			KeepAfterDeletion: keepAfterDeletion,
 			Odoo: vshnv1.OdooSpec{
-				InstanceID:   comp.GetName(),
+				ServiceID:    comp.GetName(),
 				SalesOrderID: salesOrder,
 				Items:        items,
 			},
@@ -154,22 +220,14 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		billingService.Spec.Odoo.Organization = org
 	}
 
-	kubeObj := &xkube.Object{}
-	observedResourceName := comp.GetName() + opts.ResourceNameSuffix
-	err := svc.GetObservedComposedResource(kubeObj, observedResourceName)
-	if err != nil && err != runtime.ErrNotFound {
-		log.Error(err, "cannot get billing service kube object", "service", comp.GetName())
-		return runtime.NewWarningResult(fmt.Sprintf("cannot add billing to service %s", comp.GetName()))
-	}
-
 	kubeOpts := []runtime.KubeObjectOption{
 		runtime.KubeOptionDeployOnControlPlane,
 		runtime.KubeOptionObserveCreateUpdate,
 	}
-	if err == nil {
+	if observedErr == nil {
 		// Create owner reference pointing to the Crossplane Object itself
 		ownerRef := metav1.OwnerReference{
-			APIVersion:         "kubernetes.crossplane.io/v1alpha1",
+			APIVersion:         "kubernetes.crossplane.io/v1alpha2",
 			Kind:               "Object",
 			Name:               kubeObj.GetName(),
 			UID:                kubeObj.GetUID(),
@@ -180,13 +238,9 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	}
 
 	// Set the BillingService as a desired kube object
-	err = svc.SetDesiredKubeObject(billingService, observedResourceName,
-		kubeOpts...,
-	)
-
-	if err != nil {
+	if err := svc.SetDesiredKubeObject(billingService, observedResourceName, kubeOpts...); err != nil {
 		log.Error(err, "cannot set BillingService as desired object", "service", comp.GetName())
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create BillingService for %s: %v", comp.GetName(), err))
+		return preserveExistingAndWarn(fmt.Sprintf("cannot create BillingService for %s: %v", comp.GetName(), err))
 	}
 
 	return runtime.NewNormalResult(fmt.Sprintf("BillingService configured for instance %s with %d items", comp.GetName(), len(items)))
@@ -209,4 +263,10 @@ func getProductID(comp InfoGetter, service string) string {
 	// Construct productID: appcat-vshn-{service}-{sla}
 	productID := fmt.Sprintf("appcat-vshn-%s-%s", service, sla)
 	return productID
+}
+
+// shortSHA returns the first 8 hex characters of the SHA-256 hash of s.
+func shortSHA(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])[:8]
 }

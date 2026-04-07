@@ -33,7 +33,6 @@ type InstanceEvent struct {
 	SalesOrderID         string `json:"sales_order_id"`
 	ItemDescription      string `json:"item_description,omitempty"`
 	ItemGroupDescription string `json:"item_group_description,omitempty"`
-	UnitID               string `json:"unit_id"`
 	EventType            string `json:"event_type"`
 	Size                 string `json:"size,omitempty"`
 	Timestamp            string `json:"timestamp"`

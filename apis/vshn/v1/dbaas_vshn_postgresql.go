@@ -237,6 +237,11 @@ type VSHNPostgreSQLBackup struct {
 	// The default is keeping it one week.
 	// +kubebuilder:default=7
 	DeletionRetention int `json:"deletionRetention,omitempty"`
+
+	// UnmanagedBucket specifies a bucket not managed by AppCat to be used for the backup.
+	// The user is responsible for the correctness of these values.
+	// +kubebuilder:validation:Optional
+	UnmanagedBucket *UnmanagedBucket `json:"unmanagedBucket,omitempty"`
 }
 
 // GetBackupSchedule gets the currently set schedule
@@ -528,4 +533,8 @@ func (v *VSHNPostgreSQL) GetSLA() string {
 // IsBackupEnabled returns true if backups are enabled for this instance
 func (v *VSHNPostgreSQL) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
+}
+
+func (v *VSHNPostgreSQL) GetUnmanagedBucket() *UnmanagedBucket {
+	return v.Spec.Parameters.Backup.UnmanagedBucket
 }

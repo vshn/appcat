@@ -46,7 +46,7 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 	// "," as separator for multiple FQDNs, it's better than anything else as highlighting with mouse in terminal works well
 	// result is fqdn[0],fqdn[1],fqdn[2]
 	svc.SetConnectionDetail("FORGEJO_URL", []byte(strings.Join(comp.Spec.Parameters.Service.FQDN, ",")))
-	svc.SetConnectionDetail("FORGEJO_HOST", []byte(fmt.Sprintf("%s-http.%s.svc", comp.GetName(), comp.GetInstanceNamespace())))
+	svc.SetConnectionDetail("FORGEJO_HOST", []byte(fmt.Sprintf("%s-http.%s.svc", helmFullname(comp), comp.GetInstanceNamespace())))
 
 	svc.Log.Info("Adding forgejo release")
 	err = addForgejo(ctx, svc, comp, secretName)
@@ -328,4 +328,16 @@ func setResources(values map[string]any, resources common.Resources) error {
 	}
 
 	return nil
+}
+
+// helmFullname mirrors the Helm fullname template used by the Forgejo chart.
+// If the release name already contains the chart name ("forgejo"), the fullname
+// is just the release name; otherwise it appends "-forgejo".
+func helmFullname(comp *vshnv1.VSHNForgejo) string {
+	name := comp.GetName()
+	chart := comp.GetServiceName()
+	if strings.Contains(name, chart) {
+		return name
+	}
+	return name + "-" + chart
 }

@@ -69,7 +69,7 @@ func TestRestore_Phase2_RecoveryMode(t *testing.T) {
 	recovery := values["recovery"].(map[string]any)
 	assert.Equal(t, "object_store", recovery["method"])
 	assert.Equal(t, recoveryObjectStoreName, recovery["objectStoreName"])
-	assert.Equal(t, "postgresql-15", recovery["clusterName"], "clusterName should use source major version")
+	assert.Equal(t, "postgresql-17", recovery["clusterName"], "clusterName should use restore instance's major version")
 
 	// PITR target should be set
 	pitrTarget := recovery["pitrTarget"].(map[string]any)
@@ -122,10 +122,11 @@ func TestRestore_NoRestoreParams(t *testing.T) {
 func TestRestore_SetRecoveryValues(t *testing.T) {
 	values := map[string]any{}
 	secretData := map[string][]byte{
-		"SOURCE_MAJOR_VERSION": []byte("15"),
+		"SOURCE_MAJOR_VERSION": []byte("17"), // source was upgraded, but we ignore this
 	}
 
 	comp := &vshnv1.VSHNPostgreSQL{}
+	comp.Spec.Parameters.Service.MajorVersion = "15" // restore instance targets PG 15 backups
 	comp.Spec.Parameters.Restore = &vshnv1.VSHNPostgreSQLRestore{
 		RecoveryTimeStamp: "2024-06-15T22:00:00Z",
 	}
@@ -136,7 +137,7 @@ func TestRestore_SetRecoveryValues(t *testing.T) {
 	recovery := values["recovery"].(map[string]any)
 	assert.Equal(t, "object_store", recovery["method"])
 	assert.Equal(t, recoveryObjectStoreName, recovery["objectStoreName"])
-	assert.Equal(t, "postgresql-15", recovery["clusterName"])
+	assert.Equal(t, "postgresql-15", recovery["clusterName"], "clusterName should use restore instance's major version, not source's")
 
 	pitrTarget := recovery["pitrTarget"].(map[string]any)
 	assert.Equal(t, "2024-06-15T22:00:00Z", pitrTarget["time"])
@@ -145,16 +146,17 @@ func TestRestore_SetRecoveryValues(t *testing.T) {
 func TestRestore_SetRecoveryValues_NoPITR(t *testing.T) {
 	values := map[string]any{}
 	secretData := map[string][]byte{
-		"SOURCE_MAJOR_VERSION": []byte("17"),
+		"SOURCE_MAJOR_VERSION": []byte("15"), // ignored
 	}
 
 	comp := &vshnv1.VSHNPostgreSQL{}
+	comp.Spec.Parameters.Service.MajorVersion = "17"
 	comp.Spec.Parameters.Restore = &vshnv1.VSHNPostgreSQLRestore{}
 
 	setRecoveryValues(values, secretData, comp)
 
 	assert.Equal(t, "recovery", values["mode"])
 	recovery := values["recovery"].(map[string]any)
-	assert.Equal(t, "postgresql-17", recovery["clusterName"])
+	assert.Equal(t, "postgresql-17", recovery["clusterName"], "clusterName should use restore instance's major version")
 	assert.Nil(t, recovery["pitrTarget"], "pitrTarget should not be set when RecoveryTimeStamp is empty")
 }

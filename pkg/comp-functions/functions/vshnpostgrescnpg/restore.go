@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
+	barmancloudv1 "github.com/vshn/appcat/v4/apis/barmancloud/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 //go:embed scripts/copy-cnpg-backup-creds.sh
@@ -28,12 +28,12 @@ const (
 // create the Helm release this reconcile cycle.
 func handleRestore(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime, values map[string]any) (*xfnproto.Result, bool) {
 	restore := comp.Spec.Parameters.Restore
-	if restore == nil || restore.ClaimName == "" || restore.BackupName == "" {
+	if restore == nil || restore.ClaimName == "" {
 		return nil, false
 	}
 
 	l := svc.Log
-	l.Info("Restore requested", "claimName", restore.ClaimName, "backupName", restore.BackupName)
+	l.Info("Restore requested", "claimName", restore.ClaimName)
 
 	// Always create the copy job (idempotent)
 	if err := createCnpgCopyJob(comp, svc); err != nil {
@@ -139,31 +139,27 @@ func createRecoveryResources(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRu
 	endpoint := strings.TrimSuffix(string(secretData["ENDPOINT_URL"]), "/")
 	bucket := string(secretData["BUCKET_NAME"])
 
-	objectStore := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": "barmancloud.cnpg.io/v1",
-			"kind":       "ObjectStore",
-			"metadata": map[string]any{
-				"name":      recoveryObjectStoreName,
-				"namespace": comp.GetInstanceNamespace(),
-			},
-			"spec": map[string]any{
-				"configuration": map[string]any{
-					"endpointURL":     endpoint,
-					"destinationPath": fmt.Sprintf("s3://%s/", bucket),
-					"s3Credentials": map[string]any{
-						"accessKeyId": map[string]any{
-							"name": recoverySecretName,
-							"key":  "AWS_ACCESS_KEY_ID",
-						},
-						"secretAccessKey": map[string]any{
-							"name": recoverySecretName,
-							"key":  "AWS_SECRET_ACCESS_KEY",
-						},
-						"region": map[string]any{
-							"name": recoverySecretName,
-							"key":  "AWS_REGION",
-						},
+	objectStore := &barmancloudv1.ObjectStore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      recoveryObjectStoreName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Spec: barmancloudv1.ObjectStoreSpec{
+			Configuration: barmancloudv1.ObjectStoreConfiguration{
+				EndpointURL:     endpoint,
+				DestinationPath: fmt.Sprintf("s3://%s/", bucket),
+				S3Credentials: &barmancloudv1.S3Credentials{
+					AccessKeyId: barmancloudv1.SecretKeySelector{
+						Name: recoverySecretName,
+						Key:  "AWS_ACCESS_KEY_ID",
+					},
+					SecretAccessKey: barmancloudv1.SecretKeySelector{
+						Name: recoverySecretName,
+						Key:  "AWS_SECRET_ACCESS_KEY",
+					},
+					Region: barmancloudv1.SecretKeySelector{
+						Name: recoverySecretName,
+						Key:  "AWS_REGION",
 					},
 				},
 			},
@@ -176,9 +172,12 @@ func createRecoveryResources(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRu
 // setRecoveryValues configures the Helm values for recovery mode.
 // The chart will use the external recovery ObjectStore for bootstrap
 // while keeping its own ObjectStore for ongoing backups.
+// The clusterName is derived from the restore instance's own major version,
+// which determines which archive path barman-cloud searches in the object store.
+// This allows rollback after a failed major version upgrade: the user creates
+// a restore instance on the previous major version, and it finds the matching backups.
 func setRecoveryValues(values map[string]any, secretData map[string][]byte, comp *vshnv1.VSHNPostgreSQL) {
-	sourceMajorVersion := string(secretData["SOURCE_MAJOR_VERSION"])
-	clusterName := "postgresql-" + sourceMajorVersion
+	clusterName := "postgresql-" + comp.Spec.Parameters.Service.MajorVersion
 
 	recovery := map[string]any{
 		"method":          "object_store",

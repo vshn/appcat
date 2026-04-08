@@ -28,7 +28,7 @@ func AddPrimaryService(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *ru
 	annotations := map[string]string{}
 	if svc.Config.Data["loadbalancerAnnotations"] != "" && svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled") {
 
-		err := yaml.Unmarshal([]byte(svc.Config.Data["loadbalancerAnnotations"]), annotations)
+		err := yaml.Unmarshal([]byte(svc.Config.Data["loadbalancerAnnotations"]), &annotations)
 		if err != nil {
 			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
 			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))

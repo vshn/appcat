@@ -12,6 +12,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 // GetReleaseValues returns the parsed values from the given release.
@@ -95,6 +96,10 @@ func NewRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp InfoGette
 			Name: comp.GetName(),
 		},
 		Spec: xhelmv1.ReleaseSpec{
+			// This will make provider-helm retry up to 10 times
+			// to install a release. Otherwise a release could
+			// get stuck indefinitely due to race conditions.
+			RollbackRetriesLimit: ptr.To[int32](10),
 			ForProvider: xhelmv1.ReleaseParameters{
 				Chart: xhelmv1.ChartSpec{
 					Repository: svc.Config.Data["chartRepository"],

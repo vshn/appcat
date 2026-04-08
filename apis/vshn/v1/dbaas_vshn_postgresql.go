@@ -53,6 +53,9 @@ type VSHNPostgreSQLParameters struct {
 	// Size contains settings to control the sizing of a service.
 	Size VSHNSizeSpec `json:"size,omitempty"`
 
+	// WalStorage contains settings to control the walStorage for a Service
+	WallStorage VSHNPostgreSQLWalStorage `json:"walStorage,omitempty"`
+
 	// Scheduling contains settings to control the scheduling of an instance.
 	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`
 
@@ -90,6 +93,11 @@ type VSHNPostgreSQLParameters struct {
 
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
+}
+
+type VSHNPostgreSQLWalStorage struct {
+	// Size configures the size for the WalStorage
+	Size string `json:"size,omitempty"`
 }
 
 type VSHNPostgreSQLReplicationStrategy struct {

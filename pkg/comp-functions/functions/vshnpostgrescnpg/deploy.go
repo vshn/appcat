@@ -298,6 +298,14 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		return map[string]any{}, fmt.Errorf("cannot set resources: %w", err)
 	}
 
+	svc.Log.Info("Set WalStorage")
+	if comp.Spec.Parameters.WallStorage.Size != "" {
+		err = common.SetNestedObjectValue(values, []string{"cluster", "walStorage", "size"}, comp.Spec.Parameters.WallStorage.Size)
+		if err != nil {
+			return map[string]any{}, fmt.Errorf("cannot set walStorage size for cluster: %w", err)
+		}
+	}
+
 	// User management: inject roles into Cluster spec and databases as separate CRDs
 	if err := addUserManagementValues(comp, values); err != nil {
 		return map[string]any{}, fmt.Errorf("cannot add user management values: %w", err)

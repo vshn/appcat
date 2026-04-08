@@ -5733,6 +5733,14 @@ spec:
                         - OnRestart
                         type: string
                     type: object
+                  walStorage:
+                    description: WalStorage contains settings to control the walStorage
+                      for a Service
+                    properties:
+                      size:
+                        description: Size configures the size for the WalStorage
+                        type: string
+                    type: object
                 type: object
               providerConfigRef:
                 default:

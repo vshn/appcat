@@ -32,15 +32,17 @@ func TestManger_Simple(t *testing.T) {
 	}
 
 	m.StartProbe(p)
-	p.tick(nil)
-	p.tick(nil)
-	p.tick(errors.New("ups"))
-	p.tick(nil)
-	p.tick(nil)
+	// Fire ticks one at a time and wait for each probe to complete before
+	// sending the next tick.  This reflects real production timing (1-second
+	// intervals) and is required now that runProbe skips a tick when the
+	// previous probe goroutine is still running.
+	for i, err := range []error{nil, nil, errors.New("ups"), nil, nil} {
+		p.tick(err)
+		assert.Eventually(t, func() bool {
+			return p.getCount() == uint64(i+1)
+		}, time.Second, 10*time.Millisecond)
+	}
 
-	assert.Eventually(t, func() bool {
-		return p.getCount() == 5
-	}, time.Second, 10*time.Millisecond)
 	assert.EqualValues(t, 5, p.getCount())
 
 	m.StopProbe(p.GetInfo())
@@ -77,23 +79,30 @@ func TestManger_Multi(t *testing.T) {
 	tickerChan <- pa.ticker
 	m.StartProbe(pb)
 	tickerChan <- pb.ticker
-	pa.tick(nil)
-	pb.tick(errors.New("Failure"))
-	pa.tick(nil)
-	pb.tick(nil)
-	pa.tick(nil)
-	pa.tick(nil)
-	pa.tick(errors.New("Failure"))
-	pa.tick(errors.New("Failure"))
-	pb.tick(nil)
-	pa.tick(errors.New("Failure"))
-	pb.tick(nil)
-	pa.tick(nil)
-	pa.tick(nil)
+	// Fire ticks one at a time per probe and wait for completion between each,
+	// consistent with the new skip-if-busy behaviour in runProbe.
+	tickAndWait := func(p *fakeProbe, err error) {
+		prev := p.getCount()
+		p.tick(err)
+		assert.Eventually(t, func() bool {
+			return p.getCount() == prev+1
+		}, time.Second, 10*time.Millisecond)
+	}
 
-	assert.Eventually(t, func() bool {
-		return pa.getCount() == 9
-	}, time.Second, 10*time.Millisecond)
+	tickAndWait(pa, nil)
+	tickAndWait(pb, errors.New("Failure"))
+	tickAndWait(pa, nil)
+	tickAndWait(pb, nil)
+	tickAndWait(pa, nil)
+	tickAndWait(pa, nil)
+	tickAndWait(pa, errors.New("Failure"))
+	tickAndWait(pa, errors.New("Failure"))
+	tickAndWait(pb, nil)
+	tickAndWait(pa, errors.New("Failure"))
+	tickAndWait(pb, nil)
+	tickAndWait(pa, nil)
+	tickAndWait(pa, nil)
+
 	assert.EqualValues(t, 9, pa.getCount())
 	m.StopProbe(ProbeInfo{
 		Service:           "fake",
@@ -102,13 +111,11 @@ func TestManger_Multi(t *testing.T) {
 		Name:              "alice",
 	})
 
-	pb.tick(nil)
-	pb.tick(nil)
+	tickAndWait(pb, nil)
+	tickAndWait(pb, nil)
+	// pa is stopped; its tick should be ignored
 	pa.tick(errors.New("Failure"))
 
-	assert.Eventually(t, func() bool {
-		return pb.getCount() == 6
-	}, time.Second, 10*time.Millisecond)
 	assert.EqualValues(t, 6, pb.getCount())
 	m.StopProbe(pb.GetInfo())
 

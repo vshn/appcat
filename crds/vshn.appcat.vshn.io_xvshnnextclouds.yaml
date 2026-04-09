@@ -11485,9 +11485,14 @@ spec:
                                 type: string
                             type: object
                           walStorage:
-                            description: WalStorage contains settings to control the
-                              walStorage for a Service
+                            description: |-
+                              WalStorage contains settings to control the walStorage for a Service
+                              This only applies to CNPG
                             properties:
+                              enabled:
+                                default: true
+                                description: If walStorage should be enabled
+                                type: boolean
                               size:
                                 description: Size configures the size for the WalStorage
                                 type: string

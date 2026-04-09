@@ -1833,7 +1833,7 @@ func (in *VSHNPostgreSQLParameters) DeepCopyInto(out *VSHNPostgreSQLParameters) 
 	in.Service.DeepCopyInto(&out.Service)
 	out.Maintenance = in.Maintenance
 	out.Size = in.Size
-	out.WallStorage = in.WallStorage
+	out.WalStorage = in.WalStorage
 	in.Scheduling.DeepCopyInto(&out.Scheduling)
 	in.Network.DeepCopyInto(&out.Network)
 	in.Backup.DeepCopyInto(&out.Backup)

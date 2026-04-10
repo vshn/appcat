@@ -141,7 +141,7 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 		return runtime.NewFatalResult(fmt.Errorf("cannot create helm values: %w", err))
 	}
 
-	// Handle restore before backup setup — may skip Helm release creation in Phase 1
+	// Handle restore before backup setup — may skip Helm release creation in the first reconciliation loop
 	result, skipRelease := handleRestore(ctx, comp, svc, values)
 	if skipRelease {
 		return result

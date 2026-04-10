@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -127,6 +128,8 @@ func (m Manager) StopProbe(pi ProbeInfo) {
 	cancel, ok := m.probers[probeKey]
 	if ok {
 		cancel()
+		// Remove the entry so the map doesn't grow unboundedly.
+		delete(m.probers, probeKey)
 	}
 }
 
@@ -136,12 +139,23 @@ func (m Manager) runProbe(ctx context.Context, p Prober) {
 	defer stop()
 	defer p.Close()
 
+	// Guard against unbounded goroutine accumulation.
+	// We spawn a goroutine per tick (preserving 1-second SLI resolution
+	// for fast probes), but skip the tick if the previous probe is still
+	// running.  This caps in-flight probes to 1 per instance at all times.
+	var probeRunning atomic.Bool
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker:
-			go m.sendProbe(ctx, p)
+			if probeRunning.CompareAndSwap(false, true) {
+				go func() {
+					defer probeRunning.Store(false)
+					m.sendProbe(ctx, p)
+				}()
+			}
 		}
 	}
 }

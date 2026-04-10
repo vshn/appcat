@@ -12,6 +12,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/controller/billing"
 	"github.com/vshn/appcat/v4/pkg/controller/crossplane_metrics"
 	"github.com/vshn/appcat/v4/pkg/controller/events"
+	"github.com/vshn/appcat/v4/pkg/controller/garagebucket"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks/sshgateway"
 	"github.com/vshn/appcat/v4/pkg/odoo"
@@ -26,23 +27,24 @@ import (
 )
 
 type controller struct {
-	scheme                  *runtime.Scheme
-	metricsAddr, healthAddr string
-	leaderElect             bool
-	enableWebhooks          bool
-	enableAppcatWebhooks    bool
-	enableProviderWebhooks  bool
-	enableQuotas            bool
-	enableEventForwarding   bool
-	enableBilling           bool
-	enableCrossplaneMetrics bool
-	certDir                 string
-	webhookPort             int
-	sshPortRangeStart       int32
-	sshPortRangeEnd         int32
-	sshGatewayCapacity      int
-	sshGatewayNamespace     string
-	sshGateways             string
+	scheme                    *runtime.Scheme
+	metricsAddr, healthAddr   string
+	leaderElect               bool
+	enableWebhooks            bool
+	enableAppcatWebhooks      bool
+	enableProviderWebhooks    bool
+	enableQuotas              bool
+	enableEventForwarding     bool
+	enableBilling             bool
+	enableCrossplaneMetrics   bool
+	enableGarageBucketCleanup bool
+	certDir                   string
+	webhookPort               int
+	sshPortRangeStart         int32
+	sshPortRangeEnd           int32
+	sshGatewayCapacity        int
+	sshGatewayNamespace       string
+	sshGateways               string
 }
 
 var c = controller{
@@ -75,6 +77,7 @@ func init() {
 	ControllerCMD.Flags().Int32Var(&c.sshPortRangeStart, "ssh-port-range-start", 10000, "Start of the SSH TCP port allocation range")
 	ControllerCMD.Flags().Int32Var(&c.sshPortRangeEnd, "ssh-port-range-end", 10999, "End of the SSH TCP port allocation range")
 	ControllerCMD.Flags().IntVar(&c.sshGatewayCapacity, "ssh-gateway-capacity", 0, "Maximum listeners per Gateway for sharding. The default value 0 means no sharding is enabled")
+	ControllerCMD.Flags().BoolVar(&c.enableGarageBucketCleanup, "garage-bucket-cleanup", false, "Enable Garage bucket cleanup controller")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
 		viper.Set("PLANS_NAMESPACE", "syn-appcat")
@@ -128,6 +131,13 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 
 		b := billing.New(mgr.GetClient(), mgr.GetScheme(), odooClient, maxEvents)
 		if err := b.SetupWithManager(mgr); err != nil {
+			return err
+		}
+	}
+
+	if c.enableGarageBucketCleanup {
+		if err := garagebucket.NewCleanupReconciler(mgr.GetClient(), mgr.GetLogger()).
+			SetupWithManager(mgr); err != nil {
 			return err
 		}
 	}

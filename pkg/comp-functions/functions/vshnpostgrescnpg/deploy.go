@@ -229,9 +229,6 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 				"serverCASecret":  certificateSecretName,
 				"serverTLSSecret": certificateSecretName,
 			},
-			"walStorage": map[string]any{
-				"enabled": true,
-			},
 			// The following will be overwritten by setResources() later
 			"storage": map[string]any{},
 			"resources": map[string]any{
@@ -255,10 +252,6 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 		err := common.SetNestedObjectValue(values, []string{"cluster", "storage", "storageClass"}, encryptedPvcSc)
 		if err != nil {
 			return map[string]any{}, fmt.Errorf("cannot set storageClass (normal data) for cluster: %w", err)
-		}
-		err = common.SetNestedObjectValue(values, []string{"cluster", "walStorage", "storageClass"}, encryptedPvcSc)
-		if err != nil {
-			return map[string]any{}, fmt.Errorf("cannot set storageClass (WAL) for cluster: %w", err)
 		}
 	}
 

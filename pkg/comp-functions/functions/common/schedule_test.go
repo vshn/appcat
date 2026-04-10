@@ -44,6 +44,10 @@ func (t *testMaintenanceScheduler) GetMaintenanceTimeOfDay() *v1.TimeOfDay {
 	return &t.timeOfDay
 }
 
+func (t *testMaintenanceScheduler) SetMaintenanceTimeOfDay(tod v1.TimeOfDay) {
+	t.timeOfDay = tod
+}
+
 func TestSetRandomSchedules_EmptySchedules(t *testing.T) {
 	backup := &testBackupScheduler{enabled: true}
 	maintenance := &testMaintenanceScheduler{}

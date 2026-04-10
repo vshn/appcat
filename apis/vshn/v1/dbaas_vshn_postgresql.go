@@ -53,10 +53,6 @@ type VSHNPostgreSQLParameters struct {
 	// Size contains settings to control the sizing of a service.
 	Size VSHNSizeSpec `json:"size,omitempty"`
 
-	// WalStorage contains settings to control the walStorage for a Service
-	// This only applies to CNPG
-	WalStorage VSHNPostgreSQLWalStorage `json:"walStorage,omitempty"`
-
 	// Scheduling contains settings to control the scheduling of an instance.
 	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`
 
@@ -97,7 +93,7 @@ type VSHNPostgreSQLParameters struct {
 }
 
 type VSHNPostgreSQLWalStorage struct {
-	// +kubebuilder:default=true
+	// +kubebuilder:default=false
 
 	// If walStorage should be enabled
 	Enabled bool `json:"enabled,omitempty"`
@@ -194,6 +190,10 @@ type VSHNPostgreSQLServiceSpec struct {
 
 	// TLS settings for the instance.
 	TLS VSHNPostgreSQLTLS `json:"tls,omitempty"`
+
+	// WalStorage contains settings to control the walStorage for a Service
+	// This only applies to CNPG
+	WalStorage VSHNPostgreSQLWalStorage `json:"walStorage,omitempty"`
 }
 
 // VSHNDBaaSPostgresExtension contains the name of a single extension.

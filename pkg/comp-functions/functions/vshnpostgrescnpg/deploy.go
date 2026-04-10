@@ -230,7 +230,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 				"serverTLSSecret": certificateSecretName,
 			},
 			"walStorage": map[string]any{
-				"enabled": comp.Spec.Parameters.WalStorage.Enabled,
+				"enabled": comp.Spec.Parameters.Service.WalStorage.Enabled,
 			},
 			// The following will be overwritten by setResources() later
 			"storage": map[string]any{},
@@ -299,8 +299,8 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 	}
 
 	svc.Log.Info("Set WalStorage")
-	if comp.Spec.Parameters.WalStorage.Size != "" {
-		err = common.SetNestedObjectValue(values, []string{"cluster", "walStorage", "size"}, comp.Spec.Parameters.WalStorage.Size)
+	if comp.Spec.Parameters.Service.WalStorage.Size != "" {
+		err = common.SetNestedObjectValue(values, []string{"cluster", "walStorage", "size"}, comp.Spec.Parameters.Service.WalStorage.Size)
 		if err != nil {
 			return map[string]any{}, fmt.Errorf("cannot set walStorage size for cluster: %w", err)
 		}

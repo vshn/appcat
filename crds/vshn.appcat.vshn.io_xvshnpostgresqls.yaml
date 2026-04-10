@@ -5682,6 +5682,19 @@ spec:
                         description: VacuumEnabled defines if `VACUUM` should be performed
                           during the maintenace. Defaults to false.
                         type: boolean
+                      walStorage:
+                        description: |-
+                          WalStorage contains settings to control the walStorage for a Service
+                          This only applies to CNPG
+                        properties:
+                          enabled:
+                            default: false
+                            description: If walStorage should be enabled
+                            type: boolean
+                          size:
+                            description: Size configures the size for the WalStorage
+                            type: string
+                        type: object
                     type: object
                   size:
                     description: Size contains settings to control the sizing of a
@@ -5731,19 +5744,6 @@ spec:
                         enum:
                         - Immediate
                         - OnRestart
-                        type: string
-                    type: object
-                  walStorage:
-                    description: |-
-                      WalStorage contains settings to control the walStorage for a Service
-                      This only applies to CNPG
-                    properties:
-                      enabled:
-                        default: true
-                        description: If walStorage should be enabled
-                        type: boolean
-                      size:
-                        description: Size configures the size for the WalStorage
                         type: string
                     type: object
                 type: object

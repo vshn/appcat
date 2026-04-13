@@ -92,10 +92,6 @@ func AddK8upBackup(ctx context.Context, svc *runtime.ServiceRuntime, comp common
 func CreateObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtime.ServiceRuntime) error {
 	l := controllerruntime.LoggerFrom(ctx)
 
-	if comp.GetUnmanagedBucket() != nil {
-		return nil
-	}
-
 	if comp.GetName() == "" {
 		return fmt.Errorf("could not get composite name")
 	}
@@ -105,9 +101,9 @@ func CreateObjectBucket(ctx context.Context, comp common.InfoGetter, svc *runtim
 		runtime.ProviderConfigIgnoreLabel: "true",
 	}
 
-	// Check if backup is disabled and we need to preserve an existing bucket for retention
-	if !comp.IsBackupEnabled() {
-		l.Info("Backup disabled - checking if bucket needs retention timestamp label")
+	// Check if backup is disabled or a custom bucket is being used and we need to preserve an existing bucket for retention
+	if !comp.IsBackupEnabled() || comp.GetUnmanagedBucket() != nil {
+		l.Info("Backup disabled or unmanaged bucket used - checking if bucket needs retention timestamp label")
 
 		// Check if bucket exists in observed state (from when backup was enabled)
 		observedBucket := &appcatv1.XObjectBucket{}

@@ -7,14 +7,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnopenbaoes,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnopenbaoes,versions=v1,name=vshnopenbaoes.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnopenbaos,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnopenbaos,versions=v1,name=vshnopenbaos.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnopenbaoes,verbs=get;list;watch;patch;update
-//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnopenbaoes/status,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnopenbaos,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnopenbaos/status,verbs=get;list;watch;patch;update
 
 var (
 	openBaoGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNOpenBao"}
-	openBaoGR = schema.GroupResource{Group: openBaoGK.Group, Resource: "vshnopenbaoes"}
+	openBaoGR = schema.GroupResource{Group: openBaoGK.Group, Resource: "vshnopenbaos"}
 )
 
 var _ webhook.CustomValidator = &OpenBaoWebhookHandler{}

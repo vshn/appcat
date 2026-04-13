@@ -4,13 +4,13 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.16.5
-  name: xvshnopenbaoes.vshn.appcat.vshn.io
+  name: xvshnopenbaos.vshn.appcat.vshn.io
 spec:
   group: vshn.appcat.vshn.io
   names:
     kind: XVSHNOpenBao
     listKind: XVSHNOpenBaoList
-    plural: xvshnopenbaoes
+    plural: xvshnopenbaos
     singular: xvshnopenbao
   scope: Namespaced
   versions:

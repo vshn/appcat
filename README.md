@@ -10,6 +10,10 @@ This repository has k8s tools to manage AppCat services.
 
 Documentation: https://vshn.github.io/appcat
 
+## AI-Assisted Development
+
+AI may be used to assist with development on this project but must follow the guidelines described in the [AI with AppCat](https://kb.vshn.ch/app-catalog/how-tos/ai-with-appcat.html) documentation.
+
 ## Architecture
 
 ```

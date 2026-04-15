@@ -34,6 +34,10 @@ Use as **coding buddies** — bounce ideas, get architectural advice, validate a
 
 MinIO deprecated, no dedicated agent.
 
+## Skills
+
+When implementing or planning any AppCat changes, always invoke the `appcat-architecture` skill. It provides framework-level conventions, guardrails, and routes to the correct service agent.
+
 ## Build & Test
 
 All build commands run in devcontainer: `ssh schedar-devcontainer.devpod`. Codebase at `/workspaces/schedar-devcontainer/appcat`.

@@ -1,10 +1,12 @@
 ---
 name: appcat-architecture
 description: >
-  AppCat framework architectural guidance. Use when implementing or planning
-  changes to AppCat services, composition functions, webhooks, controllers,
-  SLI probes, or cross-cutting modifications. Do NOT use for general questions
-  about the codebase.
+  AppCat framework architectural guidance and guardrails. Use when implementing,
+  planning, or designing any AppCat feature — including new functions, backup,
+  restore, upgrade, HA, maintenance, webhook, controller, or SLI probe changes.
+  Triggers on: "implement", "add feature", "new function", "add backup",
+  "add support for", service names (PostgreSQL, CNPG, Redis, MariaDB, Keycloak,
+  Nextcloud, Forgejo, Garage). Do NOT use for general questions about the codebase.
 ---
 
 # AppCat Architecture Guide

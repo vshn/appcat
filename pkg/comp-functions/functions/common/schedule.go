@@ -30,6 +30,7 @@ type MaintenanceScheduler interface {
 	GetMaintenanceDayOfWeek() string
 	SetMaintenanceDayOfWeek(string)
 	GetMaintenanceTimeOfDay() *v1.TimeOfDay
+	SetMaintenanceTimeOfDay(v1.TimeOfDay)
 }
 
 // SetRandomMaintenanceSchedule sets a random maintenance schedule if not already set.
@@ -56,9 +57,16 @@ func SetRandomMaintenanceSchedule(maintenance MaintenanceScheduler) time.Time {
 		timeOfDay.SetTime(maintTime)
 	}
 
-	if maintenance.GetMaintenanceDayOfWeek() == "" {
-		maintenance.SetMaintenanceDayOfWeek(selectedDay)
+	dayOfWeek := maintenance.GetMaintenanceDayOfWeek()
+	if dayOfWeek == "" {
+		dayOfWeek = selectedDay
 	}
+
+	// Always sync effective values to status. The getters return spec values
+	// when set, falling back to status. Without this, status retains stale
+	// initial values when a user later configures schedules in spec.
+	maintenance.SetMaintenanceDayOfWeek(dayOfWeek)
+	maintenance.SetMaintenanceTimeOfDay(*maintenance.GetMaintenanceTimeOfDay())
 
 	return maintTime
 }
@@ -79,7 +87,7 @@ func SetRandomBackupSchedule(backup BackupScheduler, maintenanceTime *time.Time)
 	}
 
 	if backup.GetBackupSchedule() != "" {
-		// Backup schedule already set
+		backup.SetBackupSchedule(backup.GetBackupSchedule())
 		return
 	}
 

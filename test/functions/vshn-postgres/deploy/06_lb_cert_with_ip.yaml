@@ -1,0 +1,171 @@
+desired:
+  composite:
+    connection_details:
+      LOADBALANCER_IP: MTAuMC4wLjE= #10.0.0.1
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters:
+          service:
+            majorVersion: "15"
+          instances: 1
+          backup:
+            schedule: 44 20 * * *
+          maintenance:
+            schedule: 12 34 * * *
+          network:
+            serviceType: LoadBalancer
+        writeConnectionSecretToRef: {}
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+  certificate:
+    resource:
+      apiVersion: kubernetes.crossplane.io/v1alpha2
+      kind: Object
+      metadata:
+        name: pgsql-gc9x4-certificate
+      spec:
+        forProvider:
+          manifest:
+            apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: pgsql-gc9x4
+              namespace: vshn-postgresql-pgsql-gc9x4
+input:
+  apiVersion: v1
+  data:
+    additionalMaintenanceClusterRole: role
+    defaultPlan: standard-1
+    controlNamespace: appcat-control
+    plans:
+      '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true,
+      "memory": "1Gi"}}}'
+    imageTag: master
+    serviceName: postgresql
+    sgNamespace: stackgres
+    providerEnabled: "true"
+    externalDatabaseConnectionsEnabled: "true"
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    connection_details:
+      LOADBALANCER_IP: MTAuMC4wLjE= #10.0.0.1
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters:
+          service:
+            majorVersion: "15"
+          instances: 1
+          backup:
+            schedule: 44 20 * * *
+            retention: 6
+          maintenance:
+            dayOfWeek: wednesday
+            timeOfDay: "12:34:56"
+          network:
+            serviceType: LoadBalancer
+        writeConnectionSecretToRef: {}
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+  resources:
+    pgsql-gc9x4-tls-observer:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-tls-observer
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: tls-certificate
+                namespace: vshn-postgresql-pgsql-gc9x4
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: tls-certificate
+                namespace: vshn-postgresql-pgsql-gc9x4
+              data:
+                tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJpekNDQVRLZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQVBNUTB3Q3dZRFZRUUtFd1IwWlhOME1CNFgKRFRJMk1EUXhNREUwTURJeU0xb1hEVE0yTURRd056RTBNREl5TTFvd0R6RU5NQXNHQTFVRUNoTUVkR1Z6ZERCWgpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJKekoxRHVRR0gyMTdkYjBwREhiL3dwQ3JnaUtacUplCnRFZFA2MnZRZzJPTHhzUVFqQkdQZkcxbzd5RHNQZWdBR1VKZWtpL1FzMEFubk5rU2sxUHlmTnFqZnpCOU1Ic0cKQTFVZEVRUjBNSEtDTzNCdmMzUm5jbVZ6Y1d3dGNuY3Vkbk5vYmkxd2IzTjBaM0psYzNGc0xYQm5jM0ZzTFdkagpPWGcwTG5OMll5NWpiSFZ6ZEdWeUxteHZZMkZzZ2kxd2IzTjBaM0psYzNGc0xYSjNMblp6YUc0dGNHOXpkR2R5ClpYTnhiQzF3WjNOeGJDMW5Zemw0TkM1emRtT0hCQW9BQUFFd0NnWUlLb1pJemowRUF3SURSd0F3UkFJZ1gvNVIKYkN2Q3lzRFA2cW9oMmlNYWRjREtiOTJnYkg2ZVVHRlc2MlR3dEhjQ0lIV0pqTEN1c1plT1lubUdaQTJPc0dYVQovcEhJS2FTekhYNGdFbzVxR0lFZAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    namespace-conditions:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: vshn-postgresql-pgsql-gc9x4
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: vshn-postgresql-pgsql-gc9x4
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: vshn-postgresql-pgsql-gc9x4
+    pgsql-gc9x4-claim-ns-observer:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-claim-ns-observer
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  "appuio.io/organization": "vshn"
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: unit-test
+                labels:
+                  "appuio.io/organization": "vshn"

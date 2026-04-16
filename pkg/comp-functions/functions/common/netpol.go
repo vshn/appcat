@@ -105,7 +105,7 @@ func AddLoadbalancerNetpolicy(svc *runtime.ServiceRuntime, comp InfoGetter) erro
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(np, comp.GetName()+"-allow-all")
+	err := svc.SetDesiredKubeObject(np, comp.GetName()+"-allow-all", runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		return fmt.Errorf("cannot deploy allow all network policy: %w", err)
 	}

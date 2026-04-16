@@ -4,16 +4,25 @@ import (
 	"context"
 	"testing"
 
+	"encoding/json"
+
+	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	"github.com/crossplane/function-sdk-go/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/utils/ptr"
 )
 
 const (
-	testingPath = "vshn-postgres/deploy/01_default.yaml"
-	plan        = "standard-1"
+	testingPath         = "vshn-postgres/deploy/01_default.yaml"
+	lbCertWithIPPath    = "vshn-postgres/deploy/06_lb_cert_with_ip.yaml"
+	lbCertWithoutIPPath = "vshn-postgres/deploy/07_lb_cert_without_ip.yaml"
+	plan                = "standard-1"
 )
 
 func Test_deploy(t *testing.T) {
@@ -233,6 +242,149 @@ func Test_pinImageTag(t *testing.T) {
 		assert.Equal(t, "postgresql", imageCatalogRef["name"])
 
 		assert.Equal(t, "17.2", comp.Status.CurrentVersion)
+	})
+}
+
+// toUnstructured round-trips values through JSON so that all intermediate maps
+// become map[string]interface{}, which lets us use the unstructured nested helpers.
+func toUnstructured(t *testing.T, values map[string]any) map[string]interface{} {
+	t.Helper()
+	raw, err := json.Marshal(values)
+	require.NoError(t, err)
+	var out map[string]interface{}
+	require.NoError(t, json.Unmarshal(raw, &out))
+	return out
+}
+
+func Test_addLoadbalancerConfig(t *testing.T) {
+	t.Run("no-op when serviceType is ClusterIP", func(t *testing.T) {
+		svc, comp := getSvcCompCnpg(t)
+		comp.Spec.Parameters.Network.ServiceType = "ClusterIP"
+
+		values := map[string]any{
+			"cluster": map[string]any{},
+		}
+
+		require.NoError(t, addLoadbalancerConfig(svc, comp, values))
+
+		u := toUnstructured(t, values)
+		_, found, err := unstructured.NestedMap(u, "cluster", "services")
+		require.NoError(t, err)
+		assert.False(t, found, "services should not be set for ClusterIP")
+	})
+
+	t.Run("sets services when serviceType is LoadBalancer", func(t *testing.T) {
+		svc, comp := getSvcCompCnpg(t)
+		comp.Spec.Parameters.Network.ServiceType = string(corev1.ServiceTypeLoadBalancer)
+
+		values := map[string]any{
+			"cluster": map[string]any{},
+		}
+
+		require.NoError(t, addLoadbalancerConfig(svc, comp, values))
+
+		u := toUnstructured(t, values)
+		additional, found, err := unstructured.NestedSlice(u, "cluster", "services", "additional")
+		require.NoError(t, err)
+		require.True(t, found, "services.additional should be set for LoadBalancer")
+		require.Len(t, additional, 1)
+
+		entry := additional[0].(map[string]interface{})
+		assert.Equal(t, "rw", entry["selectorType"])
+
+		name, found, err := unstructured.NestedString(entry, "serviceTemplate", "metadata", "name")
+		require.NoError(t, err)
+		require.True(t, found)
+		assert.Equal(t, "primary", name)
+
+		svcType, found, err := unstructured.NestedString(entry, "serviceTemplate", "spec", "type")
+		require.NoError(t, err)
+		require.True(t, found)
+		assert.Equal(t, string(corev1.ServiceTypeLoadBalancer), svcType)
+	})
+
+	t.Run("annotations are empty when no config is set", func(t *testing.T) {
+		svc, comp := getSvcCompCnpg(t)
+		comp.Spec.Parameters.Network.ServiceType = string(corev1.ServiceTypeLoadBalancer)
+
+		values := map[string]any{
+			"cluster": map[string]any{},
+		}
+
+		require.NoError(t, addLoadbalancerConfig(svc, comp, values))
+
+		u := toUnstructured(t, values)
+		additional, _, err := unstructured.NestedSlice(u, "cluster", "services", "additional")
+		require.NoError(t, err)
+		entry := additional[0].(map[string]interface{})
+
+		annotations, _, err := unstructured.NestedStringMap(entry, "serviceTemplate", "metadata", "annotations")
+		require.NoError(t, err)
+		assert.Empty(t, annotations)
+	})
+
+	t.Run("includes loadbalancer annotations from config", func(t *testing.T) {
+		svc, comp := getSvcCompCnpg(t)
+		comp.Spec.Parameters.Network.ServiceType = string(corev1.ServiceTypeLoadBalancer)
+
+		svc.Config.Data["loadbalancerAnnotations"] = "service.beta.kubernetes.io/load-balancer-type: nlb"
+
+		values := map[string]any{
+			"cluster": map[string]any{},
+		}
+
+		require.NoError(t, addLoadbalancerConfig(svc, comp, values))
+
+		u := toUnstructured(t, values)
+		additional, _, err := unstructured.NestedSlice(u, "cluster", "services", "additional")
+		require.NoError(t, err)
+		entry := additional[0].(map[string]interface{})
+
+		annotations, found, err := unstructured.NestedStringMap(entry, "serviceTemplate", "metadata", "annotations")
+		require.NoError(t, err)
+		require.True(t, found)
+		assert.Equal(t, "nlb", annotations["service.beta.kubernetes.io/load-balancer-type"])
+	})
+}
+
+func Test_createCerts_LoadBalancer(t *testing.T) {
+	t.Run("cert marked ready when LB IP is in certificate IPAddresses", func(t *testing.T) {
+		svc, comp := getPostgreSqlComp(t, lbCertWithIPPath)
+
+		err := createCerts(comp, svc)
+		require.NoError(t, err)
+
+		desired := svc.GetAllDesired()
+		certRes, ok := desired[resource.Name("certificate")]
+		require.True(t, ok, "certificate resource should exist in desired state")
+		assert.Equal(t, resource.ReadyTrue, certRes.Ready, "certificate should be marked ready when LB IP is in cert DNSNames")
+	})
+
+	t.Run("cert marked unready when LB IP is not in certificate IPAddresses", func(t *testing.T) {
+		svc, comp := getPostgreSqlComp(t, lbCertWithoutIPPath)
+
+		err := createCerts(comp, svc)
+		require.NoError(t, err)
+
+		desired := svc.GetAllDesired()
+		certRes, ok := desired[resource.Name("certificate")]
+		require.True(t, ok, "certificate resource should exist in desired state")
+		assert.Equal(t, resource.ReadyFalse, certRes.Ready, "certificate should be marked unready when LB IP is not in cert DNSNames")
+	})
+
+	t.Run("LB IP is added to certificate IPAddresses", func(t *testing.T) {
+		svc, comp := getPostgreSqlComp(t, lbCertWithIPPath)
+
+		err := createCerts(comp, svc)
+		require.NoError(t, err)
+
+		cert := &cmv1.Certificate{}
+		require.NoError(t, svc.GetDesiredKubeObject(cert, "certificate"))
+
+		assert.Contains(t, cert.Spec.IPAddresses, "10.0.0.1", "LB IP should be in certificate IPAddresses")
+		assert.NotContains(t, cert.Spec.DNSNames, "10.0.0.1", "LB IP should not be in DNSNames")
+		assert.Contains(t, cert.Spec.DNSNames, "postgresql-rw."+comp.GetInstanceNamespace()+".svc.cluster.local")
+		assert.Contains(t, cert.Spec.DNSNames, "postgresql-rw."+comp.GetInstanceNamespace()+".svc")
 	})
 }
 

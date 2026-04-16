@@ -7,7 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnopenbaos,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnopenbaos,versions=v1,name=vshnopenbaos.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+//+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnopenbao,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnopenbaos,versions=v1,name=vshnopenbao.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnopenbaos,verbs=get;list;watch;patch;update
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnopenbaos/status,verbs=get;list;watch;patch;update

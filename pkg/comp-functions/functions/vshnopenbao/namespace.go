@@ -15,6 +15,8 @@ const namespaceSuffix = "-ns"
 func BootstrapNamespace(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	serviceName := comp.GetName()
 
+	_ = common.DisableBilling(comp.GetInstanceNamespace(), svc)
+
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))

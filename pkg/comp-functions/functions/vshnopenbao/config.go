@@ -57,6 +57,11 @@ type RetryJoin struct {
 }
 
 func CreateHCLConfigMap(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	err := svc.GetObservedComposite(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
+	}
+
 	serviceName := comp.GetName()
 	ns := comp.GetInstanceNamespace()
 	hclConfigSecretName := serviceName + hclConfigSecretSuffix
@@ -98,7 +103,7 @@ func CreateHCLConfigMap(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runt
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(secret, hclConfigSecretName)
+	err = svc.SetDesiredKubeObject(secret, hclConfigSecretName)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot add %s secret object: %w", hclConfigSecretName, err).Error())
 	}

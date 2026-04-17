@@ -201,12 +201,13 @@ spec:
                       type: integer
                     state:
                       description: State represents the current state of the event
-                        (sent, pending, failed, superseded)
+                        (sent, pending, failed, superseded, resend)
                       enum:
                       - sent
                       - pending
                       - failed
                       - superseded
+                      - resend
                       type: string
                     timestamp:
                       description: Timestamp when the event occurred

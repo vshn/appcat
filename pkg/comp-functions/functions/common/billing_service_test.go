@@ -107,17 +107,17 @@ func TestBillingService_JSONAnnotation_HappyPath(t *testing.T) {
 	assert.Equal(t, "1", items[0].Value)
 	assert.Equal(t, "si-84c17714 on Cloudscale RMA", items[0].ItemDescription)
 	assert.Equal(t, "Servala Service: Codey", items[0].ItemGroupDescription)
-	assert.Equal(t, "codey-abc12-"+shortSHA("codey-mini"), items[0].InstanceID)
+	assert.Equal(t, "codey-abc12-"+shortSHA("codey-mini"+"si-84c17714 on Cloudscale RMA"+"Servala Service: Codey"), items[0].InstanceID)
 
 	assert.Equal(t, "cloudscale-ssd", items[1].ProductID)
 	assert.Equal(t, "10", items[1].Value)
 	assert.Equal(t, "si-84c17714 on Cloudscale RMA", items[1].ItemDescription)
 	assert.Equal(t, "Servala Service: Codey", items[1].ItemGroupDescription)
-	assert.Equal(t, "codey-abc12-"+shortSHA("cloudscale-ssd"), items[1].InstanceID)
+	assert.Equal(t, "codey-abc12-"+shortSHA("cloudscale-ssd"+"si-84c17714 on Cloudscale RMA"+"Servala Service: Codey"), items[1].InstanceID)
 }
 
 // TestBillingService_Servala_OptsItemsIgnored verifies that caller-supplied opts.Items are
-// not included for Servala deployments — the annotation is the sole source of truth.
+// not included for Servala deployments - the annotation is the sole source of truth.
 // This prevents duplication when an addon (e.g. Collabora) is already declared in the annotation.
 func TestBillingService_Servala_OptsItemsIgnored(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "common/billing_service_annotation.yaml")
@@ -155,7 +155,7 @@ func TestBillingService_Servala_OptsItemsIgnored(t *testing.T) {
 	bs := &v1.BillingService{}
 	require.NoError(t, svc.GetDesiredKubeObject(bs, "codey-abc12-billing-service"))
 
-	// Must contain exactly the 2 items from the annotation — not 3 (no duplicate from opts.Items)
+	// Must contain exactly the 2 items from the annotation - not 3 (no duplicate from opts.Items)
 	require.Len(t, bs.Spec.Odoo.Items, 2)
 	assert.Equal(t, "nc-servala", bs.Spec.Odoo.Items[0].ProductID)
 	assert.Equal(t, "codey-abc12-"+shortSHA("nc-servala"), bs.Spec.Odoo.Items[0].InstanceID)

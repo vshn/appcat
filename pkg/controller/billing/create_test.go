@@ -65,23 +65,25 @@ func TestHandleItemCreation(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", InstanceID: "test-service-inst-123", Value: "2", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeCreated),
-							ProductID: "prod-123",
-							Value:     "2",
-							State:     string(BillingEventStatePending),
+							Type:       string(BillingEventTypeCreated),
+							ProductID:  "prod-123",
+							InstanceID: "test-service-inst-123",
+							Value:      "2",
+							State:      string(BillingEventStatePending),
 						},
 					},
 				},
 			},
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
+				InstanceID:           "test-service-inst-123",
 				Value:                "2",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
@@ -102,24 +104,26 @@ func TestHandleItemCreation(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
-							{ProductID: "prod-456", Value: "50Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+							{ProductID: "prod-123", InstanceID: "test-service-inst-123", Value: "2", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-456", InstanceID: "test-service-inst-456", Value: "50Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeCreated),
-							ProductID: "prod-123",
-							Value:     "2",
-							State:     string(BillingEventStateSent),
+							Type:       string(BillingEventTypeCreated),
+							ProductID:  "prod-123",
+							InstanceID: "test-service-inst-123",
+							Value:      "2",
+							State:      string(BillingEventStateSent),
 						},
 					},
 				},
 			},
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-456",
+				InstanceID:           "test-service-inst-456",
 				Value:                "50Gi",
 				ItemDescription:      "Storage Item",
 				ItemGroupDescription: "Storage Group",
@@ -181,9 +185,9 @@ func TestHandleItemCreation_MultipleItems(t *testing.T) {
 			Odoo: vshnv1.OdooSpec{
 				ServiceID: "test-instance",
 				Items: []vshnv1.ItemSpec{
-					{ProductID: "prod-compute", Value: "2", ItemDescription: "Compute Item", ItemGroupDescription: "Compute Group"},
-					{ProductID: "prod-storage", Value: "50Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
-					{ProductID: "prod-backup", Value: "enabled", ItemDescription: "Backup Item", ItemGroupDescription: "Backup Group"},
+					{ProductID: "prod-compute", InstanceID: "test-service-inst-compute", Value: "2", ItemDescription: "Compute Item", ItemGroupDescription: "Compute Group"},
+					{ProductID: "prod-storage", InstanceID: "test-service-inst-storage", Value: "50Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+					{ProductID: "prod-backup", InstanceID: "test-service-inst-backup", Value: "enabled", ItemDescription: "Backup Item", ItemGroupDescription: "Backup Group"},
 				},
 			},
 		},

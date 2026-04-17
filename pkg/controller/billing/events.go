@@ -151,6 +151,18 @@ func hasEvent(billingService *vshnv1.BillingService, eventType BillingEventType,
 	return false
 }
 
+// hasEventByInstanceID returns true if an event of the given type exists for the given instanceID.
+// Use this instead of hasEvent when multiple items can share the same productID (e.g. Servala
+// deployments that bill two storage volumes under the same productID but distinct descriptions).
+func hasEventByInstanceID(billingService *vshnv1.BillingService, eventType BillingEventType, instanceID string) bool {
+	for _, event := range billingService.Status.Events {
+		if event.Type == string(eventType) && event.InstanceID == instanceID {
+			return true
+		}
+	}
+	return false
+}
+
 // hasEventWithValue returns true if an event of type t exists for (productID,value) (any state).
 func hasEventWithValue(billingService *vshnv1.BillingService, eventType BillingEventType, productID, value string) bool {
 	for _, event := range billingService.Status.Events {

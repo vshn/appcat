@@ -59,7 +59,7 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 		effectiveGatewayNamespace = observed.gatewayNamespace
 	}
 
-	err = createXListenerSet(svc, resourceBaseName, effectiveGatewayNamespace, effectiveGatewayName, observed.port)
+	err = createXListenerSet(svc, resourceBaseName, effectiveGatewayNamespace, effectiveGatewayName, comp.GetInstanceNamespace(), observed.port)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err))
 	}
@@ -67,11 +67,6 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 	err = createTCPRoute(svc, comp, resourceBaseName, effectiveGatewayNamespace)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create TCPRoute: %s", err))
-	}
-
-	err = createReferenceGrant(svc, comp, resourceBaseName, effectiveGatewayNamespace)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create ReferenceGrant: %s", err))
 	}
 
 	err = createGatewayNetworkPolicy(svc, comp, resourceBaseName, effectiveGatewayNamespace)
@@ -99,7 +94,7 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 	return nil
 }
 
-func createXListenerSet(svc *runtime.ServiceRuntime, name, namespace, gatewayName string, port int32) error {
+func createXListenerSet(svc *runtime.ServiceRuntime, name, namespace, gatewayName, instanceNamespace string, port int32) error {
 	xls := &unstructured.Unstructured{
 		Object: map[string]any{},
 	}
@@ -125,10 +120,16 @@ func createXListenerSet(svc *runtime.ServiceRuntime, name, namespace, gatewayNam
 		"protocol": "TCP",
 	}
 
-	err = unstructured.SetNestedField(listener, "All", "allowedRoutes", "namespaces", "from")
-
+	err = unstructured.SetNestedField(listener, "Selector", "allowedRoutes", "namespaces", "from")
 	if err != nil {
-		return fmt.Errorf("setting allowedRoutes.namespaces: %w", err)
+		return fmt.Errorf("setting allowedRoutes.namespaces.from: %w", err)
+	}
+
+	err = unstructured.SetNestedMap(listener, map[string]any{
+		"kubernetes.io/metadata.name": instanceNamespace,
+	}, "allowedRoutes", "namespaces", "selector", "matchLabels")
+	if err != nil {
+		return fmt.Errorf("setting allowedRoutes.namespaces.selector: %w", err)
 	}
 
 	err = unstructured.SetNestedSlice(listener, []any{
@@ -163,7 +164,7 @@ func createTCPRoute(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name,
 	tcpRoute.SetAPIVersion("gateway.networking.k8s.io/v1alpha2")
 	tcpRoute.SetKind("TCPRoute")
 	tcpRoute.SetName(name)
-	tcpRoute.SetNamespace(gatewayNamespace)
+	tcpRoute.SetNamespace(instanceNs)
 
 	err := unstructured.SetNestedSlice(tcpRoute.Object, []any{
 		map[string]any{
@@ -198,45 +199,6 @@ func createTCPRoute(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name,
 	}
 
 	return svc.SetDesiredKubeObject(tcpRoute, name+"-tcproute")
-}
-
-func createReferenceGrant(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name, gatewayNamespace string) error {
-	instanceNs := comp.GetInstanceNamespace()
-	sshServiceName := helmFullname(comp) + "-ssh"
-
-	refGrant := &unstructured.Unstructured{
-		Object: map[string]any{},
-	}
-	refGrant.SetAPIVersion("gateway.networking.k8s.io/v1beta1")
-	refGrant.SetKind("ReferenceGrant")
-	refGrant.SetName(name)
-	refGrant.SetNamespace(instanceNs)
-
-	err := unstructured.SetNestedSlice(refGrant.Object, []any{
-		map[string]any{
-			"group":     "gateway.networking.k8s.io",
-			"kind":      "TCPRoute",
-			"namespace": gatewayNamespace,
-		},
-	}, "spec", "from")
-
-	if err != nil {
-		return fmt.Errorf("setting from: %w", err)
-	}
-
-	err = unstructured.SetNestedSlice(refGrant.Object, []any{
-		map[string]any{
-			"group": "",
-			"kind":  "Service",
-			"name":  sshServiceName,
-		},
-	}, "spec", "to")
-
-	if err != nil {
-		return fmt.Errorf("setting to: %w", err)
-	}
-
-	return svc.SetDesiredKubeObject(refGrant, name+"-refgrant")
 }
 
 func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name, gatewayNamespace string) error {

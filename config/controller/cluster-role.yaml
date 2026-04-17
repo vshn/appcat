@@ -158,6 +158,8 @@ rules:
   - xvshnminios/status
   - xvshnnextclouds
   - xvshnnextclouds/status
+  - xvshnopenbaos
+  - xvshnopenbaos/status
   - xvshnpostgresqls
   - xvshnpostgresqls/status
   - xvshnredis

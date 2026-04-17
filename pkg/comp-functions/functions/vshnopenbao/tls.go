@@ -28,6 +28,11 @@ const (
 )
 
 func setupTLSCertificates(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	err := svc.GetObservedComposite(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
+	}
+
 	serviceName := comp.GetName()
 	ns := comp.GetInstanceNamespace()
 
@@ -37,7 +42,7 @@ func setupTLSCertificates(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *ru
 		},
 	}
 	selfSignedIssuer := createIssuer(ns, serviceName+tlsSelfSignedIssuerSuffix, selfSignedIssuerOpts)
-	err := svc.SetDesiredKubeObject(selfSignedIssuer, serviceName+tlsSelfSignedIssuerSuffix, selfSignedIssuerOpts.KubeOptions...)
+	err = svc.SetDesiredKubeObject(selfSignedIssuer, serviceName+tlsSelfSignedIssuerSuffix, selfSignedIssuerOpts.KubeOptions...)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create Self Signed Issuer for OpenBao %w", err).Error())
 	}

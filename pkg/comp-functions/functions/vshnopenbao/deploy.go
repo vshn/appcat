@@ -17,6 +17,10 @@ import (
 )
 
 func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	if err := svc.GetObservedComposite(comp); err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
+	}
+
 	serviceName := comp.GetName()
 
 	// The Components Appcat defines plans (how much CPU, memory etc)
@@ -39,6 +43,9 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 		"fullnameOverride": serviceName,
 		"agent": map[string]any{
 			"enabled": false,
+		},
+		"global": map[string]interface{}{
+			"tlsDisable": false,
 		},
 		"injector": map[string]any{
 			"enabled": false,

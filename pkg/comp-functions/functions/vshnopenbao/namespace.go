@@ -13,17 +13,13 @@ import (
 const namespaceSuffix = "-ns"
 
 func BootstrapNamespace(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	serviceName := comp.GetName()
-
-	_ = common.DisableBilling(comp.GetInstanceNamespace(), svc)
-
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
 	svc.Log.Info("Bootstrapping instance namespace and rbac rules")
-	err = common.BootstrapInstanceNs(ctx, comp, serviceName, serviceName+namespaceSuffix, svc)
+	err = common.BootstrapInstanceNs(ctx, comp, comp.GetServiceName(), comp.GetName()+namespaceSuffix, svc)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot bootstrap instance namespace: %s", err))
 	}

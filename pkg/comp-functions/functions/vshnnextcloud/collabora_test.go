@@ -77,19 +77,22 @@ func Test_addCollaboraHTTPRoute(t *testing.T) {
 	assert.True(t, res.Severity == v1.Severity_SEVERITY_NORMAL)
 
 	allDesired := svc.GetAllDesired()
-	foundRoute := false
-	foundGrant := false
+	foundRoute, foundLS, foundGrant := false, false, false
 	for _, d := range allDesired {
 		name := d.Resource.GetName()
 		if strings.Contains(name, "collabora") && strings.Contains(name, "httproute") {
 			foundRoute = true
 		}
+		if strings.Contains(name, "collabora") && strings.Contains(name, "listenerset") {
+			foundLS = true
+		}
 		if strings.Contains(name, "collabora") && strings.Contains(name, "httpgrant") {
 			foundGrant = true
 		}
 	}
-	assert.True(t, foundRoute, "expected Collabora HTTPRoute")
-	assert.True(t, foundGrant, "expected Collabora ReferenceGrant")
+	assert.True(t, foundRoute, "Collabora HTTPRoute must be created")
+	assert.True(t, foundLS, "Collabora XListenerSet must be created")
+	assert.False(t, foundGrant, "Collabora ReferenceGrant must NOT be created")
 }
 
 func Test_addCollaboraDefaultVersion(t *testing.T) {

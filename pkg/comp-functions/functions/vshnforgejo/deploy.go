@@ -13,8 +13,8 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // DeployForgejo deploys a Forgejo instance via the Helm Chart.
@@ -253,7 +253,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 
 		svc.Log.Info("Adding HTTPRoute for Forgejo")
 
-		route, err := common.GenerateHTTPRoute(comp, svc, common.HTTPRouteConfig{
+		cfg := common.HTTPRouteConfig{
 			FQDNs: comp.Spec.Parameters.Service.FQDN,
 			ServiceConfig: common.IngressRuleConfig{
 				ServiceNameSuffix: svcNameSuffix,
@@ -261,31 +261,21 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 			},
 			GatewayName:      gatewayName,
 			GatewayNamespace: gatewayNamespace,
-		})
+		}
+
+		ls, err := common.GenerateXListenerSet(comp, svc, cfg)
 		if err != nil {
 			return err
 		}
-
-		err = common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route})
-		if err != nil {
+		if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}); err != nil {
 			return err
 		}
 
-		// Build service name using same suffix logic
-		serviceName := comp.GetName()
-		if !strings.HasPrefix(svcNameSuffix, "-") && len(svcNameSuffix) > 0 {
-			serviceName = serviceName + "-" + svcNameSuffix
-		} else {
-			serviceName = serviceName + svcNameSuffix
-		}
-
-		grant, err := common.GenerateReferenceGrant(comp, svc, gatewayNamespace, serviceName)
+		route, err := common.GenerateHTTPRoute(comp, svc, cfg)
 		if err != nil {
 			return err
 		}
-
-		err = common.CreateReferenceGrants(svc, []*gatewayv1beta1.ReferenceGrant{grant})
-		if err != nil {
+		if err := common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}); err != nil {
 			return err
 		}
 	} else {

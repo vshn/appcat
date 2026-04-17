@@ -167,8 +167,9 @@ func TestCreateIngress(t *testing.T) {
 }
 
 func TestCreateHTTPRoute(t *testing.T) {
-	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndGrant", func(t *testing.T) {
+	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndListenerSet", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/02_httproute.yaml")
+
 		comp := &vshnv1.VSHNKeycloak{
 			ObjectMeta: metav1.ObjectMeta{Name: "keycloak"},
 			Spec: vshnv1.VSHNKeycloakSpec{
@@ -180,23 +181,27 @@ func TestCreateHTTPRoute(t *testing.T) {
 				},
 			},
 		}
+
 		result := AddIngress(context.Background(), comp, svc)
 		assert.Nil(t, result)
 
 		allDesired := svc.GetAllDesired()
-		foundRoute := false
-		foundGrant := false
+		foundRoute, foundLS, foundGrant := false, false, false
 		for _, d := range allDesired {
 			name := d.Resource.GetName()
 			if name == "keycloak-httproute" {
 				foundRoute = true
 			}
+			if name == "keycloak-listenerset" {
+				foundLS = true
+			}
 			if name == "keycloak-httpgrant" {
 				foundGrant = true
 			}
 		}
-		assert.True(t, foundRoute, "expected HTTPRoute to be created")
-		assert.True(t, foundGrant, "expected ReferenceGrant to be created")
+		assert.True(t, foundRoute, "HTTPRoute must be created")
+		assert.True(t, foundLS, "XListenerSet must be created")
+		assert.False(t, foundGrant, "ReferenceGrant must NOT be created")
 	})
 
 	t.Run("GivenHTTPRouteMode_NoFQDN_ExpectNil", func(t *testing.T) {

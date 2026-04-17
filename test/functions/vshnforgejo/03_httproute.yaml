@@ -15,6 +15,8 @@ input:
     httpGatewayNamespace: "syn-kgateway"
     plans: |
       {"large": {"size": {"cpu": "4", "disk": "500Gi", "enabled": true, "memory": "16Gi"}}, "medium": {"size": {"cpu": "2", "disk": "200Gi", "enabled": true, "memory": "8Gi"}}, "mini": {"size": {"cpu": "500m", "disk": "10Gi", "enabled": true, "memory": "2Gi"}}, "small": {"size": {"cpu": "1", "disk": "50Gi", "enabled": true, "memory": "4Gi"}}}
+    ingress_annotations: |
+      cert-manager.io/cluster-issuer: letsencrypt-production
 observed:
   composite:
     resource:

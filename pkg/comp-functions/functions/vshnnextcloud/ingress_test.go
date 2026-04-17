@@ -10,8 +10,9 @@ import (
 )
 
 func TestAddIngressHTTPRoute(t *testing.T) {
-	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndGrant", func(t *testing.T) {
+	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndListenerSet", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnnextcloud/03_httproute.yaml")
+
 		comp := &vshnv1.VSHNNextcloud{}
 		err := svc.GetObservedComposite(comp)
 		assert.NoError(t, err)
@@ -21,18 +22,21 @@ func TestAddIngressHTTPRoute(t *testing.T) {
 		assert.Nil(t, result)
 
 		allDesired := svc.GetAllDesired()
-		foundRoute := false
-		foundGrant := false
+		foundRoute, foundLS, foundGrant := false, false, false
 		for _, d := range allDesired {
 			name := d.Resource.GetName()
 			if name == comp.GetName()+"-httproute" {
 				foundRoute = true
 			}
+			if name == comp.GetName()+"-listenerset" {
+				foundLS = true
+			}
 			if name == comp.GetName()+"-httpgrant" {
 				foundGrant = true
 			}
 		}
-		assert.True(t, foundRoute, "expected HTTPRoute to be created")
-		assert.True(t, foundGrant, "expected ReferenceGrant to be created")
+		assert.True(t, foundRoute)
+		assert.True(t, foundLS)
+		assert.False(t, foundGrant)
 	})
 }

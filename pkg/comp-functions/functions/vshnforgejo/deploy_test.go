@@ -111,8 +111,11 @@ func TestDeployment(t *testing.T) {
 }
 
 func TestDeploymentHTTPRoute(t *testing.T) {
-	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndGrant", func(t *testing.T) {
+	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndListenerSet", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnforgejo/03_httproute.yaml")
+		svc.Config.Data["routeType"] = "HTTPRoute"
+		svc.Config.Data["httpGatewayName"] = "http-gateway"
+		svc.Config.Data["httpGatewayNamespace"] = "syn-kgateway"
 
 		comp := &vshnv1.VSHNForgejo{}
 		err := svc.GetObservedComposite(comp)
@@ -122,23 +125,25 @@ func TestDeploymentHTTPRoute(t *testing.T) {
 			"username": "forgejo_admin",
 		}))
 		assert.NoError(t, err)
-
 		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))
 
 		allDesired := svc.GetAllDesired()
-		foundRoute := false
-		foundGrant := false
+		foundRoute, foundLS, foundGrant := false, false, false
 		for _, d := range allDesired {
 			name := d.Resource.GetName()
 			if name == comp.GetName()+"-httproute" {
 				foundRoute = true
 			}
+			if name == comp.GetName()+"-listenerset" {
+				foundLS = true
+			}
 			if name == comp.GetName()+"-httpgrant" {
 				foundGrant = true
 			}
 		}
-		assert.True(t, foundRoute, "expected HTTPRoute to be created")
-		assert.True(t, foundGrant, "expected ReferenceGrant to be created")
+		assert.True(t, foundRoute)
+		assert.True(t, foundLS)
+		assert.False(t, foundGrant)
 	})
 }
 

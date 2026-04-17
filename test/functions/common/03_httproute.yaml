@@ -12,3 +12,5 @@ input:
     httpGatewayName: "http-gateway"
     httpGatewayNamespace: "syn-kgateway"
     ocpDefaultAppsDomain: ""
+    ingress_annotations: |
+      cert-manager.io/cluster-issuer: letsencrypt-production

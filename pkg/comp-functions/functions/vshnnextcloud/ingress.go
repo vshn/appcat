@@ -10,8 +10,8 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // AddIngress adds an inrgess to the Nextcloud instance.
@@ -65,7 +65,7 @@ func addNextcloudHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunti
 
 	svc.Log.Info("Adding HTTPRoute for Nextcloud")
 
-	route, err := common.GenerateHTTPRoute(comp, svc, common.HTTPRouteConfig{
+	cfg := common.HTTPRouteConfig{
 		FQDNs: comp.Spec.Parameters.Service.FQDN,
 		ServiceConfig: common.IngressRuleConfig{
 			ServiceNameSuffix: svcNameSuffix,
@@ -73,29 +73,22 @@ func addNextcloudHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunti
 		},
 		GatewayName:      gatewayName,
 		GatewayNamespace: gatewayNamespace,
-	})
+	}
+
+	ls, err := common.GenerateXListenerSet(comp, svc, cfg)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot generate XListenerSet: %w", err))
+	}
+	if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}); err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot create XListenerSet: %w", err))
+	}
+
+	route, err := common.GenerateHTTPRoute(comp, svc, cfg)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot generate HTTPRoute: %w", err))
 	}
-
-	err = common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route})
-	if err != nil {
+	if err := common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}); err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create HTTPRoute: %w", err))
-	}
-
-	serviceName := comp.GetName()
-	if svcNameSuffix != "" {
-		serviceName = serviceName + "-" + svcNameSuffix
-	}
-
-	grant, err := common.GenerateReferenceGrant(comp, svc, gatewayNamespace, serviceName)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot generate ReferenceGrant: %w", err))
-	}
-
-	err = common.CreateReferenceGrants(svc, []*gatewayv1beta1.ReferenceGrant{grant})
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create ReferenceGrant: %w", err))
 	}
 
 	return nil

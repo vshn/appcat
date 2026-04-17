@@ -18,6 +18,8 @@ input:
     routeType: "HTTPRoute"
     httpGatewayName: "http-gateway"
     httpGatewayNamespace: "syn-kgateway"
+    ingress_annotations: |
+      cert-manager.io/cluster-issuer: letsencrypt-production
 observed:
   resources:
     mycloak-pg:

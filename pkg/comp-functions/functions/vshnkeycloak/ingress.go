@@ -13,8 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
@@ -122,7 +122,7 @@ func addKeycloakHTTPRoute(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 
 	svc.Log.Info("Adding HTTPRoute for Keycloak")
 
-	route, err := common.GenerateHTTPRoute(comp, svc, common.HTTPRouteConfig{
+	cfg := common.HTTPRouteConfig{
 		FQDNs: []string{fqdn},
 		ServiceConfig: common.IngressRuleConfig{
 			ServiceNameSuffix: "keycloakx-http",
@@ -130,26 +130,22 @@ func addKeycloakHTTPRoute(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 		},
 		GatewayName:      gatewayName,
 		GatewayNamespace: gatewayNamespace,
-	})
+	}
+
+	ls, err := common.GenerateXListenerSet(comp, svc, cfg)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot generate XListenerSet: %s", err))
+	}
+	if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}, runtime.KubeOptionAllowDeletion); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err))
+	}
+
+	route, err := common.GenerateHTTPRoute(comp, svc, cfg)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate HTTPRoute: %s", err))
 	}
-
-	err = common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}, runtime.KubeOptionAllowDeletion)
-	if err != nil {
+	if err := common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}, runtime.KubeOptionAllowDeletion); err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create HTTPRoute: %s", err))
-	}
-
-	serviceName := comp.GetName() + "-keycloakx-http"
-
-	grant, err := common.GenerateReferenceGrant(comp, svc, gatewayNamespace, serviceName)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot generate ReferenceGrant: %s", err))
-	}
-
-	err = common.CreateReferenceGrants(svc, []*gatewayv1beta1.ReferenceGrant{grant}, runtime.KubeOptionAllowDeletion)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create ReferenceGrant: %s", err))
 	}
 
 	return nil

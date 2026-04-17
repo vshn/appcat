@@ -57,6 +57,7 @@ require (
 	sigs.k8s.io/apiserver-runtime v1.1.1
 	sigs.k8s.io/controller-runtime v0.19.0
 	sigs.k8s.io/controller-tools v0.16.5
+	sigs.k8s.io/gateway-api v1.2.1
 	sigs.k8s.io/kind v0.20.0
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -197,7 +198,6 @@ require (
 	k8s.io/kms v0.31.2 // indirect
 	k8s.io/metrics v0.29.1 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.30.3 // indirect
-	sigs.k8s.io/gateway-api v0.8.0 // indirect
 )
 
 require (

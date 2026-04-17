@@ -61,13 +61,19 @@ func TestSSH(t *testing.T) {
 		assert.Equal(t, "TCP", l0["protocol"])
 		assert.Equal(t, int64(0), l0["port"]) // 0 on first create, webhook assigns
 
+		// Verify allowedRoutes scoped to instance namespace
+		fromMode, _, _ := unstructured.NestedString(l0, "allowedRoutes", "namespaces", "from")
+		assert.Equal(t, "Selector", fromMode)
+		selectorLabel, _, _ := unstructured.NestedString(l0, "allowedRoutes", "namespaces", "selector", "matchLabels", "kubernetes.io/metadata.name")
+		assert.Equal(t, instanceNs, selectorLabel)
+
 		// Verify TCPRoute
 		tcpRoute := &unstructured.Unstructured{}
 		tcpRoute.SetAPIVersion("gateway.networking.k8s.io/v1alpha2")
 		tcpRoute.SetKind("TCPRoute")
 		require.NoError(t, svc.GetDesiredKubeObject(tcpRoute, resourceBaseName+"-tcproute"))
 		assert.Equal(t, resourceBaseName, tcpRoute.GetName())
-		assert.Equal(t, "gateway-system", tcpRoute.GetNamespace())
+		assert.Equal(t, instanceNs, tcpRoute.GetNamespace())
 
 		parentRefs, _, _ := unstructured.NestedSlice(tcpRoute.Object, "spec", "parentRefs")
 		require.Len(t, parentRefs, 1)
@@ -85,26 +91,6 @@ func TestSSH(t *testing.T) {
 		assert.Equal(t, resourceBaseName, backend["name"]) // <comp-name>-ssh
 		assert.Equal(t, instanceNs, backend["namespace"])
 		assert.Equal(t, int64(22), backend["port"])
-
-		// Verify ReferenceGrant
-		refGrant := &unstructured.Unstructured{}
-		refGrant.SetAPIVersion("gateway.networking.k8s.io/v1beta1")
-		refGrant.SetKind("ReferenceGrant")
-		require.NoError(t, svc.GetDesiredKubeObject(refGrant, resourceBaseName+"-refgrant"))
-		assert.Equal(t, resourceBaseName, refGrant.GetName())
-		assert.Equal(t, instanceNs, refGrant.GetNamespace())
-
-		from, _, _ := unstructured.NestedSlice(refGrant.Object, "spec", "from")
-		require.Len(t, from, 1)
-		fromEntry := from[0].(map[string]any)
-		assert.Equal(t, "TCPRoute", fromEntry["kind"])
-		assert.Equal(t, "gateway-system", fromEntry["namespace"])
-
-		to, _, _ := unstructured.NestedSlice(refGrant.Object, "spec", "to")
-		require.Len(t, to, 1)
-		toEntry := to[0].(map[string]any)
-		assert.Equal(t, "Service", toEntry["kind"])
-		assert.Equal(t, resourceBaseName, toEntry["name"], "ReferenceGrant should be scoped to the SSH service")
 
 		// Verify Helm release does not have SSH enabled yet
 		release := &xhelmv1.Release{}

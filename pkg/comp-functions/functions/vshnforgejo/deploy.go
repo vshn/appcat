@@ -13,6 +13,8 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // DeployForgejo deploys a Forgejo instance via the Helm Chart.
@@ -239,29 +241,61 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	// Ingress
+	// Ingress / HTTPRoute
 	svcNameSuffix := "http"
 	if !strings.Contains(comp.GetName(), "forgejo") {
 		svcNameSuffix = "forgejo-" + svcNameSuffix
 	}
 
-	svc.Log.Info("Adding ingress")
-	ingressConfig := common.IngressConfig{
-		FQDNs: comp.Spec.Parameters.Service.FQDN,
-		ServiceConfig: common.IngressRuleConfig{
-			ServiceNameSuffix: svcNameSuffix,
-			ServicePortNumber: 3000,
-		},
-		TlsCertBaseName: "forgejo",
-	}
-	ingresses, err := common.GenerateBundledIngresses(comp, svc, ingressConfig)
-	if err != nil {
-		return err
-	}
+	if svc.Config.Data["routeType"] == "HTTPRoute" {
+		gatewayName := svc.Config.Data["httpGatewayName"]
+		gatewayNamespace := svc.Config.Data["httpGatewayNamespace"]
 
-	err = common.CreateIngresses(comp, svc, ingresses)
-	if err != nil {
-		return err
+		svc.Log.Info("Adding HTTPRoute for Forgejo")
+
+		cfg := common.HTTPRouteConfig{
+			FQDNs: comp.Spec.Parameters.Service.FQDN,
+			ServiceConfig: common.IngressRuleConfig{
+				ServiceNameSuffix: svcNameSuffix,
+				ServicePortNumber: 3000,
+			},
+			GatewayName:      gatewayName,
+			GatewayNamespace: gatewayNamespace,
+		}
+
+		ls, err := common.GenerateXListenerSet(comp, svc, cfg)
+		if err != nil {
+			return err
+		}
+		if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}); err != nil {
+			return err
+		}
+
+		route, err := common.GenerateHTTPRoute(comp, svc, cfg)
+		if err != nil {
+			return err
+		}
+		if err := common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}); err != nil {
+			return err
+		}
+	} else {
+		svc.Log.Info("Adding ingress")
+		ingressConfig := common.IngressConfig{
+			FQDNs: comp.Spec.Parameters.Service.FQDN,
+			ServiceConfig: common.IngressRuleConfig{
+				ServiceNameSuffix: svcNameSuffix,
+				ServicePortNumber: 3000,
+			},
+			TlsCertBaseName: "forgejo",
+		}
+		ingresses, err := common.GenerateBundledIngresses(comp, svc, ingressConfig)
+		if err != nil {
+			return err
+		}
+		err = common.CreateIngresses(comp, svc, ingresses)
+		if err != nil {
+			return err
+		}
 	}
 
 	if svc.Config.Data["isOpenshift"] == "true" {

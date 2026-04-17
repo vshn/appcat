@@ -67,6 +67,34 @@ func Test_addCollabora(t *testing.T) {
 	assert.True(t, res.Severity == v1.Severity_SEVERITY_NORMAL && res.Message == "Collabora not enabled")
 }
 
+func Test_addCollaboraHTTPRoute(t *testing.T) {
+	svc, comp := getNextcloudComp(t, "vshnnextcloud/03_httproute.yaml")
+	comp.Spec.Parameters.Service.Collabora.Enabled = true
+	comp.Spec.Parameters.Service.Collabora.FQDN = "collabora.example.com"
+	ctx := context.TODO()
+	assert.Nil(t, DeployNextcloud(ctx, comp, svc))
+	res := DeployCollabora(ctx, comp, svc)
+	assert.True(t, res.Severity == v1.Severity_SEVERITY_NORMAL)
+
+	allDesired := svc.GetAllDesired()
+	foundRoute, foundLS, foundGrant := false, false, false
+	for _, d := range allDesired {
+		name := d.Resource.GetName()
+		if strings.Contains(name, "collabora") && strings.Contains(name, "httproute") {
+			foundRoute = true
+		}
+		if strings.Contains(name, "collabora") && strings.Contains(name, "listenerset") {
+			foundLS = true
+		}
+		if strings.Contains(name, "collabora") && strings.Contains(name, "httpgrant") {
+			foundGrant = true
+		}
+	}
+	assert.True(t, foundRoute, "Collabora HTTPRoute must be created")
+	assert.True(t, foundLS, "Collabora XListenerSet must be created")
+	assert.False(t, foundGrant, "Collabora ReferenceGrant must NOT be created")
+}
+
 func Test_addCollaboraDefaultVersion(t *testing.T) {
 	svc, comp := getNextcloudComp(t, "vshnnextcloud/01_default.yaml")
 	ctx := context.TODO()

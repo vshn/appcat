@@ -24,8 +24,10 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 var (
@@ -331,6 +333,10 @@ func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 }
 func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
+	if svc.Config.Data["routeType"] == "HTTPRoute" {
+		return addCollaboraHTTPRoute(comp, svc)
+	}
+
 	annotations := map[string]string{}
 
 	if svc.Config.Data["isOpenshift"] == "true" {
@@ -532,6 +538,38 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 	}
 
 	return svc.SetDesiredKubeObject(job, comp.GetName()+"-collabora-install-job", runtime.KubeOptionAddLabels(labelMap))
+}
+
+func addCollaboraHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	gatewayName := svc.Config.Data["httpGatewayName"]
+	gatewayNamespace := svc.Config.Data["httpGatewayNamespace"]
+
+	svc.Log.Info("Adding HTTPRoute for Collabora")
+
+	cfg := common.HTTPRouteConfig{
+		FQDNs: []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+		ServiceConfig: common.IngressRuleConfig{
+			ServiceNameSuffix: "collabora-code",
+			ServicePortNumber: 9980,
+		},
+		NameSuffix:       "collabora-code",
+		GatewayName:      gatewayName,
+		GatewayNamespace: gatewayNamespace,
+	}
+
+	ls, err := common.GenerateXListenerSet(comp, svc, cfg)
+	if err != nil {
+		return err
+	}
+	if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}, runtime.KubeOptionAddLabels(labelMap)); err != nil {
+		return err
+	}
+
+	route, err := common.GenerateHTTPRoute(comp, svc, cfg)
+	if err != nil {
+		return err
+	}
+	return common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}, runtime.KubeOptionAddLabels(labelMap))
 }
 
 // ssh-keygen -t rsa -N "" -m PEM

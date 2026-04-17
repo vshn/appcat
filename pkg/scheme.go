@@ -36,6 +36,8 @@ import (
 	pdbv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func SetupScheme() *runtime.Scheme {
@@ -76,4 +78,6 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = my1alpha1.SchemeBuilder.AddToScheme(s)
 	_ = codey.SchemeBuilder.AddToScheme(s)
 	_ = coordinationv1.AddToScheme(s)
+	_ = gatewayv1.Install(s)
+	_ = gatewayv1beta1.Install(s)
 }

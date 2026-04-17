@@ -11,7 +11,7 @@ import (
 
 // handleItemCreation checks if each item/product has a created event
 func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService *vshnv1.BillingService, item vshnv1.ItemSpec) error {
-	if hasEvent(billingService, BillingEventTypeCreated, item.ProductID) {
+	if hasEventByInstanceID(billingService, BillingEventTypeCreated, item.InstanceID) {
 		return nil
 	}
 

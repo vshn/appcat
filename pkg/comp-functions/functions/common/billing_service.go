@@ -101,7 +101,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 	itemDescription := GetItemDescription(isAPPUiOCloud, clusterName, namespace)
 
 	// For Servala deployments (prefix set), the annotation is the sole source of truth
-	// for items — opts.Items are skipped to avoid duplicating addon items already
+	// for items - opts.Items are skipped to avoid duplicating addon items already
 	// declared in the annotation. For non-Servala, include caller-supplied items.
 	var items []vshnv1.ItemSpec
 	if prefix == "" {
@@ -164,7 +164,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 		start := len(items)
 		items = append(items, payload.Items...)
 		for i := start; i < len(items); i++ {
-			items[i].InstanceID = comp.GetName() + "-" + shortSHA(items[i].ProductID)
+			items[i].InstanceID = comp.GetName() + "-" + shortSHA(items[i].ProductID+items[i].ItemDescription+items[i].ItemGroupDescription)
 		}
 	} else {
 		// Default: compute a single standard product item (non-Servala clusters)

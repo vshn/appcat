@@ -13,6 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
@@ -26,6 +28,10 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	fqdn := comp.Spec.Parameters.Service.FQDN
 	if fqdn == "" {
 		return nil
+	}
+
+	if svc.Config.Data["routeType"] == "HTTPRoute" {
+		return addKeycloakHTTPRoute(comp, svc, fqdn)
 	}
 
 	values, err := common.GetDesiredReleaseValues(svc, comp.GetName()+"-release")
@@ -108,4 +114,43 @@ func addOpenShiftCa(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) erro
 	}
 
 	return svc.SetDesiredKubeObject(secret, comp.GetName()+"-route-ca", runtime.KubeOptionAllowDeletion)
+}
+
+func addKeycloakHTTPRoute(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, fqdn string) *xfnproto.Result {
+	gatewayName := svc.Config.Data["httpGatewayName"]
+	gatewayNamespace := svc.Config.Data["httpGatewayNamespace"]
+
+	svc.Log.Info("Adding HTTPRoute for Keycloak")
+
+	route, err := common.GenerateHTTPRoute(comp, svc, common.HTTPRouteConfig{
+		FQDNs: []string{fqdn},
+		ServiceConfig: common.IngressRuleConfig{
+			ServiceNameSuffix: "keycloakx-http",
+			ServicePortNumber: 8443,
+		},
+		GatewayName:      gatewayName,
+		GatewayNamespace: gatewayNamespace,
+	})
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot generate HTTPRoute: %s", err))
+	}
+
+	err = common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}, runtime.KubeOptionAllowDeletion)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create HTTPRoute: %s", err))
+	}
+
+	serviceName := comp.GetName() + "-keycloakx-http"
+
+	grant, err := common.GenerateReferenceGrant(comp, svc, gatewayNamespace, serviceName)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot generate ReferenceGrant: %s", err))
+	}
+
+	err = common.CreateReferenceGrants(svc, []*gatewayv1beta1.ReferenceGrant{grant}, runtime.KubeOptionAllowDeletion)
+	if err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create ReferenceGrant: %s", err))
+	}
+
+	return nil
 }

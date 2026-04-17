@@ -26,6 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 var (
@@ -331,6 +333,10 @@ func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 }
 func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
+	if svc.Config.Data["routeType"] == "HTTPRoute" {
+		return addCollaboraHTTPRoute(comp, svc)
+	}
+
 	annotations := map[string]string{}
 
 	if svc.Config.Data["isOpenshift"] == "true" {
@@ -532,6 +538,46 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 	}
 
 	return svc.SetDesiredKubeObject(job, comp.GetName()+"-collabora-install-job", runtime.KubeOptionAddLabels(labelMap))
+}
+
+func addCollaboraHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	gatewayName := svc.Config.Data["httpGatewayName"]
+	gatewayNamespace := svc.Config.Data["httpGatewayNamespace"]
+
+	svc.Log.Info("Adding HTTPRoute for Collabora")
+
+	route, err := common.GenerateHTTPRoute(comp, svc, common.HTTPRouteConfig{
+		FQDNs: []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+		ServiceConfig: common.IngressRuleConfig{
+			ServiceNameSuffix: "collabora-code",
+			ServicePortNumber: 9980,
+		},
+		NameSuffix:       "collabora-code",
+		GatewayName:      gatewayName,
+		GatewayNamespace: gatewayNamespace,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}, runtime.KubeOptionAddLabels(labelMap))
+	if err != nil {
+		return err
+	}
+
+	serviceName := comp.GetName() + "-collabora-code"
+
+	grant, err := common.GenerateReferenceGrant(comp, svc, gatewayNamespace, serviceName, "collabora-code")
+	if err != nil {
+		return err
+	}
+
+	err = common.CreateReferenceGrants(svc, []*gatewayv1beta1.ReferenceGrant{grant}, runtime.KubeOptionAddLabels(labelMap))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ssh-keygen -t rsa -N "" -m PEM

@@ -76,12 +76,20 @@ func (b *BillingHandler) persistEventSent(ctx context.Context, billingService *v
 	if err := b.Get(ctx, client.ObjectKeyFromObject(billingService), fresh); err != nil {
 		return nil, err
 	}
+	found := false
 	for i, e := range fresh.Status.Events {
 		if e.InstanceID == event.InstanceID && e.Type == event.Type && e.Timestamp.Time.Equal(event.Timestamp.Time) {
 			fresh.Status.Events[i].State = string(BillingEventStateSent)
 			fresh.Status.Events[i].LastAttemptTime = event.LastAttemptTime
+			found = true
 			break
 		}
+	}
+	if !found {
+		// Event was pruned between Odoo delivery and this status persist. This is a known
+		// rare race: the next reconcile will re-enqueue the event as pending and re-send it
+		// to Odoo. Odoo deduplicates duplicate events on its side, so this is acceptable.
+		return nil, fmt.Errorf("event for instanceID %q type %q not found after re-fetch (pruned?)", event.InstanceID, event.Type)
 	}
 	return fresh, b.Status().Update(ctx, fresh)
 }

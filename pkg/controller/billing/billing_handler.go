@@ -153,7 +153,7 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		canRemoveFinalizer, requeueAfter := shouldRemoveFinalizer(&billingService)
-		if canRemoveFinalizer && controllerutil.ContainsFinalizer(&billingService, vshnv1.BillingServiceFinalizer) {
+		if canRemoveFinalizer && !hasBacklog(&billingService) && controllerutil.ContainsFinalizer(&billingService, vshnv1.BillingServiceFinalizer) {
 			controllerutil.RemoveFinalizer(&billingService, vshnv1.BillingServiceFinalizer)
 			if err := b.Update(ctx, &billingService); err != nil {
 				return ctrl.Result{}, err

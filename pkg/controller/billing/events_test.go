@@ -133,7 +133,7 @@ func TestPruneEventsIfNeeded(t *testing.T) {
 			expectedRemaining: 2,
 		},
 		{
-			name: "does not prune pending events",
+			name: "prunes sent events but preserves pending events",
 			billingService: &vshnv1.BillingService{
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{

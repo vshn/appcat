@@ -34,23 +34,25 @@ func TestHandleItemScaling(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeCreated),
-							ProductID: "prod-123",
-							Value:     "1",
-							State:     string(BillingEventStateSent),
+							Type:       string(BillingEventTypeCreated),
+							ProductID:  "prod-123",
+							InstanceID: "inst-123",
+							Value:      "1",
+							State:      string(BillingEventStateSent),
 						},
 					},
 				},
 			},
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
+				InstanceID:           "inst-123",
 				Value:                "3",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
@@ -69,23 +71,25 @@ func TestHandleItemScaling(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeCreated),
-							ProductID: "prod-123",
-							Value:     "2",
-							State:     string(BillingEventStateSent),
+							Type:       string(BillingEventTypeCreated),
+							ProductID:  "prod-123",
+							InstanceID: "inst-123",
+							Value:      "2",
+							State:      string(BillingEventStateSent),
 						},
 					},
 				},
 			},
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
+				InstanceID:           "inst-123",
 				Value:                "2",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
@@ -103,23 +107,25 @@ func TestHandleItemScaling(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeCreated),
-							ProductID: "prod-123",
-							Value:     "1",
-							State:     string(BillingEventStatePending),
+							Type:       string(BillingEventTypeCreated),
+							ProductID:  "prod-123",
+							InstanceID: "inst-123",
+							Value:      "1",
+							State:      string(BillingEventStatePending),
 						},
 					},
 				},
 			},
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
+				InstanceID:           "inst-123",
 				Value:                "3",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
@@ -137,29 +143,32 @@ func TestHandleItemScaling(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "3", ItemDescription: "Test Item", ItemGroupDescription: "Test Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeScaled),
-							ProductID: "prod-123",
-							Value:     "3",
-							State:     string(BillingEventStatePending),
+							Type:       string(BillingEventTypeScaled),
+							ProductID:  "prod-123",
+							InstanceID: "inst-123",
+							Value:      "3",
+							State:      string(BillingEventStatePending),
 						},
 						{
-							Type:      string(BillingEventTypeCreated),
-							ProductID: "prod-123",
-							Value:     "1",
-							State:     string(BillingEventStateSent),
+							Type:       string(BillingEventTypeCreated),
+							ProductID:  "prod-123",
+							InstanceID: "inst-123",
+							Value:      "1",
+							State:      string(BillingEventStateSent),
 						},
 					},
 				},
 			},
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-123",
+				InstanceID:           "inst-123",
 				Value:                "3",
 				ItemDescription:      "Test Item",
 				ItemGroupDescription: "Test Group",
@@ -177,23 +186,25 @@ func TestHandleItemScaling(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-storage", Value: "100Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+							{ProductID: "prod-storage", InstanceID: "inst-storage", Value: "100Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeCreated),
-							ProductID: "prod-storage",
-							Value:     "50Gi",
-							State:     string(BillingEventStateSent),
+							Type:       string(BillingEventTypeCreated),
+							ProductID:  "prod-storage",
+							InstanceID: "inst-storage",
+							Value:      "50Gi",
+							State:      string(BillingEventStateSent),
 						},
 					},
 				},
 			},
 			item: vshnv1.ItemSpec{
 				ProductID:            "prod-storage",
+				InstanceID:           "inst-storage",
 				Value:                "100Gi",
 				ItemDescription:      "Storage Item",
 				ItemGroupDescription: "Storage Group",
@@ -252,31 +263,34 @@ func TestHandleItemScaling_MultipleItems(t *testing.T) {
 			Odoo: vshnv1.OdooSpec{
 				ServiceID: "test-instance",
 				Items: []vshnv1.ItemSpec{
-					{ProductID: "prod-compute", Value: "4", ItemDescription: "Compute Item", ItemGroupDescription: "Compute Group"},
-					{ProductID: "prod-storage", Value: "100Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
-					{ProductID: "prod-backup", Value: "enabled", ItemDescription: "Backup Item", ItemGroupDescription: "Backup Group"},
+					{ProductID: "prod-compute", InstanceID: "inst-compute", Value: "4", ItemDescription: "Compute Item", ItemGroupDescription: "Compute Group"},
+					{ProductID: "prod-storage", InstanceID: "inst-storage", Value: "100Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+					{ProductID: "prod-backup", InstanceID: "inst-backup", Value: "enabled", ItemDescription: "Backup Item", ItemGroupDescription: "Backup Group"},
 				},
 			},
 		},
 		Status: vshnv1.BillingServiceStatus{
 			Events: []vshnv1.BillingEventStatus{
 				{
-					Type:      string(BillingEventTypeCreated),
-					ProductID: "prod-compute",
-					Value:     "2",
-					State:     string(BillingEventStateSent),
+					Type:       string(BillingEventTypeCreated),
+					ProductID:  "prod-compute",
+					InstanceID: "inst-compute",
+					Value:      "2",
+					State:      string(BillingEventStateSent),
 				},
 				{
-					Type:      string(BillingEventTypeCreated),
-					ProductID: "prod-storage",
-					Value:     "50Gi",
-					State:     string(BillingEventStateSent),
+					Type:       string(BillingEventTypeCreated),
+					ProductID:  "prod-storage",
+					InstanceID: "inst-storage",
+					Value:      "50Gi",
+					State:      string(BillingEventStateSent),
 				},
 				{
-					Type:      string(BillingEventTypeCreated),
-					ProductID: "prod-backup",
-					Value:     "enabled",
-					State:     string(BillingEventStateSent),
+					Type:       string(BillingEventTypeCreated),
+					ProductID:  "prod-backup",
+					InstanceID: "inst-backup",
+					Value:      "enabled",
+					State:      string(BillingEventStateSent),
 				},
 			},
 		},

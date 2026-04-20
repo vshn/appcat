@@ -17,8 +17,8 @@ func (b *BillingHandler) handleDeletion(ctx context.Context, billingService *vsh
 
 	// Delete all items/products currently in spec
 	for _, item := range billingService.Spec.Odoo.Items {
-		if !hasEvent(billingService, BillingEventTypeDeleted, item.ProductID) {
-			lastValue := lastObservedValueForProduct(billingService, item.ProductID, item.Value)
+		if !hasEventByInstanceID(billingService, BillingEventTypeDeleted, item.InstanceID) {
+			lastValue := lastObservedValueForInstanceID(billingService, item.InstanceID, item.Value)
 			event := vshnv1.BillingEventStatus{
 				Type:                 string(BillingEventTypeDeleted),
 				ProductID:            item.ProductID,

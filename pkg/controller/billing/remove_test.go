@@ -33,7 +33,7 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
 						},
 					},
 				},
@@ -42,6 +42,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -50,6 +51,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -72,8 +74,8 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
-							{ProductID: "prod-456", Value: "50Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-456", InstanceID: "inst-456", Value: "50Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
 						},
 					},
 				},
@@ -82,6 +84,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -90,6 +93,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -112,7 +116,7 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
 						},
 					},
 				},
@@ -121,6 +125,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -129,6 +134,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -137,6 +143,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-789",
+							InstanceID:           "inst-789",
 							Value:                "enabled",
 							ItemDescription:      "Boolean Item",
 							ItemGroupDescription: "Boolean Group",
@@ -159,21 +166,23 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeDeleted),
-							ProductID: "prod-456",
-							Value:     "50Gi",
-							State:     string(BillingEventStatePending),
+							Type:       string(BillingEventTypeDeleted),
+							ProductID:  "prod-456",
+							InstanceID: "inst-456",
+							Value:      "50Gi",
+							State:      string(BillingEventStatePending),
 						},
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -182,6 +191,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -204,7 +214,7 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
 						},
 					},
 				},
@@ -213,6 +223,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -221,6 +232,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -250,6 +262,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeScaled),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "5",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -258,6 +271,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -343,6 +357,7 @@ func TestHandleRemovedItems_EmptySpec(t *testing.T) {
 				{
 					Type:                 string(BillingEventTypeCreated),
 					ProductID:            "prod-123",
+					InstanceID:           "inst-123",
 					Value:                "2",
 					ItemDescription:      "Instance Item",
 					ItemGroupDescription: "Instance Group",
@@ -351,6 +366,7 @@ func TestHandleRemovedItems_EmptySpec(t *testing.T) {
 				{
 					Type:                 string(BillingEventTypeCreated),
 					ProductID:            "prod-456",
+					InstanceID:           "inst-456",
 					Value:                "50Gi",
 					ItemDescription:      "Storage Item",
 					ItemGroupDescription: "Storage Group",
@@ -359,6 +375,7 @@ func TestHandleRemovedItems_EmptySpec(t *testing.T) {
 				{
 					Type:                 string(BillingEventTypeCreated),
 					ProductID:            "prod-789",
+					InstanceID:           "inst-789",
 					Value:                "enabled",
 					ItemDescription:      "Boolean Item",
 					ItemGroupDescription: "Boolean Group",

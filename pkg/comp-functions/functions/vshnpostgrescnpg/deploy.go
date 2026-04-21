@@ -2,8 +2,10 @@ package vshnpostgrescnpg
 
 import (
 	"context"
+	"crypto/x509"
 	_ "embed"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,13 +14,16 @@ import (
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certmgrv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
+
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
 
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -88,6 +93,14 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	}
 
 	svcName := "postgresql-rw"
+
+	// Once the loadbalancer ip is in the connection details, we can use it to fix the tls cert
+	ipAddresses := []string{}
+	cd := svc.GetObservedConnectionDetails()
+	if v, ok := cd["LOADBALANCER_IP"]; ok && comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
+		ipAddresses = append(ipAddresses, string(v))
+	}
+
 	certificate := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName(),
@@ -117,6 +130,7 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 				svcName + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
 				svcName + "." + comp.GetInstanceNamespace() + ".svc",
 			},
+			IPAddresses: ipAddresses,
 			IssuerRef: certmgrv1.ObjectReference{
 				Name:  comp.GetName(),
 				Kind:  selfSignedIssuer.GetObjectKind().GroupVersionKind().Kind,
@@ -131,6 +145,70 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 		return err
 	}
 
+	// We slow down the readiness of the certificate so Crossplane can pick up the changes in the
+	// certificate secret, before everything goes synced/ready.
+	// We look at the actual source certificate for the connection details
+	// parse it and see if the IP address is in there.
+	// If LoadBalancer is enabled and we don't see the IP in the IPAddresses of the
+	// certificate, we will mark is as unready.
+	// This ensures that we don't have to wait ~1h before the correct connectionDetails
+	// are populated.
+	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
+		svc.SetDesiredResourceReadiness("certificate", runtime.ResourceUnReady)
+
+		v, ok := cd["LOADBALANCER_IP"]
+		if ok {
+
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      certificateSecretName,
+					Namespace: comp.GetInstanceNamespace(),
+				},
+			}
+
+			err := svc.SetDesiredKubeObject(secret, comp.GetName()+"-tls-observer", runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion)
+			if err != nil {
+				svc.Log.Error(err, "cannot deploy certificate secret observer")
+				svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot deploy certificate secret observer: %s", err)))
+			}
+
+			obsSecret := &corev1.Secret{}
+
+			err = svc.GetObservedKubeObject(obsSecret, comp.GetName()+"-tls-observer")
+			if err != nil {
+				svc.Log.Error(err, "cannot observe certificate secret")
+				svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot observe certificate secret: %s", err)))
+			}
+
+			block, _ := pem.Decode(obsSecret.Data["tls.crt"])
+			if block == nil {
+				svc.Log.Info("cannot decode tls certificate")
+				svc.AddResult(runtime.NewWarningResult("cannot decode tls certificate"))
+			} else {
+				cert, err := x509.ParseCertificate(block.Bytes)
+				if err != nil {
+					svc.Log.Error(err, "cannot parse tls certificate")
+					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot parse tls certificate: %s", err)))
+				}
+
+				// If we don't have a cert we fatal abort the whole reconcile.
+				// This will protect the consistency of the Crossplane state.
+				if cert == nil {
+					err := fmt.Errorf("certificate is nil, please check issues with cert-manager")
+					svc.AddResult(runtime.NewFatalResult(err))
+					return err
+				}
+
+				for _, ip := range cert.IPAddresses {
+					if ip.String() == string(v) {
+						svc.SetDesiredResourceReadiness("certificate", runtime.ResourceReady)
+					}
+				}
+			}
+
+		}
+	}
+
 	return nil
 }
 
@@ -139,6 +217,12 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	values, err := createCnpgHelmValues(ctx, svc, comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot create helm values: %w", err))
+	}
+
+	// Handle restore before backup setup — may skip Helm release creation in the first reconciliation loop
+	result, skipRelease := handleRestore(ctx, comp, svc, values)
+	if skipRelease {
+		return result
 	}
 
 	if err := SetupBackup(ctx, svc, comp, values); err != nil {
@@ -163,6 +247,7 @@ func deployPostgresSQLUsingCNPG(ctx context.Context, comp *vshnv1.VSHNPostgreSQL
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot set desired release: %w", err))
 	}
+
 	return nil
 }
 
@@ -294,6 +379,11 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 	// User management: inject roles into Cluster spec and databases as separate CRDs
 	if err := addUserManagementValues(comp, values); err != nil {
 		return map[string]any{}, fmt.Errorf("cannot add user management values: %w", err)
+	}
+
+	// LoadBalancer: Inject loadbalancer config if enabled
+	if err := addLoadbalancerConfig(svc, comp, values); err != nil {
+		return map[string]any{}, fmt.Errorf("cannot add loadbalancer service values to the chart: %w", err)
 	}
 
 	return values, nil
@@ -467,4 +557,53 @@ func createCnpgSCCRoleBinding(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceR
 		},
 	}
 	return svc.SetDesiredKubeObject(rb, comp.GetName()+"-scc-rb")
+}
+
+func addLoadbalancerConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, values map[string]any) error {
+
+	if !externalAccessEnabled(svc) {
+		return nil
+	}
+
+	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) {
+		annotations := map[string]string{}
+		if svc.Config.Data["loadbalancerAnnotations"] != "" {
+
+			err := yaml.Unmarshal([]byte(svc.Config.Data["loadbalancerAnnotations"]), &annotations)
+			if err != nil {
+				svc.Log.Error(err, "cannot unmarshal loadbalancer annotations from input")
+				svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal loadbalancer annotations from input: %s", err)))
+			}
+		}
+
+		services := map[string]any{
+			"additional": []map[string]any{
+				{
+					"selectorType": "rw",
+					"serviceTemplate": map[string]any{
+						"metadata": map[string]any{
+							"name":        "primary",
+							"annotations": annotations,
+						},
+						"spec": map[string]any{
+							"type": corev1.ServiceTypeLoadBalancer,
+						},
+					},
+				},
+			},
+		}
+
+		err := common.AddLoadbalancerNetpolicy(svc, comp)
+		if err != nil {
+			return err
+		}
+
+		return common.SetNestedObjectValue(values, []string{"cluster", "services"}, services)
+	}
+
+	return nil
+}
+
+func externalAccessEnabled(svc *runtime.ServiceRuntime) bool {
+	return svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled")
 }

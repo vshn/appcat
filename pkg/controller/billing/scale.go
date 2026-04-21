@@ -9,11 +9,11 @@ import (
 
 // handleItemScaling enqueues a scaled event if the value changed from the last sent value.
 func (b *BillingHandler) handleItemScaling(ctx context.Context, billingService *vshnv1.BillingService, item vshnv1.ItemSpec) error {
-	lastValue, ok := lastSentValueForProduct(billingService, item.ProductID)
+	lastValue, ok := lastSentValueForInstanceID(billingService, item.InstanceID)
 	if !ok || lastValue == item.Value {
 		return nil
 	}
-	if hasEventWithValue(billingService, BillingEventTypeScaled, item.ProductID, item.Value) {
+	if hasEventWithValueByInstanceID(billingService, BillingEventTypeScaled, item.InstanceID, item.Value) {
 		return nil // already queued
 	}
 

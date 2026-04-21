@@ -9,57 +9,54 @@ import (
 
 // handleRemovedItems detects items removed from spec and enqueues delete events
 func (b *BillingHandler) handleRemovedItems(ctx context.Context, billingService *vshnv1.BillingService) error {
-	currentProducts := make(map[string]bool)
+	currentInstances := make(map[string]bool)
 	for _, item := range billingService.Spec.Odoo.Items {
-		currentProducts[item.ProductID] = true
+		currentInstances[item.InstanceID] = true
 	}
 
-	// Single pass through events (newest-first order)
-	type eventInfo struct {
-		value, itemDesc, itemGroupDesc, instanceID string
-	}
-	createdProducts := make(map[string]bool)
-	lastSent := make(map[string]eventInfo)
-
+	// Single pass through events (newest-first order) to find the most recent sent
+	// created/scaled event per instanceID. Using sent events as the source of truth
+	// ensures we also catch instances whose create event was pruned but scale events remain.
+	lastSent := make(map[string]vshnv1.ItemSpec)
+	createdInstances := make(map[string]bool)
 	for _, event := range billingService.Status.Events {
-		if event.Type == string(BillingEventTypeCreated) &&
-			event.State != string(BillingEventStateSuperseded) {
-			createdProducts[event.ProductID] = true
+		if event.Type == string(BillingEventTypeCreated) && event.State != string(BillingEventStateSuperseded) {
+			createdInstances[event.InstanceID] = true
 		}
-
-		// Capture from first (most recent) sent created/scaled event
-		if _, seen := lastSent[event.ProductID]; !seen &&
+		if _, seen := lastSent[event.InstanceID]; !seen &&
 			event.State == string(BillingEventStateSent) &&
 			(event.Type == string(BillingEventTypeCreated) || event.Type == string(BillingEventTypeScaled)) {
-			lastSent[event.ProductID] = eventInfo{
-				value:         event.Value,
-				itemDesc:      event.ItemDescription,
-				itemGroupDesc: event.ItemGroupDescription,
-				instanceID:    event.InstanceID,
+			lastSent[event.InstanceID] = vshnv1.ItemSpec{
+				ProductID:            event.ProductID,
+				InstanceID:           event.InstanceID,
+				Value:                event.Value,
+				ItemDescription:      event.ItemDescription,
+				ItemGroupDescription: event.ItemGroupDescription,
 			}
 		}
 	}
 
-	for productID := range createdProducts {
-		if currentProducts[productID] || hasEvent(billingService, BillingEventTypeDeleted, productID) {
-			continue
+	for instanceID := range createdInstances {
+		if !currentInstances[instanceID] && !hasEventByInstanceID(billingService, BillingEventTypeDeleted, instanceID) {
+			if _, sent := lastSent[instanceID]; !sent {
+				b.log.Info("Skipping delete event for instance never sent to Odoo",
+					"instanceID", instanceID,
+					"billingService", billingService.Name)
+			}
 		}
+	}
 
-		info, ok := lastSent[productID]
-		if !ok {
-			// Never sent to Odoo — nothing to delete
-			b.log.Info("Skipping delete event for product never sent to Odoo",
-				"productID", productID,
-				"billingService", billingService.Name)
+	for instanceID, info := range lastSent {
+		if currentInstances[instanceID] || hasEventByInstanceID(billingService, BillingEventTypeDeleted, instanceID) {
 			continue
 		}
 		delEvent := vshnv1.BillingEventStatus{
 			Type:                 string(BillingEventTypeDeleted),
-			ProductID:            productID,
-			InstanceID:           info.instanceID,
-			Value:                info.value,
-			ItemDescription:      info.itemDesc,
-			ItemGroupDescription: info.itemGroupDesc,
+			ProductID:            info.ProductID,
+			InstanceID:           instanceID,
+			Value:                info.Value,
+			ItemDescription:      info.ItemDescription,
+			ItemGroupDescription: info.ItemGroupDescription,
 			Timestamp:            metav1.Now(),
 			State:                string(BillingEventStatePending),
 			RetryCount:           0,

@@ -7,9 +7,8 @@ import (
 )
 
 type findEventOpts struct {
-	States    []BillingEventState
-	Type      *BillingEventType
-	ProductID *string
+	States []BillingEventState
+	Type   *BillingEventType
 }
 
 // enqueueEvent prepends a billing event to the list and updates the BillingService status.
@@ -32,32 +31,31 @@ func enqueueEvent(ctx context.Context, b *BillingHandler, billingService *vshnv1
 // pruneEventsIfNeeded removes oldest sent events per product when limit exceeded
 // maxEvents applies globally to all products (same limit for each product)
 func pruneEventsIfNeeded(billingService *vshnv1.BillingService, maxEvents int) int {
-	// Count events per product
-	eventCountPerProduct := make(map[string]int)
+	// Count events per instance
+	eventCountPerInstance := make(map[string]int)
 	for _, event := range billingService.Status.Events {
-		eventCountPerProduct[event.ProductID]++
+		eventCountPerInstance[event.InstanceID]++
 	}
 
-	// Build pruning list per product
+	// Build pruning list per instance
 	eventsToRemove := make(map[int]bool)
 	totalPruned := 0
 
-	// Prune events for ALL products (including removed ones)
-	// This prevents unbounded growth of events for products that were removed from spec
-	for productID := range eventCountPerProduct {
-		currentCount := eventCountPerProduct[productID]
+	// Prune events for ALL instances (including removed ones)
+	// This prevents unbounded growth of events for instances that were removed from spec
+	for instanceID := range eventCountPerInstance {
+		currentCount := eventCountPerInstance[instanceID]
 		if currentCount <= maxEvents {
-			continue // no pruning needed for this product
+			continue // no pruning needed for this instance
 		}
 
 		toPrune := currentCount - maxEvents
 
-		// Find oldest sent events for this product
-		// Only prune events with status "sent"
+		// Find oldest sent events for this instance — only sent events are prunable
 		prunableIndices := []int{}
 		for i := len(billingService.Status.Events) - 1; i >= 0; i-- {
 			event := billingService.Status.Events[i]
-			if event.ProductID != productID {
+			if event.InstanceID != instanceID {
 				continue
 			}
 			if event.State == string(BillingEventStateSent) {
@@ -65,7 +63,6 @@ func pruneEventsIfNeeded(billingService *vshnv1.BillingService, maxEvents int) i
 			}
 		}
 
-		// Prune oldest events for this product
 		pruneCount := toPrune
 		if pruneCount > len(prunableIndices) {
 			pruneCount = len(prunableIndices)
@@ -116,130 +113,38 @@ func findEvent(billingService *vshnv1.BillingService, opts findEventOpts) (int, 
 		if opts.Type != nil && event.Type != string(*opts.Type) {
 			continue
 		}
-		if opts.ProductID != nil && event.ProductID != *opts.ProductID {
-			continue
-		}
 		return i, event, true
 	}
 	return -1, vshnv1.BillingEventStatus{}, false
 }
 
-// hasSentEvent returns true if there is a sent event of the given type optionally filtered by productID and value.
-func hasSentEvent(billingService *vshnv1.BillingService, eventType BillingEventType, productID string, value string) bool {
+// hasEventByInstanceID returns true if an event of the given type exists for the given instanceID.
+func hasEventByInstanceID(billingService *vshnv1.BillingService, eventType BillingEventType, instanceID string) bool {
 	for _, event := range billingService.Status.Events {
-		if event.Type != string(eventType) || event.State != string(BillingEventStateSent) {
-			continue
-		}
-		if productID != "" && event.ProductID != productID {
-			continue
-		}
-		if value != "" && event.Value != value {
-			continue
-		}
-		return true
-	}
-	return false
-}
-
-// hasEvent returns true if an event exists for the given productID.
-func hasEvent(billingService *vshnv1.BillingService, eventType BillingEventType, productID string) bool {
-	for _, event := range billingService.Status.Events {
-		if event.Type == string(eventType) && event.ProductID == productID {
+		if event.Type == string(eventType) && event.InstanceID == instanceID {
 			return true
 		}
 	}
 	return false
 }
 
-// hasEventWithValue returns true if an event of type t exists for (productID,value) (any state).
-func hasEventWithValue(billingService *vshnv1.BillingService, eventType BillingEventType, productID, value string) bool {
+// hasEventWithValueByInstanceID returns true if an event of type t exists for (instanceID,value) (any state).
+func hasEventWithValueByInstanceID(billingService *vshnv1.BillingService, eventType BillingEventType, instanceID, value string) bool {
 	for _, event := range billingService.Status.Events {
-		if event.Type == string(eventType) && event.ProductID == productID && event.Value == value {
+		if event.Type == string(eventType) && event.InstanceID == instanceID && event.Value == value {
 			return true
 		}
 	}
 	return false
 }
 
-// hasOpenCreated returns true if there is a created for productID that is not superseded.
-func hasOpenCreated(billingService *vshnv1.BillingService, productID string) bool {
-	for _, event := range billingService.Status.Events {
-		if event.Type == string(BillingEventTypeCreated) && event.ProductID == productID && event.State != string(BillingEventStateSuperseded) {
-			return true
-		}
-	}
-	return false
-}
-
-// lastActiveSentProduct returns the most recent sent created event that has not been superseded.
-func lastActiveSentProduct(billingService *vshnv1.BillingService) (productID string, value string, ok bool) {
-	deleted := map[string]struct{}{}
-
+// lastSentValueForInstanceID returns the value from the most recent SENT created/scaled for instanceID.
+func lastSentValueForInstanceID(billingService *vshnv1.BillingService, instanceID string) (string, bool) {
 	for _, event := range billingService.Status.Events {
 		if event.State != string(BillingEventStateSent) {
 			continue
 		}
-		if event.Type == string(BillingEventTypeDeleted) {
-			deleted[event.ProductID] = struct{}{}
-			continue
-		}
-		if event.Type == string(BillingEventTypeCreated) {
-			if _, seen := deleted[event.ProductID]; !seen {
-				return event.ProductID, event.Value, true
-			}
-		}
-	}
-	return "", "", false
-}
-
-// supersedeCreatedForSLA marks obsolete created events as superseded.
-func supersedeCreatedForSLA(billingService *vshnv1.BillingService, currentProductID string) bool {
-	changed := false
-	keptCurrent := false
-
-	for i := range billingService.Status.Events {
-		event := billingService.Status.Events[i]
-		if event.Type != string(BillingEventTypeCreated) {
-			continue
-		}
-		if event.State == string(BillingEventStateSent) || event.State == string(BillingEventStateSuperseded) {
-			continue
-		}
-
-		if event.ProductID != currentProductID {
-			event.State = string(BillingEventStateSuperseded)
-			billingService.Status.Events[i] = event
-			changed = true
-			continue
-		}
-
-		// current product, keep only the newest open created
-		if keptCurrent {
-			event.State = string(BillingEventStateSuperseded)
-			billingService.Status.Events[i] = event
-			changed = true
-			continue
-		}
-		keptCurrent = true
-	}
-	return changed
-}
-
-// lastObservedValueForProduct returns last sent value for productID or fallback if none found.
-func lastObservedValueForProduct(billingService *vshnv1.BillingService, productID string, fallback string) string {
-	if value, ok := lastSentValueForProduct(billingService, productID); ok {
-		return value
-	}
-	return fallback
-}
-
-// lastSentValueForProduct returns the value from the most recent SENT created/scaled for productID.
-func lastSentValueForProduct(billingService *vshnv1.BillingService, productID string) (string, bool) {
-	for _, event := range billingService.Status.Events {
-		if event.State != string(BillingEventStateSent) {
-			continue
-		}
-		if event.ProductID != productID {
+		if event.InstanceID != instanceID {
 			continue
 		}
 		if event.Type == string(BillingEventTypeScaled) || event.Type == string(BillingEventTypeCreated) {
@@ -247,6 +152,14 @@ func lastSentValueForProduct(billingService *vshnv1.BillingService, productID st
 		}
 	}
 	return "", false
+}
+
+// lastObservedValueForInstanceID returns last sent value for instanceID or fallback if none found.
+func lastObservedValueForInstanceID(billingService *vshnv1.BillingService, instanceID string, fallback string) string {
+	if value, ok := lastSentValueForInstanceID(billingService, instanceID); ok {
+		return value
+	}
+	return fallback
 }
 
 // hasBacklog returns true if there are any events not in sent or superseded.

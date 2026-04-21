@@ -420,7 +420,7 @@ func newKeycloakCompWithRestore(name, sourceClaim string) *vshnv1.VSHNKeycloak {
 }
 
 func Test_copyKeycloakCredentials_WaitingForCopyJob(t *testing.T) {
-	// Staging secret not yet in observed state — copy job has not run.
+	// Staging secret not yet in observed state - copy job has not run.
 	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
 	comp := newKeycloakCompWithRestore("mycloak", "old-keycloak")
 
@@ -441,7 +441,7 @@ func Test_copyKeycloakCredentials_WaitingForCopyJob(t *testing.T) {
 }
 
 func Test_copyKeycloakCredentials_CredentialsReady(t *testing.T) {
-	// Staging secret is present in observed state — copy job has already run.
+	// Staging secret is present in observed state - copy job has already run.
 	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/restore_with_staging_secret.yaml")
 	comp := newKeycloakCompWithRestore("mycloak", "old-keycloak")
 

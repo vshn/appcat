@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"net/http"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,7 +20,7 @@ type HTTP struct {
 }
 
 func NewHTTP(url string, tlsEnabled bool, cacert *x509.Certificate, service, name, claimNamespace, instanceNamespace, organization, servicelevel, compositionName string, ha bool) *HTTP {
-	transport := http.DefaultTransport
+	transport := http.DefaultTransport.(*http.Transport).Clone()
 	if tlsEnabled {
 		caPool := x509.NewCertPool()
 		caPool.AddCert(cacert)
@@ -48,6 +49,10 @@ func NewHTTP(url string, tlsEnabled bool, cacert *x509.Certificate, service, nam
 }
 
 func (h *HTTP) Close() error {
+	// Release idle connections held by the transport.
+	// Without this, stopping a probe leaves the transport's connection pool
+	// open with connections to the remote endpoint.
+	h.client.CloseIdleConnections()
 	return nil
 }
 
@@ -60,10 +65,21 @@ func (h *HTTP) Probe(ctx context.Context) error {
 	l := log.FromContext(ctx).WithValues("http_prober", h.url)
 
 	l.V(1).Info("Starting get request")
-	resp, err := h.client.Get(h.url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.url, nil)
 	if err != nil {
 		return err
 	}
+	resp, err := h.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	// Not closing response body prevents the HTTP transport from reusing the underlying
+	// TCP connection. Draining before closing allows connection reuse.
+	defer func() {
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
+		resp.Body.Close()
+	}()
 
 	l.V(1).Info("Checking response")
 	if resp.StatusCode != http.StatusOK {

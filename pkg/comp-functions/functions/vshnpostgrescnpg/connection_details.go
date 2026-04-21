@@ -116,6 +116,10 @@ func generateConnectionDetailInfoForRelease(comp *vshnv1.VSHNPostgreSQL, svc *ru
 		ToConnectionSecretKey: ClusterInstanceCdField,
 	})
 
+	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
+		connectionDetails = append(connectionDetails, getLoadBalancerConnectionDetail(comp, svc))
+	}
+
 	return connectionDetails
 }
 
@@ -162,4 +166,18 @@ func getConnectionDetails(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreS
 	}
 
 	return cd, nil
+}
+
+func getLoadBalancerConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) v1beta1.ConnectionDetail {
+	return v1beta1.ConnectionDetail{
+		ObjectReference: corev1.ObjectReference{
+			APIVersion: "v1",
+			Kind:       "Service",
+			Name:       "primary",
+			Namespace:  comp.GetInstanceNamespace(),
+			FieldPath:  "status.loadBalancer.ingress[0].ip",
+		},
+		ToConnectionSecretKey:  "LOADBALANCER_IP",
+		SkipPartOfReleaseCheck: true,
+	}
 }

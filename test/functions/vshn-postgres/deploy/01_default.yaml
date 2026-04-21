@@ -6,7 +6,7 @@ desired:
       metadata:
         creationTimestamp: "2023-03-21T16:52:31Z"
         finalizers:
-        - composite.apiextensions.crossplane.io
+          - composite.apiextensions.crossplane.io
         generateName: pgsql-
         generation: 13
         labels:
@@ -27,7 +27,7 @@ desired:
         writeConnectionSecretToRef: {}
       status:
         instanceNamespace: vshn-postgresql-pgsql-gc9x4
-  "pg-bucket":   
+  "pg-bucket":
     resource:
       apiVersion: appcat.vshn.io/v1
       kind: XObjectBucket
@@ -52,14 +52,14 @@ desired:
           namespace: vshn-postgresql-pgsql-gc9x4
       status:
         conditions:
-        - lastTransitionTime: "2024-09-27T08:06:34Z"
-          reason: ReconcileSuccess
-          status: "True"
-          type: Synced
-        - lastTransitionTime: "2024-09-26T14:37:37Z"
-          reason: Available
-          status: "True"
-          type: Ready
+          - lastTransitionTime: "2024-09-27T08:06:34Z"
+            reason: ReconcileSuccess
+            status: "True"
+            type: Synced
+          - lastTransitionTime: "2024-09-26T14:37:37Z"
+            reason: Available
+            status: "True"
+            type: Ready
         connectionDetails:
           lastPublishedTime: "2024-09-26T14:37:37Z"
 input:
@@ -82,7 +82,8 @@ input:
       "memory": "500Mi"}, "requests": {"cpu": "100m", "memory": "500Mi"}}, "setupScripts":
       {"limits": {"cpu": "300m", "memory": "500Mi"}, "requests": {"cpu": "100m",
       "memory": "500Mi"}}}'
-    keepMetrics: '["pg_locks_count", "pg_postmaster_start_time_seconds", "pg_replication_lag",
+    keepMetrics:
+      '["pg_locks_count", "pg_postmaster_start_time_seconds", "pg_replication_lag",
       "pg_settings_effective_cache_size_bytes", "pg_settings_maintenance_work_mem_bytes",
       "pg_settings_max_connections", "pg_settings_max_parallel_workers", "pg_settings_max_wal_size_bytes",
       "pg_settings_max_worker_processes", "pg_settings_shared_buffers_bytes",
@@ -95,7 +96,8 @@ input:
       "pgbouncer_show_stats_totals_bytes_received", "pgbouncer_show_stats_totals_bytes_sent"]'
     serviceName: postgresql
     sgNamespace: stackgres
-    sideCars: '{"clusterController": {"limits": {"cpu": "32m", "memory": "256Mi"},
+    sideCars:
+      '{"clusterController": {"limits": {"cpu": "32m", "memory": "256Mi"},
       "requests": {"cpu": "32m", "memory": "128Mi"}}, "createBackup": {"limits":
       {"cpu": "400m", "memory": "500Mi"}, "requests": {"cpu": "100m", "memory":
       "64Mi"}}, "envoy": {"limits": {"cpu": "64m", "memory": "64Mi"}, "requests":
@@ -108,6 +110,7 @@ input:
       "memory": "64Mi"}}, "setDbopsResult": {"limits": {"cpu": "250m", "memory":
       "256Mi"}, "requests": {"cpu": "100m", "memory": "64Mi"}}}'
     providerEnabled: "true"
+    externalDatabaseConnectionsEnabled: "true"
   kind: ConfigMap
   metadata:
     annotations: {}
@@ -123,7 +126,7 @@ observed:
         annotations: null
         creationTimestamp: "2023-03-21T16:52:31Z"
         finalizers:
-        - composite.apiextensions.crossplane.io
+          - composite.apiextensions.crossplane.io
         generateName: pgsql-
         generation: 13
         labels:
@@ -152,7 +155,7 @@ observed:
             retention: 6
           maintenance:
             dayOfWeek: wednesday
-            timeOfDay: '12:34:56'
+            timeOfDay: "12:34:56"
       status:
         instanceNamespace: vshn-postgresql-pgsql-gc9x4
         #here
@@ -164,7 +167,7 @@ observed:
         AWS_SECRET_ACCESS_KEY: whatever
         BUCKET_NAME: whatever
         ENDPOINT: whatever
-        ENDPOINT_URL: whatever    
+        ENDPOINT_URL: whatever
       resource:
         apiVersion: appcat.vshn.io/v1
         kind: XObjectBucket
@@ -189,17 +192,17 @@ observed:
             namespace: vshn-postgresql-pgsql-gc9x4
         status:
           conditions:
-          - lastTransitionTime: "2024-09-27T08:06:34Z"
-            reason: ReconcileSuccess
-            status: "True"
-            type: Synced
-          - lastTransitionTime: "2024-09-26T14:37:37Z"
-            reason: Available
-            status: "True"
-            type: Ready
+            - lastTransitionTime: "2024-09-27T08:06:34Z"
+              reason: ReconcileSuccess
+              status: "True"
+              type: Synced
+            - lastTransitionTime: "2024-09-26T14:37:37Z"
+              reason: Available
+              status: "True"
+              type: Ready
           connectionDetails:
             lastPublishedTime: "2024-09-26T14:37:37Z"
- 
+
     namespace-conditions:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
@@ -234,7 +237,7 @@ observed:
               metadata:
                 name: unit-test
                 labels:
-                  'appuio.io/organization': 'vshn'
+                  "appuio.io/organization": "vshn"
         status:
           atProvider:
             manifest:
@@ -243,7 +246,7 @@ observed:
               metadata:
                 name: unit-test
                 labels:
-                  'appuio.io/organization': 'vshn'
+                  "appuio.io/organization": "vshn"
     cluster:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
@@ -261,9 +264,9 @@ observed:
               spec:
                 configurations:
                   backups:
-                  - cronSchedule: 44 20 * * *
-                    retention: 6
-                    sgObjectStorage: sgbackup-psql-gc9x4
+                    - cronSchedule: 44 20 * * *
+                      retention: 6
+                      sgObjectStorage: sgbackup-psql-gc9x4
                   sgPostgresConfig: psql-gc9x4
                 instances: 1
                 nonProductionOptions:
@@ -304,17 +307,17 @@ observed:
               spec:
                 configurations:
                   backups:
-                  - cronSchedule: 44 20 * * *
-                    path: sgbackups.stackgres.io/vshn-postgresql-psql-gc9x4/buzz-qvgrd/15
-                    retention: 6
-                    sgObjectStorage: sgbackup-psql-gc9x4
+                    - cronSchedule: 44 20 * * *
+                      path: sgbackups.stackgres.io/vshn-postgresql-psql-gc9x4/buzz-qvgrd/15
+                      retention: 6
+                      sgObjectStorage: sgbackup-psql-gc9x4
                   sgPoolingConfig: generated-from-default-1682587302016
                   sgPostgresConfig: psql-gc9x4
                 instances: 1
                 managedSql:
                   scripts:
-                  - id: 0
-                    sgScript: psql-gc9x4-default
+                    - id: 0
+                      sgScript: psql-gc9x4-default
                 nonProductionOptions:
                   enableSetPatroniCpuRequests: true
                   enableSetPatroniMemoryRequests: true
@@ -349,34 +352,34 @@ observed:
               status:
                 arch: x86_64
                 conditions:
-                - lastTransitionTime: "2023-04-27T09:22:22.200237Z"
-                  reason: FalseFailed
-                  status: "False"
-                  type: Failed
-                - lastTransitionTime: "2023-04-27T09:22:22.226244Z"
-                  reason: FalsePendingRestart
-                  status: "False"
-                  type: PendingRestart
-                - lastTransitionTime: "2023-04-27T09:22:22.226273Z"
-                  reason: FalsePendingUpgrade
-                  status: "False"
-                  type: PendingUpgrade
+                  - lastTransitionTime: "2023-04-27T09:22:22.200237Z"
+                    reason: FalseFailed
+                    status: "False"
+                    type: Failed
+                  - lastTransitionTime: "2023-04-27T09:22:22.226244Z"
+                    reason: FalsePendingRestart
+                    status: "False"
+                    type: PendingRestart
+                  - lastTransitionTime: "2023-04-27T09:22:22.226273Z"
+                    reason: FalsePendingUpgrade
+                    status: "False"
+                    type: PendingUpgrade
                 managedSql:
                   scripts:
-                  - completedAt: "2023-04-27T09:22:52.795696Z"
-                    id: 0
-                    scripts:
-                    - id: 0
-                      version: 0
-                    startedAt: "2023-04-27T09:22:52.631407Z"
-                    updatedAt: "2023-04-27T09:22:52.631418Z"
+                    - completedAt: "2023-04-27T09:22:52.795696Z"
+                      id: 0
+                      scripts:
+                        - id: 0
+                          version: 0
+                      startedAt: "2023-04-27T09:22:52.631407Z"
+                      updatedAt: "2023-04-27T09:22:52.631418Z"
                 os: linux
                 podStatuses:
-                - installedPostgresExtensions: []
-                  name: psql-gc9x4-0
-                  pendingRestart: false
-                  primary: true
-                  replicationGroup: 0
+                  - installedPostgresExtensions: []
+                    name: psql-gc9x4-0
+                    pendingRestart: false
+                    primary: true
+                    replicationGroup: 0
     certificate:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
@@ -389,7 +392,7 @@ observed:
             crossplane.io/external-name: pgsql-gc9x4-certificate
           creationTimestamp: "2024-09-26T14:37:32Z"
           finalizers:
-          - finalizer.managedresource.crossplane.io
+            - finalizer.managedresource.crossplane.io
           generateName: pgsql-gc9x4-
           generation: 38
           labels:
@@ -405,12 +408,12 @@ observed:
             time: "2024-09-26T14:37:34Z"
           name: pgsql-gc9x4-certificate
           ownerReferences:
-          - apiVersion: vshn.appcat.vshn.io/v1
-            blockOwnerDeletion: true
-            controller: true
-            kind: XVSHNPostgreSQL
-            name: pgsql-gc9x4
-            uid: 4d072f13-029d-4d9d-bc24-0e4f622a9d3a
+            - apiVersion: vshn.appcat.vshn.io/v1
+              blockOwnerDeletion: true
+              controller: true
+              kind: XVSHNPostgreSQL
+              name: pgsql-gc9x4
+              uid: 4d072f13-029d-4d9d-bc24-0e4f622a9d3a
           resourceVersion: "531293"
           uid: 1ffeef69-4add-4d17-98ae-5c210cdd0503
         spec:
@@ -431,8 +434,8 @@ observed:
                 namespace: vshn-postgresql-pgsql-gc9x4
               spec:
                 dnsNames:
-                - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc.cluster.local
-                - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc
+                  - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc.cluster.local
+                  - pgsql-gc9x4.vshn-postgresql-pgsql-gc9x4.svc
                 duration: 87600h0m0s
                 issuerRef:
                   group: cert-manager.io
@@ -446,13 +449,13 @@ observed:
                 secretName: tls-certificate
                 subject:
                   organizations:
-                  - vshn-appcat
+                    - vshn-appcat
                 usages:
-                - server auth
-                - client auth
+                  - server auth
+                  - client auth
               status: {}
           managementPolicies:
-          - '*'
+            - "*"
           providerConfigRef:
             name: kubernetes
           readiness:
@@ -460,11 +463,11 @@ observed:
           watch: false
         status:
           conditions:
-          - lastTransitionTime: "2024-09-26T14:37:33Z"
-            reason: Available
-            status: "True"
-            type: Ready
-          - lastTransitionTime: "2024-09-26T14:37:32Z"
-            reason: ReconcileSuccess
-            status: "True"
-            type: Synced
+            - lastTransitionTime: "2024-09-26T14:37:33Z"
+              reason: Available
+              status: "True"
+              type: Ready
+            - lastTransitionTime: "2024-09-26T14:37:32Z"
+              reason: ReconcileSuccess
+              status: "True"
+              type: Synced

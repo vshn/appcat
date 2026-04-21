@@ -19,8 +19,9 @@ func TestHandleRemovedItems(t *testing.T) {
 	tests := []struct {
 		name                 string
 		billingService       *vshnv1.BillingService
-		expectDeleteEvents   []string // productIDs that should have delete events
-		expectNoDeleteEvents []string // productIDs that should not have delete events
+		expectDeleteEvents   []string          // instanceIDs that should have delete events
+		expectNoDeleteEvents []string          // instanceIDs that should not have delete events
+		expectedDeleteValues map[string]string // instanceID → expected delete event Value
 	}{
 		{
 			name: "creates delete event for removed item",
@@ -33,7 +34,7 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
 						},
 					},
 				},
@@ -42,6 +43,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -50,6 +52,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -58,8 +61,8 @@ func TestHandleRemovedItems(t *testing.T) {
 					},
 				},
 			},
-			expectDeleteEvents:   []string{"prod-456"},
-			expectNoDeleteEvents: []string{"prod-123"},
+			expectDeleteEvents:   []string{"inst-456"},
+			expectNoDeleteEvents: []string{"inst-123"},
 		},
 		{
 			name: "does not create delete event when no items removed",
@@ -72,8 +75,8 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
-							{ProductID: "prod-456", Value: "50Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-456", InstanceID: "inst-456", Value: "50Gi", ItemDescription: "Storage Item", ItemGroupDescription: "Storage Group"},
 						},
 					},
 				},
@@ -82,6 +85,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -90,6 +94,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -99,7 +104,7 @@ func TestHandleRemovedItems(t *testing.T) {
 				},
 			},
 			expectDeleteEvents:   []string{},
-			expectNoDeleteEvents: []string{"prod-123", "prod-456"},
+			expectNoDeleteEvents: []string{"inst-123", "inst-456"},
 		},
 		{
 			name: "creates delete events for multiple removed items",
@@ -112,7 +117,7 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
 						},
 					},
 				},
@@ -121,6 +126,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -129,6 +135,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -137,6 +144,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-789",
+							InstanceID:           "inst-789",
 							Value:                "enabled",
 							ItemDescription:      "Boolean Item",
 							ItemGroupDescription: "Boolean Group",
@@ -145,8 +153,8 @@ func TestHandleRemovedItems(t *testing.T) {
 					},
 				},
 			},
-			expectDeleteEvents:   []string{"prod-456", "prod-789"},
-			expectNoDeleteEvents: []string{"prod-123"},
+			expectDeleteEvents:   []string{"inst-456", "inst-789"},
+			expectNoDeleteEvents: []string{"inst-123"},
 		},
 		{
 			name: "does not create duplicate delete event",
@@ -159,21 +167,23 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
 						},
 					},
 				},
 				Status: vshnv1.BillingServiceStatus{
 					Events: []vshnv1.BillingEventStatus{
 						{
-							Type:      string(BillingEventTypeDeleted),
-							ProductID: "prod-456",
-							Value:     "50Gi",
-							State:     string(BillingEventStatePending),
+							Type:       string(BillingEventTypeDeleted),
+							ProductID:  "prod-456",
+							InstanceID: "inst-456",
+							Value:      "50Gi",
+							State:      string(BillingEventStatePending),
 						},
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -182,6 +192,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -191,7 +202,7 @@ func TestHandleRemovedItems(t *testing.T) {
 				},
 			},
 			expectDeleteEvents:   []string{},
-			expectNoDeleteEvents: []string{"prod-123"},
+			expectNoDeleteEvents: []string{"inst-123"},
 		},
 		{
 			name: "ignores superseded created events",
@@ -204,7 +215,7 @@ func TestHandleRemovedItems(t *testing.T) {
 					Odoo: vshnv1.OdooSpec{
 						ServiceID: "test-instance",
 						Items: []vshnv1.ItemSpec{
-							{ProductID: "prod-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
+							{ProductID: "prod-123", InstanceID: "inst-123", Value: "2", ItemDescription: "Instance Item", ItemGroupDescription: "Instance Group"},
 						},
 					},
 				},
@@ -213,6 +224,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -221,6 +233,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-456",
+							InstanceID:           "inst-456",
 							Value:                "50Gi",
 							ItemDescription:      "Storage Item",
 							ItemGroupDescription: "Storage Group",
@@ -230,7 +243,7 @@ func TestHandleRemovedItems(t *testing.T) {
 				},
 			},
 			expectDeleteEvents:   []string{},
-			expectNoDeleteEvents: []string{"prod-123", "prod-456"},
+			expectNoDeleteEvents: []string{"inst-123", "inst-456"},
 		},
 		{
 			name: "uses last sent value for delete event",
@@ -250,6 +263,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeScaled),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "5",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -258,6 +272,7 @@ func TestHandleRemovedItems(t *testing.T) {
 						{
 							Type:                 string(BillingEventTypeCreated),
 							ProductID:            "prod-123",
+							InstanceID:           "inst-123",
 							Value:                "2",
 							ItemDescription:      "Instance Item",
 							ItemGroupDescription: "Instance Group",
@@ -266,7 +281,59 @@ func TestHandleRemovedItems(t *testing.T) {
 					},
 				},
 			},
-			expectDeleteEvents: []string{"prod-123"},
+			expectDeleteEvents:   []string{"inst-123"},
+			expectedDeleteValues: map[string]string{"inst-123": "5"},
+		},
+		{
+			name: "creates delete event for instance with only scaled event (create was pruned)",
+			billingService: &vshnv1.BillingService{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-service",
+					Namespace: "test-ns",
+				},
+				Spec: vshnv1.BillingServiceSpec{
+					Odoo: vshnv1.OdooSpec{
+						ServiceID: "test-instance",
+						Items:     []vshnv1.ItemSpec{},
+					},
+				},
+				Status: vshnv1.BillingServiceStatus{
+					Events: []vshnv1.BillingEventStatus{
+						// create event pruned; only scale event remains in status
+						{Type: string(BillingEventTypeScaled), ProductID: "prod-123", InstanceID: "inst-123", Value: "5", State: string(BillingEventStateSent)},
+					},
+				},
+			},
+			expectDeleteEvents:   []string{"inst-123"},
+			expectedDeleteValues: map[string]string{"inst-123": "5"},
+		},
+		{
+			name: "does not create delete event for pending-only create (never sent to Odoo)",
+			billingService: &vshnv1.BillingService{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-service",
+					Namespace: "test-ns",
+				},
+				Spec: vshnv1.BillingServiceSpec{
+					Odoo: vshnv1.OdooSpec{
+						ServiceID: "test-instance",
+						Items:     []vshnv1.ItemSpec{},
+					},
+				},
+				Status: vshnv1.BillingServiceStatus{
+					Events: []vshnv1.BillingEventStatus{
+						{
+							Type:       string(BillingEventTypeCreated),
+							ProductID:  "prod-123",
+							InstanceID: "inst-123",
+							Value:      "2",
+							State:      string(BillingEventStatePending),
+						},
+					},
+				},
+			},
+			expectDeleteEvents:   []string{},
+			expectNoDeleteEvents: []string{"inst-123"},
 		},
 	}
 
@@ -288,37 +355,32 @@ func TestHandleRemovedItems(t *testing.T) {
 			err := handler.handleRemovedItems(context.Background(), tt.billingService)
 			require.NoError(t, err)
 
-			// Check for expected delete events
-			for _, productID := range tt.expectDeleteEvents {
+			// Check for expected delete events (keyed by instanceID)
+			for _, instanceID := range tt.expectDeleteEvents {
 				found := false
 				for _, event := range tt.billingService.Status.Events {
-					if event.Type == string(BillingEventTypeDeleted) && event.ProductID == productID {
+					if event.Type == string(BillingEventTypeDeleted) && event.InstanceID == instanceID {
 						found = true
 						assert.Equal(t, string(BillingEventStatePending), event.State)
-
-						// Special check for "uses last sent value for delete event" test
-						if tt.name == "uses last sent value for delete event" {
-							assert.Equal(t, "5", event.Value, "should use last sent scaled value")
-							assert.Equal(t, "Instance Item", event.ItemDescription, "should use last sent item description")
-							assert.Equal(t, "Instance Group", event.ItemGroupDescription, "should use last sent item group description")
+						if want, ok := tt.expectedDeleteValues[instanceID]; ok {
+							assert.Equal(t, want, event.Value, "delete value mismatch for instanceID %s", instanceID)
 						}
 						break
 					}
 				}
-				assert.True(t, found, "expected delete event for product %s", productID)
+				assert.True(t, found, "expected delete event for instanceID %s", instanceID)
 			}
 
-			// Check that no delete events exist for products that should not be deleted
-			for _, productID := range tt.expectNoDeleteEvents {
+			// Check that no delete events exist for instances that should not be deleted
+			for _, instanceID := range tt.expectNoDeleteEvents {
 				for _, event := range tt.billingService.Status.Events {
-					if event.Type == string(BillingEventTypeDeleted) && event.ProductID == productID {
-						t.Errorf("unexpected delete event for product %s", productID)
+					if event.Type == string(BillingEventTypeDeleted) && event.InstanceID == instanceID {
+						t.Errorf("unexpected delete event for instanceID %s", instanceID)
 					}
 				}
 			}
 
-			expectedEventCount := initialEventCount + len(tt.expectDeleteEvents)
-			assert.Equal(t, expectedEventCount, len(tt.billingService.Status.Events))
+			assert.Equal(t, initialEventCount+len(tt.expectDeleteEvents), len(tt.billingService.Status.Events))
 		})
 	}
 }
@@ -343,6 +405,7 @@ func TestHandleRemovedItems_EmptySpec(t *testing.T) {
 				{
 					Type:                 string(BillingEventTypeCreated),
 					ProductID:            "prod-123",
+					InstanceID:           "inst-123",
 					Value:                "2",
 					ItemDescription:      "Instance Item",
 					ItemGroupDescription: "Instance Group",
@@ -351,6 +414,7 @@ func TestHandleRemovedItems_EmptySpec(t *testing.T) {
 				{
 					Type:                 string(BillingEventTypeCreated),
 					ProductID:            "prod-456",
+					InstanceID:           "inst-456",
 					Value:                "50Gi",
 					ItemDescription:      "Storage Item",
 					ItemGroupDescription: "Storage Group",
@@ -359,6 +423,7 @@ func TestHandleRemovedItems_EmptySpec(t *testing.T) {
 				{
 					Type:                 string(BillingEventTypeCreated),
 					ProductID:            "prod-789",
+					InstanceID:           "inst-789",
 					Value:                "enabled",
 					ItemDescription:      "Boolean Item",
 					ItemGroupDescription: "Boolean Group",

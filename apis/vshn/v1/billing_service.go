@@ -95,7 +95,7 @@ type BillingEventStatus struct {
 	Type string `json:"type"`
 
 	// ProductID identifies the product in the billing system
-	ProductID string `json:"productId"`
+	ProductID string `json:"productID"`
 
 	// InstanceID uniquely identifies this product event in Odoo. Format: <composite-name>-<shortSHA(productID)>
 	InstanceID string `json:"instanceID,omitempty"`
@@ -113,8 +113,8 @@ type BillingEventStatus struct {
 	// Timestamp when the event occurred
 	Timestamp metav1.Time `json:"timestamp"`
 
-	// State represents the current state of the event (sent, pending, failed, superseded)
-	// +kubebuilder:validation:Enum="sent";"pending";"failed";"superseded"
+	// State represents the current state of the event (sent, pending, failed, superseded, resend)
+	// +kubebuilder:validation:Enum="sent";"pending";"failed";"superseded";"resend"
 	State string `json:"state"`
 
 	// RetryCount tracks the number of retry attempts for failed events

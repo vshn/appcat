@@ -34,3 +34,7 @@ hack/diff/function.yaml
 
 # MacOS stuff
 .DS_store
+
+# Claude stuff 
+.claude/worktrees
+.claude/settings.local.json

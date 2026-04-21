@@ -95,7 +95,7 @@ type BillingEventStatus struct {
 	Type string `json:"type"`
 
 	// ProductID identifies the product in the billing system
-	ProductID string `json:"productId"`
+	ProductID string `json:"productID"`
 
 	// InstanceID uniquely identifies this product event in Odoo. Format: <composite-name>-<shortSHA(productID)>
 	InstanceID string `json:"instanceID,omitempty"`

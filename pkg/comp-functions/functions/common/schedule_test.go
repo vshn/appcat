@@ -44,6 +44,64 @@ func (t *testMaintenanceScheduler) GetMaintenanceTimeOfDay() *v1.TimeOfDay {
 	return &t.timeOfDay
 }
 
+func (t *testMaintenanceScheduler) SetMaintenanceTimeOfDay(tod v1.TimeOfDay) {
+	t.timeOfDay = tod
+}
+
+// cascadeBackupScheduler mimics the real service types where the getter
+// checks spec first and falls back to status, but the setter only writes to status.
+type cascadeBackupScheduler struct {
+	specSchedule   string
+	statusSchedule string
+	enabled        bool
+}
+
+func (c *cascadeBackupScheduler) GetBackupSchedule() string {
+	if c.specSchedule != "" {
+		return c.specSchedule
+	}
+	return c.statusSchedule
+}
+
+func (c *cascadeBackupScheduler) SetBackupSchedule(schedule string) {
+	c.statusSchedule = schedule
+}
+
+func (c *cascadeBackupScheduler) IsBackupEnabled() bool {
+	return c.enabled
+}
+
+// cascadeMaintenanceScheduler mimics the real service types where getters
+// check spec first and fall back to status, but setters only write to status.
+type cascadeMaintenanceScheduler struct {
+	specDayOfWeek   string
+	statusDayOfWeek string
+	specTimeOfDay   v1.TimeOfDay
+	statusTimeOfDay v1.TimeOfDay
+}
+
+func (c *cascadeMaintenanceScheduler) GetMaintenanceDayOfWeek() string {
+	if c.specDayOfWeek != "" {
+		return c.specDayOfWeek
+	}
+	return c.statusDayOfWeek
+}
+
+func (c *cascadeMaintenanceScheduler) SetMaintenanceDayOfWeek(day string) {
+	c.statusDayOfWeek = day
+}
+
+func (c *cascadeMaintenanceScheduler) GetMaintenanceTimeOfDay() *v1.TimeOfDay {
+	if c.specTimeOfDay != "" {
+		return &c.specTimeOfDay
+	}
+	return &c.statusTimeOfDay
+}
+
+func (c *cascadeMaintenanceScheduler) SetMaintenanceTimeOfDay(tod v1.TimeOfDay) {
+	c.statusTimeOfDay = tod
+}
+
 func TestSetRandomSchedules_EmptySchedules(t *testing.T) {
 	backup := &testBackupScheduler{enabled: true}
 	maintenance := &testMaintenanceScheduler{}
@@ -275,6 +333,55 @@ func TestSetRandomSchedules_SundayTimeRestriction(t *testing.T) {
 	}
 
 	t.Logf("Tested %d Sunday maintenance schedules out of %d total iterations", sundayCount, iterations)
+}
+
+func TestSetRandomSchedules_StatusSyncsWhenSpecUpdated(t *testing.T) {
+	// Step 1: Simulate initial provisioning with no spec values.
+	// Both spec and status are empty, so random values should be generated.
+	maintenance := &cascadeMaintenanceScheduler{}
+	backup := &cascadeBackupScheduler{enabled: true}
+
+	maintTime := SetRandomMaintenanceSchedule(maintenance)
+	SetRandomBackupSchedule(backup, &maintTime)
+
+	// Verify random values were written to status
+	if maintenance.statusDayOfWeek == "" {
+		t.Fatal("Expected status day of week to be set after initial provisioning")
+	}
+	if maintenance.statusTimeOfDay == "" {
+		t.Fatal("Expected status time of day to be set after initial provisioning")
+	}
+	if backup.statusSchedule == "" {
+		t.Fatal("Expected status backup schedule to be set after initial provisioning")
+	}
+
+	initialDay := maintenance.statusDayOfWeek
+	initialTime := maintenance.statusTimeOfDay
+	initialBackup := backup.statusSchedule
+
+	// Step 2: Simulate user updating spec with explicit values.
+	// This mimics what happens when a user edits their VSHNPostgreSQL spec.
+	maintenance.specDayOfWeek = "friday"
+	maintenance.specTimeOfDay = "19:34:00"
+	backup.specSchedule = "0 22 * * *"
+
+	// Step 3: Run the schedule functions again (as the composition function would).
+	maintTime = SetRandomMaintenanceSchedule(maintenance)
+	SetRandomBackupSchedule(backup, &maintTime)
+
+	// Step 4: Verify status now reflects the spec values, not the old random ones.
+	if maintenance.statusDayOfWeek != "friday" {
+		t.Errorf("Expected status day of week to be synced to spec value 'friday', got '%s' (was '%s' before update)",
+			maintenance.statusDayOfWeek, initialDay)
+	}
+	if maintenance.statusTimeOfDay != "19:34:00" {
+		t.Errorf("Expected status time of day to be synced to spec value '19:34:00', got '%s' (was '%s' before update)",
+			maintenance.statusTimeOfDay, initialTime)
+	}
+	if backup.statusSchedule != "0 22 * * *" {
+		t.Errorf("Expected status backup schedule to be synced to spec value '0 22 * * *', got '%s' (was '%s' before update)",
+			backup.statusSchedule, initialBackup)
+	}
 }
 
 func TestSetRandomSchedules_DayDistribution(t *testing.T) {

@@ -190,7 +190,7 @@ spec:
                         event
                       format: date-time
                       type: string
-                    productId:
+                    productID:
                       description: ProductID identifies the product in the billing
                         system
                       type: string
@@ -227,7 +227,7 @@ spec:
                         Generic field supporting replica count, disk size, percentages, etc.
                       type: string
                   required:
-                  - productId
+                  - productID
                   - state
                   - timestamp
                   - type

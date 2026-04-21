@@ -102,6 +102,9 @@ func createXListenerSet(svc *runtime.ServiceRuntime, name, namespace, gatewayNam
 	xls.SetKind("XListenerSet")
 	xls.SetName(name)
 	xls.SetNamespace(namespace)
+	xls.SetLabels(map[string]string{
+		"appcat.vshn.io/sshgateway": "true",
+	})
 
 	err := unstructured.SetNestedMap(xls.Object, map[string]any{
 		"group":     "gateway.networking.k8s.io",

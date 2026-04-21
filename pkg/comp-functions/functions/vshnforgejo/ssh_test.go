@@ -47,6 +47,7 @@ func TestSSH(t *testing.T) {
 		require.NoError(t, svc.GetDesiredKubeObject(xls, resourceBaseName))
 		assert.Equal(t, resourceBaseName, xls.GetName())
 		assert.Equal(t, "gateway-system", xls.GetNamespace())
+		assert.Equal(t, "true", xls.GetLabels()["appcat.vshn.io/sshgateway"])
 
 		parentName, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "name")
 		parentNs, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "namespace")

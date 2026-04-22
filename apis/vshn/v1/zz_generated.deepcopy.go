@@ -2461,6 +2461,7 @@ func (in *XVSHNGarageList) DeepCopyObject() runtime.Object {
 func (in *XVSHNGarageSpec) DeepCopyInto(out *XVSHNGarageSpec) {
 	*out = *in
 	in.Parameters.DeepCopyInto(&out.Parameters)
+	out.CompositionRef = in.CompositionRef
 	in.ResourceSpec.DeepCopyInto(&out.ResourceSpec)
 }
 

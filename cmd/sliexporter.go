@@ -12,6 +12,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	maintenancecontroller "github.com/vshn/appcat/v4/pkg/sliexporter/maintenance_controller"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
+	vshngaragecontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshngarage_controller"
 	vshnkeycloakcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnkeycloak_controller"
 	vshnmariadbcontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnmariadb_controller"
 	vshnminiocontroller "github.com/vshn/appcat/v4/pkg/sliexporter/vshnminio_controller"
@@ -174,6 +175,20 @@ func (s *sliProber) executeSLIProber(cmd *cobra.Command, _ []string) error {
 		}
 		err = mgr.Add(*serviceCluster)
 		if err != nil {
+			return err
+		}
+	}
+	if utils.IsKindAvailable(vshnv1.GroupVersion, "XVSHNGarage", ctrl.GetConfigOrDie()) {
+		log.Info("Enabling VSHNGarage controller")
+		if err = (&vshngaragecontroller.VSHNGarageReconciler{
+			Client:             mgr.GetClient(),
+			Scheme:             mgr.GetScheme(),
+			ProbeManager:       &probeManager,
+			StartupGracePeriod: startupGraceMin * time.Minute,
+			GarageDialer:       probes.NewGarage,
+			ScClient:           scClient,
+		}).SetupWithManager(mgr); err != nil {
+			log.Error(err, "unable to create controller", "controller", "VSHNGarage")
 			return err
 		}
 	}

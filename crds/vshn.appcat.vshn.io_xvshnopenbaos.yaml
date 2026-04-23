@@ -5414,9 +5414,6 @@ spec:
                   service:
                     description: Service contains OpenBao DBaaS specific properties
                     properties:
-                      openbaosettings:
-                        description: Openbaosettings contains additional OpenBao settings.
-                        type: string
                       serviceLevel:
                         default: besteffort
                         description: ServiceLevel defines the service level of this
@@ -5425,14 +5422,6 @@ spec:
                         enum:
                         - besteffort
                         - guaranteed
-                        type: string
-                      version:
-                        default: <TBD>
-                        description: |-
-                          Version contains supported version of OpenBao.
-                          Multiple versions are supported. The latest version <TBD> is the default version.
-                        enum:
-                        - <TBD>
                         type: string
                     type: object
                   size:

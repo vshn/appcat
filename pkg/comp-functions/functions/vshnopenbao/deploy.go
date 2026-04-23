@@ -89,7 +89,7 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 					"name": hclConfigTlsVolumeName,
 					"secret": map[string]any{
 						"defaultMode": 420,
-						"secretName":  serviceName + tlsServerCertSecretSuffix,
+						"secretName":  serverCertSecretName,
 					},
 				},
 			},

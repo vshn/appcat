@@ -18,7 +18,7 @@ func init() {
 			},
 			{
 				Name:    "setup-tls-certificates",
-				Execute: setupTLSCertificates,
+				Execute: SetupTLSCertificates,
 			},
 			{
 				Name:    "deploy-openbao",

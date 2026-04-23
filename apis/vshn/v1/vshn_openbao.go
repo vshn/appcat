@@ -85,19 +85,8 @@ type VSHNOpenBaoParameters struct {
 
 // VSHNOpenBaoServiceSpec contains OpenBao DBaaS specific properties
 type VSHNOpenBaoServiceSpec struct {
-	// +kubebuilder:validation:Enum=<TBD>
-	// +kubebuilder:default=<TBD>
-
-	// Version contains supported version of OpenBao.
-	// Multiple versions are supported. The latest version <TBD> is the default version.
-	Version string `json:"version,omitempty"`
-
-	// Openbaosettings contains additional OpenBao settings.
-	Openbaosettings string `json:"openbaosettings,omitempty"`
-
 	// +kubebuilder:validation:Enum="besteffort";"guaranteed"
 	// +kubebuilder:default="besteffort"
-
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 }

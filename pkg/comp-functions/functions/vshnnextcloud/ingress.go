@@ -10,8 +10,6 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // AddIngress adds an inrgess to the Nextcloud instance.
@@ -26,7 +24,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		return runtime.NewFatalResult(fmt.Errorf("FQDN array is empty, but requires at least one entry, %w", errors.New("empty fqdn")))
 	}
 
-	if svc.Config.Data["routeType"] == "HTTPRoute" {
+	if common.IsHTTPRouteMode(svc) {
 		return addNextcloudHTTPRoute(comp, svc)
 	}
 
@@ -55,9 +53,6 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 }
 
 func addNextcloudHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
-	gatewayName := svc.Config.Data["httpGatewayName"]
-	gatewayNamespace := svc.Config.Data["httpGatewayNamespace"]
-
 	var svcNameSuffix string
 	if !strings.Contains(comp.GetName(), "nextcloud") {
 		svcNameSuffix = "nextcloud"
@@ -65,39 +60,11 @@ func addNextcloudHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRunti
 
 	svc.Log.Info("Adding HTTPRoute for Nextcloud")
 
-	cfg := common.HTTPRouteConfig{
+	return common.ApplyHTTPRouteAsResult(comp, svc, common.HTTPRouteConfig{
 		FQDNs: comp.Spec.Parameters.Service.FQDN,
 		ServiceConfig: common.IngressRuleConfig{
 			ServiceNameSuffix: svcNameSuffix,
 			ServicePortNumber: 8080,
 		},
-		GatewayName:      gatewayName,
-		GatewayNamespace: gatewayNamespace,
-	}
-
-	ls, err := common.GenerateXListenerSet(comp, svc, cfg)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot generate XListenerSet: %w", err))
-	}
-	if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}); err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create XListenerSet: %w", err))
-	}
-
-	route, err := common.GenerateHTTPRoute(comp, svc, cfg)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot generate HTTPRoute: %w", err))
-	}
-	if err := common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}); err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create HTTPRoute: %w", err))
-	}
-
-	certs, err := common.GenerateCertificates(comp, svc, cfg)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot generate Certificates: %w", err))
-	}
-	if err := common.CreateCertificates(svc, certs); err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create Certificates: %w", err))
-	}
-
-	return nil
+	})
 }

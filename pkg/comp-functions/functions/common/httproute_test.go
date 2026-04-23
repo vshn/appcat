@@ -52,6 +52,33 @@ func TestGenerateHTTPRoute(t *testing.T) {
 		assert.Equal(t, gatewayv1.ObjectName(compName+"-"+svcNameSuffix), be.Name)
 		assert.Nil(t, be.Namespace, "backendRef must have no Namespace (same-ns)")
 		assert.Equal(t, gatewayv1.PortNumber(443), *be.Port)
+
+		assert.Len(t, route.Spec.Rules[0].Matches, 1)
+		path := route.Spec.Rules[0].Matches[0].Path
+		assert.Equal(t, gatewayv1.PathMatchPathPrefix, *path.Type)
+		assert.Equal(t, "/", *path.Value, "empty RelPath must default to /")
+	})
+
+	t.Run("GivenRelPath_ExpectPathPrefixMatch", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "common/03_httproute.yaml")
+		comp := &baaSComposite{ObjectMeta: metav1.ObjectMeta{Name: compName}}
+
+		route, err := GenerateHTTPRoute(comp, svc, HTTPRouteConfig{
+			FQDNs: []string{"my-domain.com"},
+			ServiceConfig: IngressRuleConfig{
+				RelPath:           "/auth",
+				ServiceNameSuffix: svcNameSuffix,
+				ServicePortNumber: 443,
+			},
+			GatewayName:      httpGatewayName,
+			GatewayNamespace: httpGatewayNamespace,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, route.Spec.Rules, 1)
+		assert.Len(t, route.Spec.Rules[0].Matches, 1)
+		path := route.Spec.Rules[0].Matches[0].Path
+		assert.Equal(t, gatewayv1.PathMatchPathPrefix, *path.Type)
+		assert.Equal(t, "/auth", *path.Value)
 	})
 
 	t.Run("GivenMultipleFQDNs_ExpectAllHostnames", func(t *testing.T) {
@@ -164,8 +191,10 @@ func TestGenerateXListenerSet(t *testing.T) {
 		assert.Equal(t, compName+"-listenerset", ls.GetName())
 		assert.Equal(t, "vshn-"+compName, ls.GetNamespace())
 
-		annos := ls.GetAnnotations()
-		assert.Equal(t, "letsencrypt-production", annos["cert-manager.io/cluster-issuer"])
+		// ingress_annotations must not propagate to the XListenerSet:
+		// cert-manager's Gateway API shim doesn't understand XListenerSet,
+		// so Certificates are created explicitly by GenerateCertificates.
+		assert.Empty(t, ls.GetAnnotations())
 
 		parentRef, found, err := unstructuredNestedMap(ls.Object, "spec", "parentRef")
 		assert.NoError(t, err)

@@ -13,8 +13,6 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // DeployForgejo deploys a Forgejo instance via the Helm Chart.
@@ -52,6 +50,9 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 
 	svc.Log.Info("Adding forgejo release")
 	err = addForgejo(ctx, svc, comp, secretName)
+	if errors.Is(err, common.ErrHTTPGatewayNotConfigured) {
+		return runtime.NewFatalResult(fmt.Errorf("cannot add forgejo release: %w", err))
+	}
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add forgejo release: %s", err))
 	}
@@ -247,43 +248,15 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		svcNameSuffix = "forgejo-" + svcNameSuffix
 	}
 
-	if svc.Config.Data["routeType"] == "HTTPRoute" {
-		gatewayName := svc.Config.Data["httpGatewayName"]
-		gatewayNamespace := svc.Config.Data["httpGatewayNamespace"]
-
+	if common.IsHTTPRouteMode(svc) {
 		svc.Log.Info("Adding HTTPRoute for Forgejo")
-
-		cfg := common.HTTPRouteConfig{
+		if err := common.ApplyHTTPRoute(comp, svc, common.HTTPRouteConfig{
 			FQDNs: comp.Spec.Parameters.Service.FQDN,
 			ServiceConfig: common.IngressRuleConfig{
 				ServiceNameSuffix: svcNameSuffix,
 				ServicePortNumber: 3000,
 			},
-			GatewayName:      gatewayName,
-			GatewayNamespace: gatewayNamespace,
-		}
-
-		ls, err := common.GenerateXListenerSet(comp, svc, cfg)
-		if err != nil {
-			return err
-		}
-		if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}); err != nil {
-			return err
-		}
-
-		route, err := common.GenerateHTTPRoute(comp, svc, cfg)
-		if err != nil {
-			return err
-		}
-		if err := common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}); err != nil {
-			return err
-		}
-
-		certs, err := common.GenerateCertificates(comp, svc, cfg)
-		if err != nil {
-			return err
-		}
-		if err := common.CreateCertificates(svc, certs); err != nil {
+		}); err != nil {
 			return err
 		}
 	} else {

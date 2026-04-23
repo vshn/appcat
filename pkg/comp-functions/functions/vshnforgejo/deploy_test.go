@@ -113,7 +113,7 @@ func TestDeployment(t *testing.T) {
 func TestDeploymentHTTPRoute(t *testing.T) {
 	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndListenerSet", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnforgejo/03_httproute.yaml")
-		svc.Config.Data["routeType"] = "HTTPRoute"
+		svc.Config.Data["routeType"] = common.RouteTypeHTTPRoute
 		svc.Config.Data["httpGatewayName"] = "http-gateway"
 		svc.Config.Data["httpGatewayNamespace"] = "syn-kgateway"
 

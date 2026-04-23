@@ -3,11 +3,13 @@ package common
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	cmmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -30,7 +32,17 @@ const (
 	gatewayKind  = "Gateway"
 
 	maxK8sNameLen = 63
+
+	// RouteTypeHTTPRoute is the svc.Config.Data["routeType"] value that
+	// selects Gateway API HTTPRoute over classic Ingress.
+	RouteTypeHTTPRoute = "HTTPRoute"
 )
+
+// IsHTTPRouteMode reports whether the composition is configured to render
+// HTTPRoute/XListenerSet objects instead of Ingress.
+func IsHTTPRouteMode(svc *runtime.ServiceRuntime) bool {
+	return svc.Config.Data["routeType"] == RouteTypeHTTPRoute
+}
 
 // HTTPRouteConfig contains configuration for generating an HTTPRoute and its
 // accompanying XListenerSet.
@@ -119,6 +131,20 @@ func GenerateHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRou
 
 	labels := getIngressLabels(svc, cfg.AdditionalLabels)
 
+	relPath := cfg.ServiceConfig.RelPath
+	if relPath == "" {
+		relPath = "/"
+	}
+	pathMatchType := gatewayv1.PathMatchPathPrefix
+	matches := []gatewayv1.HTTPRouteMatch{
+		{
+			Path: &gatewayv1.HTTPPathMatch{
+				Type:  &pathMatchType,
+				Value: &relPath,
+			},
+		},
+	}
+
 	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rName,
@@ -138,6 +164,7 @@ func GenerateHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRou
 			Hostnames: hostnames,
 			Rules: []gatewayv1.HTTPRouteRule{
 				{
+					Matches: matches,
 					BackendRefs: []gatewayv1.HTTPBackendRef{
 						{
 							BackendRef: gatewayv1.BackendRef{
@@ -156,8 +183,9 @@ func GenerateHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRou
 }
 
 // GenerateXListenerSet creates an XListenerSet in the instance namespace,
-// attached to the shared Gateway. Annotations from ingress_annotations propagate
-// so cert-manager issues a Certificate per listener hostname.
+// attached to the shared Gateway. TLS secrets per listener are produced by
+// GenerateCertificates (see that func for why ingress_annotations aren't
+// propagated here).
 func GenerateXListenerSet(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteConfig) (*unstructured.Unstructured, error) {
 	if err := validateHTTPRouteConfig(cfg); err != nil {
 		return nil, err
@@ -185,7 +213,6 @@ func GenerateXListenerSet(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTP
 		})
 	}
 
-	annotations := getIngressAnnotations(svc, nil)
 	labels := getIngressLabels(svc, cfg.AdditionalLabels)
 
 	ls := &unstructured.Unstructured{}
@@ -193,9 +220,6 @@ func GenerateXListenerSet(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTP
 	ls.SetKind(xListenerSetKind)
 	ls.SetName(lsName)
 	ls.SetNamespace(comp.GetInstanceNamespace())
-	if len(annotations) > 0 {
-		ls.SetAnnotations(annotations)
-	}
 	if len(labels) > 0 {
 		ls.SetLabels(labels)
 	}
@@ -303,4 +327,60 @@ func CreateCertificates(svc *runtime.ServiceRuntime, certs []*cmv1.Certificate, 
 		}
 	}
 	return nil
+}
+
+// ErrHTTPGatewayNotConfigured signals a pipeline misconfig — callers
+// returning *xfnproto.Result should surface it as Fatal.
+var ErrHTTPGatewayNotConfigured = errors.New("httpGatewayName and httpGatewayNamespace must be set when routeType=HTTPRoute")
+
+// ApplyHTTPRoute applies the XListenerSet, HTTPRoute, and Certificates for
+// comp. cfg.GatewayName/Namespace default to svc.Config.Data if empty.
+func ApplyHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteConfig, opts ...runtime.KubeObjectOption) error {
+	if cfg.GatewayName == "" {
+		cfg.GatewayName = svc.Config.Data["httpGatewayName"]
+	}
+	if cfg.GatewayNamespace == "" {
+		cfg.GatewayNamespace = svc.Config.Data["httpGatewayNamespace"]
+	}
+	if cfg.GatewayName == "" || cfg.GatewayNamespace == "" {
+		return ErrHTTPGatewayNotConfigured
+	}
+
+	ls, err := GenerateXListenerSet(comp, svc, cfg)
+	if err != nil {
+		return fmt.Errorf("cannot generate XListenerSet: %w", err)
+	}
+	if err := CreateXListenerSets(svc, []*unstructured.Unstructured{ls}, opts...); err != nil {
+		return fmt.Errorf("cannot create XListenerSet: %w", err)
+	}
+
+	route, err := GenerateHTTPRoute(comp, svc, cfg)
+	if err != nil {
+		return fmt.Errorf("cannot generate HTTPRoute: %w", err)
+	}
+	if err := CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}, opts...); err != nil {
+		return fmt.Errorf("cannot create HTTPRoute: %w", err)
+	}
+
+	certs, err := GenerateCertificates(comp, svc, cfg)
+	if err != nil {
+		return fmt.Errorf("cannot generate Certificates: %w", err)
+	}
+	if err := CreateCertificates(svc, certs, opts...); err != nil {
+		return fmt.Errorf("cannot create Certificates: %w", err)
+	}
+	return nil
+}
+
+// ApplyHTTPRouteAsResult is ApplyHTTPRoute wrapped as *xfnproto.Result:
+// Fatal on ErrHTTPGatewayNotConfigured, Warning otherwise, nil on success.
+func ApplyHTTPRouteAsResult(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteConfig, opts ...runtime.KubeObjectOption) *xfnproto.Result {
+	err := ApplyHTTPRoute(comp, svc, cfg, opts...)
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, ErrHTTPGatewayNotConfigured) {
+		return runtime.NewFatalResult(err)
+	}
+	return runtime.NewWarningResult(err.Error())
 }

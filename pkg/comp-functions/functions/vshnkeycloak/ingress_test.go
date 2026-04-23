@@ -12,6 +12,7 @@ import (
 	v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func TestCreateIngress(t *testing.T) {
@@ -206,6 +207,14 @@ func TestCreateHTTPRoute(t *testing.T) {
 		assert.True(t, foundLS, "XListenerSet must be created")
 		assert.False(t, foundGrant, "ReferenceGrant must NOT be created")
 		assert.True(t, foundBCP, "BackendConfigPolicy must be created for TLS backend")
+
+		route := &gatewayv1.HTTPRoute{}
+		assert.NoError(t, svc.GetDesiredKubeObject(route, "keycloak-httproute"))
+		assert.Len(t, route.Spec.Rules, 1)
+		assert.Len(t, route.Spec.Rules[0].Matches, 1)
+		path := route.Spec.Rules[0].Matches[0].Path
+		assert.Equal(t, gatewayv1.PathMatchPathPrefix, *path.Type)
+		assert.Equal(t, "/path", *path.Value, "RelativePath from claim must propagate to HTTPRoute match")
 	})
 
 	t.Run("GivenHTTPRouteMode_NoFQDN_ExpectNil", func(t *testing.T) {

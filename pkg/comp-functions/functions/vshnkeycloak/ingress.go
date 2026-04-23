@@ -14,7 +14,6 @@ import (
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
@@ -30,7 +29,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 		return nil
 	}
 
-	if svc.Config.Data["routeType"] == "HTTPRoute" {
+	if common.IsHTTPRouteMode(svc) {
 		return addKeycloakHTTPRoute(comp, svc, fqdn)
 	}
 
@@ -117,43 +116,17 @@ func addOpenShiftCa(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) erro
 }
 
 func addKeycloakHTTPRoute(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, fqdn string) *xfnproto.Result {
-	gatewayName := svc.Config.Data["httpGatewayName"]
-	gatewayNamespace := svc.Config.Data["httpGatewayNamespace"]
-
 	svc.Log.Info("Adding HTTPRoute for Keycloak")
 
-	cfg := common.HTTPRouteConfig{
+	if res := common.ApplyHTTPRouteAsResult(comp, svc, common.HTTPRouteConfig{
 		FQDNs: []string{fqdn},
 		ServiceConfig: common.IngressRuleConfig{
+			RelPath:           comp.Spec.Parameters.Service.RelativePath,
 			ServiceNameSuffix: "keycloakx-http",
 			ServicePortNumber: 8443,
 		},
-		GatewayName:      gatewayName,
-		GatewayNamespace: gatewayNamespace,
-	}
-
-	ls, err := common.GenerateXListenerSet(comp, svc, cfg)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot generate XListenerSet: %s", err))
-	}
-	if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}, runtime.KubeOptionAllowDeletion); err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err))
-	}
-
-	route, err := common.GenerateHTTPRoute(comp, svc, cfg)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot generate HTTPRoute: %s", err))
-	}
-	if err := common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}, runtime.KubeOptionAllowDeletion); err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create HTTPRoute: %s", err))
-	}
-
-	certs, err := common.GenerateCertificates(comp, svc, cfg)
-	if err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot generate Certificates: %s", err))
-	}
-	if err := common.CreateCertificates(svc, certs, runtime.KubeOptionAllowDeletion); err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create Certificates: %s", err))
+	}); res != nil {
+		return res
 	}
 
 	// Keycloak serves TLS on port 8443 directly. kgateway defaults to plain
@@ -174,7 +147,7 @@ func addKeycloakHTTPRoute(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 			"secretRef": map[string]any{"name": "tls-ca-certificate"},
 		},
 	}
-	if err := svc.SetDesiredKubeObject(bcp, bcp.GetName(), runtime.KubeOptionAllowDeletion); err != nil {
+	if err := svc.SetDesiredKubeObject(bcp, bcp.GetName()); err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create BackendConfigPolicy: %s", err))
 	}
 

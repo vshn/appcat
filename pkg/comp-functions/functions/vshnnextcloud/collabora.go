@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	_ "embed"
 	"encoding/pem"
+	"errors"
 	"fmt"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -24,10 +25,8 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 var (
@@ -134,6 +133,9 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	}
 
 	err = AddCollaboraIngress(comp, svc)
+	if errors.Is(err, common.ErrHTTPGatewayNotConfigured) {
+		return runtime.NewFatalResult(fmt.Errorf("Failed to add Collabora Ingress: %w", err))
+	}
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora Ingress: " + err.Error())
 	}
@@ -333,7 +335,11 @@ func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 }
 func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
-	if svc.Config.Data["routeType"] == "HTTPRoute" {
+	if comp.Spec.Parameters.Service.Collabora.FQDN == "" {
+		return fmt.Errorf("collabora FQDN is not set")
+	}
+
+	if common.IsHTTPRouteMode(svc) {
 		return addCollaboraHTTPRoute(comp, svc)
 	}
 
@@ -541,43 +547,16 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 }
 
 func addCollaboraHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-	gatewayName := svc.Config.Data["httpGatewayName"]
-	gatewayNamespace := svc.Config.Data["httpGatewayNamespace"]
-
 	svc.Log.Info("Adding HTTPRoute for Collabora")
 
-	cfg := common.HTTPRouteConfig{
+	return common.ApplyHTTPRoute(comp, svc, common.HTTPRouteConfig{
 		FQDNs: []string{comp.Spec.Parameters.Service.Collabora.FQDN},
 		ServiceConfig: common.IngressRuleConfig{
 			ServiceNameSuffix: "collabora-code",
 			ServicePortNumber: 9980,
 		},
-		NameSuffix:       "collabora-code",
-		GatewayName:      gatewayName,
-		GatewayNamespace: gatewayNamespace,
-	}
-
-	ls, err := common.GenerateXListenerSet(comp, svc, cfg)
-	if err != nil {
-		return err
-	}
-	if err := common.CreateXListenerSets(svc, []*unstructured.Unstructured{ls}, runtime.KubeOptionAddLabels(labelMap)); err != nil {
-		return err
-	}
-
-	route, err := common.GenerateHTTPRoute(comp, svc, cfg)
-	if err != nil {
-		return err
-	}
-	if err := common.CreateHTTPRoutes(svc, []*gatewayv1.HTTPRoute{route}, runtime.KubeOptionAddLabels(labelMap)); err != nil {
-		return err
-	}
-
-	certs, err := common.GenerateCertificates(comp, svc, cfg)
-	if err != nil {
-		return err
-	}
-	return common.CreateCertificates(svc, certs, runtime.KubeOptionAddLabels(labelMap))
+		NameSuffix: "collabora-code",
+	}, runtime.KubeOptionAddLabels(labelMap))
 }
 
 // ssh-keygen -t rsa -N "" -m PEM

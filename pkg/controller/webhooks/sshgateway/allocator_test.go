@@ -168,7 +168,7 @@ func newTestClient(t *testing.T, objects ...client.Object) client.Client {
 }
 
 func TestTryReclaimStaleLease_HolderGone(t *testing.T) {
-	holderName := "gone-xls"
+	holder := "vshn-forgejo-test/gone-xls"
 	oldTime := metav1.NewMicroTime(time.Now().Add(-5 * time.Minute))
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{
@@ -176,7 +176,7 @@ func TestTryReclaimStaleLease_HolderGone(t *testing.T) {
 			Namespace: "test-ns",
 		},
 		Spec: coordinationv1.LeaseSpec{
-			HolderIdentity: &holderName,
+			HolderIdentity: &holder,
 			AcquireTime:    &oldTime,
 		},
 	}
@@ -192,18 +192,18 @@ func TestTryReclaimStaleLease_HolderGone(t *testing.T) {
 }
 
 func TestTryReclaimStaleLease_HolderExists(t *testing.T) {
-	holderName := "existing-xls"
+	holder := "vshn-forgejo-test/existing-xls"
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("ssh-port-%d", 10000),
 			Namespace: "test-ns",
 		},
 		Spec: coordinationv1.LeaseSpec{
-			HolderIdentity: &holderName,
+			HolderIdentity: &holder,
 		},
 	}
 
-	xls := newXListenerSet("existing-xls", "test-ns", 10000)
+	xls := newXListenerSet("existing-xls", "vshn-forgejo-test", 10000)
 	c := newTestClient(t, lease, xls)
 	alloc := newTestAllocatorWithClient(t, c)
 
@@ -231,7 +231,7 @@ func TestTryReclaimStaleLease_NoHolderIdentity(t *testing.T) {
 }
 
 func TestTryReclaimStaleLease_HolderGoneButRecent(t *testing.T) {
-	holderName := "pending-xls"
+	holder := "vshn-forgejo-test/pending-xls"
 	now := metav1.NewMicroTime(time.Now())
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{
@@ -239,7 +239,7 @@ func TestTryReclaimStaleLease_HolderGoneButRecent(t *testing.T) {
 			Namespace: "test-ns",
 		},
 		Spec: coordinationv1.LeaseSpec{
-			HolderIdentity: &holderName,
+			HolderIdentity: &holder,
 			AcquireTime:    &now,
 		},
 	}

@@ -3,6 +3,7 @@ package sshgateway
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -107,6 +108,7 @@ func (a *PortAllocator) AllocatePort(ctx context.Context, usedPorts map[int32]bo
 
 // tryReclaimStaleLease checks if the holder XListenerSet of an existing Lease
 // still exists. If the holder is gone/empty, the Lease is deleted.
+// The holder identity is expected in "namespace/name" format.
 func (a *PortAllocator) tryReclaimStaleLease(ctx context.Context, name, namespace string) bool {
 	existing := &coordinationv1.Lease{}
 	if err := a.client.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, existing); err != nil {
@@ -118,10 +120,12 @@ func (a *PortAllocator) tryReclaimStaleLease(ctx context.Context, name, namespac
 		return a.client.Delete(ctx, existing, client.Preconditions{UID: &uid}) == nil
 	}
 
+	holderNs, holderName, _ := strings.Cut(*existing.Spec.HolderIdentity, "/")
+
 	holder := &unstructured.Unstructured{}
 	holder.SetGroupVersionKind(xListenerSetSingleGVK)
 
-	err := a.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: *existing.Spec.HolderIdentity}, holder)
+	err := a.client.Get(ctx, client.ObjectKey{Namespace: holderNs, Name: holderName}, holder)
 	if err == nil {
 		return false
 	}

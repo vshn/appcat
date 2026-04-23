@@ -46,8 +46,8 @@ func TestSSH(t *testing.T) {
 		xls.SetKind("XListenerSet")
 		require.NoError(t, svc.GetDesiredKubeObject(xls, resourceBaseName))
 		assert.Equal(t, resourceBaseName, xls.GetName())
-		assert.Equal(t, "gateway-system", xls.GetNamespace())
-		assert.Equal(t, "true", xls.GetLabels()["appcat.vshn.io/sshgateway"])
+		assert.Equal(t, instanceNs, xls.GetNamespace())
+		assert.Equal(t, "true", xls.GetLabels()[runtime.SSHGatewayLabel])
 
 		parentName, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "name")
 		parentNs, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "namespace")
@@ -62,11 +62,9 @@ func TestSSH(t *testing.T) {
 		assert.Equal(t, "TCP", l0["protocol"])
 		assert.Equal(t, int64(0), l0["port"]) // 0 on first create, webhook assigns
 
-		// Verify allowedRoutes scoped to instance namespace
+		// Verify allowedRoutes scoped to same namespace (XLS and TCPRoute co-located)
 		fromMode, _, _ := unstructured.NestedString(l0, "allowedRoutes", "namespaces", "from")
-		assert.Equal(t, "Selector", fromMode)
-		selectorLabel, _, _ := unstructured.NestedString(l0, "allowedRoutes", "namespaces", "selector", "matchLabels", "kubernetes.io/metadata.name")
-		assert.Equal(t, instanceNs, selectorLabel)
+		assert.Equal(t, "Same", fromMode)
 
 		// Verify TCPRoute
 		tcpRoute := &unstructured.Unstructured{}
@@ -82,6 +80,7 @@ func TestSSH(t *testing.T) {
 		assert.Equal(t, "XListenerSet", pRef["kind"])
 		assert.Equal(t, resourceBaseName, pRef["name"])
 		assert.Equal(t, "ssh", pRef["sectionName"])
+		assert.Nil(t, pRef["namespace"], "parentRef must have no namespace (same-ns)")
 
 		rules, _, _ := unstructured.NestedSlice(tcpRoute.Object, "spec", "rules")
 		require.Len(t, rules, 1)

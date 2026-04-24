@@ -230,14 +230,14 @@ webhook-debug:
 	yq e "with(.webhooks[]; .clientConfig.caBundle = \"$$cabundle\") | with(.webhooks[]; .clientConfig.url = \"https://$(webhook_service_name):$(webhook_port)\" + .clientConfig.service.path) | with(.webhooks[]; del(.clientConfig.service))"  | \
 	kubectl replace -f - && \
 	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io appcat-validation kubectl.kubernetes.io/last-applied-configuration-
-	@if kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-sshgateway >/dev/null 2>&1; then \
+	@if kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-tcpgateway >/dev/null 2>&1; then \
 		cabundle=$$(cat .work/webhook/tls.crt | base64) && \
-		kubectl annotate mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-sshgateway cert-manager.io/inject-ca-from- 2>/dev/null || true && \
-		kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-sshgateway -oyaml | \
+		kubectl annotate mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-tcpgateway cert-manager.io/inject-ca-from- 2>/dev/null || true && \
+		kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io appcat-tcpgateway -oyaml | \
 		yq e "with(.webhooks[]; .clientConfig.caBundle = \"$$cabundle\") | with(.webhooks[]; .clientConfig.url = \"https://$(webhook_service_name):$(webhook_port)\" + .clientConfig.service.path) | with(.webhooks[]; del(.clientConfig.service))" | \
 		kubectl replace -f - ; \
 	else \
-		echo "appcat-sshgateway MutatingWebhookConfiguration not found, skipping"; \
+		echo "appcat-tcpgateway MutatingWebhookConfiguration not found, skipping"; \
 	fi
 
 .PHONY: clean

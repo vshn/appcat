@@ -1,0 +1,67 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    defaultPlan: mini
+    controlNamespace: appcat-control
+    tcpGatewayNamespace: gateway-system
+    tcpGateways: '{"tcp-gateway":"tcp.example.com"}'
+    tcpGatewayEnabled: "true"
+    plans: |
+      {}
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNForgejo
+      metadata:
+        name: test-comp
+      spec:
+        parameters:
+          service:
+            ssh:
+              enabled: true
+            fqdn: []
+            majorVersion: "1.0.0"
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNForgejo
+          name: test
+          namespace: unit-test
+  resources:
+    my-service-tcp:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: my-service-tcp
+        status:
+          atProvider:
+            manifest:
+              apiVersion: gateway.networking.x-k8s.io/v1alpha1
+              kind: XListenerSet
+              metadata:
+                name: my-service-tcp
+                namespace: gateway-system
+              spec:
+                parentRef:
+                  group: gateway.networking.k8s.io
+                  kind: Gateway
+                  namespace: gateway-system
+                  name: tcp-gateway
+                listeners:
+                  - name: tcp
+                    port: 10005
+                    protocol: TCP
+                    allowedRoutes:
+                      kinds:
+                        - kind: TCPRoute
+                          group: gateway.networking.k8s.io
+                      namespaces:
+                        from: All

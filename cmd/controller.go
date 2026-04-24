@@ -14,7 +14,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/garagebucket"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
-	"github.com/vshn/appcat/v4/pkg/controller/webhooks/sshgateway"
+	"github.com/vshn/appcat/v4/pkg/controller/webhooks/tcpgateway"
 	"github.com/vshn/appcat/v4/pkg/odoo"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
@@ -169,7 +169,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	if c.sshGateways != "" && c.sshGatewayNamespace != "" {
 		gatewayNames := strings.Split(c.sshGateways, ",")
 
-		err = sshgateway.SetupXListenerSetWebhookWithManager(mgr, c.sshPortRangeStart, c.sshPortRangeEnd, c.sshGatewayCapacity, c.sshGatewayNamespace, gatewayNames)
+		err = tcpgateway.SetupXListenerSetWebhookWithManager(mgr, c.sshPortRangeStart, c.sshPortRangeEnd, c.sshGatewayCapacity, c.sshGatewayNamespace, gatewayNames)
 		if err != nil {
 			return err
 		}

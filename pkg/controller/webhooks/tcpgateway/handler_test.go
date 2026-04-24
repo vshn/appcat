@@ -1,4 +1,4 @@
-package sshgateway
+package tcpgateway
 
 import (
 	"context"

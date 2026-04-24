@@ -1,4 +1,4 @@
-package sshgateway
+package tcpgateway
 
 import (
 	"context"
@@ -172,7 +172,7 @@ func TestTryReclaimStaleLease_HolderGone(t *testing.T) {
 	oldTime := metav1.NewMicroTime(time.Now().Add(-5 * time.Minute))
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("ssh-port-%d", 10000),
+			Name:      fmt.Sprintf("tcp-port-%d", 10000),
 			Namespace: "test-ns",
 		},
 		Spec: coordinationv1.LeaseSpec{
@@ -195,7 +195,7 @@ func TestTryReclaimStaleLease_HolderExists(t *testing.T) {
 	holder := "vshn-forgejo-test/existing-xls"
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("ssh-port-%d", 10000),
+			Name:      fmt.Sprintf("tcp-port-%d", 10000),
 			Namespace: "test-ns",
 		},
 		Spec: coordinationv1.LeaseSpec{
@@ -214,7 +214,7 @@ func TestTryReclaimStaleLease_HolderExists(t *testing.T) {
 func TestTryReclaimStaleLease_NoHolderIdentity(t *testing.T) {
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("ssh-port-%d", 10000),
+			Name:      fmt.Sprintf("tcp-port-%d", 10000),
 			Namespace: "test-ns",
 		},
 		Spec: coordinationv1.LeaseSpec{},
@@ -235,7 +235,7 @@ func TestTryReclaimStaleLease_HolderGoneButRecent(t *testing.T) {
 	now := metav1.NewMicroTime(time.Now())
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("ssh-port-%d", 10000),
+			Name:      fmt.Sprintf("tcp-port-%d", 10000),
 			Namespace: "test-ns",
 		},
 		Spec: coordinationv1.LeaseSpec{

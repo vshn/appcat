@@ -126,7 +126,8 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 		if port == 0 {
 			listenerName, _ := listenerMap["name"].(string)
 
-			newPort, err := h.allocator.AllocatePort(ctx, usedPorts, h.leaseNS, name)
+			holder := namespace + "/" + name
+			newPort, err := h.allocator.AllocatePort(ctx, usedPorts, h.leaseNS, holder)
 			if err != nil {
 				h.log.Error(err, "Failed to allocate port", "listener", listenerName)
 				return admission.Errored(http.StatusInternalServerError, fmt.Errorf("allocating port for listener %q: %w", listenerName, err))

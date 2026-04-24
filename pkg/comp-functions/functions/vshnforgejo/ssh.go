@@ -59,12 +59,12 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 		effectiveGatewayNamespace = observed.gatewayNamespace
 	}
 
-	err = createXListenerSet(svc, resourceBaseName, effectiveGatewayNamespace, effectiveGatewayName, comp.GetInstanceNamespace(), observed.port)
+	err = createXListenerSet(svc, resourceBaseName, comp.GetInstanceNamespace(), effectiveGatewayName, effectiveGatewayNamespace, observed.port)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err))
 	}
 
-	err = createTCPRoute(svc, comp, resourceBaseName, effectiveGatewayNamespace)
+	err = createTCPRoute(svc, comp, resourceBaseName)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create TCPRoute: %s", err))
 	}
@@ -94,19 +94,22 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 	return nil
 }
 
-func createXListenerSet(svc *runtime.ServiceRuntime, name, namespace, gatewayName, instanceNamespace string, port int32) error {
+func createXListenerSet(svc *runtime.ServiceRuntime, name, instanceNamespace, gatewayName, gatewayNamespace string, port int32) error {
 	xls := &unstructured.Unstructured{
 		Object: map[string]any{},
 	}
 	xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 	xls.SetKind("XListenerSet")
 	xls.SetName(name)
-	xls.SetNamespace(namespace)
+	xls.SetNamespace(instanceNamespace)
+	xls.SetLabels(map[string]string{
+		runtime.SSHGatewayLabel: "true",
+	})
 
 	err := unstructured.SetNestedMap(xls.Object, map[string]any{
 		"group":     "gateway.networking.k8s.io",
 		"kind":      "Gateway",
-		"namespace": namespace,
+		"namespace": gatewayNamespace,
 		"name":      gatewayName,
 	}, "spec", "parentRef")
 
@@ -120,16 +123,9 @@ func createXListenerSet(svc *runtime.ServiceRuntime, name, namespace, gatewayNam
 		"protocol": "TCP",
 	}
 
-	err = unstructured.SetNestedField(listener, "Selector", "allowedRoutes", "namespaces", "from")
+	err = unstructured.SetNestedField(listener, "Same", "allowedRoutes", "namespaces", "from")
 	if err != nil {
 		return fmt.Errorf("setting allowedRoutes.namespaces.from: %w", err)
-	}
-
-	err = unstructured.SetNestedMap(listener, map[string]any{
-		"kubernetes.io/metadata.name": instanceNamespace,
-	}, "allowedRoutes", "namespaces", "selector", "matchLabels")
-	if err != nil {
-		return fmt.Errorf("setting allowedRoutes.namespaces.selector: %w", err)
 	}
 
 	err = unstructured.SetNestedSlice(listener, []any{
@@ -152,7 +148,7 @@ func createXListenerSet(svc *runtime.ServiceRuntime, name, namespace, gatewayNam
 	return svc.SetDesiredKubeObject(xls, name)
 }
 
-func createTCPRoute(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name, gatewayNamespace string) error {
+func createTCPRoute(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name string) error {
 	instanceNs := comp.GetInstanceNamespace()
 
 	// The Forgejo Helm chart creates a service named <fullname>-ssh for the SSH port.
@@ -166,11 +162,11 @@ func createTCPRoute(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNForgejo, name,
 	tcpRoute.SetName(name)
 	tcpRoute.SetNamespace(instanceNs)
 
+	// XListenerSet is in the same namespace, no cross-namespace ref needed.
 	err := unstructured.SetNestedSlice(tcpRoute.Object, []any{
 		map[string]any{
 			"group":       "gateway.networking.x-k8s.io",
 			"kind":        "XListenerSet",
-			"namespace":   gatewayNamespace,
 			"name":        name,
 			"sectionName": sshListenerName,
 		},

@@ -60,6 +60,7 @@ const (
 	WebhookAllowDeletionLabel         = "appcat.vshn.io/webhook-allowdeletion"
 	IgnoreConnectionDetailsAnnotation = "appcat.vshn.io/ignore-connection-details"
 	LastReconcileAnnotation           = "appcat.vshn.io/reconciled-on"
+	SSHGatewayLabel                   = "appcat.vshn.io/sshgateway"
 
 	ResourceReady   ResourceReadiness = ResourceReadiness(resource.ReadyTrue)
 	ResourceUnReady ResourceReadiness = ResourceReadiness(resource.ReadyFalse)

@@ -1,5 +1,10 @@
 package tcproute
 
+const (
+	// ServiceTypeTCPGateway is the ServiceType value that enables TCP gateway access.
+	ServiceTypeTCPGateway = "TCPGateway"
+)
+
 type TCPRouteConfig struct {
 	// Name prefix for all created resources (e.g. "mycomp-ssh")
 	ResourceName string

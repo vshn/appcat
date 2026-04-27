@@ -169,6 +169,14 @@ func (m Manager) RunFunction(ctx context.Context, req *fnv1.RunFunctionRequest) 
 
 	m.log.Info("Running service", "name", service)
 
+	if h, ok := operationRegistry[service]; ok {
+		rsp := response.To(req, response.DefaultTTL)
+		if err := h(ctx, req, rsp); err != nil {
+			response.Fatal(rsp, err)
+		}
+		return rsp, nil
+	}
+
 	function, found := serviceRegistry[service]
 	if !found {
 		return errResp, fmt.Errorf("no function found for service: %s", service)

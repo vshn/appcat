@@ -6,3 +6,6 @@ metadata:
 spec:
   crossplane:
     version: ">=1.14.0"
+  capabilities:
+    - composition
+    - operation

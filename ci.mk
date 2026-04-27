@@ -33,11 +33,11 @@ docker-push-branchtag: docker-build-branchtag docker-push ## Push docker image w
 .PHONY: package-build
 package-build: docker-build
 	rm -f package/*.xpkg
-	go run github.com/crossplane/crossplane/cmd/crank@v1.16.0 xpkg build -f package --verbose --embed-runtime-image=${IMG} -o package/package.xpkg
+	go run github.com/crossplane/crossplane/v2/cmd/crank@v2.2.1 xpkg build -f package --verbose --embed-runtime-image=${IMG} -o package/package.xpkg
 
 .PHONY: package-push
 package-push: package-build
-	go run github.com/crossplane/crossplane/cmd/crank@v1.16.0 xpkg push -f package/package.xpkg ${IMG}-func --verbose
+	go run github.com/crossplane/crossplane/v2/cmd/crank@v2.2.1 xpkg push -f package/package.xpkg ${IMG}-func --verbose
 
 .PHONY: package-build-branchtag
 package-build-branchtag: export IMG_TAG=$(shell git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')

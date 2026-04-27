@@ -1,0 +1,33 @@
+---
+# WatchOperation: fires whenever a CNPG Cluster changes.
+# Crossplane injects the cluster object into required_resources under
+# the special key "ops.crossplane.io/watched-resource". The function
+# (already shipped inside ghcr.io/vshn/appcat:latest-func) gates on
+# status.phase == "Cluster in healthy state" before emitting a Job
+# that runs psql against the cluster.
+apiVersion: ops.crossplane.io/v1alpha1
+kind: WatchOperation
+metadata:
+  name: cnpg-dummy-data
+spec:
+  watch:
+    apiVersion: postgresql.cnpg.io/v1
+    kind: Cluster
+    # Optional scoping. Uncomment to restrict to appcat-managed clusters.
+    # matchLabels:
+    #   appcat.vshn.io/ownergroup: vshn.appcat.vshn.io
+  concurrencyPolicy: Forbid
+  operationTemplate:
+    spec:
+      mode: Pipeline
+      pipeline:
+        - step: insert-dummy
+          functionRef:
+            name: function-appcat-debug-poc-operations
+          input:
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: cnpg-dummy-data-input
+            data:
+              serviceName: cnpg-dummy-data

@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/cloudscalebucket"
+	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/cnpgdummydata"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/exoscalebucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/garagebucket"
 	_ "github.com/vshn/appcat/v4/pkg/comp-functions/functions/buckets/miniobucket"

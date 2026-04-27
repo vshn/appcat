@@ -1,0 +1,79 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters:
+          service:
+            majorVersion: "15"
+          instances: 1
+          network:
+            serviceType: TCPGateway
+          backup:
+            schedule: 44 20 * * *
+          maintenance:
+            schedule: 12 34 * * *
+        writeConnectionSecretToRef: {}
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+input:
+  apiVersion: v1
+  data:
+    defaultPlan: standard-1
+    controlNamespace: appcat-control
+    tcpGatewayNamespace: gateway-system
+    tcpGateways: '{"tcp-gateway":"pg.example.com"}'
+    tcpGatewayEnabled: "true"
+    externalDatabaseConnectionsEnabled: "true"
+    plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true, "memory": "1Gi"}}}'
+    serviceName: postgresql
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+          - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters:
+          service:
+            majorVersion: "15"
+          instances: 1
+          network:
+            serviceType: TCPGateway
+          backup:
+            schedule: 44 20 * * *
+          maintenance:
+            schedule: 12 34 * * *
+        writeConnectionSecretToRef: {}
+      status:
+        instanceNamespace: vshn-postgresql-pgsql-gc9x4

@@ -11,20 +11,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const discoveryRoleSuffix = "-discovery"
+const roleSuffix = "-discovery"
 
-// CreateDiscoveryRBAC creates the Role and RoleBinding that allow the OpenBao
-// service account to list pods in its own namespace for Raft auto-join.
-// The Helm chart's built-in RBAC is disabled (server.rbac.create=false) because
-// provider-helm cannot grant pod permissions it does not itself hold.
-func CreateDiscoveryRBAC(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
+func ConfigureRBAC(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	if err := svc.GetObservedComposite(comp); err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
 	serviceName := comp.GetName()
 	ns := comp.GetInstanceNamespace()
-	roleName := serviceName + discoveryRoleSuffix
+	roleName := serviceName + roleSuffix
 
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{

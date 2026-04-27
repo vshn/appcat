@@ -22,7 +22,7 @@ func init() {
 			},
 			{
 				Name:    "create-discovery-rbac",
-				Execute: CreateDiscoveryRBAC,
+				Execute: ConfigureRBAC,
 			},
 			{
 				Name:    "deploy-openbao",

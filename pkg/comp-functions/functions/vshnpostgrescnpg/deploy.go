@@ -2,10 +2,8 @@ package vshnpostgrescnpg
 
 import (
 	"context"
-	"crypto/x509"
 	_ "embed"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"strings"
@@ -21,6 +19,7 @@ import (
 
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
 	corev1 "k8s.io/api/core/v1"
@@ -94,11 +93,15 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 
 	svcName := "postgresql-rw"
 
-	// Once the loadbalancer ip is in the connection details, we can use it to fix the tls cert
+	// Once the loadbalancer ip or gateway domain is in the connection details, we can use it to fix the tls cert
 	ipAddresses := []string{}
+	dnsNames := []string{}
 	cd := svc.GetObservedConnectionDetails()
 	if v, ok := cd["LOADBALANCER_IP"]; ok && comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
 		ipAddresses = append(ipAddresses, string(v))
+	}
+	if v, ok := cd["POSTGRESQL_GATEWAY_HOST"]; ok && comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && externalAccessEnabled(svc) {
+		dnsNames = append(dnsNames, string(v))
 	}
 
 	certificate := &cmv1.Certificate{
@@ -126,10 +129,10 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 				Size:      4096,
 			},
 			Usages: []cmv1.KeyUsage{"server auth", "client auth"},
-			DNSNames: []string{
+			DNSNames: append([]string{
 				svcName + "." + comp.GetInstanceNamespace() + ".svc.cluster.local",
 				svcName + "." + comp.GetInstanceNamespace() + ".svc",
-			},
+			}, dnsNames...),
 			IPAddresses: ipAddresses,
 			IssuerRef: certmgrv1.ObjectReference{
 				Name:  comp.GetName(),
@@ -147,65 +150,26 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 
 	// We slow down the readiness of the certificate so Crossplane can pick up the changes in the
 	// certificate secret, before everything goes synced/ready.
-	// We look at the actual source certificate for the connection details
-	// parse it and see if the IP address is in there.
-	// If LoadBalancer is enabled and we don't see the IP in the IPAddresses of the
-	// certificate, we will mark is as unready.
+	// We look at the actual source certificate and verify the expected SAN is present.
 	// This ensures that we don't have to wait ~1h before the correct connectionDetails
 	// are populated.
 	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
-		svc.SetDesiredResourceReadiness("certificate", runtime.ResourceUnReady)
-
-		v, ok := cd["LOADBALANCER_IP"]
-		if ok {
-
-			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      certificateSecretName,
-					Namespace: comp.GetInstanceNamespace(),
-				},
+		if v, ok := cd["LOADBALANCER_IP"]; ok {
+			if err := waitForCertSAN(svc, comp.GetName(), comp.GetInstanceNamespace(), certHasIP(string(v))); err != nil {
+				return err
 			}
+		} else {
+			svc.SetDesiredResourceReadiness("certificate", runtime.ResourceUnReady)
+		}
+	}
 
-			err := svc.SetDesiredKubeObject(secret, comp.GetName()+"-tls-observer", runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion)
-			if err != nil {
-				svc.Log.Error(err, "cannot deploy certificate secret observer")
-				svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot deploy certificate secret observer: %s", err)))
+	if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && externalAccessEnabled(svc) {
+		if v, ok := cd["POSTGRESQL_GATEWAY_HOST"]; ok && string(v) != "" {
+			if err := waitForCertSAN(svc, comp.GetName(), comp.GetInstanceNamespace(), certHasDNS(string(v))); err != nil {
+				return err
 			}
-
-			obsSecret := &corev1.Secret{}
-
-			err = svc.GetObservedKubeObject(obsSecret, comp.GetName()+"-tls-observer")
-			if err != nil {
-				svc.Log.Error(err, "cannot observe certificate secret")
-				svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot observe certificate secret: %s", err)))
-			}
-
-			block, _ := pem.Decode(obsSecret.Data["tls.crt"])
-			if block == nil {
-				svc.Log.Info("cannot decode tls certificate")
-				svc.AddResult(runtime.NewWarningResult("cannot decode tls certificate"))
-			} else {
-				cert, err := x509.ParseCertificate(block.Bytes)
-				if err != nil {
-					svc.Log.Error(err, "cannot parse tls certificate")
-					svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot parse tls certificate: %s", err)))
-				}
-
-				// If we don't have a cert we fatal abort the whole reconcile.
-				// This will protect the consistency of the Crossplane state.
-				if cert == nil {
-					err := fmt.Errorf("certificate is nil, please check issues with cert-manager")
-					svc.AddResult(runtime.NewFatalResult(err))
-					return err
-				}
-
-				for _, ip := range cert.IPAddresses {
-					if ip.String() == string(v) {
-						svc.SetDesiredResourceReadiness("certificate", runtime.ResourceReady)
-					}
-				}
-			}
-
+		} else {
+			svc.SetDesiredResourceReadiness("certificate", runtime.ResourceUnReady)
 		}
 	}
 

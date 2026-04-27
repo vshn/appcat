@@ -19,6 +19,7 @@ func init() {
 		cmd.SlareportCMD,
 		cmd.APIServerCMD,
 		&cmd.HotfixerCMD,
+		cmd.OperationCMD,
 	)
 }
 

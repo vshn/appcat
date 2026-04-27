@@ -27,6 +27,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -99,6 +100,11 @@ type ServiceRuntime struct {
 	// if we read the nested manifest from the kubeObject and re-apply it to the
 	// desired manifest.
 	kubeOptionTracker map[string][]KubeObjectOption
+	// extraResourceRequirements accumulates ResourceSelectors that get plumbed
+	// into the response's Requirements. Crossplane fetches the matching resources
+	// fresh from the API server each function call and re-invokes the function
+	// with them populated under req.ExtraResources.
+	extraResourceRequirements map[string]*fnv1.ResourceSelector
 }
 
 // Service contains all steps necessary to provide the service (except the legacy P+T portion).
@@ -287,14 +293,17 @@ func (m *Manager) proxyFunction(ctx context.Context, req *fnv1.RunFunctionReques
 		return errResp, err
 	}
 
-	jsonReq, err := json.Marshal(req)
+	// protojson preserves protobuf oneof fields (e.g. ResourceSelector.Match);
+	// encoding/json cannot round-trip oneofs because the field is an unexported
+	// interface type.
+	jsonReq, err := protojson.Marshal(req)
 	if err != nil {
 		return errResp, fmt.Errorf("cannot convert request to json for grpc reques: %w", err)
 	}
 
 	grpcReq := &fnv1.RunFunctionRequest{}
 
-	err = json.Unmarshal(jsonReq, grpcReq)
+	err = protojson.Unmarshal(jsonReq, grpcReq)
 	if err != nil {
 		return errResp, fmt.Errorf("cannot unmarshal grpc reques: %w", err)
 	}
@@ -304,14 +313,14 @@ func (m *Manager) proxyFunction(ctx context.Context, req *fnv1.RunFunctionReques
 		return errResp, err
 	}
 
-	jsonResp, err := json.Marshal(rsp)
+	jsonResp, err := protojson.Marshal(rsp)
 	if err != nil {
 		return errResp, fmt.Errorf("cannot marshal response to json: %w", err)
 	}
 
 	finalResponse := &xfnproto.RunFunctionResponse{}
 
-	err = json.Unmarshal(jsonResp, finalResponse)
+	err = protojson.Unmarshal(jsonResp, finalResponse)
 	if err != nil {
 		return errResp, fmt.Errorf("cannot unmarshal json response: %w", err)
 	}
@@ -356,9 +365,29 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunc
 		results:           []*xfnproto.Result{},
 		desiredComposite:  desiredComposite.Resource,
 		observedComposite: observedComposite.Resource,
-		gvk:               observedComposite.Resource.GetObjectKind().GroupVersionKind(),
-		kubeOptionTracker: map[string][]KubeObjectOption{},
+		gvk:                       observedComposite.Resource.GetObjectKind().GroupVersionKind(),
+		kubeOptionTracker:         map[string][]KubeObjectOption{},
+		extraResourceRequirements: map[string]*fnv1.ResourceSelector{},
 	}, nil
+}
+
+// RequireExtraResource registers a ResourceSelector under the given name. Crossplane
+// will fetch matching resources fresh from the API server and re-invoke the function
+// with them populated under req.ExtraResources[name]. Use GetExtraResources to read.
+func (s *ServiceRuntime) RequireExtraResource(name string, selector *fnv1.ResourceSelector) {
+	s.extraResourceRequirements[name] = selector
+}
+
+// GetExtraResources returns the extra resources that Crossplane fetched on the
+// previous function call, keyed by the name passed to RequireExtraResource. The
+// first call (before Crossplane has fetched anything) returns an empty slice for
+// the given key — callers should treat that as "not yet available" and short-circuit.
+func (s *ServiceRuntime) GetExtraResources(name string) ([]resource.Extra, error) {
+	all, err := request.GetExtraResources(s.req)
+	if err != nil {
+		return nil, err
+	}
+	return all[name], nil
 }
 
 // GetResponse returns the response with all desired resources set.
@@ -386,6 +415,13 @@ func (s *ServiceRuntime) GetResponse() (*fnv1.RunFunctionResponse, error) {
 	err = response.SetDesiredComposedResources(resp, s.desiredResources)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(s.extraResourceRequirements) > 0 {
+		if resp.Requirements == nil {
+			resp.Requirements = &fnv1.Requirements{}
+		}
+		resp.Requirements.ExtraResources = s.extraResourceRequirements
 	}
 
 	comp, err := request.GetDesiredCompositeResource(s.req)

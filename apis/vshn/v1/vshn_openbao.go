@@ -56,7 +56,7 @@ type VSHNOpenBaoParameters struct {
 	Service VSHNOpenBaoServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
-	Size VSHNSizeSpec `json:"size,omitempty"`
+	Size VSHNOpenBaoSizeSpec `json:"size,omitempty"`
 
 	// Scheduling contains settings to control the scheduling of an instance.
 	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`

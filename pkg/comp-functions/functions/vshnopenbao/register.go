@@ -21,6 +21,10 @@ func init() {
 				Execute: SetupTLSCertificates,
 			},
 			{
+				Name:    "create-discovery-rbac",
+				Execute: CreateDiscoveryRBAC,
+			},
+			{
 				Name:    "deploy-openbao",
 				Execute: DeployOpenBao,
 			},

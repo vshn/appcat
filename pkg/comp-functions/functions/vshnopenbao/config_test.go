@@ -30,6 +30,20 @@ func TestBuildHclConfig(t *testing.T) {
 	require.Contains(t, secret.Data, "config.hcl", "Secret should contain config.hcl key")
 	hclBytes := secret.Data["config.hcl"]
 	require.NotEmpty(t, hclBytes, "HCL config should not be empty")
+
+	// Verify the HCL config has a retry_join block with auto_join
+	config, err := DecodeHCL(hclBytes, "config.hcl")
+	require.NoError(t, err)
+	require.Len(t, config.Storage, 1)
+	require.Len(t, config.Storage[0].RetryJoin, 1)
+	rj := config.Storage[0].RetryJoin[0]
+	assert.Contains(t, rj.AutoJoin, "provider=k8s")
+	assert.Contains(t, rj.AutoJoin, "namespace=vshn-openbao-openbao-test")
+	assert.NotContains(t, rj.AutoJoin, "namespace_pattern")
+	assert.Equal(t, "https", rj.AutoJoinScheme)
+	assert.Equal(t, 8200, rj.AutoJoinPort)
+	assert.Contains(t, rj.LeaderTLSServerName, "openbao-test")
+	assert.NotEmpty(t, rj.LeaderCACertFile)
 }
 
 func TestEncodeDecodeHCL(t *testing.T) {

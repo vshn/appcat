@@ -51,6 +51,9 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 			"enabled": false,
 		},
 		"server": map[string]any{
+			"rbac": map[string]any{
+				"create": false,
+			},
 			"ha": map[string]any{
 				"enabled": true,
 				"config":  "# Config provided via external file\n",

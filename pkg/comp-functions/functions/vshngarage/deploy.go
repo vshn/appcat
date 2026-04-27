@@ -63,6 +63,9 @@ func DeployGarage(ctx context.Context, comp *vshnv1.VSHNGarage, svc *runtime.Ser
 				"memory": calcResources.Mem,
 			},
 		},
+		"adminKey": map[string]any{
+			"enabled": true,
+		},
 		"storageDataSpace":     calcResources.Disk.String(),
 		"storageMetadataSpace": comp.Spec.Parameters.Service.MetadataStorage,
 	}

@@ -14,6 +14,17 @@ rules:
   - list
   - watch
 - apiGroups:
+  - garage.rajsingh.info
+  resources:
+  - garagebuckets
+  - garagekeys
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
   - managedupgrade.appuio.io
   resources:
   - upgradejobs
@@ -24,10 +35,12 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - vshngarages
   - vshnmariadbs
   - vshnminios
   - vshnpostgresqls
   - vshnredis
+  - xvshngarages
   - xvshnkeycloaks
   - xvshnmariadbs
   - xvshnminios
@@ -40,10 +53,12 @@ rules:
 - apiGroups:
   - vshn.appcat.vshn.io
   resources:
+  - vshngarages/status
   - vshnmariadbs/status
   - vshnminios/status
   - vshnpostgresqls/status
   - vshnredis/status
+  - xvshngarages/status
   - xvshnkeycloaks/status
   - xvshnmariadbs/status
   - xvshnminios/status

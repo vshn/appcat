@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	cpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -131,6 +132,7 @@ type XVSHNGarageSpec struct {
 	// Parameters are the configurable fields of a VSHNGarage.
 	Parameters VSHNGarageParameters `json:"parameters,omitempty"`
 
+	CompositionRef    cpv1.CompositionReference `json:"compositionRef,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 
@@ -212,6 +214,14 @@ func (v *VSHNGarage) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsMana
 // GetBackupRetention returns the retention definition for this backup.
 func (v *VSHNGarage) GetBackupRetention() K8upRetentionPolicy {
 	return K8upRetentionPolicy{}
+}
+
+func (v *XVSHNGarage) GetInstanceNamespace() string {
+	return fmt.Sprintf("vshn-garage-%s", v.GetName())
+}
+
+func (v *XVSHNGarage) GetInstances() int {
+	return v.Spec.Parameters.Instances
 }
 
 // GetBackupSchedule returns the current backup schedule

@@ -56,7 +56,7 @@ type VSHNOpenBaoParameters struct {
 	Service VSHNOpenBaoServiceSpec `json:"service,omitempty"`
 
 	// Size contains settings to control the sizing of a service.
-	Size VSHNSizeSpec `json:"size,omitempty"`
+	Size VSHNOpenBaoSizeSpec `json:"size,omitempty"`
 
 	// Scheduling contains settings to control the scheduling of an instance.
 	Scheduling VSHNDBaaSSchedulingSpec `json:"scheduling,omitempty"`
@@ -111,6 +111,13 @@ type VSHNOpenBaoSizeSpec struct {
 
 	// Plan is the name of the resource plan that defines the compute resources.
 	Plan string `json:"plan,omitempty"`
+}
+
+func (p *VSHNOpenBaoSizeSpec) GetPlan(defaultPlan string) string {
+	if p.Plan != "" {
+		return p.Plan
+	}
+	return defaultPlan
 }
 
 // VSHNOpenBaoTLSSpec contains settings to control tls traffic of a service.
@@ -269,7 +276,16 @@ func (v *VSHNOpenBao) GetSecurity() *Security {
 }
 
 func (v *VSHNOpenBao) GetSize() VSHNSizeSpec {
-	return v.Spec.Parameters.Size
+	return VSHNSizeSpec{
+		CPU:    v.Spec.Parameters.Size.CPULimits,
+		Memory: v.Spec.Parameters.Size.MemoryLimits,
+		Disk:   v.Spec.Parameters.Size.Disk,
+		Plan:   v.Spec.Parameters.Size.Plan,
+		Requests: VSHNDBaaSSizeRequestsSpec{
+			CPU:    v.Spec.Parameters.Size.CPURequests,
+			Memory: v.Spec.Parameters.Size.MemoryRequests,
+		},
+	}
 }
 
 func (v *VSHNOpenBao) GetMonitoring() VSHNMonitoring {

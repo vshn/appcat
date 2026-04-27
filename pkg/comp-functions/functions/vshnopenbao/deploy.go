@@ -33,10 +33,10 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Errorf("cannot fetch plans from the composition config, maybe they are not set: %w", err).Error())
 	}
 
-	reqMem := cmp.Or(comp.Spec.Parameters.Size.Requests.Memory, resources.MemoryRequests.String())
-	reqCPU := cmp.Or(comp.Spec.Parameters.Size.Requests.CPU, resources.CPURequests.String())
-	mem := cmp.Or(comp.Spec.Parameters.Size.Memory, resources.MemoryLimits.String())
-	cpu := cmp.Or(comp.Spec.Parameters.Size.CPU, resources.CPULimits.String())
+	reqMem := cmp.Or(comp.Spec.Parameters.Size.MemoryRequests, resources.MemoryRequests.String())
+	reqCPU := cmp.Or(comp.Spec.Parameters.Size.CPURequests, resources.CPURequests.String())
+	mem := cmp.Or(comp.Spec.Parameters.Size.MemoryLimits, resources.MemoryLimits.String())
+	cpu := cmp.Or(comp.Spec.Parameters.Size.CPULimits, resources.CPULimits.String())
 	disk := cmp.Or(comp.Spec.Parameters.Size.Disk, resources.Disk.String())
 
 	values := map[string]interface{}{

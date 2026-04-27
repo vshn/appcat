@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const roleSuffix = "-discovery"
+const serverRoleSuffix = "-server"
 
 func ConfigureRBAC(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	if err := svc.GetObservedComposite(comp); err != nil {
@@ -20,7 +20,7 @@ func ConfigureRBAC(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 
 	serviceName := comp.GetName()
 	ns := comp.GetInstanceNamespace()
-	roleName := serviceName + roleSuffix
+	roleName := serviceName + serverRoleSuffix
 
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{

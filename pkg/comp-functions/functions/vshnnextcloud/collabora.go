@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	_ "embed"
 	"encoding/pem"
+	"errors"
 	"fmt"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -132,6 +133,9 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 	}
 
 	err = AddCollaboraIngress(comp, svc)
+	if errors.Is(err, common.ErrHTTPGatewayNotConfigured) {
+		return runtime.NewFatalResult(fmt.Errorf("Failed to add Collabora Ingress: %w", err))
+	}
 	if err != nil {
 		return runtime.NewWarningResult("Failed to add Collabora Ingress: " + err.Error())
 	}
@@ -330,6 +334,14 @@ func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 
 }
 func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+
+	if comp.Spec.Parameters.Service.Collabora.FQDN == "" {
+		return fmt.Errorf("collabora FQDN is not set")
+	}
+
+	if common.IsHTTPRouteMode(svc) {
+		return addCollaboraHTTPRoute(comp, svc)
+	}
 
 	annotations := map[string]string{}
 
@@ -532,6 +544,19 @@ func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceR
 	}
 
 	return svc.SetDesiredKubeObject(job, comp.GetName()+"-collabora-install-job", runtime.KubeOptionAddLabels(labelMap))
+}
+
+func addCollaboraHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
+	svc.Log.Info("Adding HTTPRoute for Collabora")
+
+	return common.ApplyHTTPRoute(comp, svc, common.HTTPRouteConfig{
+		FQDNs: []string{comp.Spec.Parameters.Service.Collabora.FQDN},
+		ServiceConfig: common.IngressRuleConfig{
+			ServiceNameSuffix: "collabora-code",
+			ServicePortNumber: 9980,
+		},
+		NameSuffix: "collabora-code",
+	}, runtime.KubeOptionAddLabels(labelMap))
 }
 
 // ssh-keygen -t rsa -N "" -m PEM

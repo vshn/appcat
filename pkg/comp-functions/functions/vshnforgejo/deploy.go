@@ -50,6 +50,9 @@ func DeployForgejo(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runtime.S
 
 	svc.Log.Info("Adding forgejo release")
 	err = addForgejo(ctx, svc, comp, secretName)
+	if errors.Is(err, common.ErrHTTPGatewayNotConfigured) {
+		return runtime.NewFatalResult(fmt.Errorf("cannot add forgejo release: %w", err))
+	}
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add forgejo release: %s", err))
 	}
@@ -239,29 +242,41 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	// Ingress
+	// Ingress / HTTPRoute
 	svcNameSuffix := "http"
 	if !strings.Contains(comp.GetName(), "forgejo") {
 		svcNameSuffix = "forgejo-" + svcNameSuffix
 	}
 
-	svc.Log.Info("Adding ingress")
-	ingressConfig := common.IngressConfig{
-		FQDNs: comp.Spec.Parameters.Service.FQDN,
-		ServiceConfig: common.IngressRuleConfig{
-			ServiceNameSuffix: svcNameSuffix,
-			ServicePortNumber: 3000,
-		},
-		TlsCertBaseName: "forgejo",
-	}
-	ingresses, err := common.GenerateBundledIngresses(comp, svc, ingressConfig)
-	if err != nil {
-		return err
-	}
-
-	err = common.CreateIngresses(comp, svc, ingresses)
-	if err != nil {
-		return err
+	if common.IsHTTPRouteMode(svc) {
+		svc.Log.Info("Adding HTTPRoute for Forgejo")
+		if err := common.ApplyHTTPRoute(comp, svc, common.HTTPRouteConfig{
+			FQDNs: comp.Spec.Parameters.Service.FQDN,
+			ServiceConfig: common.IngressRuleConfig{
+				ServiceNameSuffix: svcNameSuffix,
+				ServicePortNumber: 3000,
+			},
+		}); err != nil {
+			return err
+		}
+	} else {
+		svc.Log.Info("Adding ingress")
+		ingressConfig := common.IngressConfig{
+			FQDNs: comp.Spec.Parameters.Service.FQDN,
+			ServiceConfig: common.IngressRuleConfig{
+				ServiceNameSuffix: svcNameSuffix,
+				ServicePortNumber: 3000,
+			},
+			TlsCertBaseName: "forgejo",
+		}
+		ingresses, err := common.GenerateBundledIngresses(comp, svc, ingressConfig)
+		if err != nil {
+			return err
+		}
+		err = common.CreateIngresses(comp, svc, ingresses)
+		if err != nil {
+			return err
+		}
 	}
 
 	if svc.Config.Data["isOpenshift"] == "true" {

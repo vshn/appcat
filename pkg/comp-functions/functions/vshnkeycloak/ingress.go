@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // AddIngress adds an inrgess to the Keycloak instance.
@@ -26,6 +27,10 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	fqdn := comp.Spec.Parameters.Service.FQDN
 	if fqdn == "" {
 		return nil
+	}
+
+	if common.IsHTTPRouteMode(svc) {
+		return addKeycloakHTTPRoute(comp, svc, fqdn)
 	}
 
 	values, err := common.GetDesiredReleaseValues(svc, comp.GetName()+"-release")
@@ -108,4 +113,43 @@ func addOpenShiftCa(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) erro
 	}
 
 	return svc.SetDesiredKubeObject(secret, comp.GetName()+"-route-ca", runtime.KubeOptionAllowDeletion)
+}
+
+func addKeycloakHTTPRoute(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, fqdn string) *xfnproto.Result {
+	svc.Log.Info("Adding HTTPRoute for Keycloak")
+
+	if res := common.ApplyHTTPRouteAsResult(comp, svc, common.HTTPRouteConfig{
+		FQDNs: []string{fqdn},
+		ServiceConfig: common.IngressRuleConfig{
+			RelPath:           comp.Spec.Parameters.Service.RelativePath,
+			ServiceNameSuffix: "keycloakx-http",
+			ServicePortNumber: 8443,
+		},
+	}); res != nil {
+		return res
+	}
+
+	// Keycloak serves TLS on port 8443 directly. kgateway defaults to plain
+	// HTTP upstream, so attach a BackendConfigPolicy that originates TLS to
+	// the keycloakx-http Service, validating against the CA secret created
+	// by common.CreateTLSCerts ("tls-ca-certificate" in the instance ns).
+	svcName := comp.GetName() + "-keycloakx-http"
+	bcp := &unstructured.Unstructured{}
+	bcp.SetAPIVersion("gateway.kgateway.dev/v1alpha1")
+	bcp.SetKind("BackendConfigPolicy")
+	bcp.SetName(comp.GetName() + "-backend-tls")
+	bcp.SetNamespace(comp.GetInstanceNamespace())
+	bcp.Object["spec"] = map[string]any{
+		"targetRefs": []any{
+			map[string]any{"group": "", "kind": "Service", "name": svcName},
+		},
+		"tls": map[string]any{
+			"secretRef": map[string]any{"name": "tls-ca-certificate"},
+		},
+	}
+	if err := svc.SetDesiredKubeObject(bcp, bcp.GetName()); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create BackendConfigPolicy: %s", err))
+	}
+
+	return nil
 }

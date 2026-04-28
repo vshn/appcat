@@ -29,7 +29,7 @@ func TestConfigureTCPGateway(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-pg"), runtime.ErrNotFound)
+		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-xls"), runtime.ErrNotFound)
 	})
 
 	t.Run("TCPGateway_ExternalAccessDisabled_Warning", func(t *testing.T) {
@@ -70,13 +70,13 @@ func TestConfigureTCPGateway(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		assert.NoError(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-pg"))
+		assert.NoError(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-xls"))
 
 		// TCPRoute created
 		tcpRoute := &unstructured.Unstructured{}
 		tcpRoute.SetAPIVersion("gateway.networking.k8s.io/v1alpha2")
 		tcpRoute.SetKind("TCPRoute")
-		assert.NoError(t, svc.GetDesiredKubeObject(tcpRoute, comp.GetName()+"-pg-tcproute"))
+		assert.NoError(t, svc.GetDesiredKubeObject(tcpRoute, comp.GetName()+"-tcproute"))
 	})
 
 	t.Run("TCPGateway_PortAllocated_ConnectionDetails", func(t *testing.T) {

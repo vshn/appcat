@@ -39,7 +39,7 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 
 	svc.Log.Info("Configuring TCPRoute", "resource", cfg.ResourceName)
 
-	observed := observeXListenerSet(svc, cfg.ResourceName)
+	observed := observeXListenerSet(svc, cfg.ResourceName+"-xls")
 
 	effectiveGatewayName := tcpGatewayName
 	effectiveGatewayNamespace := gatewayNamespace
@@ -117,7 +117,7 @@ func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gateway
 		return fmt.Errorf("setting listeners: %w", err)
 	}
 
-	return svc.SetDesiredKubeObject(xls, cfg.ResourceName)
+	return svc.SetDesiredKubeObject(xls, cfg.ResourceName+"-xls", runtime.KubeOptionAllowDeletion)
 }
 
 func createTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) error {
@@ -158,7 +158,7 @@ func createTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) error {
 		return fmt.Errorf("setting rules: %w", err)
 	}
 
-	return svc.SetDesiredKubeObject(tcpRoute, cfg.ResourceName+"-tcproute")
+	return svc.SetDesiredKubeObject(tcpRoute, cfg.ResourceName+"-tcproute", runtime.KubeOptionAllowDeletion)
 }
 
 func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace string) error {
@@ -197,7 +197,7 @@ func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, cfg TCPRouteConfig,
 		},
 	}
 
-	return svc.SetDesiredKubeObject(netPol, cfg.ResourceName+"-netpol")
+	return svc.SetDesiredKubeObject(netPol, cfg.ResourceName+"-gw-netpol", runtime.KubeOptionAllowDeletion)
 }
 
 func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState {

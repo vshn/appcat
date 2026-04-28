@@ -27,7 +27,7 @@ func TestSSH(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-ssh"), runtime.ErrNotFound)
+		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-ssh-xls"), runtime.ErrNotFound)
 	})
 
 	t.Run("SSHEnabled_GatewayConfigMissing_WarningResult", func(t *testing.T) {

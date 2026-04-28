@@ -130,6 +130,27 @@ func TestSetupWebhookHandlerWithManager_ValidateCreate(t *testing.T) {
 	keycloakInvalid.Spec.Parameters.Size.Disk = "foo"
 	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
 	assert.Error(t, err)
+
+	// Guaranteed availability: 1 instance with guaranteed SLA must fail
+	keycloakInvalid = keycloakOrig.DeepCopy()
+	keycloakInvalid.Spec.Parameters.Instances = 1
+	keycloakInvalid.Spec.Parameters.Service.ServiceLevel = vshnv1.Guaranteed
+	_, err = handler.ValidateCreate(ctx, keycloakInvalid)
+	assert.Error(t, err)
+
+	// Guaranteed availability: 2 instances with guaranteed SLA must pass
+	keycloakValid := keycloakOrig.DeepCopy()
+	keycloakValid.Spec.Parameters.Instances = 2
+	keycloakValid.Spec.Parameters.Service.ServiceLevel = vshnv1.Guaranteed
+	_, err = handler.ValidateCreate(ctx, keycloakValid)
+	assert.NoError(t, err)
+
+	// Guaranteed availability: 0 instances (suspended) with guaranteed SLA must pass
+	keycloakValid = keycloakOrig.DeepCopy()
+	keycloakValid.Spec.Parameters.Instances = 0
+	keycloakValid.Spec.Parameters.Service.ServiceLevel = vshnv1.Guaranteed
+	_, err = handler.ValidateCreate(ctx, keycloakValid)
+	assert.NoError(t, err)
 }
 
 func TestSetupWebhookHandlerWithManager_ValidateDelete(t *testing.T) {

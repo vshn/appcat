@@ -78,7 +78,7 @@ observed:
       status:
         instanceNamespace: vshn-postgresql-pgsql-gc9x4
   resources:
-    pgsql-gc9x4-pg:
+    pgsql-gc9x4-xls:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
         kind: Object

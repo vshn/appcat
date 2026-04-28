@@ -628,7 +628,7 @@ func (r *DefaultWebhookHandler) checkGuaranteedAvailability(comp common.Composit
 		allErrs = append(allErrs, field.Invalid(
 			field.NewPath("spec", "parameters", "instances"),
 			comp.GetInstances(),
-			fmt.Sprintf("%s instances with service level Guaranteed Availability must have at least 2 replicas. Please set spec.parameters.instances to 2 or more. Additional costs will apply, please refer to: https://products.vshn.ch/appcat/pricing.html", name),
+			fmt.Sprintf("%s instances with service level Guaranteed Availability must have more than 1 replicas. Please set spec.parameters.instances to accordingly, depending on your service. Additional costs will apply, please refer to: https://products.vshn.ch/appcat/pricing.html", name),
 		))
 	}
 	return allErrs

@@ -35,7 +35,7 @@ func ConfigureTCPGateway(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *
 	}
 
 	cfg := tcproute.TCPRouteConfig{
-		ResourceName:       comp.GetName() + "-pg",
+		ResourceName:       comp.GetName(),
 		ListenerName:       pgListenerName,
 		BackendServiceName: pgBackendServiceName,
 		BackendServicePort: pgBackendServicePort,

@@ -39,7 +39,7 @@ func TestAddTCPRoute(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName))
+		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 		assert.Equal(t, cfg.ResourceName, xls.GetName())
 		assert.Equal(t, cfg.InstanceNamespace, xls.GetNamespace())
 
@@ -88,7 +88,7 @@ func TestAddTCPRoute(t *testing.T) {
 
 		// Verify NetworkPolicy
 		netPol := &netv1.NetworkPolicy{}
-		require.NoError(t, svc.GetDesiredKubeObject(netPol, cfg.ResourceName+"-netpol"))
+		require.NoError(t, svc.GetDesiredKubeObject(netPol, cfg.ResourceName+"-gw-netpol"))
 		assert.Equal(t, cfg.ResourceName, netPol.Name)
 		assert.Equal(t, cfg.InstanceNamespace, netPol.Namespace)
 		assert.Equal(t, "myapp", netPol.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
@@ -127,7 +127,7 @@ func TestAddTCPRoute(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName))
+		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 		listeners, _, _ := unstructured.NestedSlice(xls.Object, "spec", "listeners")
 		require.Len(t, listeners, 1)
 		l0 := listeners[0].(map[string]any)
@@ -149,7 +149,7 @@ func TestAddTCPRoute(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName))
+		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 
 		parentName, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "name")
 		parentNs, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "namespace")
@@ -165,6 +165,6 @@ func TestAddTCPRoute(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName), runtime.ErrNotFound)
+		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"), runtime.ErrNotFound)
 	})
 }

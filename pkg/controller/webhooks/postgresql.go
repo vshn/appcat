@@ -172,7 +172,7 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 	}
 
 	// Validate guaranteed availability
-	allErrs.Add(p.checkGuaranteedAvailability(newPg)...)
+	allErrs.Add(p.DefaultWebhookHandler.checkGuaranteedAvailability(newPg)...)
 
 	// Validate name length
 	if err := p.validateResourceNameLength(newPg.GetName()); err != nil {
@@ -320,20 +320,6 @@ func parseResource(childPath *field.Path, value, errMessage string) (resource.Qu
 		return quantity, field.Invalid(childPath, value, errMessage)
 	}
 	return quantity, nil
-}
-
-func (p *PostgreSQLWebhookHandler) checkGuaranteedAvailability(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
-	allErrs := field.ErrorList{}
-	// Allow instances=0 (suspended) regardless of service level
-	// Only enforce guaranteed availability (>=2 instances) when service is running (instances > 0)
-	if pg.Spec.Parameters.Service.ServiceLevel == "guaranteed" && pg.Spec.Parameters.Instances > 0 && pg.Spec.Parameters.Instances < 2 {
-		allErrs = append(allErrs, field.Invalid(
-			field.NewPath("spec.parameters.instances"),
-			pg.Spec.Parameters.Instances,
-			"PostgreSQL instances with service level Guaranteed Availability must have at least 2 replicas. Please set .spec.parameters.instances: [2,3]. Additional costs will apply, please refer to: https://products.vshn.ch/appcat/pricing.html",
-		))
-	}
-	return allErrs
 }
 
 func validateVacuumRepack(vacuum, repack bool) *field.Error {

@@ -145,6 +145,8 @@ func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 		allErrs.Add(err)
 	}
 
+	allErrs.Add(r.checkGuaranteedAvailability(comp)...)
+
 	warn := checkManualVersionManagementWarnings(comp.GetFullMaintenanceSchedule())
 	return warn, allErrs.Get()
 }
@@ -189,6 +191,8 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 			})
 		}
 	}
+
+	allErrs.Add(r.checkGuaranteedAvailability(comp)...)
 
 	warn := checkManualVersionManagementWarnings(comp.GetFullMaintenanceSchedule())
 	return warn, allErrs.Get()
@@ -615,6 +619,19 @@ func (r *DefaultWebhookHandler) getEffectiveDiskSize(ctx context.Context, comp c
 
 	// No disk size configured
 	return "", nil
+}
+
+func (r *DefaultWebhookHandler) checkGuaranteedAvailability(comp common.Composite) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if comp.GetSLA() == string(vshnv1.Guaranteed) && comp.GetInstances() > 0 && comp.GetInstances() < 2 {
+		name := strings.TrimPrefix(r.gk.Kind, "VSHN")
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "parameters", "instances"),
+			comp.GetInstances(),
+			fmt.Sprintf("%s instances with service level Guaranteed Availability must have at least 2 replicas. Please set spec.parameters.instances to 2 or more. Additional costs will apply, please refer to: https://products.vshn.ch/appcat/pricing.html", name),
+		))
+	}
+	return allErrs
 }
 
 // checkManualVersionManagementWarnings returns warnings if manual version management flags are enabled

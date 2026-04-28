@@ -48,7 +48,7 @@ observed:
               kind: XListenerSet
               metadata:
                 name: my-service-tcp
-                namespace: gateway-system
+                namespace: vshn-myapp-test
               spec:
                 parentRef:
                   group: gateway.networking.k8s.io

@@ -94,7 +94,7 @@ type VSHNNextcloudParameters struct {
 
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=3
+	// +kubebuilder:validation:Maximum=1
 
 	// Instances configures the number of Nextcloud instances for the cluster.
 	// Each instance contains one Nextcloud server.

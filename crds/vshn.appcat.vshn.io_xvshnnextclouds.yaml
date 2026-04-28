@@ -199,7 +199,7 @@ spec:
                     description: |-
                       Instances configures the number of Nextcloud instances for the cluster.
                       Each instance contains one Nextcloud server.
-                    maximum: 3
+                    maximum: 1
                     minimum: 0
                     type: integer
                   maintenance:

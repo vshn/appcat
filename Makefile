@@ -97,11 +97,11 @@ generate:  get-crds generate-stackgres-crds generate-cnpg-crds protobuf-gen ## G
 
 .PHONY: generate-stackgres-crds
 generate-stackgres-crds:
-	curl ${STACKGRES_CRD_URL}/SGDbOps.yaml?inline=false -o apis/stackgres/v1/sgdbops_crd.yaml
-	yq -i e apis/stackgres/v1/sgdbops.yaml --expression ".components.schemas.SGDbOpsSpec=load(\"apis/stackgres/v1/sgdbops_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
-	yq -i e apis/stackgres/v1/sgdbops.yaml --expression ".components.schemas.SGDbOpsStatus=load(\"apis/stackgres/v1/sgdbops_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.status"
-	go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sgdbops.gen.go apis/stackgres/v1/sgdbops.yaml
-	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgdbops.gen.go
+	# curl ${STACKGRES_CRD_URL}/SGDbOps.yaml?inline=false -o apis/stackgres/v1/sgdbops_crd.yaml
+	# yq -i e apis/stackgres/v1/sgdbops.yaml --expression ".components.schemas.SGDbOpsSpec=load(\"apis/stackgres/v1/sgdbops_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	# yq -i e apis/stackgres/v1/sgdbops.yaml --expression ".components.schemas.SGDbOpsStatus=load(\"apis/stackgres/v1/sgdbops_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.status"
+	# go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sgdbops.gen.go apis/stackgres/v1/sgdbops.yaml
+	# perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgdbops.gen.go
 
 	# curl ${STACKGRES_CRD_URL}/SGCluster.yaml?inline=false -o apis/stackgres/v1/sgcluster_crd.yaml
 	# yq -i e apis/stackgres/v1/sgcluster.yaml --expression ".components.schemas.SGClusterSpec=load(\"apis/stackgres/v1/sgcluster_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
@@ -122,15 +122,15 @@ generate-stackgres-crds:
 	# go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1 -generate=types -o apis/stackgres/v1/sgpoolconfigs.gen.go apis/stackgres/v1/sgpoolconfigs.yaml
 	# perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1/sgpoolconfigs.gen.go
 
-	curl ${STACKGRES_CRD_URL}/SGObjectStorage.yaml?inline=false -o apis/stackgres/v1beta1/sgobjectstorage_crd.yaml
-	yq -i e apis/stackgres/v1beta1/sgobjectstorage.yaml --expression ".components.schemas.SGObjectStorageSpec=load(\"apis/stackgres/v1beta1/sgobjectstorage_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
-	go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1beta1 -generate=types -o apis/stackgres/v1beta1/sgobjectstorage.gen.go apis/stackgres/v1beta1/sgobjectstorage.yaml
-	perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1beta1/sgobjectstorage.gen.go
+	# curl ${STACKGRES_CRD_URL}/SGObjectStorage.yaml?inline=false -o apis/stackgres/v1beta1/sgobjectstorage_crd.yaml
+	# yq -i e apis/stackgres/v1beta1/sgobjectstorage.yaml --expression ".components.schemas.SGObjectStorageSpec=load(\"apis/stackgres/v1beta1/sgobjectstorage_crd.yaml\").spec.versions[0].schema.openAPIV3Schema.properties.spec"
+	# go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --package=v1beta1 -generate=types -o apis/stackgres/v1beta1/sgobjectstorage.gen.go apis/stackgres/v1beta1/sgobjectstorage.yaml
+	# perl -i -0pe 's/\*struct\s\{\n\s\sAdditionalProperties\smap\[string\]string\s`json:"-"`\n\s}/map\[string\]string/gms' apis/stackgres/v1beta1/sgobjectstorage.gen.go
 
 
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1/...
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=./apis/stackgres/v1beta1/...
-	rm apis/stackgres/v1/*_crd.yaml
+	rm -f apis/stackgres/v1/*_crd.yaml
 
 .PHONY: generate-cnpg-crds
 generate-cnpg-crds:

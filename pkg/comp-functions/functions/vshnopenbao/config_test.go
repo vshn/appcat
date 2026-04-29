@@ -41,7 +41,7 @@ func TestBuildHclConfig(t *testing.T) {
 	assert.Contains(t, rj.AutoJoin, "namespace=vshn-openbao-openbao-test")
 	assert.NotContains(t, rj.AutoJoin, "namespace_pattern")
 	assert.Equal(t, "https", rj.AutoJoinScheme)
-	assert.Equal(t, "8200", rj.AutoJoinPort)
+	assert.Equal(t, uint(8200), rj.AutoJoinPort)
 	assert.Contains(t, rj.LeaderTLSServerName, "openbao-test")
 	assert.NotEmpty(t, rj.LeaderCACertFile)
 }

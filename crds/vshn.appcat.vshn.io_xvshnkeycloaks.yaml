@@ -5436,6 +5436,11 @@ spec:
                   service:
                     description: Service contains keycloak DBaaS specific properties
                     properties:
+                      adminFQDN:
+                        description: |-
+                          AdminFQDN contains the FQDN which will be used for the admin console ingress.
+                          If not set, the admin console will be accessible via the main FQDN.
+                        type: string
                       customConfigurationRef:
                         description: |-
                           CustomConfigurationRef can be used to provide a configmap containing configurations for the
@@ -5513,6 +5518,11 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                      disableAdminAccess:
+                        default: false
+                        description: DisableAdminAccess disables access to the Keycloak
+                          admin console.
+                        type: boolean
                       envFrom:
                         description: |-
                           EnvFrom can be used to provide custom environment variables from either

@@ -45,7 +45,16 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate ingress: %s", err))
 	}
 
-	err = common.CreateIngresses(comp, svc, []*netv1.Ingress{ingress}, runtime.KubeOptionAllowDeletion)
+	ingresses := []*netv1.Ingress{ingress}
+	if adminFQDN := comp.Spec.Parameters.Service.AdminFQDN; adminFQDN != "" {
+		adminIngress, err := buildKeycloakAdminIngress(comp, svc, adminFQDN)
+		if err != nil {
+			return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin ingress: %s", err))
+		}
+		ingresses = append(ingresses, adminIngress)
+	}
+
+	err = common.CreateIngresses(comp, svc, ingresses, runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create ingress: %s", err))
 	}
@@ -118,6 +127,22 @@ func buildKeycloakIngress(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 	}
 
 	return ingress, nil
+}
+
+// buildKeycloakAdminIngress generates an Ingress for the admin FQDN exposing all
+// paths via /. The hostname itself is the access-control boundary; KC_HOSTNAME_ADMIN
+// is set in the Helm release so Keycloak generates correct admin console URLs.
+func buildKeycloakAdminIngress(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, adminFQDN string) (*netv1.Ingress, error) {
+	return common.GenerateIngress(comp, svc, common.IngressConfig{
+		FQDNs: []string{adminFQDN},
+		ServiceConfig: common.IngressRuleConfig{
+			RelPath:           "/",
+			ServiceNameSuffix: "keycloakx-http",
+			ServicePortName:   "https",
+		},
+		AdditionalIngressNames: []string{"admin"},
+		TlsCertBaseName:        "keycloak-admin",
+	})
 }
 
 // addOpenShiftCa creates a separate secret just with the ca in it.

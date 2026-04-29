@@ -613,6 +613,19 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
+	if adminFQDN := comp.Spec.Parameters.Service.AdminFQDN; adminFQDN != "" {
+		extraEnvMap = append(extraEnvMap,
+			map[string]any{
+				"name":  "KC_HOSTNAME",
+				"value": "https://" + comp.Spec.Parameters.Service.FQDN,
+			},
+			map[string]any{
+				"name":  "KC_HOSTNAME_ADMIN",
+				"value": "https://" + adminFQDN,
+			},
+		)
+	}
+
 	extraEnv, err := toYAML(extraEnvMap)
 	if err != nil {
 		return nil, err

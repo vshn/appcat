@@ -65,6 +65,8 @@ The mutating webhook is **service-agnostic** — it handles any XListenerSet, no
 - Per-gateway listener capacity limit (e.g., 100 per gateway)
 - New listeners go to least-loaded gateway with capacity
 - Denies creation if all gateways are full
+- **AllowedGateways filtering**: XListenerSets can carry an `appcat.vshn.io/allowed-gateways` label (comma-separated gateway names) to restrict which gateways they may be placed on. Empty label = all gateways eligible.
+- `GatewayKey` includes `AllowedGateways` field from the label, but sharding compares only Namespace+Name when checking current gateway capacity (since the gateway list entries don't carry the label)
 
 ### Controller Configuration
 ```

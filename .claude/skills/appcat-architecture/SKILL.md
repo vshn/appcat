@@ -102,6 +102,8 @@ Services needing TCP exposure (e.g., Forgejo SSH) use a shared two-layer system:
 1. **Composition function layer** (`pkg/comp-functions/functions/common/tcproute/`): `AddTCPRoute()` creates XListenerSet + TCPRoute + NetworkPolicy via provider-kubernetes. Any service can call this with a `TCPRouteConfig`.
 2. **Webhook layer** (`pkg/controller/webhooks/tcpgateway/`): service-agnostic mutating webhook allocates ports (via Leases) and shards across Gateways for any XListenerSet.
 
+**Gateway sharding** supports an `appcat.vshn.io/allowed-gateways` label on XListenerSets (comma-separated gateway names) to restrict placement. Empty/missing label = all gateways eligible. The sharding logic compares gateways by Namespace+Name only (ignoring the AllowedGateways metadata field) when checking current gateway capacity.
+
 When adding TCP routing to a new service: use `tcproute.AddTCPRoute()` in the composition function. No webhook changes needed — the existing `tcpgateway/` handler covers all XListenerSets.
 
 ## Testing

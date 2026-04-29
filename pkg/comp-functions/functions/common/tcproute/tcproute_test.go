@@ -48,6 +48,10 @@ func TestAddTCPRoute(t *testing.T) {
 		assert.Equal(t, "tcp-gateway", parentName)
 		assert.Equal(t, "gateway-system", parentNs)
 
+		// Verify allowed-gateways annotation
+		ann := xls.GetAnnotations()
+		assert.Equal(t, "tcp-gateway", ann["appcat.vshn.io/allowed-gateways"])
+
 		listeners, found, _ := unstructured.NestedSlice(xls.Object, "spec", "listeners")
 		require.True(t, found)
 		require.Len(t, listeners, 1)
@@ -155,6 +159,10 @@ func TestAddTCPRoute(t *testing.T) {
 		parentNs, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "namespace")
 		assert.Equal(t, "tcp-gateway-2", parentName)
 		assert.Equal(t, "gateway-system", parentNs)
+
+		// Verify allowed-gateways annotation contains both gateways (sorted)
+		ann := xls.GetAnnotations()
+		assert.Equal(t, "tcp-gateway,tcp-gateway-2", ann["appcat.vshn.io/allowed-gateways"])
 	})
 
 	t.Run("NoResources_WhenNotCalled", func(t *testing.T) {

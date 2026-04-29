@@ -60,6 +60,7 @@ const (
 	WebhookAllowDeletionLabel         = "appcat.vshn.io/webhook-allowdeletion"
 	IgnoreConnectionDetailsAnnotation = "appcat.vshn.io/ignore-connection-details"
 	LastReconcileAnnotation           = "appcat.vshn.io/reconciled-on"
+	TCPGatewayAllowedAnnotation       = "appcat.vshn.io/allowed-gateways"
 	TCPGatewayLabel                   = "appcat.vshn.io/tcpgateway"
 
 	ResourceReady   ResourceReadiness = ResourceReadiness(resource.ReadyTrue)

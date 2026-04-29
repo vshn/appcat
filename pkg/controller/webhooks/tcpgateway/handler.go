@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	admissionv1 "k8s.io/api/admission/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -99,8 +101,10 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 			Name:      parentName,
 		}
 
+		allowedGateways := parseAllowedGateways(metadata, parentNs)
+
 		listeners, _ := spec["listeners"].([]any)
-		selected, changed, err := h.sharding.SelectGateway(currentRef, len(listeners), listenerCounts)
+		selected, changed, err := h.sharding.SelectGateway(currentRef, len(listeners), listenerCounts, allowedGateways)
 		if err != nil {
 			l.Info("All gateways full, denying admission", "error", err.Error())
 			return admission.Denied(fmt.Sprintf("cannot place XListenerSet: %s", err))
@@ -151,4 +155,23 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 	}
 
 	return admission.PatchResponseFromRaw(req.Object.Raw, patched)
+}
+
+// parseAllowedGateways reads the allowed-gateways annotation and returns
+// GatewayKey entries scoped to gatewayNS. Returns nil if annotation is absent.
+func parseAllowedGateways(metadata map[string]any, gatewayNS string) []GatewayKey {
+	annotations, _ := metadata["annotations"].(map[string]any)
+	raw, _ := annotations[runtime.TCPGatewayAllowedAnnotation].(string)
+	if raw == "" {
+		return nil
+	}
+
+	var keys []GatewayKey
+	for _, name := range strings.Split(raw, ",") {
+		name = strings.TrimSpace(name)
+		if name != "" {
+			keys = append(keys, GatewayKey{Namespace: gatewayNS, Name: name})
+		}
+	}
+	return keys
 }

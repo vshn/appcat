@@ -10,8 +10,9 @@ input:
   data:
     defaultPlan: mini
     controlNamespace: appcat-control
-    sshGatewayNamespace: gateway-system
-    sshGateways: '{"tcp-gateway":"ssh.example.com","tcp-gateway-2":"ssh2.example.com"}'
+    tcpGatewayNamespace: gateway-system
+    tcpGateways: '{"tcp-gateway":"ssh.example.com","tcp-gateway-2":"ssh2.example.com"}'
+    tcpGatewayEnabled: "true"
     plans: |
       {"large": {"size": {"cpu": "4", "disk": "500Gi", "enabled": true, "memory": "16Gi"}}, "medium": {"size": {"cpu": "2", "disk": "200Gi", "enabled": true, "memory": "8Gi"}}, "mini": {"size": {"cpu": "500m", "disk": "10Gi", "enabled": true, "memory": "2Gi"}}, "small": {"size": {"cpu": "1", "disk": "50Gi", "enabled": true, "memory": "4Gi"}}}
 observed:

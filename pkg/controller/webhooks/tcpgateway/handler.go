@@ -1,4 +1,4 @@
-package sshgateway
+package tcpgateway
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func SetupXListenerSetWebhookWithManager(mgr ctrl.Manager, portRangeStart, portR
 	allocator := NewPortAllocator(mgr.GetClient(), portRangeStart, portRangeEnd)
 	handler := &XListenerSetHandler{
 		allocator: allocator,
-		log:       mgr.GetLogger().WithName("webhook").WithName("xlistenerset-sshgateway"),
+		log:       mgr.GetLogger().WithName("webhook").WithName("xlistenerset-tcpgateway"),
 		leaseNS:   gatewayNS,
 	}
 

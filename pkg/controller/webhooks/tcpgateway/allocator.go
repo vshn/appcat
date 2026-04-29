@@ -1,4 +1,4 @@
-package sshgateway
+package tcpgateway
 
 import (
 	"context"
@@ -76,9 +76,9 @@ func (a *PortAllocator) AllocatePort(ctx context.Context, usedPorts map[int32]bo
 
 		lease := &coordinationv1.Lease{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("ssh-port-%d", port),
+				Name:      fmt.Sprintf("tcp-port-%d", port),
 				Namespace: namespace,
-				Labels:    map[string]string{"app.kubernetes.io/managed-by": "sshgateway-port-allocator"},
+				Labels:    map[string]string{"app.kubernetes.io/managed-by": "tcpgateway-port-allocator"},
 			},
 			Spec: coordinationv1.LeaseSpec{
 				HolderIdentity: &holder,

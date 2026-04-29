@@ -60,7 +60,7 @@ const (
 	WebhookAllowDeletionLabel         = "appcat.vshn.io/webhook-allowdeletion"
 	IgnoreConnectionDetailsAnnotation = "appcat.vshn.io/ignore-connection-details"
 	LastReconcileAnnotation           = "appcat.vshn.io/reconciled-on"
-	SSHGatewayLabel                   = "appcat.vshn.io/sshgateway"
+	TCPGatewayLabel                   = "appcat.vshn.io/tcpgateway"
 
 	ResourceReady   ResourceReadiness = ResourceReadiness(resource.ReadyTrue)
 	ResourceUnReady ResourceReadiness = ResourceReadiness(resource.ReadyFalse)
@@ -144,7 +144,6 @@ func init() {
 
 // RunFunction implements the crossplane composition function `FunctionRunnerServiceServer` interface.
 func (m Manager) RunFunction(ctx context.Context, req *fnv1.RunFunctionRequest) (*fnv1.RunFunctionResponse, error) {
-
 	if m.proxyMode {
 		return m.proxyFunction(ctx, req)
 	}
@@ -264,7 +263,6 @@ func (m *Manager) executeStep(ctx context.Context, obj client.Object, sr *Servic
 }
 
 func (m *Manager) proxyFunction(ctx context.Context, req *fnv1.RunFunctionRequest) (*fnv1.RunFunctionResponse, error) {
-
 	m.log.Info("Proxying request")
 
 	// errResp is only used to return a valid response in case of errors
@@ -321,7 +319,6 @@ func (m *Manager) proxyFunction(ctx context.Context, req *fnv1.RunFunctionReques
 
 // NewServiceRuntime returns a new runtime for a given service.
 func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunctionRequest) (*ServiceRuntime, error) {
-
 	desiredResources, err := request.GetDesiredComposedResources(req)
 	if err != nil {
 		return &ServiceRuntime{}, err
@@ -366,7 +363,6 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunc
 // If at any time s.SetRespones() was called, then this function will
 // return the set response.
 func (s *ServiceRuntime) GetResponse() (*fnv1.RunFunctionResponse, error) {
-
 	if s.resp != nil {
 		return s.resp, nil
 	}
@@ -422,7 +418,6 @@ func (s *ServiceRuntime) SetDesiredComposedResource(obj xpresource.Managed, opts
 // Usually needed for objects that where migrated from P+T compositions with a static name.
 // Additionally it injects the claim-name, claim-namespace and the composite name as a label.
 func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Managed, name string, opts ...ComposedResourceOption) error {
-
 	s.addOwnerReferenceAnnotation(obj, true)
 
 	escapeK8sNames(obj)
@@ -474,7 +469,6 @@ func ComposedOptionProtects(resName string) ComposedResourceOption {
 // SetDesiredKubeObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
 // adds it to the desired composed resources. It takes options to manipulate the resulting kube object before applying.
 func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName string, opts ...KubeObjectOption) error {
-
 	kobj, err := s.putIntoObject(obj, objectName, objectName)
 	if err != nil {
 		return err
@@ -493,7 +487,6 @@ func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName stri
 // adds it to the desired composed resources with the specified resource name.
 // This should be used if manipulating objects that are declared in the P+T composition.
 func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectName, resourceName string, opts ...KubeObjectOption) error {
-
 	kobj, err := s.putIntoObject(obj, objectName, resourceName)
 	if err != nil {
 		return err
@@ -1016,7 +1009,6 @@ func (s *ServiceRuntime) checkReadiness() error {
 	s.desiredResources = desired
 
 	return nil
-
 }
 
 // GetAllObserved returns a map of all observed resources.
@@ -1042,7 +1034,6 @@ func (s *ServiceRuntime) SetAllDesired(resources map[resource.Name]*resource.Des
 // The only differences from the observed composite will be either in metadata or the status.
 // As Crossplane 1.14 composition function forbid any changes other than those fields.
 func (s *ServiceRuntime) GetDesiredComposite(obj client.Object) error {
-
 	jsonBytes, err := s.desiredComposite.MarshalJSON()
 	if err != nil {
 		return err
@@ -1442,7 +1433,6 @@ func (s *ServiceRuntime) GetCrossplaneNamespace() string {
 // crossplane namespace and also deploy a copy of that to the instance namespace.
 // It will prefix the secret name with the composite name, to ensure that no secret names clash in the crossplane namespace.
 func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
-
 	for i := range s.desiredResources {
 		cdRef := s.desiredResources[i].Resource.GetWriteConnectionSecretToReference()
 		if cdRef == nil {

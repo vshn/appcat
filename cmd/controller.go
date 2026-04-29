@@ -14,7 +14,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/controller/events"
 	"github.com/vshn/appcat/v4/pkg/controller/garagebucket"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
-	"github.com/vshn/appcat/v4/pkg/controller/webhooks/sshgateway"
+	"github.com/vshn/appcat/v4/pkg/controller/webhooks/tcpgateway"
 	"github.com/vshn/appcat/v4/pkg/odoo"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
@@ -40,11 +40,11 @@ type controller struct {
 	enableGarageBucketCleanup bool
 	certDir                   string
 	webhookPort               int
-	sshPortRangeStart         int32
-	sshPortRangeEnd           int32
-	sshGatewayCapacity        int
-	sshGatewayNamespace       string
-	sshGateways               string
+	tcpPortRangeStart         int32
+	tcpPortRangeEnd           int32
+	tcpGatewayCapacity        int
+	tcpGatewayNamespace       string
+	tcpGateways               string
 }
 
 var c = controller{
@@ -72,11 +72,11 @@ func init() {
 	ControllerCMD.Flags().BoolVar(&c.enableEventForwarding, "event-forwarding", true, "Disable event-forwarding")
 	ControllerCMD.Flags().BoolVar(&c.enableBilling, "billing", true, "Disable billing")
 	ControllerCMD.Flags().BoolVar(&c.enableCrossplaneMetrics, "crossplane-metrics", false, "Enable Crossplane resource metrics collector")
-	ControllerCMD.Flags().StringVar(&c.sshGatewayNamespace, "ssh-gateway-namespace", "", "Namespace of the SSH gateways and port-allocation leases")
-	ControllerCMD.Flags().StringVar(&c.sshGateways, "ssh-gateways", "", "Comma-separated names of SSH gateways (enables port allocator when non-empty)")
-	ControllerCMD.Flags().Int32Var(&c.sshPortRangeStart, "ssh-port-range-start", 10000, "Start of the SSH TCP port allocation range")
-	ControllerCMD.Flags().Int32Var(&c.sshPortRangeEnd, "ssh-port-range-end", 10999, "End of the SSH TCP port allocation range")
-	ControllerCMD.Flags().IntVar(&c.sshGatewayCapacity, "ssh-gateway-capacity", 0, "Maximum listeners per Gateway for sharding. The default value 0 means no sharding is enabled")
+	ControllerCMD.Flags().StringVar(&c.tcpGatewayNamespace, "tcp-gateway-namespace", "", "Namespace of the TCP gateways and port-allocation leases")
+	ControllerCMD.Flags().StringVar(&c.tcpGateways, "tcp-gateways", "", "Comma-separated names of TCP gateways (enables port allocator when non-empty)")
+	ControllerCMD.Flags().Int32Var(&c.tcpPortRangeStart, "tcp-port-range-start", 10000, "Start of the TCP port allocation range")
+	ControllerCMD.Flags().Int32Var(&c.tcpPortRangeEnd, "tcp-port-range-end", 10999, "End of the TCP port allocation range")
+	ControllerCMD.Flags().IntVar(&c.tcpGatewayCapacity, "tcp-gateway-capacity", 0, "Maximum listeners per Gateway for sharding. The default value 0 means no sharding is enabled")
 	ControllerCMD.Flags().BoolVar(&c.enableGarageBucketCleanup, "garage-bucket-cleanup", false, "Enable Garage bucket cleanup controller")
 	viper.AutomaticEnv()
 	if !viper.IsSet("PLANS_NAMESPACE") {
@@ -149,7 +149,6 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		}
 
 		err = events.SetupWithManager(mgr)
-
 		if err != nil {
 			return err
 		}
@@ -166,10 +165,10 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	if c.sshGateways != "" && c.sshGatewayNamespace != "" {
-		gatewayNames := strings.Split(c.sshGateways, ",")
+	if c.tcpGateways != "" && c.tcpGatewayNamespace != "" {
+		gatewayNames := strings.Split(c.tcpGateways, ",")
 
-		err = sshgateway.SetupXListenerSetWebhookWithManager(mgr, c.sshPortRangeStart, c.sshPortRangeEnd, c.sshGatewayCapacity, c.sshGatewayNamespace, gatewayNames)
+		err = tcpgateway.SetupXListenerSetWebhookWithManager(mgr, c.tcpPortRangeStart, c.tcpPortRangeEnd, c.tcpGatewayCapacity, c.tcpGatewayNamespace, gatewayNames)
 		if err != nil {
 			return err
 		}

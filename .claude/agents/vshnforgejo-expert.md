@@ -1,6 +1,6 @@
 ---
 name: vshnforgejo-expert
-description: Forgejo service expert — use for VSHNForgejo work including Helm deployment, SSH gateway with lease-based port allocation and Gateway API sharding, backup, FQDN/ingress, and mailer configuration.
+description: Forgejo service expert — use for VSHNForgejo work including Helm deployment, TCP gateway with lease-based port allocation and Gateway API sharding, backup, FQDN/ingress, and mailer configuration.
 model: sonnet
 ---
 
@@ -14,10 +14,12 @@ This service deploys Forgejo (a Gitea fork) via Helm with optional SSH gateway a
 |------|------|
 | API types | `apis/vshn/v1/dbaas_vshn_forgejo.go` |
 | Composition functions | `pkg/comp-functions/functions/vshnforgejo/` |
+| SSH composition function | `pkg/comp-functions/functions/vshnforgejo/ssh.go` |
+| Common TCPRoute helper | `pkg/comp-functions/functions/common/tcproute/` |
 | Webhook | `pkg/controller/webhooks/forgejo.go` |
-| SSH gateway handler | `pkg/controller/webhooks/sshgateway/handler.go` |
-| SSH port allocator | `pkg/controller/webhooks/sshgateway/allocator.go` |
-| SSH gateway sharding | `pkg/controller/webhooks/sshgateway/sharding.go` |
+| TCP gateway handler | `pkg/controller/webhooks/tcpgateway/handler.go` |
+| TCP port allocator | `pkg/controller/webhooks/tcpgateway/allocator.go` |
+| TCP gateway sharding | `pkg/controller/webhooks/tcpgateway/sharding.go` |
 | Backup script | `pkg/comp-functions/functions/vshnforgejo/script/backup.sh` |
 | Function registration | `cmd/functions.go` |
 | Test fixtures | `test/functions/vshnforgejo/` |
@@ -31,22 +33,31 @@ This service deploys Forgejo (a Gitea fork) via Helm with optional SSH gateway a
 - **Backup**: K8up with `forgejo dump --type tar`
 - **Namespace**: `vshn-forgejo-{name}`
 
-## SSH Gateway — The Complex Part
+## TCP Gateway — Generalized TCP Routing
 
-This is the most architecturally sophisticated feature in the service. It enables Git-over-SSH access via Kubernetes Gateway API resources.
+SSH access uses a **generalized TCP routing layer** shared across services. The Forgejo SSH function (`ssh.go`) delegates to the common `tcproute.AddTCPRoute()` helper, which creates Gateway API resources. The webhook-side port allocation and sharding live in `pkg/controller/webhooks/tcpgateway/` (service-agnostic).
 
-### How It Works
-1. Composition function creates an **XListenerSet** (Gateway API `x-k8s.io/v1alpha1`) with `port: 0` (sentinel)
-2. A **mutating webhook** intercepts the XListenerSet and allocates a port
-3. Port allocation uses **Kubernetes Leases** (`coordination.v1`) for atomic reservations
-4. A **TCPRoute** routes traffic from the gateway listener to the Forgejo SSH service
-5. A **ReferenceGrant** allows cross-namespace routing
-6. **NetworkPolicy** restricts ingress to gateway namespace only
+### Composition Function Side (common/tcproute/)
+
+1. Forgejo's `ConfigureSSHAccess()` builds a `TCPRouteConfig` and calls `tcproute.AddTCPRoute()`
+2. `AddTCPRoute()` creates three resources via provider-kubernetes:
+   - **XListenerSet** (`gateway.networking.x-k8s.io/v1alpha1`) with `port: 0` (sentinel for new) or observed port (for existing)
+   - **TCPRoute** (`gateway.networking.k8s.io/v1alpha2`) routing traffic from XListenerSet listener to backend service
+   - **NetworkPolicy** restricting ingress to gateway namespace only
+3. Returns `ObservedState` with allocated port + domain, which Forgejo uses to set connection details and Helm values
+
+### Webhook Side (tcpgateway/)
+
+The mutating webhook is **service-agnostic** — it handles any XListenerSet, not just Forgejo's.
+
+1. A **mutating webhook** intercepts XListenerSet CREATE and allocates ports
+2. Port allocation uses **Kubernetes Leases** (`coordination.v1`) for atomic reservations
+3. **Gateway sharding** distributes XListenerSets across multiple TCP Gateways by capacity
 
 ### Port Allocation (allocator.go)
 - Scans all XListenerSets cluster-wide for used ports
 - Allocates from configurable range (e.g., 10000-65535)
-- Creates `ssh-port-{port}` Lease as atomic lock (holder = XListenerSet name)
+- Creates `ssh-port-{port}` Lease as atomic lock (holder = XListenerSet namespace/name)
 - Stale lease reclamation: deletes leases if holder doesn't exist and was acquired >30s ago
 
 ### Gateway Sharding (sharding.go)
@@ -77,7 +88,9 @@ sshGateways                          — JSON map: {"tcp-gateway":"ssh.example.c
 ## How to Work
 
 - **Read the relevant source files** before making recommendations. Check `apis/vshn/v1/dbaas_vshn_forgejo.go` for current parameters.
-- The SSH gateway spans three files (handler, allocator, sharding) — understand all three before modifying any.
+- TCP gateway spans two layers: composition function (`common/tcproute/`) and webhook (`tcpgateway/`) — understand both before modifying.
+- The `tcpgateway/` webhook is service-agnostic. Changes there affect all services using TCP routing, not just Forgejo.
+- Forgejo-specific SSH logic (connection details, Helm values) stays in `vshnforgejo/ssh.go`.
 - Test fixtures in `test/functions/vshnforgejo/` cover SSH scenarios including sharding — use them as references.
 - **Use `runtime/` helpers** in composition functions — follow existing patterns.
 - **Run `make generate`** after modifying types in `apis/`.

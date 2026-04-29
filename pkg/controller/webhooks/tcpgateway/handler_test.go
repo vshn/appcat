@@ -329,6 +329,65 @@ func TestHandle_AllGatewaysFull_Denied(t *testing.T) {
 	assert.Contains(t, resp.Result.Message, "all gateways are full")
 }
 
+func TestHandle_ShardingRespectsAllowedGateways(t *testing.T) {
+	// gw-1 full, gw-2 has room, gw-3 has room.
+	// XListenerSet annotation only allows gw-1 and gw-3.
+	// Should shard to gw-3, not gw-2.
+	existingXLS := []*unstructured.Unstructured{
+		newXListenerSetWithGateway("existing", "ns", "gw-1", "gw-ns", 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009),
+	}
+	gateways := []GatewayKey{
+		{Namespace: "gw-ns", Name: "gw-1"},
+		{Namespace: "gw-ns", Name: "gw-2"},
+		{Namespace: "gw-ns", Name: "gw-3"},
+	}
+
+	handler := newTestHandlerWithSharding(t, 10, existingXLS, gateways)
+
+	xls := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "gateway.networking.x-k8s.io/v1alpha1",
+			"kind":       "XListenerSet",
+			"metadata": map[string]any{
+				"name":      "new",
+				"namespace": "ns",
+				"annotations": map[string]any{
+					"appcat.vshn.io/allowed-gateways": "gw-1,gw-3",
+				},
+			},
+			"spec": map[string]any{
+				"parentRef": map[string]any{
+					"group":     "gateway.networking.k8s.io",
+					"kind":      "Gateway",
+					"namespace": "gw-ns",
+					"name":      "gw-1",
+				},
+				"listeners": []any{
+					map[string]any{
+						"name":     "listener",
+						"port":     float64(0),
+						"protocol": "TCP",
+					},
+				},
+			},
+		},
+	}
+
+	raw, err := json.Marshal(xls)
+	require.NoError(t, err)
+
+	resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
+	assert.True(t, resp.Allowed)
+	assert.NotEmpty(t, resp.Patches)
+
+	patched := applyPatches(t, raw, resp)
+
+	gwName, found, err := unstructured.NestedString(patched.Object, "spec", "parentRef", "name")
+	require.NoError(t, err)
+	require.True(t, found)
+	assert.Equal(t, "gw-3", gwName, "should shard to gw-3 (allowed), not gw-2 (not allowed)")
+}
+
 func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
 	// simulates shared etcd across replicas.
 	scheme := k8sruntime.NewScheme()

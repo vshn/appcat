@@ -55,7 +55,7 @@ type StorageBlock struct {
 type RetryJoin struct {
 	AutoJoin            string `hcl:"auto_join,optional"`
 	AutoJoinScheme      string `hcl:"auto_join_scheme,optional"`
-	AutoJoinPort        string `hcl:"auto_join_port,optional"`
+	AutoJoinPort        uint   `hcl:"auto_join_port,optional"`
 	LeaderTLSServerName string `hcl:"leader_tls_servername,optional"`
 	LeaderCACertFile    string `hcl:"leader_ca_cert_file,optional"`
 }
@@ -95,7 +95,7 @@ func CreateHCLConfigMap(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runt
 					{
 						AutoJoin:            fmt.Sprintf(`provider=k8s namespace=%s label_selector="app.kubernetes.io/name=openbao,component=server"`, ns),
 						AutoJoinScheme:      "https",
-						AutoJoinPort:        hclConfigApiPort,
+						AutoJoinPort:        8200,
 						LeaderTLSServerName: fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, ns),
 						LeaderCACertFile:    hclConfigTlsCertsMountPath + "/ca.crt",
 					},

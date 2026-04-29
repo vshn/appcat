@@ -156,6 +156,86 @@ func TestSelectGateway_UnknownCurrentRef_Reassigns(t *testing.T) {
 	assert.Equal(t, GatewayKey{Namespace: "gw-ns", Name: "gw-1"}, selected, "should pick least-loaded known gateway")
 }
 
+func TestSelectGateway_AllowedGateways_FiltersCorrectly(t *testing.T) {
+	gs := newTestSharding([]GatewayKey{
+		{Namespace: "gw-ns", Name: "gw-1"},
+		{Namespace: "gw-ns", Name: "gw-2"},
+		{Namespace: "gw-ns", Name: "gw-3"},
+	}, 10)
+
+	// gw-1 is full, gw-2 has room but is NOT allowed, gw-3 has room and IS allowed
+	current := GatewayKey{Namespace: "gw-ns", Name: "gw-1", AllowedGateways: "gw-1,gw-3"}
+	counts := map[GatewayKey]int{
+		{Namespace: "gw-ns", Name: "gw-1"}: 10,
+		{Namespace: "gw-ns", Name: "gw-2"}: 1,
+		{Namespace: "gw-ns", Name: "gw-3"}: 3,
+	}
+
+	selected, changed, err := gs.SelectGateway(current, 1, counts)
+	require.NoError(t, err)
+	assert.True(t, changed)
+	assert.Equal(t, GatewayKey{Namespace: "gw-ns", Name: "gw-3"}, selected)
+}
+
+func TestSelectGateway_AllowedGateways_AllFull(t *testing.T) {
+	gs := newTestSharding([]GatewayKey{
+		{Namespace: "gw-ns", Name: "gw-1"},
+		{Namespace: "gw-ns", Name: "gw-2"},
+		{Namespace: "gw-ns", Name: "gw-3"},
+	}, 5)
+
+	// Only gw-1 and gw-2 allowed, both full. gw-3 has room but not allowed.
+	current := GatewayKey{Namespace: "gw-ns", Name: "gw-1", AllowedGateways: "gw-1,gw-2"}
+	counts := map[GatewayKey]int{
+		{Namespace: "gw-ns", Name: "gw-1"}: 5,
+		{Namespace: "gw-ns", Name: "gw-2"}: 5,
+		{Namespace: "gw-ns", Name: "gw-3"}: 1,
+	}
+
+	_, _, err := gs.SelectGateway(current, 1, counts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "all gateways are full")
+}
+
+func TestSelectGateway_AllowedGateways_Empty_AllowsAll(t *testing.T) {
+	gs := newTestSharding([]GatewayKey{
+		{Namespace: "gw-ns", Name: "gw-1"},
+		{Namespace: "gw-ns", Name: "gw-2"},
+		{Namespace: "gw-ns", Name: "gw-3"},
+	}, 10)
+
+	// Empty AllowedGateways = all gateways eligible, should pick least-loaded
+	current := GatewayKey{Namespace: "gw-ns", Name: "gw-1", AllowedGateways: ""}
+	counts := map[GatewayKey]int{
+		{Namespace: "gw-ns", Name: "gw-1"}: 10,
+		{Namespace: "gw-ns", Name: "gw-2"}: 7,
+		{Namespace: "gw-ns", Name: "gw-3"}: 2,
+	}
+
+	selected, changed, err := gs.SelectGateway(current, 1, counts)
+	require.NoError(t, err)
+	assert.True(t, changed)
+	assert.Equal(t, GatewayKey{Namespace: "gw-ns", Name: "gw-3"}, selected)
+}
+
+func TestSelectGateway_AllowedGateways_CurrentUnderCapacity(t *testing.T) {
+	gs := newTestSharding([]GatewayKey{
+		{Namespace: "gw-ns", Name: "gw-1"},
+		{Namespace: "gw-ns", Name: "gw-2"},
+	}, 10)
+
+	// Current gateway has room — AllowedGateways shouldn't matter, no reassignment needed
+	current := GatewayKey{Namespace: "gw-ns", Name: "gw-1", AllowedGateways: "gw-2"}
+	counts := map[GatewayKey]int{
+		{Namespace: "gw-ns", Name: "gw-1"}: 3,
+	}
+
+	selected, changed, err := gs.SelectGateway(current, 1, counts)
+	require.NoError(t, err)
+	assert.False(t, changed)
+	assert.Equal(t, current, selected)
+}
+
 func TestCountListenersPerGateway(t *testing.T) {
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(

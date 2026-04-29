@@ -3,6 +3,11 @@ package tcpgateway
 import (
 	"fmt"
 	"slices"
+	"strings"
+)
+
+const (
+	AllowedLabelName = "appcat.vshn.io/allowed-gateways"
 )
 
 // GatewaySharding selects the best Gateway for new XListenerSets based on
@@ -26,17 +31,25 @@ func NewGatewaySharding(gateways []GatewayKey, capacity int) *GatewaySharding {
 // Otherwise it picks the gateway with the fewest listeners that still has capacity.
 // Returns an error if all gateways are full.
 func (gs *GatewaySharding) SelectGateway(currentRef GatewayKey, newListenerCount int, listenerCounts map[GatewayKey]int) (GatewayKey, bool, error) {
-	if slices.Contains(gs.gateways, currentRef) && listenerCounts[currentRef]+newListenerCount <= gs.capacity {
+	currentBase := GatewayKey{Namespace: currentRef.Namespace, Name: currentRef.Name}
+	if slices.Contains(gs.gateways, currentBase) && listenerCounts[currentBase]+newListenerCount <= gs.capacity {
 		return currentRef, false, nil
+	}
+
+	var allowedGWs []string
+	if currentRef.AllowedGateways != "" {
+		allowedGWs = strings.Split(currentRef.AllowedGateways, ",")
 	}
 
 	best := GatewayKey{}
 	bestCount := gs.capacity + 1
 	for _, gw := range gs.gateways {
-		count := listenerCounts[gw]
-		if count+newListenerCount <= gs.capacity && count < bestCount {
-			best = gw
-			bestCount = count
+		if len(allowedGWs) == 0 || slices.Contains(allowedGWs, gw.Name) {
+			count := listenerCounts[gw]
+			if count+newListenerCount <= gs.capacity && count < bestCount {
+				best = gw
+				bestCount = count
+			}
 		}
 	}
 

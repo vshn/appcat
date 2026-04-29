@@ -31,6 +31,10 @@ var xListenerSetGVK = schema.GroupVersionKind{
 type GatewayKey struct {
 	Namespace string
 	Name      string
+	// AllowedGateways contains a comma separated list of allowed gateways.
+	// We're not using a slice here, because we won't be able to use
+	// GatewayKey as a map key then.
+	AllowedGateways string
 }
 
 // PortAllocator allocates unique TCP ports by scanning existing XListenerSet

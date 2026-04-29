@@ -66,6 +66,8 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 	metadata, _ := obj["metadata"].(map[string]any)
 	name, _ := metadata["name"].(string)
 	namespace, _ := metadata["namespace"].(string)
+	labelsRaw, _ := metadata["labels"].(map[string]any)
+	allowedGateways, _ := labelsRaw[AllowedLabelName].(string)
 
 	l := h.log.WithValues("name", name, "namespace", namespace)
 
@@ -95,8 +97,9 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 		}
 
 		currentRef := GatewayKey{
-			Namespace: parentNs,
-			Name:      parentName,
+			Namespace:       parentNs,
+			Name:            parentName,
+			AllowedGateways: allowedGateways,
 		}
 
 		listeners, _ := spec["listeners"].([]any)

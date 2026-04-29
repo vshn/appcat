@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/v4/pkg/controller/webhooks/tcpgateway"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,7 +80,8 @@ func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gateway
 	xls.SetName(cfg.ResourceName)
 	xls.SetNamespace(cfg.InstanceNamespace)
 	xls.SetLabels(map[string]string{
-		runtime.TCPGatewayLabel: "true",
+		runtime.TCPGatewayLabel:     "true",
+		tcpgateway.AllowedLabelName: getAllowedGateways(svc, cfg.GatewaysConfigKey),
 	})
 
 	err := unstructured.SetNestedMap(xls.Object, map[string]any{
@@ -261,16 +264,7 @@ func lookupDomain(svc *runtime.ServiceRuntime, configKey, gatewayName string) st
 }
 
 func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) string {
-	raw, ok := svc.Config.Data[configKey]
-	if !ok || raw == "" {
-		return ""
-	}
-
-	mapping := map[string]string{}
-	if err := json.Unmarshal([]byte(raw), &mapping); err != nil {
-		svc.Log.Error(err, "failed to parse gateways config", "key", configKey)
-		return ""
-	}
+	mapping := getRawGateways(svc, configKey)
 
 	names := make([]string, 0, len(mapping))
 	for name := range mapping {
@@ -282,4 +276,31 @@ func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) string {
 		return ""
 	}
 	return names[0]
+}
+
+func getRawGateways(svc *runtime.ServiceRuntime, configKey string) map[string]string {
+	raw, ok := svc.Config.Data[configKey]
+	if !ok || raw == "" {
+		return map[string]string{}
+	}
+
+	mapping := map[string]string{}
+	if err := json.Unmarshal([]byte(raw), &mapping); err != nil {
+		svc.Log.Error(err, "failed to parse gateways config", "key", configKey)
+		return mapping
+	}
+
+	return mapping
+}
+
+func getAllowedGateways(svc *runtime.ServiceRuntime, configKey string) string {
+	mapping := getRawGateways(svc, configKey)
+
+	names := make([]string, 0, len(mapping))
+	for name := range mapping {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	return strings.Join(names, ",")
 }

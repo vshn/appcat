@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -49,7 +50,9 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 		effectiveGatewayNamespace = observed.GatewayNamespace
 	}
 
-	err := createXListenerSet(svc, cfg, effectiveGatewayNamespace, effectiveGatewayName, observed.Port)
+	gwNames := allGatewayNames(svc, cfg.GatewaysConfigKey)
+
+	err := createXListenerSet(svc, cfg, effectiveGatewayNamespace, effectiveGatewayName, observed.Port, gwNames)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err)), observed
 	}
@@ -69,7 +72,7 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 	return nil, observed
 }
 
-func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace, gatewayName string, port int32) error {
+func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace, gatewayName string, port int32, allowedGateways []string) error {
 	xls := &unstructured.Unstructured{
 		Object: map[string]any{},
 	}
@@ -80,6 +83,12 @@ func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gateway
 	xls.SetLabels(map[string]string{
 		runtime.TCPGatewayLabel: "true",
 	})
+	if len(allowedGateways) > 0 {
+		sort.Strings(allowedGateways)
+		xls.SetAnnotations(map[string]string{
+			runtime.TCPGatewayAllowedAnnotation: strings.Join(allowedGateways, ","),
+		})
+	}
 
 	err := unstructured.SetNestedMap(xls.Object, map[string]any{
 		"group":     "gateway.networking.k8s.io",
@@ -242,36 +251,43 @@ func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState
 	return state
 }
 
+// getRawGateways parses the JSON gateway config into a name->domain map.
+func getRawGateways(svc *runtime.ServiceRuntime, configKey string) map[string]string {
+	raw, ok := svc.Config.Data[configKey]
+	if !ok || raw == "" {
+		return nil
+	}
+
+	mapping := map[string]string{}
+	if err := json.Unmarshal([]byte(raw), &mapping); err != nil {
+		svc.Log.Error(err, "failed to parse gateways config", "key", configKey)
+		return nil
+	}
+
+	return mapping
+}
+
 // lookupDomain resolves the domain for a given gateway name from the
 // gateways config value.
 func lookupDomain(svc *runtime.ServiceRuntime, configKey, gatewayName string) string {
-	raw := svc.Config.Data[configKey]
-	if raw == "" {
+	mapping := getRawGateways(svc, configKey)
+	if mapping == nil {
 		return ""
 	}
-
-	mapping := map[string]string{}
-	if err := json.Unmarshal([]byte(raw), &mapping); err != nil {
-		svc.Log.Error(err, "failed to parse gateways config", "key", configKey)
-		svc.AddResult(runtime.NewFatalResult(fmt.Errorf("failed to parse gateways: %w", err)))
-		return ""
-	}
-
 	return mapping[gatewayName]
 }
 
+func allGatewayNames(svc *runtime.ServiceRuntime, configKey string) []string {
+	mapping := getRawGateways(svc, configKey)
+	names := make([]string, 0, len(mapping))
+	for name := range mapping {
+		names = append(names, name)
+	}
+	return names
+}
+
 func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) string {
-	raw, ok := svc.Config.Data[configKey]
-	if !ok || raw == "" {
-		return ""
-	}
-
-	mapping := map[string]string{}
-	if err := json.Unmarshal([]byte(raw), &mapping); err != nil {
-		svc.Log.Error(err, "failed to parse gateways config", "key", configKey)
-		return ""
-	}
-
+	mapping := getRawGateways(svc, configKey)
 	names := make([]string, 0, len(mapping))
 	for name := range mapping {
 		names = append(names, name)

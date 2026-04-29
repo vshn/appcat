@@ -118,7 +118,7 @@ func New(mgrClient client.Client, logger logr.Logger, withQuota bool, obj runtim
 func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	comp, ok := obj.(common.Composite)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	allErrs := newFielErrors(comp.GetName(), comp.GetObjectKind().GroupVersionKind().GroupKind())
@@ -153,12 +153,12 @@ func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	comp, ok := newObj.(common.Composite)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	oldComp, ok := oldObj.(common.Composite)
 	if !ok {
-		return nil, fmt.Errorf("provided old manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided old manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	if comp.GetDeletionTimestamp() != nil {
@@ -198,7 +198,7 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 func (r *DefaultWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	comp, ok := obj.(common.Composite)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	allErrs := newFielErrors(comp.GetName(), obj.GetObjectKind().GroupVersionKind().GroupKind())

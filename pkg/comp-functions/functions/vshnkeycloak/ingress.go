@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
@@ -39,15 +40,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	}
 
 	svc.Log.Info("Adding ingress")
-	ingress, err := common.GenerateIngress(comp, svc, common.IngressConfig{
-		FQDNs: []string{fqdn},
-		ServiceConfig: common.IngressRuleConfig{
-			RelPath:           comp.Spec.Parameters.Service.RelativePath,
-			ServiceNameSuffix: "keycloakx-http",
-			ServicePortName:   "https",
-		},
-		TlsCertBaseName: "keycloak",
-	})
+	ingress, err := buildKeycloakIngress(comp, svc, fqdn)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot generate ingress: %s", err))
 	}
@@ -84,6 +77,47 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	}
 
 	return nil
+}
+
+// buildKeycloakIngress generates an Ingress exposing only the Keycloak paths
+// recommended for reverse proxy deployments. /admin/ is included only when
+// DisableAdminAccess is false.
+func buildKeycloakIngress(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, fqdn string) (*netv1.Ingress, error) {
+	base := strings.TrimSuffix(comp.Spec.Parameters.Service.RelativePath, "/")
+
+	allowedPaths := []string{
+		base + "/realms/",
+		base + "/resources/",
+		base + "/.well-known/",
+	}
+	if !comp.Spec.Parameters.Service.DisableAdminAccess {
+		allowedPaths = append(allowedPaths, base+"/admin/", base+"/")
+	}
+
+	ingress, err := common.GenerateIngress(comp, svc, common.IngressConfig{
+		FQDNs: []string{fqdn},
+		ServiceConfig: common.IngressRuleConfig{
+			RelPath:           allowedPaths[0],
+			ServiceNameSuffix: "keycloakx-http",
+			ServicePortName:   "https",
+		},
+		TlsCertBaseName: "keycloak",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	pathType := netv1.PathTypePrefix
+	backend := ingress.Spec.Rules[0].HTTP.Paths[0].Backend
+	for _, p := range allowedPaths[1:] {
+		ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, netv1.HTTPIngressPath{
+			Path:     p,
+			PathType: &pathType,
+			Backend:  backend,
+		})
+	}
+
+	return ingress, nil
 }
 
 // addOpenShiftCa creates a separate secret just with the ca in it.

@@ -6,6 +6,8 @@ func ToInt32(v any) int32 {
 		return int32(p)
 	case float64:
 		return int32(p)
+	case int:
+		return int32(p)
 	default:
 		return 0
 	}

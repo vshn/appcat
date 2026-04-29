@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
+	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -38,7 +39,7 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 
 	svc.Log.Info("Configuring TCPRoute", "resource", cfg.ResourceName)
 
-	observed := ObserveXListenerSet(svc, cfg.ResourceName)
+	observed := observeXListenerSet(svc, cfg.ResourceName)
 
 	effectiveGatewayName := tcpGatewayName
 	effectiveGatewayNamespace := gatewayNamespace
@@ -76,6 +77,9 @@ func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gateway
 	xls.SetKind("XListenerSet")
 	xls.SetName(cfg.ResourceName)
 	xls.SetNamespace(cfg.InstanceNamespace)
+	xls.SetLabels(map[string]string{
+		runtime.TCPGatewayLabel: "true",
+	})
 
 	err := unstructured.SetNestedMap(xls.Object, map[string]any{
 		"group":     "gateway.networking.k8s.io",
@@ -196,7 +200,7 @@ func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, cfg TCPRouteConfig,
 	return svc.SetDesiredKubeObject(netPol, cfg.ResourceName+"-netpol")
 }
 
-func ObserveXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState {
+func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState {
 	observed := &unstructured.Unstructured{
 		Object: map[string]any{},
 	}
@@ -227,7 +231,7 @@ func ObserveXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState
 		return state
 	}
 
-	state.Port = toInt(listenerMap["port"])
+	state.Port = utils.ToInt32(listenerMap["port"])
 
 	if state.Port == 0 {
 		return state
@@ -278,17 +282,4 @@ func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) string {
 		return ""
 	}
 	return names[0]
-}
-
-func toInt(v any) int32 {
-	switch p := v.(type) {
-	case int64:
-		return int32(p)
-	case float64:
-		return int32(p)
-	case int:
-		return int32(p)
-	default:
-		return 0
-	}
 }

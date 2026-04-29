@@ -102,6 +102,14 @@ type VSHNKeycloakServiceSpec struct {
 	// This also enables strict hostname checking for this FQDN.
 	FQDN string `json:"fqdn,omitempty"`
 
+	// AdminFQDN contains the FQDN which will be used for the admin console ingress.
+	// If not set, the admin console will be accessible via the main FQDN.
+	AdminFQDN string `json:"adminFQDN,omitempty"`
+
+	// DisableAdminAccess disables access to the Keycloak admin console.
+	// +kubebuilder:default=false
+	DisableAdminAccess bool `json:"disableAdminAccess,omitempty"`
+
 	// RelativePath on which Keycloak will listen.
 	// +kubebuilder:default="/"
 	RelativePath string `json:"relativePath,omitempty"`

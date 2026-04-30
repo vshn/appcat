@@ -501,7 +501,7 @@ func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectN
 	return s.SetDesiredComposedResourceWithName(kobj, resourceName)
 }
 
-// KubeOptionLabeler adds the given labels to the kube object.
+// KubeOptionAddLabels adds the given labels to the kube object.
 func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
 	return func(obj *xkube.Object) {
 		current := obj.GetLabels()
@@ -569,6 +569,19 @@ func KubeOptionSetOwnerReferenceFromKubeObject(res client.Object, ownerRef metav
 func KubeOptionObserve(obj *xkube.Object) {
 	obj.Spec.ManagementPolicies = nil
 	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
+}
+
+// KubeOptionObserveMinimalManifest removes the spec from the inner manifest, keeping only
+// the fields needed to identify the object (apiVersion, kind, metadata).
+// Use this for observer objects whose types contain non-omitempty fields (e.g. StatefulSet.spec.serviceName)
+// that would otherwise be sent via server-side apply and fail immutability validation.
+func KubeOptionObserveMinimalManifest(obj *xkube.Object) {
+	if obj.Spec.ForProvider.Manifest.Object == nil {
+		return
+	}
+	if u, ok := obj.Spec.ForProvider.Manifest.Object.(*unstructured.Unstructured); ok {
+		delete(u.Object, "spec")
+	}
 }
 
 // KubeOptionProtectedBy protects the given kube objects from deletion as long

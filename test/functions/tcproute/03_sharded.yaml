@@ -35,7 +35,7 @@ observed:
           name: test
           namespace: unit-test
   resources:
-    my-service-tcp:
+    my-service-tcp-xls:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
         kind: Object

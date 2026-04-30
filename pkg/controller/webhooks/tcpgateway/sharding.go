@@ -24,15 +24,21 @@ func NewGatewaySharding(gateways []GatewayKey, capacity int) *GatewaySharding {
 // SelectGateway determines which gateway should host the new XListenerSet.
 // If the current gateway has room, it returns unchanged.
 // Otherwise it picks the gateway with the fewest listeners that still has capacity.
-// Returns an error if all gateways are full.
-func (gs *GatewaySharding) SelectGateway(currentRef GatewayKey, newListenerCount int, listenerCounts map[GatewayKey]int) (GatewayKey, bool, error) {
-	if slices.Contains(gs.gateways, currentRef) && listenerCounts[currentRef]+newListenerCount <= gs.capacity {
+// If allowedGateways is non-empty, only those gateways are considered as candidates.
+// Returns an error if all candidate gateways are full.
+func (gs *GatewaySharding) SelectGateway(currentRef GatewayKey, newListenerCount int, listenerCounts map[GatewayKey]int, allowedGateways []GatewayKey) (GatewayKey, bool, error) {
+	candidates := gs.gateways
+	if len(allowedGateways) > 0 {
+		candidates = gs.filterAllowed(allowedGateways)
+	}
+
+	if slices.Contains(candidates, currentRef) && listenerCounts[currentRef]+newListenerCount <= gs.capacity {
 		return currentRef, false, nil
 	}
 
 	best := GatewayKey{}
 	bestCount := gs.capacity + 1
-	for _, gw := range gs.gateways {
+	for _, gw := range candidates {
 		count := listenerCounts[gw]
 		if count+newListenerCount <= gs.capacity && count < bestCount {
 			best = gw
@@ -45,4 +51,15 @@ func (gs *GatewaySharding) SelectGateway(currentRef GatewayKey, newListenerCount
 	}
 
 	return best, true, nil
+}
+
+// filterAllowed returns gateways present in both gs.gateways and allowed.
+func (gs *GatewaySharding) filterAllowed(allowed []GatewayKey) []GatewayKey {
+	var result []GatewayKey
+	for _, gw := range gs.gateways {
+		if slices.Contains(allowed, gw) {
+			result = append(result, gw)
+		}
+	}
+	return result
 }

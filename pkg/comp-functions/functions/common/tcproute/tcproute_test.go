@@ -39,7 +39,7 @@ func TestAddTCPRoute(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName))
+		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 		assert.Equal(t, cfg.ResourceName, xls.GetName())
 		assert.Equal(t, cfg.InstanceNamespace, xls.GetNamespace())
 
@@ -47,6 +47,10 @@ func TestAddTCPRoute(t *testing.T) {
 		parentNs, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "namespace")
 		assert.Equal(t, "tcp-gateway", parentName)
 		assert.Equal(t, "gateway-system", parentNs)
+
+		// Verify allowed-gateways annotation
+		ann := xls.GetAnnotations()
+		assert.Equal(t, "tcp-gateway", ann["appcat.vshn.io/allowed-gateways"])
 
 		listeners, found, _ := unstructured.NestedSlice(xls.Object, "spec", "listeners")
 		require.True(t, found)
@@ -88,7 +92,7 @@ func TestAddTCPRoute(t *testing.T) {
 
 		// Verify NetworkPolicy
 		netPol := &netv1.NetworkPolicy{}
-		require.NoError(t, svc.GetDesiredKubeObject(netPol, cfg.ResourceName+"-netpol"))
+		require.NoError(t, svc.GetDesiredKubeObject(netPol, cfg.ResourceName+"-gw-netpol"))
 		assert.Equal(t, cfg.ResourceName, netPol.Name)
 		assert.Equal(t, cfg.InstanceNamespace, netPol.Namespace)
 		assert.Equal(t, "myapp", netPol.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
@@ -127,7 +131,7 @@ func TestAddTCPRoute(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName))
+		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 		listeners, _, _ := unstructured.NestedSlice(xls.Object, "spec", "listeners")
 		require.Len(t, listeners, 1)
 		l0 := listeners[0].(map[string]any)
@@ -149,12 +153,16 @@ func TestAddTCPRoute(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName))
+		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 
 		parentName, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "name")
 		parentNs, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "namespace")
 		assert.Equal(t, "tcp-gateway-2", parentName)
 		assert.Equal(t, "gateway-system", parentNs)
+
+		// Verify allowed-gateways annotation contains both gateways (sorted)
+		ann := xls.GetAnnotations()
+		assert.Equal(t, "tcp-gateway,tcp-gateway-2", ann["appcat.vshn.io/allowed-gateways"])
 	})
 
 	t.Run("NoResources_WhenNotCalled", func(t *testing.T) {
@@ -165,6 +173,6 @@ func TestAddTCPRoute(t *testing.T) {
 		xls := &unstructured.Unstructured{}
 		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
 		xls.SetKind("XListenerSet")
-		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName), runtime.ErrNotFound)
+		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"), runtime.ErrNotFound)
 	})
 }

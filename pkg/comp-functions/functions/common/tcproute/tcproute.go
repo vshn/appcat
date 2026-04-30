@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -31,7 +32,10 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 	cfg.applyDefaults()
 
 	gatewayNamespace := svc.Config.Data[cfg.GatewayNamespaceConfigKey]
-	tcpGatewayName := defaultGatewayName(svc, cfg.GatewaysConfigKey)
+	tcpGatewayName, err := defaultGatewayName(svc, cfg.GatewaysConfigKey)
+	if err != nil {
+		return runtime.NewFatalResult(err), ObservedState{}
+	}
 
 	if gatewayNamespace == "" || tcpGatewayName == "" {
 		return runtime.NewWarningResult(fmt.Sprintf("TCPRoute requested but %s or %s is not configured", cfg.GatewayNamespaceConfigKey, cfg.GatewaysConfigKey)), ObservedState{}
@@ -39,7 +43,7 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 
 	svc.Log.Info("Configuring TCPRoute", "resource", cfg.ResourceName)
 
-	observed := observeXListenerSet(svc, cfg.ResourceName)
+	observed := observeXListenerSet(svc, cfg.ResourceName+"-xls")
 
 	effectiveGatewayName := tcpGatewayName
 	effectiveGatewayNamespace := gatewayNamespace
@@ -49,27 +53,33 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 		effectiveGatewayNamespace = observed.GatewayNamespace
 	}
 
-	err := createXListenerSet(svc, cfg, effectiveGatewayNamespace, effectiveGatewayName, observed.Port)
+	gwNames, err := allGatewayNames(svc, cfg.GatewaysConfigKey)
 	if err != nil {
+		return runtime.NewFatalResult(err), observed
+	}
+
+	if err := createXListenerSet(svc, cfg, effectiveGatewayNamespace, effectiveGatewayName, observed.Port, gwNames); err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err)), observed
 	}
 
-	err = createTCPRoute(svc, cfg)
-	if err != nil {
+	if err := createTCPRoute(svc, cfg); err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create TCPRoute: %s", err)), observed
 	}
 
-	err = createGatewayNetworkPolicy(svc, cfg, effectiveGatewayNamespace)
-	if err != nil {
+	if err := createGatewayNetworkPolicy(svc, cfg, effectiveGatewayNamespace); err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create gateway NetworkPolicy: %s", err)), observed
 	}
 
-	observed.Domain = lookupDomain(svc, cfg.GatewaysConfigKey, effectiveGatewayName)
+	domain, err := lookupDomain(svc, cfg.GatewaysConfigKey, effectiveGatewayName)
+	if err != nil {
+		return runtime.NewFatalResult(err), observed
+	}
+	observed.Domain = domain
 
 	return nil, observed
 }
 
-func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace, gatewayName string, port int32) error {
+func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace, gatewayName string, port int32, allowedGateways []string) error {
 	xls := &unstructured.Unstructured{
 		Object: map[string]any{},
 	}
@@ -80,6 +90,12 @@ func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gateway
 	xls.SetLabels(map[string]string{
 		runtime.TCPGatewayLabel: "true",
 	})
+	if len(allowedGateways) > 0 {
+		sort.Strings(allowedGateways)
+		xls.SetAnnotations(map[string]string{
+			runtime.TCPGatewayAllowedAnnotation: strings.Join(allowedGateways, ","),
+		})
+	}
 
 	err := unstructured.SetNestedMap(xls.Object, map[string]any{
 		"group":     "gateway.networking.k8s.io",
@@ -117,7 +133,7 @@ func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gateway
 		return fmt.Errorf("setting listeners: %w", err)
 	}
 
-	return svc.SetDesiredKubeObject(xls, cfg.ResourceName)
+	return svc.SetDesiredKubeObject(xls, cfg.ResourceName+"-xls", runtime.KubeOptionAllowDeletion)
 }
 
 func createTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) error {
@@ -158,7 +174,7 @@ func createTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) error {
 		return fmt.Errorf("setting rules: %w", err)
 	}
 
-	return svc.SetDesiredKubeObject(tcpRoute, cfg.ResourceName+"-tcproute")
+	return svc.SetDesiredKubeObject(tcpRoute, cfg.ResourceName+"-tcproute", runtime.KubeOptionAllowDeletion)
 }
 
 func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace string) error {
@@ -197,7 +213,7 @@ func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, cfg TCPRouteConfig,
 		},
 	}
 
-	return svc.SetDesiredKubeObject(netPol, cfg.ResourceName+"-netpol")
+	return svc.SetDesiredKubeObject(netPol, cfg.ResourceName+"-gw-netpol", runtime.KubeOptionAllowDeletion)
 }
 
 func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState {
@@ -242,36 +258,48 @@ func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState
 	return state
 }
 
-// lookupDomain resolves the domain for a given gateway name from the
-// gateways config value.
-func lookupDomain(svc *runtime.ServiceRuntime, configKey, gatewayName string) string {
-	raw := svc.Config.Data[configKey]
-	if raw == "" {
-		return ""
-	}
-
-	mapping := map[string]string{}
-	if err := json.Unmarshal([]byte(raw), &mapping); err != nil {
-		svc.Log.Error(err, "failed to parse gateways config", "key", configKey)
-		svc.AddResult(runtime.NewFatalResult(fmt.Errorf("failed to parse gateways: %w", err)))
-		return ""
-	}
-
-	return mapping[gatewayName]
-}
-
-func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) string {
+// getRawGateways parses the JSON gateway config into a name->domain map.
+func getRawGateways(svc *runtime.ServiceRuntime, configKey string) (map[string]string, error) {
 	raw, ok := svc.Config.Data[configKey]
 	if !ok || raw == "" {
-		return ""
+		return nil, nil
 	}
 
 	mapping := map[string]string{}
 	if err := json.Unmarshal([]byte(raw), &mapping); err != nil {
-		svc.Log.Error(err, "failed to parse gateways config", "key", configKey)
-		return ""
+		return nil, fmt.Errorf("failed to parse gateways config %q: %w", configKey, err)
 	}
 
+	return mapping, nil
+}
+
+// lookupDomain resolves the domain for a given gateway name from the
+// gateways config value.
+func lookupDomain(svc *runtime.ServiceRuntime, configKey, gatewayName string) (string, error) {
+	mapping, err := getRawGateways(svc, configKey)
+	if err != nil {
+		return "", err
+	}
+	return mapping[gatewayName], nil
+}
+
+func allGatewayNames(svc *runtime.ServiceRuntime, configKey string) ([]string, error) {
+	mapping, err := getRawGateways(svc, configKey)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(mapping))
+	for name := range mapping {
+		names = append(names, name)
+	}
+	return names, nil
+}
+
+func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) (string, error) {
+	mapping, err := getRawGateways(svc, configKey)
+	if err != nil {
+		return "", err
+	}
 	names := make([]string, 0, len(mapping))
 	for name := range mapping {
 		names = append(names, name)
@@ -279,7 +307,7 @@ func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) string {
 	sort.Strings(names)
 
 	if len(names) == 0 {
-		return ""
+		return "", nil
 	}
-	return names[0]
+	return names[0], nil
 }

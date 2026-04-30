@@ -211,8 +211,9 @@ type VSHNDBaaSNetworkSpec struct {
 	// Possible enum values:
 	//   - `"ClusterIP"` indicates that the service is only reachable from within the cluster.
 	//   - `"LoadBalancer"` indicates that the service is reachable from the public internet via dedicated Ipv4 address.
+	//   - `"TCPGateway"` indicates that the service is reachable via a TCP gateway (Gateway API).
 	// +kubebuilder:default="ClusterIP"
-	// +kubebuilder:validation:Enum="ClusterIP";"LoadBalancer"
+	// +kubebuilder:validation:Enum="ClusterIP";"LoadBalancer";"TCPGateway"
 	ServiceType string `json:"serviceType,omitempty"`
 }
 

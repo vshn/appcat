@@ -501,7 +501,7 @@ func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectN
 	return s.SetDesiredComposedResourceWithName(kobj, resourceName)
 }
 
-// KubeOptionLabeler adds the given labels to the kube object.
+// KubeOptionAddLabels adds the given labels to the kube object.
 func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
 	return func(obj *xkube.Object) {
 		current := obj.GetLabels()
@@ -569,6 +569,19 @@ func KubeOptionSetOwnerReferenceFromKubeObject(res client.Object, ownerRef metav
 func KubeOptionObserve(obj *xkube.Object) {
 	obj.Spec.ManagementPolicies = nil
 	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
+}
+
+// KubeOptionObserveMinimalManifest removes the spec from the inner manifest, keeping only
+// the fields needed to identify the object (apiVersion, kind, metadata).
+// Use this for observer objects whose types contain non-omitempty fields (e.g. StatefulSet.spec.serviceName)
+// that would otherwise be sent via server-side apply and fail immutability validation.
+func KubeOptionObserveMinimalManifest(obj *xkube.Object) {
+	if obj.Spec.ForProvider.Manifest.Object == nil {
+		return
+	}
+	if u, ok := obj.Spec.ForProvider.Manifest.Object.(*unstructured.Unstructured); ok {
+		delete(u.Object, "spec")
+	}
 }
 
 // KubeOptionProtectedBy protects the given kube objects from deletion as long
@@ -710,9 +723,43 @@ func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string
 		ko.Spec.References = refs
 	}
 
-	ko.Spec.ForProvider.Manifest = runtime.RawExtension{Object: o}
+	rawBytes, err := json.Marshal(o)
+	if err != nil {
+		return nil, fmt.Errorf("cannot marshal manifest: %w", err)
+	}
+	var manifestMap map[string]any
+
+	if err := json.Unmarshal(rawBytes, &manifestMap); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal manifest: %w", err)
+	}
+	pruneNilFields(manifestMap)
+
+	ko.Spec.ForProvider.Manifest = runtime.RawExtension{Object: &unstructured.Unstructured{Object: manifestMap}}
 
 	return ko, nil
+}
+
+// pruneNilFields recursively removes nil values from obj.
+// provider-kubernetes uses server-side apply, which sends
+// null fields as-is; some CRs reject null values that
+// client-side apply previously dropped silently.
+func pruneNilFields(obj map[string]any) {
+	for k, v := range obj {
+		if v == nil {
+			delete(obj, k)
+			continue
+		}
+		switch val := v.(type) {
+		case []any:
+			for _, item := range val {
+				if m, ok := item.(map[string]any); ok {
+					pruneNilFields(m)
+				}
+			}
+		case map[string]any:
+			pruneNilFields(val)
+		}
+	}
 }
 
 // GetObservedComposite returns the observed composite and unmarshals it into the given object.

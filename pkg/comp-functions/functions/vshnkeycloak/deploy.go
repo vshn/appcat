@@ -422,7 +422,7 @@ func addStsObserver(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) erro
 			Namespace: comp.GetInstanceNamespace(),
 		},
 	}
-	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion)
+	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve, runtime.KubeOptionObserveMinimalManifest, runtime.KubeOptionAllowDeletion)
 }
 
 func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string) *batchv1.Job {

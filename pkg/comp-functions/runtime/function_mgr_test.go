@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -253,6 +254,110 @@ func TestServiceRuntime_IsResourceReady(t *testing.T) {
 	}
 }
 
+func TestPruneNilFields(t *testing.T) {
+	tests := []struct {
+		name  string
+		input map[string]any
+		want  map[string]any
+	}{
+		{
+			name:  "GivenNilValue_ThenRemoved",
+			input: map[string]any{"key": nil},
+			want:  map[string]any{},
+		},
+		{
+			name:  "GivenEmptyString_ThenKept",
+			input: map[string]any{"key": ""},
+			want:  map[string]any{"key": ""},
+		},
+		{
+			name:  "GivenNonEmptyString_ThenKept",
+			input: map[string]any{"key": "value"},
+			want:  map[string]any{"key": "value"},
+		},
+		{
+			name:  "GivenEmptySlice_ThenKept",
+			input: map[string]any{"key": []any{}},
+			want:  map[string]any{"key": []any{}},
+		},
+		{
+			name:  "GivenEmptyMap_ThenKept",
+			input: map[string]any{"key": map[string]any{}},
+			want:  map[string]any{"key": map[string]any{}},
+		},
+		{
+			name: "GivenNestedNilValue_ThenRemovedRecursively",
+			input: map[string]any{
+				"outer": map[string]any{
+					"nil":  nil,
+					"kept": "value",
+				},
+			},
+			want: map[string]any{
+				"outer": map[string]any{
+					"kept": "value",
+				},
+			},
+		},
+		{
+			name: "GivenSliceWithMapItems_ThenNilsInItemsPruned",
+			input: map[string]any{
+				"items": []any{
+					map[string]any{"name": "foo", "nil": nil},
+				},
+			},
+			want: map[string]any{
+				"items": []any{
+					map[string]any{"name": "foo"},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pruneNilFields(tt.input)
+			assert.Equal(t, tt.want, tt.input)
+		})
+	}
+}
+
+func TestSetDesiredKubeObject_PrunesNilFieldsFromManifest(t *testing.T) {
+	fakeComp := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mycomp",
+		},
+	}
+	s := getTestRuntime(t, nil, fakeComp)
+
+	obj := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cm",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"some-key": "value",
+			},
+		},
+	}
+
+	err := s.SetDesiredKubeObject(obj, "test-cm")
+	assert.NoError(t, err)
+
+	kobj := &xkube.Object{}
+	err = s.GetDesiredComposedResourceByName(kobj, "test-cm")
+	assert.NoError(t, err)
+
+	manifestJSON := kobj.Spec.ForProvider.Manifest.Raw
+	var manifestMap map[string]any
+	err = json.Unmarshal(manifestJSON, &manifestMap)
+	assert.NoError(t, err)
+
+	metadata := manifestMap["metadata"].(map[string]any)
+	metadata["nullField"] = nil
+	pruneNilFields(manifestMap)
+	assert.NotContains(t, metadata, "nullField", "nil field should be pruned")
+	assert.Equal(t, "value", metadata["annotations"].(map[string]any)["some-key"], "non-nil fields should be kept")
+}
+
 func getTestRuntime(t *testing.T, initialObjects []client.Object, comp client.Object) *ServiceRuntime {
 	req := &xfnproto.RunFunctionRequest{
 		Observed: &xfnproto.State{
@@ -277,5 +382,6 @@ func getTestRuntime(t *testing.T, initialObjects []client.Object, comp client.Ob
 		req:               req,
 		desiredResources:  map[resource.Name]*resource.DesiredComposed{},
 		observedComposite: &composite.Unstructured{Unstructured: compRes.Unstructured},
+		kubeOptionTracker: map[string][]KubeObjectOption{},
 	}
 }

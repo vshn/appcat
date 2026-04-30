@@ -32,7 +32,10 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 	cfg.applyDefaults()
 
 	gatewayNamespace := svc.Config.Data[cfg.GatewayNamespaceConfigKey]
-	tcpGatewayName := defaultGatewayName(svc, cfg.GatewaysConfigKey)
+	tcpGatewayName, err := defaultGatewayName(svc, cfg.GatewaysConfigKey)
+	if err != nil {
+		return runtime.NewFatalResult(err), ObservedState{}
+	}
 
 	if gatewayNamespace == "" || tcpGatewayName == "" {
 		return runtime.NewWarningResult(fmt.Sprintf("TCPRoute requested but %s or %s is not configured", cfg.GatewayNamespaceConfigKey, cfg.GatewaysConfigKey)), ObservedState{}
@@ -50,24 +53,28 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 		effectiveGatewayNamespace = observed.GatewayNamespace
 	}
 
-	gwNames := allGatewayNames(svc, cfg.GatewaysConfigKey)
-
-	err := createXListenerSet(svc, cfg, effectiveGatewayNamespace, effectiveGatewayName, observed.Port, gwNames)
+	gwNames, err := allGatewayNames(svc, cfg.GatewaysConfigKey)
 	if err != nil {
+		return runtime.NewFatalResult(err), observed
+	}
+
+	if err := createXListenerSet(svc, cfg, effectiveGatewayNamespace, effectiveGatewayName, observed.Port, gwNames); err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err)), observed
 	}
 
-	err = createTCPRoute(svc, cfg)
-	if err != nil {
+	if err := createTCPRoute(svc, cfg); err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create TCPRoute: %s", err)), observed
 	}
 
-	err = createGatewayNetworkPolicy(svc, cfg, effectiveGatewayNamespace)
-	if err != nil {
+	if err := createGatewayNetworkPolicy(svc, cfg, effectiveGatewayNamespace); err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create gateway NetworkPolicy: %s", err)), observed
 	}
 
-	observed.Domain = lookupDomain(svc, cfg.GatewaysConfigKey, effectiveGatewayName)
+	domain, err := lookupDomain(svc, cfg.GatewaysConfigKey, effectiveGatewayName)
+	if err != nil {
+		return runtime.NewFatalResult(err), observed
+	}
+	observed.Domain = domain
 
 	return nil, observed
 }
@@ -252,42 +259,47 @@ func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState
 }
 
 // getRawGateways parses the JSON gateway config into a name->domain map.
-func getRawGateways(svc *runtime.ServiceRuntime, configKey string) map[string]string {
+func getRawGateways(svc *runtime.ServiceRuntime, configKey string) (map[string]string, error) {
 	raw, ok := svc.Config.Data[configKey]
 	if !ok || raw == "" {
-		return nil
+		return nil, nil
 	}
 
 	mapping := map[string]string{}
 	if err := json.Unmarshal([]byte(raw), &mapping); err != nil {
-		svc.Log.Error(err, "failed to parse gateways config", "key", configKey)
-		return nil
+		return nil, fmt.Errorf("failed to parse gateways config %q: %w", configKey, err)
 	}
 
-	return mapping
+	return mapping, nil
 }
 
 // lookupDomain resolves the domain for a given gateway name from the
 // gateways config value.
-func lookupDomain(svc *runtime.ServiceRuntime, configKey, gatewayName string) string {
-	mapping := getRawGateways(svc, configKey)
-	if mapping == nil {
-		return ""
+func lookupDomain(svc *runtime.ServiceRuntime, configKey, gatewayName string) (string, error) {
+	mapping, err := getRawGateways(svc, configKey)
+	if err != nil {
+		return "", err
 	}
-	return mapping[gatewayName]
+	return mapping[gatewayName], nil
 }
 
-func allGatewayNames(svc *runtime.ServiceRuntime, configKey string) []string {
-	mapping := getRawGateways(svc, configKey)
+func allGatewayNames(svc *runtime.ServiceRuntime, configKey string) ([]string, error) {
+	mapping, err := getRawGateways(svc, configKey)
+	if err != nil {
+		return nil, err
+	}
 	names := make([]string, 0, len(mapping))
 	for name := range mapping {
 		names = append(names, name)
 	}
-	return names
+	return names, nil
 }
 
-func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) string {
-	mapping := getRawGateways(svc, configKey)
+func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) (string, error) {
+	mapping, err := getRawGateways(svc, configKey)
+	if err != nil {
+		return "", err
+	}
 	names := make([]string, 0, len(mapping))
 	for name := range mapping {
 		names = append(names, name)
@@ -295,7 +307,7 @@ func defaultGatewayName(svc *runtime.ServiceRuntime, configKey string) string {
 	sort.Strings(names)
 
 	if len(names) == 0 {
-		return ""
+		return "", nil
 	}
-	return names[0]
+	return names[0], nil
 }

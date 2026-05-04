@@ -294,7 +294,7 @@ func GenerateCertificates(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTP
 		return nil, err
 	}
 
-	issuerRef := issuerRefFromAnnotations(getIngressAnnotations(svc, nil))
+	issuerRef := issuerRefFromAnnotations(getIngressAnnotations(svc, "", nil))
 	if issuerRef == nil {
 		return nil, nil
 	}

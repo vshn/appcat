@@ -142,6 +142,7 @@ func buildKeycloakAdminIngress(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRu
 		},
 		AdditionalIngressNames: []string{"admin"},
 		TlsCertBaseName:        "keycloak-admin",
+		AnnotationsConfigKey:   "admin_ingress_annotations",
 	})
 }
 

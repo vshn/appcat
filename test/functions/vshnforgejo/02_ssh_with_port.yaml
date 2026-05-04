@@ -62,7 +62,7 @@ observed:
           name: VSHNForgejo.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
   resources:
-    forgejo-unit-test-ssh:
+    forgejo-unit-test-ssh-xls:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
         kind: Object

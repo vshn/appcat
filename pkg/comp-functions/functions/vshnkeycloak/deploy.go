@@ -628,7 +628,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
-	if adminFQDN := comp.Spec.Parameters.Service.AdminFQDN; adminFQDN != "" {
+	if adminFQDN := comp.Spec.Parameters.Service.AdminConsole.FQDN; adminFQDN != "" {
 		extraEnvMap = append(extraEnvMap,
 			map[string]any{
 				"name":  "KC_HOSTNAME",

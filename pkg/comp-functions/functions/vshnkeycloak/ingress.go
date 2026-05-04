@@ -46,7 +46,7 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.Servi
 	}
 
 	ingresses := []*netv1.Ingress{ingress}
-	if adminFQDN := comp.Spec.Parameters.Service.AdminFQDN; adminFQDN != "" {
+	if adminFQDN := comp.Spec.Parameters.Service.AdminConsole.FQDN; adminFQDN != "" {
 		adminIngress, err := buildKeycloakAdminIngress(comp, svc, adminFQDN)
 		if err != nil {
 			return runtime.NewWarningResult(fmt.Sprintf("cannot generate admin ingress: %s", err))
@@ -99,7 +99,7 @@ func buildKeycloakIngress(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 		base + "/resources/",
 		base + "/.well-known/",
 	}
-	if !comp.Spec.Parameters.Service.DisableAdminAccess {
+	if !comp.Spec.Parameters.Service.AdminConsole.Disabled {
 		allowedPaths = append(allowedPaths, base+"/admin/", base+"/")
 	}
 

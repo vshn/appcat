@@ -102,6 +102,9 @@ type VSHNKeycloakServiceSpec struct {
 	// This also enables strict hostname checking for this FQDN.
 	FQDN string `json:"fqdn,omitempty"`
 
+	// AdminConsole configures the Keycloak admin console access.
+	AdminConsole VSHNKeycloakAdminConsoleSpec `json:"adminConsole,omitempty"`
+
 	// RelativePath on which Keycloak will listen.
 	// +kubebuilder:default="/"
 	RelativePath string `json:"relativePath,omitempty"`
@@ -150,6 +153,18 @@ type VSHNKeycloakServiceSpec struct {
 	// CustomMounts is a list of Secrets/ConfigMaps that get observed and copied into the Keycloak instance namespace.
 	// Once copied, they will be mounted under /custom/secrets/<name> or /custom/configs/<name>.
 	CustomMounts []VSHNCustomMount `json:"customMounts,omitempty"`
+}
+
+// VSHNKeycloakAdminConsoleSpec configures the Keycloak admin console access.
+type VSHNKeycloakAdminConsoleSpec struct {
+	// Private disables access to the Keycloak admin console via the main FQDN.
+	// It's still accessible via a port-forward
+	// +kubebuilder:default=false
+	Private bool `json:"private,omitempty"`
+
+	// FQDN is the hostname for a dedicated admin console ingress.
+	// If not set, the admin console is accessible via the main FQDN (unless Disabled is true).
+	FQDN string `json:"fqdn,omitempty"`
 }
 
 type VSHNKeycloakCustomizationImage struct {

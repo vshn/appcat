@@ -5436,6 +5436,22 @@ spec:
                   service:
                     description: Service contains keycloak DBaaS specific properties
                     properties:
+                      adminConsole:
+                        description: AdminConsole configures the Keycloak admin console
+                          access.
+                        properties:
+                          fqdn:
+                            description: |-
+                              FQDN is the hostname for a dedicated admin console ingress.
+                              If not set, the admin console is accessible via the main FQDN (unless Disabled is true).
+                            type: string
+                          private:
+                            default: false
+                            description: |-
+                              Private disables access to the Keycloak admin console via the main FQDN.
+                              It's still accessible via a port-forward
+                            type: boolean
+                        type: object
                       customConfigurationRef:
                         description: |-
                           CustomConfigurationRef can be used to provide a configmap containing configurations for the

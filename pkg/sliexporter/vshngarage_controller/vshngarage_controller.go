@@ -32,13 +32,13 @@ const (
 
 var garageBucketGVK = schema.GroupVersionKind{
 	Group:   "garage.rajsingh.info",
-	Version: "v1alpha1",
+	Version: "v1beta1",
 	Kind:    "GarageBucket",
 }
 
 var garageKeyGVK = schema.GroupVersionKind{
 	Group:   "garage.rajsingh.info",
-	Version: "v1alpha1",
+	Version: "v1beta1",
 	Kind:    "GarageKey",
 }
 
@@ -208,7 +208,7 @@ func (r *VSHNGarageReconciler) ensureGarageKeyCR(ctx context.Context, claimNames
 	}
 	bucketPerms := []interface{}{
 		map[string]interface{}{
-			"bucketRef": name,
+			"bucketRef": map[string]interface{}{"name": name},
 			"read":      true,
 			"write":     true,
 		},

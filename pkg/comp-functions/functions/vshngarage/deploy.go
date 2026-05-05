@@ -73,7 +73,7 @@ func DeployGarage(ctx context.Context, comp *vshnv1.VSHNGarage, svc *runtime.Ser
 	connectionDetails := []v1beta1.ConnectionDetail{
 		{
 			ObjectReference: corev1.ObjectReference{
-				APIVersion: "garage.rajsingh.info/v1alpha1",
+				APIVersion: "garage.rajsingh.info/v1beta1",
 				Kind:       "GarageCluster",
 				Name:       "garage",
 				Namespace:  comp.GetInstanceNamespace(),

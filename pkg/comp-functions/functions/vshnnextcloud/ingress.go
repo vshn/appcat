@@ -24,6 +24,10 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 		return runtime.NewFatalResult(fmt.Errorf("FQDN array is empty, but requires at least one entry, %w", errors.New("empty fqdn")))
 	}
 
+	if common.IsHTTPRouteMode(svc) {
+		return addNextcloudHTTPRoute(comp, svc)
+	}
+
 	var svcNameSuffix string
 	if !strings.Contains(comp.GetName(), "nextcloud") {
 		svcNameSuffix = "nextcloud"
@@ -46,4 +50,21 @@ func AddIngress(_ context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 	common.CreateIngresses(comp, svc, ingresses)
 
 	return nil
+}
+
+func addNextcloudHTTPRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	var svcNameSuffix string
+	if !strings.Contains(comp.GetName(), "nextcloud") {
+		svcNameSuffix = "nextcloud"
+	}
+
+	svc.Log.Info("Adding HTTPRoute for Nextcloud")
+
+	return common.ApplyHTTPRouteAsResult(comp, svc, common.HTTPRouteConfig{
+		FQDNs: comp.Spec.Parameters.Service.FQDN,
+		ServiceConfig: common.IngressRuleConfig{
+			ServiceNameSuffix: svcNameSuffix,
+			ServicePortNumber: 8080,
+		},
+	})
 }

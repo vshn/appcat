@@ -52,7 +52,7 @@ func SetupRedisWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error
 func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	redis, ok := obj.(*vshnv1.VSHNRedis)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	allErrs := newFielErrors(redis.GetName(), redisGK)
@@ -74,7 +74,7 @@ func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Ob
 func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	redis, ok := newObj.(*vshnv1.VSHNRedis)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	if redis.GetDeletionTimestamp() != nil {

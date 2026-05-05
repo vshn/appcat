@@ -1,6 +1,7 @@
 package vshnkeycloak
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func TestCreateIngress(t *testing.T) {
@@ -163,4 +165,62 @@ func TestCreateIngress(t *testing.T) {
 			assert.Equal(t, string(want), string(got))
 		})
 	}
+}
+
+func TestCreateHTTPRoute(t *testing.T) {
+	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndListenerSet", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/02_httproute.yaml")
+
+		comp := &vshnv1.VSHNKeycloak{
+			ObjectMeta: metav1.ObjectMeta{Name: "keycloak"},
+			Spec: vshnv1.VSHNKeycloakSpec{
+				Parameters: vshnv1.VSHNKeycloakParameters{
+					Service: vshnv1.VSHNKeycloakServiceSpec{
+						FQDN:         "example.com",
+						RelativePath: "/path",
+					},
+				},
+			},
+		}
+
+		result := AddIngress(context.Background(), comp, svc)
+		assert.Nil(t, result)
+
+		allDesired := svc.GetAllDesired()
+		foundRoute, foundLS, foundGrant, foundBCP := false, false, false, false
+		for _, d := range allDesired {
+			name := d.Resource.GetName()
+			if name == "keycloak-httproute" {
+				foundRoute = true
+			}
+			if name == "keycloak-listenerset" {
+				foundLS = true
+			}
+			if name == "keycloak-httpgrant" {
+				foundGrant = true
+			}
+			if name == "keycloak-backend-tls" {
+				foundBCP = true
+			}
+		}
+		assert.True(t, foundRoute, "HTTPRoute must be created")
+		assert.True(t, foundLS, "XListenerSet must be created")
+		assert.False(t, foundGrant, "ReferenceGrant must NOT be created")
+		assert.True(t, foundBCP, "BackendConfigPolicy must be created for TLS backend")
+
+		route := &gatewayv1.HTTPRoute{}
+		assert.NoError(t, svc.GetDesiredKubeObject(route, "keycloak-httproute"))
+		assert.Len(t, route.Spec.Rules, 1)
+		assert.Len(t, route.Spec.Rules[0].Matches, 1)
+		path := route.Spec.Rules[0].Matches[0].Path
+		assert.Equal(t, gatewayv1.PathMatchPathPrefix, *path.Type)
+		assert.Equal(t, "/path", *path.Value, "RelativePath from claim must propagate to HTTPRoute match")
+	})
+
+	t.Run("GivenHTTPRouteMode_NoFQDN_ExpectNil", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/02_httproute.yaml")
+		comp := &vshnv1.VSHNKeycloak{}
+		result := AddIngress(context.Background(), comp, svc)
+		assert.Nil(t, result)
+	})
 }

@@ -118,7 +118,7 @@ func New(mgrClient client.Client, logger logr.Logger, withQuota bool, obj runtim
 func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	comp, ok := obj.(common.Composite)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	allErrs := newFielErrors(comp.GetName(), comp.GetObjectKind().GroupVersionKind().GroupKind())
@@ -145,6 +145,8 @@ func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 		allErrs.Add(err)
 	}
 
+	allErrs.Add(r.checkGuaranteedAvailability(comp)...)
+
 	warn := checkManualVersionManagementWarnings(comp.GetFullMaintenanceSchedule())
 	return warn, allErrs.Get()
 }
@@ -153,12 +155,12 @@ func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	comp, ok := newObj.(common.Composite)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	oldComp, ok := oldObj.(common.Composite)
 	if !ok {
-		return nil, fmt.Errorf("provided old manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided old manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	if comp.GetDeletionTimestamp() != nil {
@@ -190,6 +192,8 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		}
 	}
 
+	allErrs.Add(r.checkGuaranteedAvailability(comp)...)
+
 	warn := checkManualVersionManagementWarnings(comp.GetFullMaintenanceSchedule())
 	return warn, allErrs.Get()
 }
@@ -198,7 +202,7 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 func (r *DefaultWebhookHandler) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	comp, ok := obj.(common.Composite)
 	if !ok {
-		return nil, fmt.Errorf("provided manifest is not a valid " + r.gk.Kind + " object")
+		return nil, fmt.Errorf("provided manifest is not a valid %s object", r.gk.Kind)
 	}
 
 	allErrs := newFielErrors(comp.GetName(), obj.GetObjectKind().GroupVersionKind().GroupKind())
@@ -615,6 +619,19 @@ func (r *DefaultWebhookHandler) getEffectiveDiskSize(ctx context.Context, comp c
 
 	// No disk size configured
 	return "", nil
+}
+
+func (r *DefaultWebhookHandler) checkGuaranteedAvailability(comp common.Composite) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if comp.GetSLA() == string(vshnv1.Guaranteed) && comp.GetInstances() > 0 && comp.GetInstances() < 2 {
+		name := strings.TrimPrefix(r.gk.Kind, "VSHN")
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "parameters", "instances"),
+			comp.GetInstances(),
+			fmt.Sprintf("%s instances with service level Guaranteed Availability must have more than 1 replicas. Please set spec.parameters.instances to accordingly, depending on your service. Additional costs will apply, please refer to: https://products.vshn.ch/appcat/pricing.html", name),
+		))
+	}
+	return allErrs
 }
 
 // checkManualVersionManagementWarnings returns warnings if manual version management flags are enabled

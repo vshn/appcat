@@ -16,9 +16,11 @@ type IngressConfig struct {
 	AdditionalAnnotations  map[string]string // Optional
 	AdditionalIngressNames []string          // Optional
 	AdditionalLabels       map[string]string // Optional
-	FQDNs                  []string
-	ServiceConfig          IngressRuleConfig
-	TlsCertBaseName        string
+	// AnnotationsConfigKey overrides the svc.Config.Data key used to read annotations.
+	AnnotationsConfigKey string // Optional
+	FQDNs                []string
+	ServiceConfig        IngressRuleConfig
+	TlsCertBaseName      string
 }
 
 // IngressRuleConfig describes an ingress rule configuration
@@ -40,11 +42,15 @@ func IsSingleSubdomainOfRefDomain(fqdn string, reference string) bool {
 	return len(strings.Split(noSuffix, ".")) == 2 // Handles prefixed dot of reference domain
 }
 
-// Obtain ingress annotations and optionally extend them using additionalAnnotations
-func getIngressAnnotations(svc *runtime.ServiceRuntime, additionalAnnotations map[string]string) map[string]string {
+// Obtain ingress annotations and optionally extend them using additionalAnnotations.
+// configKey selects which svc.Config.Data key to read; defaults to "ingress_annotations" when empty.
+func getIngressAnnotations(svc *runtime.ServiceRuntime, configKey string, additionalAnnotations map[string]string) map[string]string {
+	if configKey == "" {
+		configKey = "ingress_annotations"
+	}
 	annotations := map[string]string{}
-	if svc.Config.Data["ingress_annotations"] != "" {
-		err := yaml.Unmarshal([]byte(svc.Config.Data["ingress_annotations"]), annotations)
+	if svc.Config.Data[configKey] != "" {
+		err := yaml.Unmarshal([]byte(svc.Config.Data[configKey]), annotations)
 		if err != nil {
 			svc.Log.Error(err, "cannot unmarshal ingress annotations from input")
 			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot unmarshal ingress annotations from input: %s", err)))
@@ -196,7 +202,7 @@ func GenerateBundledIngresses(comp InfoGetter, svc *runtime.ServiceRuntime, ingr
 
 	ingressMetadata := metav1.ObjectMeta{
 		Namespace:   comp.GetInstanceNamespace(),
-		Annotations: getIngressAnnotations(svc, ingressConfig.AdditionalAnnotations),
+		Annotations: getIngressAnnotations(svc, ingressConfig.AnnotationsConfigKey, ingressConfig.AdditionalAnnotations),
 		Labels:      getIngressLabels(svc, ingressConfig.AdditionalLabels),
 	}
 
@@ -259,7 +265,7 @@ func GenerateIngress(comp InfoGetter, svc *runtime.ServiceRuntime, ingressConfig
 		)
 	}
 
-	annotations := getIngressAnnotations(svc, ingressConfig.AdditionalAnnotations)
+	annotations := getIngressAnnotations(svc, ingressConfig.AnnotationsConfigKey, ingressConfig.AdditionalAnnotations)
 	labels := getIngressLabels(svc, ingressConfig.AdditionalLabels)
 
 	tlsName := ingressConfig.TlsCertBaseName

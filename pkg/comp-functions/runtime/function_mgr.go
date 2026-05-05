@@ -60,6 +60,8 @@ const (
 	WebhookAllowDeletionLabel         = "appcat.vshn.io/webhook-allowdeletion"
 	IgnoreConnectionDetailsAnnotation = "appcat.vshn.io/ignore-connection-details"
 	LastReconcileAnnotation           = "appcat.vshn.io/reconciled-on"
+	TCPGatewayAllowedAnnotation       = "appcat.vshn.io/allowed-gateways"
+	TCPGatewayLabel                   = "appcat.vshn.io/tcpgateway"
 
 	ResourceReady   ResourceReadiness = ResourceReadiness(resource.ReadyTrue)
 	ResourceUnReady ResourceReadiness = ResourceReadiness(resource.ReadyFalse)
@@ -143,7 +145,6 @@ func init() {
 
 // RunFunction implements the crossplane composition function `FunctionRunnerServiceServer` interface.
 func (m Manager) RunFunction(ctx context.Context, req *fnv1.RunFunctionRequest) (*fnv1.RunFunctionResponse, error) {
-
 	if m.proxyMode {
 		return m.proxyFunction(ctx, req)
 	}
@@ -263,7 +264,6 @@ func (m *Manager) executeStep(ctx context.Context, obj client.Object, sr *Servic
 }
 
 func (m *Manager) proxyFunction(ctx context.Context, req *fnv1.RunFunctionRequest) (*fnv1.RunFunctionResponse, error) {
-
 	m.log.Info("Proxying request")
 
 	// errResp is only used to return a valid response in case of errors
@@ -320,7 +320,6 @@ func (m *Manager) proxyFunction(ctx context.Context, req *fnv1.RunFunctionReques
 
 // NewServiceRuntime returns a new runtime for a given service.
 func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunctionRequest) (*ServiceRuntime, error) {
-
 	desiredResources, err := request.GetDesiredComposedResources(req)
 	if err != nil {
 		return &ServiceRuntime{}, err
@@ -365,7 +364,6 @@ func NewServiceRuntime(l logr.Logger, config corev1.ConfigMap, req *fnv1.RunFunc
 // If at any time s.SetRespones() was called, then this function will
 // return the set response.
 func (s *ServiceRuntime) GetResponse() (*fnv1.RunFunctionResponse, error) {
-
 	if s.resp != nil {
 		return s.resp, nil
 	}
@@ -421,7 +419,6 @@ func (s *ServiceRuntime) SetDesiredComposedResource(obj xpresource.Managed, opts
 // Usually needed for objects that where migrated from P+T compositions with a static name.
 // Additionally it injects the claim-name, claim-namespace and the composite name as a label.
 func (s *ServiceRuntime) SetDesiredComposedResourceWithName(obj xpresource.Managed, name string, opts ...ComposedResourceOption) error {
-
 	s.addOwnerReferenceAnnotation(obj, true)
 
 	escapeK8sNames(obj)
@@ -473,7 +470,6 @@ func ComposedOptionProtects(resName string) ComposedResourceOption {
 // SetDesiredKubeObject takes any `runtime.Object`, puts it into a provider-kubernetes Object and then
 // adds it to the desired composed resources. It takes options to manipulate the resulting kube object before applying.
 func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName string, opts ...KubeObjectOption) error {
-
 	kobj, err := s.putIntoObject(obj, objectName, objectName)
 	if err != nil {
 		return err
@@ -492,7 +488,6 @@ func (s *ServiceRuntime) SetDesiredKubeObject(obj client.Object, objectName stri
 // adds it to the desired composed resources with the specified resource name.
 // This should be used if manipulating objects that are declared in the P+T composition.
 func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectName, resourceName string, opts ...KubeObjectOption) error {
-
 	kobj, err := s.putIntoObject(obj, objectName, resourceName)
 	if err != nil {
 		return err
@@ -507,7 +502,7 @@ func (s *ServiceRuntime) SetDesiredKubeObjectWithName(obj client.Object, objectN
 	return s.SetDesiredComposedResourceWithName(kobj, resourceName)
 }
 
-// KubeOptionLabeler adds the given labels to the kube object.
+// KubeOptionAddLabels adds the given labels to the kube object.
 func KubeOptionAddLabels(labels map[string]string) KubeObjectOption {
 	return func(obj *xkube.Object) {
 		current := obj.GetLabels()
@@ -571,10 +566,18 @@ func KubeOptionSetOwnerReferenceFromKubeObject(res client.Object, ownerRef metav
 	}
 }
 
-// KubeOptionObserve sets the object to only observe.
+// KubeOptionObserve sets the object to only observe and strips the spec from the inner
+// manifest, keeping only the fields needed to identify the object (apiVersion, kind, metadata).
+// Stripping spec avoids server-side apply failures from non-omitempty fields (e.g. StatefulSet.spec.serviceName).
 func KubeOptionObserve(obj *xkube.Object) {
 	obj.Spec.ManagementPolicies = nil
 	obj.Spec.ManagementPolicies = append(obj.Spec.ManagementPolicies, xpv1.ManagementActionObserve)
+	if obj.Spec.ForProvider.Manifest.Object == nil {
+		return
+	}
+	if u, ok := obj.Spec.ForProvider.Manifest.Object.(*unstructured.Unstructured); ok {
+		delete(u.Object, "spec")
+	}
 }
 
 // KubeOptionProtectedBy protects the given kube objects from deletion as long
@@ -716,9 +719,43 @@ func (s *ServiceRuntime) putIntoObject(o client.Object, kon, resourceName string
 		ko.Spec.References = refs
 	}
 
-	ko.Spec.ForProvider.Manifest = runtime.RawExtension{Object: o}
+	rawBytes, err := json.Marshal(o)
+	if err != nil {
+		return nil, fmt.Errorf("cannot marshal manifest: %w", err)
+	}
+	var manifestMap map[string]any
+
+	if err := json.Unmarshal(rawBytes, &manifestMap); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal manifest: %w", err)
+	}
+	pruneNilFields(manifestMap)
+
+	ko.Spec.ForProvider.Manifest = runtime.RawExtension{Object: &unstructured.Unstructured{Object: manifestMap}}
 
 	return ko, nil
+}
+
+// pruneNilFields recursively removes nil values from obj.
+// provider-kubernetes uses server-side apply, which sends
+// null fields as-is; some CRs reject null values that
+// client-side apply previously dropped silently.
+func pruneNilFields(obj map[string]any) {
+	for k, v := range obj {
+		if v == nil {
+			delete(obj, k)
+			continue
+		}
+		switch val := v.(type) {
+		case []any:
+			for _, item := range val {
+				if m, ok := item.(map[string]any); ok {
+					pruneNilFields(m)
+				}
+			}
+		case map[string]any:
+			pruneNilFields(val)
+		}
+	}
 }
 
 // GetObservedComposite returns the observed composite and unmarshals it into the given object.
@@ -1015,7 +1052,6 @@ func (s *ServiceRuntime) checkReadiness() error {
 	s.desiredResources = desired
 
 	return nil
-
 }
 
 // GetAllObserved returns a map of all observed resources.
@@ -1041,7 +1077,6 @@ func (s *ServiceRuntime) SetAllDesired(resources map[resource.Name]*resource.Des
 // The only differences from the observed composite will be either in metadata or the status.
 // As Crossplane 1.14 composition function forbid any changes other than those fields.
 func (s *ServiceRuntime) GetDesiredComposite(obj client.Object) error {
-
 	jsonBytes, err := s.desiredComposite.MarshalJSON()
 	if err != nil {
 		return err
@@ -1441,7 +1476,6 @@ func (s *ServiceRuntime) GetCrossplaneNamespace() string {
 // crossplane namespace and also deploy a copy of that to the instance namespace.
 // It will prefix the secret name with the composite name, to ensure that no secret names clash in the crossplane namespace.
 func (s *ServiceRuntime) deployConnectionDetailsToInstanceNS() error {
-
 	for i := range s.desiredResources {
 		cdRef := s.desiredResources[i].Resource.GetWriteConnectionSecretToReference()
 		if cdRef == nil {

@@ -69,7 +69,7 @@ Kubernetes names have a **63-character limit**. When using `com.GetName` or comp
 
 | Decision | Guideline |
 |----------|-----------|
-| Where to put shared logic | `pkg/comp-functions/functions/common/` — when 2+ services need it |
+| Where to put shared logic | `pkg/comp-functions/functions/common/` — when 2+ services need it (e.g., `common/tcproute/` for TCP routing) |
 | Where to put service logic | `pkg/comp-functions/functions/<service>/` — unique to one service |
 | Framework helpers | `pkg/comp-functions/runtime/` — composition function infrastructure |
 | Controller logic | `pkg/controller/` — anything needing a kube client or side effects |
@@ -87,12 +87,22 @@ Kubernetes names have a **63-character limit**. When using `com.GetName` or comp
 ## Webhook Patterns
 
 - **Validation webhooks**: enforce invariants — no version downgrades, no disk shrink, naming limits
-- **Mutating webhooks**: set defaults, allocate resources (e.g., SSH port allocation for Forgejo)
+- **Mutating webhooks**: set defaults, allocate resources (e.g., TCP port allocation for Gateway API)
 - Check **cross-cutting webhooks** before creating new ones:
   - `deletionprotection.go` / `claim_deletionprotection.go` — deletion protection
   - `disk_downsize.go` — prevents disk shrinking
   - `objectbuckets.go` / `xobjectbuckets.go` — bucket validation
+  - `tcpgateway/` — generic TCP port allocation + gateway sharding for XListenerSets (used by any service needing TCP routing)
 - Webhook files live in `pkg/controller/webhooks/`
+
+## TCP Routing (Gateway API)
+
+Services needing TCP exposure (e.g., Forgejo SSH) use a shared two-layer system:
+
+1. **Composition function layer** (`pkg/comp-functions/functions/common/tcproute/`): `AddTCPRoute()` creates XListenerSet + TCPRoute + NetworkPolicy via provider-kubernetes. Any service can call this with a `TCPRouteConfig`.
+2. **Webhook layer** (`pkg/controller/webhooks/tcpgateway/`): service-agnostic mutating webhook allocates ports (via Leases) and shards across Gateways for any XListenerSet.
+
+When adding TCP routing to a new service: use `tcproute.AddTCPRoute()` in the composition function. No webhook changes needed — the existing `tcpgateway/` handler covers all XListenerSets.
 
 ## Testing
 
@@ -121,7 +131,7 @@ When implementation touches a specific service, **consult the relevant service a
 | MariaDB | `mariadb-service-expert` | Galera clusters, ProxySQL, user management |
 | Keycloak | `vshnkeycloak-expert` | Helm deployment, PostgreSQL dependency, custom themes/providers |
 | Nextcloud | `vshnnextcloud-expert` | Helm deployment, Collabora Online, maintenance mode backup |
-| Forgejo | `vshnforgejo-expert` | SSH gateway (port allocation, Gateway API sharding), backup |
+| Forgejo | `vshnforgejo-expert` | TCP gateway (port allocation, sharding), SSH access, backup |
 | Garage | `vshngarage-expert` | S3-compatible object storage, Helm cluster setup |
 
 **When to consult**: before making non-trivial changes to a service's composition functions, webhooks, or SLI probes. The agent knows the service's quirks and constraints that aren't obvious from the code.

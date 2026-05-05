@@ -1,0 +1,75 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    defaultPlan: standard-2
+    controlNamespace: appcat-control
+    plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled":
+            true, "memory": "2Gi"}}, "standard-4": {"size": {"cpu": "1", "disk": "16Gi",
+            "enabled": true, "memory": "4Gi"}}, "standard-8": {"size": {"cpu": "2",
+            "disk": "16Gi", "enabled": true, "memory": "8Gi"}}}'
+    ocpDefaultAppsDomain: "apps.example.com"
+    routeType: "HTTPRoute"
+    httpGatewayName: "http-gateway"
+    httpGatewayNamespace: "syn-kgateway"
+    ingress_annotations: |
+      cert-manager.io/cluster-issuer: letsencrypt-production
+observed:
+  resources:
+    mycloak-pg:
+      resource:
+        apiVersion: vshn.appcat.vshn.io/v1
+        kind: XVSHNPostgreSQL
+        metadata:
+          name: mycloak-pg
+        spec:
+          compositionRef:
+            name: vshnpostgrescnpg.vshn.appcat.vshn.io
+      connection_details:
+        foo: YmFyCg==
+    # necessary for keycloak custom env variables
+    mycloak-env-cm-my-configmap-claim-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: unit-test
+    mycloak-env-secret-my-secret-1-claim-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: unit-test
+    mycloak-env-secret-my-secret-2-claim-observer:
+      resource:
+        apiVersion: v1
+        kind: Object
+        metadata:
+          name: unit-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: unit-test

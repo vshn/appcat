@@ -10,8 +10,9 @@ input:
   data:
     defaultPlan: mini
     controlNamespace: appcat-control
-    sshGatewayNamespace: gateway-system
-    sshGateways: '{"tcp-gateway":"ssh.example.com"}'
+    tcpGatewayNamespace: gateway-system
+    tcpGateways: '{"tcp-gateway":"ssh.example.com"}'
+    tcpGatewayEnabled: "true"
     plans: |
       {"large": {"size": {"cpu": "4", "disk": "500Gi", "enabled": true, "memory": "16Gi"}}, "medium": {"size": {"cpu": "2", "disk": "200Gi", "enabled": true, "memory": "8Gi"}}, "mini": {"size": {"cpu": "500m", "disk": "10Gi", "enabled": true, "memory": "2Gi"}}, "small": {"size": {"cpu": "1", "disk": "50Gi", "enabled": true, "memory": "4Gi"}}}
 observed:
@@ -61,7 +62,7 @@ observed:
           name: VSHNForgejo.vshn.appcat.vshn.io-ce52f13
         compositionUpdatePolicy: Automatic
   resources:
-    forgejo-unit-test-ssh:
+    forgejo-unit-test-ssh-xls:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
         kind: Object
@@ -74,7 +75,7 @@ observed:
               kind: XListenerSet
               metadata:
                 name: forgejo-unit-test-ssh
-                namespace: gateway-system
+                namespace: vshn-forgejo-unit-test
               spec:
                 parentRef:
                   group: gateway.networking.k8s.io

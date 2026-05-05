@@ -30,6 +30,10 @@ func init() {
 				Execute: createCnpgNetworkPolicy,
 			},
 			{
+				Name:    "tcpgateway",
+				Execute: ConfigureTCPGateway,
+			},
+			{
 				Name:    "connection-details",
 				Execute: AddConnectionSecrets,
 			},

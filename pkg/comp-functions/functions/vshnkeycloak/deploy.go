@@ -493,6 +493,21 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 									},
 								},
 								{
+									Name:  "KEYCLOAK_MANAGED",
+									Value: "admin",
+								},
+								{
+									Name: "KEYCLOAK_MANAGED_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: adminSecret,
+											},
+											Key: adminPWSecretField,
+										},
+									},
+								},
+								{
 									Name:  "KC_HTTP_RELATIVE_PATH",
 									Value: comp.Spec.Parameters.Service.RelativePath,
 								},
@@ -611,6 +626,19 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"name":  "KC_HTTPS_CERTIFICATE_KEY_FILE",
 			"value": "/certs/keycloak/tls.key",
 		},
+	}
+
+	if adminFQDN := comp.Spec.Parameters.Service.AdminConsole.FQDN; adminFQDN != "" {
+		extraEnvMap = append(extraEnvMap,
+			map[string]any{
+				"name":  "KC_HOSTNAME",
+				"value": "https://" + comp.Spec.Parameters.Service.FQDN,
+			},
+			map[string]any{
+				"name":  "KC_HOSTNAME_ADMIN",
+				"value": "https://" + adminFQDN,
+			},
+		)
 	}
 
 	extraEnv, err := toYAML(extraEnvMap)

@@ -110,6 +110,43 @@ func TestDeployment(t *testing.T) {
 	})
 }
 
+func TestDeploymentHTTPRoute(t *testing.T) {
+	t.Run("GivenHTTPRouteMode_ExpectHTTPRouteAndListenerSet", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnforgejo/03_httproute.yaml")
+		svc.Config.Data["routeType"] = common.RouteTypeHTTPRoute
+		svc.Config.Data["httpGatewayName"] = "http-gateway"
+		svc.Config.Data["httpGatewayNamespace"] = "syn-kgateway"
+
+		comp := &vshnv1.VSHNForgejo{}
+		err := svc.GetObservedComposite(comp)
+		assert.NoError(t, err)
+
+		secretName, err := common.AddCredentialsSecret(comp, svc, []string{"password"}, common.DisallowDeletion, common.AddStaticFieldToSecret(map[string]string{
+			"username": "forgejo_admin",
+		}))
+		assert.NoError(t, err)
+		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))
+
+		allDesired := svc.GetAllDesired()
+		foundRoute, foundLS, foundGrant := false, false, false
+		for _, d := range allDesired {
+			name := d.Resource.GetName()
+			if name == comp.GetName()+"-httproute" {
+				foundRoute = true
+			}
+			if name == comp.GetName()+"-listenerset" {
+				foundLS = true
+			}
+			if name == comp.GetName()+"-httpgrant" {
+				foundGrant = true
+			}
+		}
+		assert.True(t, foundRoute)
+		assert.True(t, foundLS)
+		assert.False(t, foundGrant)
+	})
+}
+
 func getReleaseValues(t *testing.T, release xhelmv1.Release) map[string]any {
 	values := map[string]any{}
 	assert.NoError(t, json.Unmarshal(release.Spec.ForProvider.Values.Raw, &values))

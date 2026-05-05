@@ -29,6 +29,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	s3v1 "github.com/vshn/appcat/v4/apis/s3/v1"
+
 	cloudscalev1 "github.com/vshn/provider-cloudscale/apis/cloudscale/v1"
 	exoscalev1 "github.com/vshn/provider-exoscale/apis/exoscale/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
@@ -36,6 +38,8 @@ import (
 	pdbv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func SetupScheme() *runtime.Scheme {
@@ -76,4 +80,7 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = my1alpha1.SchemeBuilder.AddToScheme(s)
 	_ = codey.SchemeBuilder.AddToScheme(s)
 	_ = coordinationv1.AddToScheme(s)
+	_ = s3v1.SchemeBuilder.AddToScheme(s)
+	_ = gatewayv1.Install(s)
+	_ = gatewayv1beta1.Install(s)
 }

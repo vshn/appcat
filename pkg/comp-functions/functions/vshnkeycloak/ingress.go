@@ -99,7 +99,7 @@ func buildKeycloakIngress(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 		base + "/resources/",
 		base + "/.well-known/",
 	}
-	if !comp.Spec.Parameters.Service.AdminConsole.Disabled && comp.Spec.Parameters.Service.AdminConsole.FQDN == "" {
+	if !comp.Spec.Parameters.Service.AdminConsole.Private && comp.Spec.Parameters.Service.AdminConsole.FQDN == "" {
 		allowedPaths = append(allowedPaths, base+"/admin/", base+"/")
 	}
 

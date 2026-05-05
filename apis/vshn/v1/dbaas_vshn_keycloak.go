@@ -157,9 +157,10 @@ type VSHNKeycloakServiceSpec struct {
 
 // VSHNKeycloakAdminConsoleSpec configures the Keycloak admin console access.
 type VSHNKeycloakAdminConsoleSpec struct {
-	// Disabled disables access to the Keycloak admin console via the main FQDN.
+	// Private disables access to the Keycloak admin console via the main FQDN.
+	// It's still accessible via a port-forward
 	// +kubebuilder:default=false
-	Disabled bool `json:"disabled,omitempty"`
+	Private bool `json:"private,omitempty"`
 
 	// FQDN is the hostname for a dedicated admin console ingress.
 	// If not set, the admin console is accessible via the main FQDN (unless Disabled is true).

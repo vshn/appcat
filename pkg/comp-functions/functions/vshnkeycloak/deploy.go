@@ -493,6 +493,21 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 									},
 								},
 								{
+									Name:  "KEYCLOAK_MANAGED",
+									Value: "admin",
+								},
+								{
+									Name: "KEYCLOAK_MANAGED_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: adminSecret,
+											},
+											Key: adminPWSecretField,
+										},
+									},
+								},
+								{
 									Name:  "KC_HTTP_RELATIVE_PATH",
 									Value: comp.Spec.Parameters.Service.RelativePath,
 								},

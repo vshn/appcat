@@ -93,7 +93,7 @@ func TestGetMaintenanceConfig(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantServiceDis, cfg.DisableServiceRelease)
+			assert.Equal(t, tt.wantServiceDis, cfg.DisableServiceMaint)
 			assert.Equal(t, tt.wantAppcatDis, cfg.DisableAppcatRelease)
 		})
 	}

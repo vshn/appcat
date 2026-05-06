@@ -84,7 +84,6 @@ var maintenanceServices = map[service][]string{
 var serviceName service
 
 func newMaintenanceCMD() *cobra.Command {
-
 	command := &cobra.Command{
 		Use:          "maintenance",
 		Short:        "Maintenance runner",
@@ -108,11 +107,36 @@ func newMaintenanceCMD() *cobra.Command {
 func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 
+	serviceID = viper.GetString("SERVICE_ID")
+
+	log := logr.FromContextOrDiscard(ctx).WithValues(
+		"instanceNamespace", viper.GetString("INSTANCE_NAMESPACE"),
+		"claimName", viper.GetString("CLAIM_NAME"),
+		"claimNamespace", viper.GetString("CLAIM_NAMESPACE"),
+		"serviceId", serviceID,
+	)
+
 	kubeClient, err := client.NewWithWatch(ctrl.GetConfigOrDie(), client.Options{
 		Scheme: pkg.SetupScheme(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to initialize kube client: %w", err)
+	}
+
+	controlNamespace := viper.GetString("CONTROL_NAMESPACE")
+	if controlNamespace == "" {
+		controlNamespace = "syn-appcat-control"
+	}
+
+	maintenanceConfigMapName := viper.GetString("MAINTENANCE_CONFIGMAP_NAME")
+	if maintenanceConfigMapName == "" {
+		maintenanceConfigMapName = "maintenance-config"
+	}
+
+	maintConfig, err := maintenance.GetMaintenanceConfig(ctx, kubeClient, maintenanceConfigMapName, controlNamespace, serviceID)
+	if err != nil {
+		log.Error(err, "Failed to read maintenance config, continuing with defaults")
+		maintConfig = maintenance.MaintenanceConfig{}
 	}
 
 	maintClient, err := getMaintClient(ctx, kubeClient)
@@ -123,13 +147,6 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 	if err = validateMandatoryEnvs(serviceName); err != nil {
 		return fmt.Errorf("missing required environment variables: %w", err)
 	}
-
-	log := logr.FromContextOrDiscard(ctx).WithValues(
-		"instanceNamespace", viper.GetString("INSTANCE_NAMESPACE"),
-		"claimName", viper.GetString("CLAIM_NAME"),
-		"claimNamespace", viper.GetString("CLAIM_NAMESPACE"),
-		"serviceId", viper.GetString("SERVICE_ID"),
-	)
 
 	vh := getVersionHandler(kubeClient, log)
 
@@ -165,9 +182,17 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 	}
 
 	pinImageTag := viper.GetString("PIN_IMAGE_TAG")
-	disableAppcatRelease, err := strconv.ParseBool(viper.GetString("DISABLE_APPCAT_RELEASE"))
+	envDisableAppcatRelease, err := strconv.ParseBool(viper.GetString("DISABLE_APPCAT_RELEASE"))
 	if err != nil {
 		return fmt.Errorf("cannot parse env variable DISABLE_APPCAT_RELEASE to bool: %w", err)
+	}
+
+	disableAppcatRelease := envDisableAppcatRelease || maintConfig.DisableAppcatRelease
+	disableServiceMaint := maintConfig.DisableServiceMaint
+
+	if disableAppcatRelease && disableServiceMaint {
+		log.Info("Both appcat release and service maintenance disabled, skipping all maintenance")
+		return nil
 	}
 
 	if disableAppcatRelease && pinImageTag != "" {
@@ -213,6 +238,12 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		log.Info("Image tag pinned by user configuration, skipping service maintenance", "pinnedTag", pinImageTag)
 		return nil
 	}
+
+	if disableServiceMaint {
+		log.Info("Service maintenance disabled via component, skipping")
+		return nil
+	}
+
 	if err := m.DoMaintenance(ctx); err != nil {
 		return fmt.Errorf("maintenance failed: %w", err)
 	}
@@ -254,7 +285,6 @@ func validateMandatoryEnvs(s service) error {
 }
 
 func getVersionHandler(k8sCLient client.Client, log logr.Logger) release.VersionHandler {
-
 	opts := release.ReleaserOpts{
 		ClaimName:      viper.GetString("CLAIM_NAME"),
 		ClaimNamespace: viper.GetString("CLAIM_NAMESPACE"),
@@ -280,7 +310,6 @@ func getStackgresClient() (*stackgres.StackgresClient, error) {
 }
 
 func getControlPlaneKubeConfig(ctx context.Context, kubeClient client.Client) (client.WithWatch, error) {
-
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "controlclustercredentials",

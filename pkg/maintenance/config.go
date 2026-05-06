@@ -11,8 +11,8 @@ import (
 
 // MaintenanceConfig holds the per-service mainteancne configuration
 type MaintenanceConfig struct {
-	DisableServiceRelease bool
-	DisableAppcatRelease  bool
+	DisableServiceMaint  bool
+	DisableAppcatRelease bool
 }
 
 func GetMaintenanceConfig(ctx context.Context, c client.Reader, cmName, namespace, service string) (MaintenanceConfig, error) {
@@ -25,7 +25,7 @@ func GetMaintenanceConfig(ctx context.Context, c client.Reader, cmName, namespac
 		return conf, err
 	}
 
-	conf.DisableServiceRelease = parseBool(cm.Data[service+".disableServiceRelease"])
+	conf.DisableServiceMaint = parseBool(cm.Data[service+".disableServiceRelease"])
 	conf.DisableAppcatRelease = parseBool(cm.Data[service+".disableAppcatRelease"])
 
 	return conf, nil

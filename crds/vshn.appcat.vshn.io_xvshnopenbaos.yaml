@@ -187,9 +187,13 @@ spec:
                         - secretKey
                         type: object
                     type: object
-                  instances:
-                    description: Instances defines the number of instances to run.
-                    type: integer
+                  ha:
+                    description: HA contains high availability settings of a service.
+                    properties:
+                      enabled:
+                        default: false
+                        type: boolean
+                    type: object
                   maintenance:
                     description: Maintenance contains settings to control the maintenance
                       of an instance.

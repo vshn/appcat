@@ -79,8 +79,8 @@ type VSHNOpenBaoParameters struct {
 	// Monitoring contains settings to control the monitoring of a service.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
-	// Instances defines the number of instances to run.
-	Instances int `json:"instances,omitempty"`
+	// HA contains high availability settings of a service.
+	HA VSHNOpenBaoHighAvailabilitySpec `json:"ha,omitempty"`
 }
 
 // VSHNOpenBaoServiceSpec contains OpenBao DBaaS specific properties
@@ -130,6 +130,12 @@ type VSHNOpenBaoTLSSpec struct {
 	// +kubebuilder:default=true
 	// TLSAuthClients enables client authentication requirement
 	TLSAuthClients bool `json:"authClients,omitempty"`
+}
+
+// VSHNOpenBaoHighAvailabilitySpec contains settings to control high availability of deployed OpenBao.
+type VSHNOpenBaoHighAvailabilitySpec struct {
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // VSHNOpenBaoStatus reflects the observed state of a VSHNOpenBao.
@@ -293,7 +299,10 @@ func (v *VSHNOpenBao) GetMonitoring() VSHNMonitoring {
 }
 
 func (v *VSHNOpenBao) GetInstances() int {
-	return v.Spec.Parameters.Instances
+	if v.Spec.Parameters.HA.Enabled {
+		return 3
+	}
+	return 1
 }
 
 func (v *VSHNOpenBao) GetBillingName() string {

@@ -50,8 +50,30 @@ type VSHNOpenBaoSpec struct {
 	WriteConnectionSecretToRef LocalObjectReference `json:"writeConnectionSecretToRef,omitempty"`
 }
 
+type VSHNOpenBaoSettingsInit struct {
+	// +kubebuilder:default="true"
+	RunInitJob bool `json:"runInitJob"`
+
+	// SecretShares is the number of key shares to split the generated master key into.
+	// +kubebuilder:default=5
+	// +kubebuilder:validation:Minimum=1
+	SecretShares int `json:"secretShares,omitempty"`
+
+	// SecretThreshold is the number of key shares required to reconstruct the master key.
+	// +kubebuilder:default=3
+	// +kubebuilder:validation:Minimum=1
+	SecretThreshold int `json:"secretThreshold,omitempty"`
+}
+
+type VSHNOpenBaoSettings struct {
+	Init VSHNOpenBaoSettingsInit `json:"init,omitempty"`
+}
+
 // VSHNOpenBaoParameters are the configurable fields of a VSHNOpenBao.
 type VSHNOpenBaoParameters struct {
+	// OpenBao contains service settings
+	OpenBao VSHNOpenBaoSettings `json:"openBao,omitempty"`
+
 	// Service contains OpenBao DBaaS specific properties
 	Service VSHNOpenBaoServiceSpec `json:"service,omitempty"`
 
@@ -145,6 +167,10 @@ type VSHNOpenBaoStatus struct {
 	// Schedules keeps track of random generated schedules, is overwriten by
 	// schedules set in the service's spec.
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
+	// InitializationComplete is set to true once the init job has run successfully
+	// and the root token secret is populated. Prevents the init job from being
+	// re-created on every reconcile after the TTL expires.
+	InitializationComplete bool `json:"initializationComplete,omitempty"`
 }
 
 func (v *VSHNOpenBao) GetClaimNamespace() string {

@@ -1,0 +1,35 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    defaultPlan: standard-2
+    controlNamespace: appcat-control
+    kubectl_image: bitnami/kubectl:latest
+    plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled": true,
+      "memory": "2Gi"}}}'
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNOpenBao
+      metadata:
+        name: openbao-test
+        labels:
+          crossplane.io/claim-name: openbao-test
+          crossplane.io/claim-namespace: unit-test
+      spec:
+        parameters:
+          openBao:
+            init:
+              runInitJob: true
+              secretShares: 5
+              secretThreshold: 3
+      status:
+        instanceNamespace: vshn-openbao-openbao-test
+  resources: {}

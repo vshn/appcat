@@ -40,8 +40,8 @@ func TestShouldDisable(t *testing.T) {
 			service:                 "redis",
 			envDisableAppcatRelease: "false",
 			cmData: map[string]string{
-				"redis.disableServiceRelease": "true",
-				"redis.disableAppcatRelease":  "true",
+				"redis.disableServiceMaint":  "true",
+				"redis.disableAppcatRelease": "true",
 			},
 			wantDisableAppcat:  true,
 			wantDisableService: true,

@@ -15,7 +15,7 @@ type MaintenanceConfig struct {
 	DisableAppcatRelease bool
 }
 
-func GetMaintenanceConfig(ctx context.Context, c client.Reader, cmName, namespace, service string) (MaintenanceConfig, error) {
+func GetMaintenanceConfig(ctx context.Context, c client.Reader, cmName, namespace, serviceID string) (MaintenanceConfig, error) {
 	conf := MaintenanceConfig{}
 
 	cm := &corev1.ConfigMap{}
@@ -25,8 +25,8 @@ func GetMaintenanceConfig(ctx context.Context, c client.Reader, cmName, namespac
 		return conf, err
 	}
 
-	conf.DisableServiceMaint = parseBool(cm.Data[service+".disableServiceRelease"])
-	conf.DisableAppcatRelease = parseBool(cm.Data[service+".disableAppcatRelease"])
+	conf.DisableServiceMaint = parseBool(cm.Data[serviceID+".disableServiceMaint"])
+	conf.DisableAppcatRelease = parseBool(cm.Data[serviceID+".disableAppcatRelease"])
 
 	return conf, nil
 }

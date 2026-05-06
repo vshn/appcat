@@ -33,8 +33,8 @@ func TestGetMaintenanceConfig(t *testing.T) {
 					Namespace: "syn-appcat-control",
 				},
 				Data: map[string]string{
-					"keycloak.disableServiceRelease": "true",
-					"keycloak.disableAppcatRelease":  "true",
+					"keycloak.disableServiceMaint":  "true",
+					"keycloak.disableAppcatRelease": "true",
 				},
 			},
 			wantServiceDis: true,
@@ -49,8 +49,8 @@ func TestGetMaintenanceConfig(t *testing.T) {
 					Namespace: "syn-appcat-control",
 				},
 				Data: map[string]string{
-					"redis.disableServiceRelease": "false",
-					"redis.disableAppcatRelease":  "false",
+					"redis.disableServiceMaint":  "false",
+					"redis.disableAppcatRelease": "false",
 				},
 			},
 			wantServiceDis: false,

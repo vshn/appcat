@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
+	"github.com/vshn/appcat/v4/apis/garage"
 	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
@@ -73,8 +74,8 @@ func DeployGarage(ctx context.Context, comp *vshnv1.VSHNGarage, svc *runtime.Ser
 	connectionDetails := []v1beta1.ConnectionDetail{
 		{
 			ObjectReference: corev1.ObjectReference{
-				APIVersion: "garage.rajsingh.info/v1beta1",
-				Kind:       "GarageCluster",
+				APIVersion: garage.GroupVersion.String(),
+				Kind:       garage.GarageClusterGVK.Kind,
 				Name:       "garage",
 				Namespace:  comp.GetInstanceNamespace(),
 				FieldPath:  "status.endpoints.s3",

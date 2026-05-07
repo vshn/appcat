@@ -4637,7 +4637,7 @@ spec:
                         init:
                           properties:
                             runInitJob:
-                              default: "true"
+                              default: true
                               type: boolean
                             secretShares:
                               default: 5

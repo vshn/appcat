@@ -9,11 +9,11 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/vshn/appcat/v4/apis/garage"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,11 +27,7 @@ import (
 
 const adminCredentialsSecret = "admin-s3-credentials"
 
-var garageBucketGVK = schema.GroupVersionKind{
-	Group:   "garage.rajsingh.info",
-	Version: "v1alpha1",
-	Kind:    "GarageBucket",
-}
+var garageBucketGVK = garage.GarageBucketGVK
 
 // CleanupReconciler watches GarageBucket resources and empties the underlying
 // S3 bucket when deletion is requested, using dedicated admin credentials.

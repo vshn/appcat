@@ -51,7 +51,7 @@ type VSHNOpenBaoSpec struct {
 }
 
 type VSHNOpenBaoSettingsInit struct {
-	// +kubebuilder:default="true"
+	// +kubebuilder:default=true
 	RunInitJob bool `json:"runInitJob"`
 
 	// SecretShares is the number of key shares to split the generated master key into.

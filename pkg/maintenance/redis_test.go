@@ -11,8 +11,10 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	"github.com/vshn/appcat/v4/pkg"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,6 +47,18 @@ func TestRedis_DoMaintenance(t *testing.T) {
 									Raw: []byte("{\"image\":{\"tag\":\"7.0\"}}"),
 									Object: &runtime.Unknown{
 										Raw: []byte("{\"image\":{\"tag\":\"7.0\"}}"),
+									},
+								},
+							},
+						},
+					},
+					Status: v1beta1.ReleaseStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									{
+										Type:   xpv1.TypeSynced,
+										Status: corev1.ConditionTrue,
 									},
 								},
 							},

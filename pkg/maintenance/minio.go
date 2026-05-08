@@ -120,6 +120,10 @@ func (m *Minio) ensureTagIsNotNil(ctx context.Context, valuesPath helm.ValuePath
 		return err
 	}
 
+	if !helm.IsReleaseSynced(release) {
+		return fmt.Errorf("release %s is not synced, skipping maintenance to avoid unexpected behavior", release.Name)
+	}
+
 	rawValues := release.Spec.ForProvider.Values
 
 	values := map[string]interface{}{}

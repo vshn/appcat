@@ -8,10 +8,12 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	helmv1beta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	"github.com/vshn/appcat/v4/pkg"
 	"github.com/vshn/appcat/v4/pkg/maintenance/helm"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -120,6 +122,18 @@ func TestMinio_ensureTagIsNotNil(t *testing.T) {
 						ValuesSpec: v1beta1.ValuesSpec{
 							Values: runtime.RawExtension{
 								Raw: []byte(`{}`),
+							},
+						},
+					},
+				},
+				Status: helmv1beta1.ReleaseStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{
+								{
+									Type:   xpv1.TypeSynced,
+									Status: corev1.ConditionTrue,
+								},
 							},
 						},
 					},

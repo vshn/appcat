@@ -10,9 +10,12 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-logr/logr"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	"github.com/vshn/appcat/v4/pkg"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -660,4 +663,136 @@ func getMockLinkHeader(ref string, rel string) http.Header {
 	hd := http.Header{}
 	hd.Add("Link", fmt.Sprintf(`<%s>; rel="%s"`, ref, rel))
 	return hd
+}
+
+func Test_IsReleaseSynced(t *testing.T) {
+	tests := []struct {
+		name           string
+		release        *v1beta1.Release
+		expectedSynced bool
+	}{
+		{
+			name: "WhenSyncedConditionTrue_ThenReturnTrue",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+				Status: v1beta1.ReleaseStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{
+								{
+									Type:   xpv1.TypeSynced,
+									Status: corev1.ConditionTrue,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedSynced: true,
+		},
+		{
+			name: "WhenSyncedConditionFalse_ThenReturnFalse",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+				Status: v1beta1.ReleaseStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{
+								{
+									Type:   xpv1.TypeSynced,
+									Status: corev1.ConditionFalse,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedSynced: false,
+		},
+		{
+			name: "WhenNoSyncedCondition_ThenReturnFalse",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+			},
+			expectedSynced: false,
+		},
+		{
+			name: "WhenSyncedConditionUnknown_ThenReturnFalse",
+			release: &v1beta1.Release{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-release",
+				},
+				Status: v1beta1.ReleaseStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{
+								{
+									Type:   xpv1.TypeSynced,
+									Status: corev1.ConditionUnknown,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedSynced: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedSynced, IsReleaseSynced(tt.release))
+		})
+	}
+}
+
+func Test_DoMaintenance_UnsyncedRelease(t *testing.T) {
+	unsyncedRelease := &v1beta1.Release{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-release",
+		},
+		Spec: v1beta1.ReleaseSpec{
+			ForProvider: v1beta1.ReleaseParameters{
+				Namespace: "test-namespace",
+				ValuesSpec: v1beta1.ValuesSpec{
+					Values: runtime.RawExtension{
+						Raw: []byte(`{"image":{"tag":"7.0"}}`),
+					},
+				},
+			},
+		},
+	}
+
+	fClient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(unsyncedRelease).
+		Build()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		p := RegistryResult{
+			Tags: []string{"7.0.1"},
+		}
+		payload, _ := json.Marshal(p)
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	viper.Set("INSTANCE_NAMESPACE", "test-namespace")
+	defer viper.Reset()
+
+	r := ImagePatcher{
+		k8sClient:  fClient,
+		httpClient: server.Client(),
+		log:        logr.Logger{},
+	}
+
+	err := r.DoMaintenance(context.Background(), server.URL, NewValuePath("image", "tag"), SemVerPatchesOnly(true))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "is not synced")
 }

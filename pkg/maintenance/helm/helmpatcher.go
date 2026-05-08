@@ -14,8 +14,10 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/go-logr/logr"
 	"github.com/spf13/viper"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	"github.com/vshn/appcat/v4/pkg/common/jsonpatch"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -144,6 +146,10 @@ func (h *ImagePatcher) DoMaintenance(ctx context.Context, tagURL string, tagPath
 
 	h.log.Info("Found release " + release.Name)
 
+	if !IsReleaseSynced(release) {
+		return fmt.Errorf("release %s is not synced, skipping maintenance to avoid unexpected behavior", release.Name)
+	}
+
 	h.log.Info("Getting current image tag, from path", "fieldPath", strings.Join(tagPath.AsSlice(), ","))
 
 	currentTag, err := h.getCurrentTagFromRelease(release, tagPath.AsSlice())
@@ -197,6 +203,11 @@ func (h *ImagePatcher) getCurrentTagFromRelease(release *v1beta1.Release, fieldP
 		return "", fmt.Errorf("cannot get image tag from release %s: %v", release.Name, err)
 	}
 	return tag.(string), nil
+}
+
+// IsReleaseSynced returns true if the Helm release's Crossplane Synced condition is True.
+func IsReleaseSynced(release *v1beta1.Release) bool {
+	return release.GetCondition(xpv1.TypeSynced).Status == corev1.ConditionTrue
 }
 
 // GetRelease will get the first release it finds in the given instanceNamespace

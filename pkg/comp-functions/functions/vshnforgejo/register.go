@@ -25,6 +25,10 @@ func init() {
 				Name:    "ssh",
 				Execute: ConfigureSSHAccess,
 			},
+			{
+				Name:    "billing",
+				Execute: AddBilling,
+			},
 		},
 	})
 }

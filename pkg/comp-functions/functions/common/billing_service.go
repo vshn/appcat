@@ -234,7 +234,7 @@ func CreateOrUpdateBillingServiceWithOptions(ctx context.Context, svc *runtime.S
 			Controller:         ptr.To(true),
 			BlockOwnerDeletion: ptr.To(false),
 		}
-		kubeOpts = append(kubeOpts, runtime.KubeOptionSetOwnerReferenceFromKubeObject(billingService, ownerRef))
+		kubeOpts = append(kubeOpts, runtime.KubeOptionSetOwnerReferenceFromKubeObject(ownerRef))
 	}
 
 	// Set the BillingService as a desired kube object

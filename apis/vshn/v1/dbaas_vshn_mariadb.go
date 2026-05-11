@@ -97,6 +97,10 @@ type VSHNMariaDBParameters struct {
 	// An additional ProxySQL statefulset will be deployed to make failovers
 	// as seamless as possible.
 	Instances int `json:"instances,omitempty"`
+
+	// AdditionalResources contains arbitrary Kubernetes resources to deploy into the instance namespace.
+	// Note: this feature is not enabled on all clusters.
+	AdditionalResources VSHNAdditionalResources `json:"additionalResources,omitempty"`
 }
 
 // VSHNMariaDBServiceSpec contains MariaDB DBaaS specific properties

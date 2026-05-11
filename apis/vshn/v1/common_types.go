@@ -340,6 +340,18 @@ func (a *TimeOfDay) SetTime(t time.Time) {
 	*a = TimeOfDay(t.Format(time.TimeOnly))
 }
 
+// VSHNAdditionalResources references a ConfigMap containing arbitrary Kubernetes resources
+// to deploy into the instance namespace.
+// The ConfigMap should have one entry per resource, where the key is a descriptive name
+// (e.g. "my-configmap.yaml") and the value is the raw YAML definition.
+// Note: this feature is not enabled on all clusters.
+type VSHNAdditionalResources struct {
+	// ConfigMapRef is the name of a ConfigMap in the claim namespace whose entries
+	// each define a Kubernetes resource to deploy into the instance namespace.
+	// +kubebuilder:validation:Optional
+	ConfigMapRef string `json:"configMapRef,omitempty"`
+}
+
 // AddDuration adds duration to current time and returns the new time plus day offset.
 func (a TimeOfDay) AddDuration(d time.Duration) (TimeOfDay, int) {
 	start := a.GetTime()

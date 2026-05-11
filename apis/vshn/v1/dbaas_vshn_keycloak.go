@@ -93,6 +93,10 @@ type VSHNKeycloakParameters struct {
 	// Instances configures the number of Keycloak instances for the cluster.
 	// Each instance contains one Keycloak server.
 	Instances int `json:"instances,omitempty"`
+
+	// AdditionalResources contains arbitrary Kubernetes resources to deploy into the instance namespace.
+	// Note: this feature is not enabled on all clusters.
+	AdditionalResources VSHNAdditionalResources `json:"additionalResources,omitempty"`
 }
 
 // VSHNKeycloakServiceSpec contains keycloak DBaaS specific properties

@@ -74,22 +74,55 @@ func AddAdditionalResources[T client.Object](ctx context.Context, obj T, svc *ru
 	for key, yamlContent := range observedCM.Data {
 		raw := map[string]interface{}{}
 		if err := sigsyaml.Unmarshal([]byte(yamlContent), &raw); err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("cannot parse resource %q from configmap %q: %w", key, ar.ConfigMapRef, err))
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot parse resource %q from configmap %q: %v", key, ar.ConfigMapRef, err)))
+			continue
 		}
 		if len(raw) == 0 {
 			continue
 		}
 
 		u := &unstructured.Unstructured{Object: raw}
+
+		if err := validateAdditionalResource(u); err != nil {
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("resource %q in configmap %q is not allowed: %v", key, ar.ConfigMapRef, err)))
+			continue
+		}
+
 		u.SetNamespace(instanceNamespace)
 
 		resourceName := name + "-additional-" + stripYAMLExtension(key)
 		if err := svc.SetDesiredKubeObject(u, resourceName, runtime.KubeOptionAllowDeletion); err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("cannot set desired resource %q: %w", key, err))
+			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot set desired resource %q: %v", key, err)))
+			continue
 		}
 		log.Info("Deployed additional resource", "key", key, "kind", u.GetKind(), "name", u.GetName())
 	}
 
+	return nil
+}
+
+// blockedAPIGroups lists API groups whose resources may not be deployed as additional resources.
+// These groups grant cluster-wide privileges, intercept API traffic, or extend the cluster API
+// in ways that would let a user escape the instance namespace or escalate privileges.
+var blockedAPIGroups = map[string]bool{
+	"rbac.authorization.k8s.io":      true, // Role, RoleBinding, ClusterRole, ClusterRoleBinding
+	"admissionregistration.k8s.io":   true, // ValidatingWebhookConfiguration, MutatingWebhookConfiguration
+	"apiextensions.k8s.io":           true, // CustomResourceDefinition
+	"authorization.k8s.io":           true, // SubjectAccessReview, SelfSubjectAccessReview
+	"certificates.k8s.io":            true, // CertificateSigningRequest
+}
+
+// validateAdditionalResource returns an error if the resource belongs to a blocked API group.
+func validateAdditionalResource(u *unstructured.Unstructured) error {
+	apiVersion := u.GetAPIVersion()
+	// apiVersion is either "group/version" or just "version" for core resources.
+	group := ""
+	if idx := strings.Index(apiVersion, "/"); idx != -1 {
+		group = apiVersion[:idx]
+	}
+	if blockedAPIGroups[group] {
+		return fmt.Errorf("API group %q is not permitted", group)
+	}
 	return nil
 }
 

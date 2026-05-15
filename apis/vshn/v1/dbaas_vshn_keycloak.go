@@ -427,6 +427,10 @@ func (v *VSHNKeycloak) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
+func (v *VSHNKeycloak) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
+}
+
 func (v *VSHNKeycloak) GetSize() VSHNSizeSpec {
 	return v.Spec.Parameters.Size
 }

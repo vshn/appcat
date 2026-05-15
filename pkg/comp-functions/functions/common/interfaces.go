@@ -77,3 +77,10 @@ type Alerter interface {
 type UnmangedBucketProvider interface {
 	GetUnmanagedBucket() *vshnv1.UnmanagedBucket
 }
+
+// AdditionalResourcesGetter provides the additional resources configuration and context needed to deploy them.
+type AdditionalResourcesGetter interface {
+	GetAdditionalResources() vshnv1.VSHNAdditionalResources
+	GetInstanceNamespace() string
+	GetClaimNamespace() string
+}

@@ -344,6 +344,10 @@ func (v *VSHNMariaDB) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
+func (v *VSHNMariaDB) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
+}
+
 func (v *VSHNMariaDB) GetSize() VSHNSizeSpec {
 	return v.Spec.Parameters.Size
 }

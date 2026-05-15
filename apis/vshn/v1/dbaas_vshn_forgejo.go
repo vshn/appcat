@@ -207,6 +207,10 @@ func (v *VSHNForgejo) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
 }
 
+func (v *VSHNForgejo) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
+}
+
 func (v *VSHNForgejo) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-forgejo-%s", v.GetName())
 }

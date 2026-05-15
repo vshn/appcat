@@ -286,6 +286,10 @@ func (v *VSHNPostgreSQL) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
+func (v *VSHNPostgreSQL) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
+}
+
 // VSHNPostgreSQLEncryption contains storage encryption specific parameters
 type VSHNPostgreSQLEncryption struct {
 

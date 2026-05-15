@@ -356,6 +356,10 @@ func (v *VSHNNextcloud) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
+func (v *VSHNNextcloud) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
+}
+
 func (v *VSHNNextcloud) GetSize() VSHNSizeSpec {
 	return v.Spec.Parameters.Size
 }

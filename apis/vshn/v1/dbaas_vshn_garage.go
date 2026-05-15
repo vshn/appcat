@@ -191,6 +191,10 @@ func (v *VSHNGarage) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
+func (v *VSHNGarage) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
+}
+
 func (v *VSHNGarage) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }

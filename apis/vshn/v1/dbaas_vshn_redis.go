@@ -226,6 +226,10 @@ func (v *VSHNRedis) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
+func (v *VSHNRedis) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
+}
+
 func (v *VSHNRedis) GetInstanceNamespace() string {
 	return fmt.Sprintf("vshn-redis-%s", v.GetName())
 	// GetMaintenanceDayOfWeek returns the currently set day of week

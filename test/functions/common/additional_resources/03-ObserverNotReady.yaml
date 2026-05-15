@@ -1,0 +1,46 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        name: psql
+        labels:
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: psql
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: xfn-config
+    labels:
+      name: xfn-config
+  data:
+    additionalResourcesEnabled: "true"
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        name: psql
+        labels:
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: psql
+      spec:
+        claimRef:
+          apiVersion: vshn.appcat.vshn.io/v1
+          kind: VSHNPostgreSQL
+          name: pgsql
+          namespace: unit-test
+        parameters:
+          additionalResources:
+            configMapRef: my-extra-resources
+      status:
+        instanceNamespace: vshn-postgresql-psql

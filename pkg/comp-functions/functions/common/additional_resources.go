@@ -105,11 +105,11 @@ func AddAdditionalResources[T client.Object](ctx context.Context, obj T, svc *ru
 // These groups grant cluster-wide privileges, intercept API traffic, or extend the cluster API
 // in ways that would let a user escape the instance namespace or escalate privileges.
 var blockedAPIGroups = map[string]bool{
-	"rbac.authorization.k8s.io":      true, // Role, RoleBinding, ClusterRole, ClusterRoleBinding
-	"admissionregistration.k8s.io":   true, // ValidatingWebhookConfiguration, MutatingWebhookConfiguration
-	"apiextensions.k8s.io":           true, // CustomResourceDefinition
-	"authorization.k8s.io":           true, // SubjectAccessReview, SelfSubjectAccessReview
-	"certificates.k8s.io":            true, // CertificateSigningRequest
+	"rbac.authorization.k8s.io":    true, // Role, RoleBinding, ClusterRole, ClusterRoleBinding
+	"admissionregistration.k8s.io": true, // ValidatingWebhookConfiguration, MutatingWebhookConfiguration
+	"apiextensions.k8s.io":         true, // CustomResourceDefinition
+	"authorization.k8s.io":         true, // SubjectAccessReview, SelfSubjectAccessReview
+	"certificates.k8s.io":          true, // CertificateSigningRequest
 }
 
 // validateAdditionalResource returns an error if the resource belongs to a blocked API group.

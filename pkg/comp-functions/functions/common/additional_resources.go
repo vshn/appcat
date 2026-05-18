@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,12 +16,28 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
+// AllowedResourceRule mirrors the shape of an RBAC PolicyRule for the subset
+// of fields we use: API groups and resource kinds. A resource is allowed if it
+// matches at least one rule on both axes. The wildcard "*" matches anything.
+type AllowedResourceRule struct {
+	APIGroups []string `json:"apiGroups"`
+	Kinds     []string `json:"kinds"`
+}
+
 // AddAdditionalResources deploys arbitrary Kubernetes resources into the instance namespace.
 // Resources are defined in a ConfigMap in the claim namespace, referenced by ConfigMapRef.
 // Each ConfigMap entry is a separate resource: key is a descriptive name, value is YAML.
-// This function is a no-op when the feature flag is disabled or ConfigMapRef is not set.
+//
+// The composition config key "additionalResourcesAllowed" is a JSON-encoded list of
+// AllowedResourceRule entries (RBAC-style apiGroups + kinds). A resource is deployed
+// only if it matches at least one rule on both axes; everything else is rejected with
+// a warning. An empty or unset allowlist disables the feature entirely.
 func AddAdditionalResources[T client.Object](ctx context.Context, obj T, svc *runtime.ServiceRuntime) *fnproto.Result {
-	if !svc.GetBoolFromCompositionConfig("additionalResourcesEnabled") {
+	allowed, err := parseAllowedResources(svc.Config.Data["additionalResourcesAllowed"])
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot parse additionalResourcesAllowed: %w", err))
+	}
+	if len(allowed) == 0 {
 		return nil
 	}
 
@@ -83,7 +100,8 @@ func AddAdditionalResources[T client.Object](ctx context.Context, obj T, svc *ru
 
 		u := &unstructured.Unstructured{Object: raw}
 
-		if err := validateAdditionalResource(u); err != nil {
+		if err := validateAdditionalResource(u, allowed); err != nil {
+			log.Info("Rejected additional resource", "key", key, "apiVersion", u.GetAPIVersion(), "kind", u.GetKind(), "reason", err.Error())
 			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("resource %q in configmap %q is not allowed: %v", key, ar.ConfigMapRef, err)))
 			continue
 		}
@@ -101,29 +119,45 @@ func AddAdditionalResources[T client.Object](ctx context.Context, obj T, svc *ru
 	return nil
 }
 
-// blockedAPIGroups lists API groups whose resources may not be deployed as additional resources.
-// These groups grant cluster-wide privileges, intercept API traffic, or extend the cluster API
-// in ways that would let a user escape the instance namespace or escalate privileges.
-var blockedAPIGroups = map[string]bool{
-	"rbac.authorization.k8s.io":    true, // Role, RoleBinding, ClusterRole, ClusterRoleBinding
-	"admissionregistration.k8s.io": true, // ValidatingWebhookConfiguration, MutatingWebhookConfiguration
-	"apiextensions.k8s.io":         true, // CustomResourceDefinition
-	"authorization.k8s.io":         true, // SubjectAccessReview, SelfSubjectAccessReview
-	"certificates.k8s.io":          true, // CertificateSigningRequest
+// parseAllowedResources decodes the JSON-encoded allowlist from the composition
+// config. An empty or whitespace-only value yields a nil slice (feature disabled).
+func parseAllowedResources(raw string) ([]AllowedResourceRule, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	var rules []AllowedResourceRule
+	if err := json.Unmarshal([]byte(raw), &rules); err != nil {
+		return nil, err
+	}
+	return rules, nil
 }
 
-// validateAdditionalResource returns an error if the resource belongs to a blocked API group.
-func validateAdditionalResource(u *unstructured.Unstructured) error {
+// validateAdditionalResource returns an error if the resource doesn't match any rule.
+func validateAdditionalResource(u *unstructured.Unstructured, rules []AllowedResourceRule) error {
 	apiVersion := u.GetAPIVersion()
 	// apiVersion is either "group/version" or just "version" for core resources.
 	group := ""
 	if idx := strings.Index(apiVersion, "/"); idx != -1 {
 		group = apiVersion[:idx]
 	}
-	if blockedAPIGroups[group] {
-		return fmt.Errorf("API group %q is not permitted", group)
+	kind := u.GetKind()
+	for _, r := range rules {
+		if matchesAny(r.APIGroups, group) && matchesAny(r.Kinds, kind) {
+			return nil
+		}
 	}
-	return nil
+	return fmt.Errorf("resource %s/%s is not in allowlist", group, kind)
+}
+
+// matchesAny returns true if value is present in list, or if list contains "*".
+func matchesAny(list []string, value string) bool {
+	for _, v := range list {
+		if v == "*" || v == value {
+			return true
+		}
+	}
+	return false
 }
 
 func stripYAMLExtension(key string) string {

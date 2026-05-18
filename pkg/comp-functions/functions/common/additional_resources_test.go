@@ -27,27 +27,59 @@ func TestStripYAMLExtension(t *testing.T) {
 	}
 }
 
+func TestParseAllowedResources(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		rules, err := parseAllowedResources("")
+		assert.NoError(t, err)
+		assert.Nil(t, rules)
+	})
+	t.Run("whitespace_only", func(t *testing.T) {
+		rules, err := parseAllowedResources("   \n  ")
+		assert.NoError(t, err)
+		assert.Nil(t, rules)
+	})
+	t.Run("invalid_json", func(t *testing.T) {
+		_, err := parseAllowedResources("not json")
+		assert.Error(t, err)
+	})
+	t.Run("valid", func(t *testing.T) {
+		raw := `[{"apiGroups":[""],"kinds":["ConfigMap"]},{"apiGroups":["gateway.networking.k8s.io"],"kinds":["ReferenceGrant"]}]`
+		rules, err := parseAllowedResources(raw)
+		assert.NoError(t, err)
+		assert.Equal(t, []AllowedResourceRule{
+			{APIGroups: []string{""}, Kinds: []string{"ConfigMap"}},
+			{APIGroups: []string{"gateway.networking.k8s.io"}, Kinds: []string{"ReferenceGrant"}},
+		}, rules)
+	})
+}
+
 func TestValidateAdditionalResource(t *testing.T) {
+	rules := []AllowedResourceRule{
+		{APIGroups: []string{""}, Kinds: []string{"ConfigMap", "Secret"}},
+		{APIGroups: []string{"apps"}, Kinds: []string{"Deployment"}},
+		{APIGroups: []string{"gateway.networking.k8s.io"}, Kinds: []string{"ReferenceGrant"}},
+	}
 	cases := []struct {
 		name       string
 		apiVersion string
+		kind       string
 		wantErr    bool
 	}{
-		{"core_v1_allowed", "v1", false},
-		{"apps_v1_allowed", "apps/v1", false},
-		{"batch_allowed", "batch/v1", false},
-		{"networking_allowed", "networking.k8s.io/v1", false},
-		{"rbac_blocked", "rbac.authorization.k8s.io/v1", true},
-		{"admission_blocked", "admissionregistration.k8s.io/v1", true},
-		{"crd_blocked", "apiextensions.k8s.io/v1", true},
-		{"authz_blocked", "authorization.k8s.io/v1", true},
-		{"certs_blocked", "certificates.k8s.io/v1", true},
+		{"core_configmap_allowed", "v1", "ConfigMap", false},
+		{"core_secret_allowed", "v1", "Secret", false},
+		{"apps_deployment_allowed", "apps/v1", "Deployment", false},
+		{"reference_grant_allowed", "gateway.networking.k8s.io/v1beta1", "ReferenceGrant", false},
+		{"core_pod_not_listed", "v1", "Pod", true},
+		{"apps_kind_in_wrong_group", "batch/v1", "Deployment", true},
+		{"rbac_role_not_listed", "rbac.authorization.k8s.io/v1", "Role", true},
+		{"apps_statefulset_not_listed", "apps/v1", "StatefulSet", true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			u := &unstructured.Unstructured{}
 			u.SetAPIVersion(tc.apiVersion)
-			err := validateAdditionalResource(u)
+			u.SetKind(tc.kind)
+			err := validateAdditionalResource(u, rules)
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -57,8 +89,25 @@ func TestValidateAdditionalResource(t *testing.T) {
 	}
 }
 
-// Feature flag off: function is a no-op even with a ref set.
-func TestAddAdditionalResources_FeatureFlagDisabled(t *testing.T) {
+func TestValidateAdditionalResource_Wildcards(t *testing.T) {
+	t.Run("wildcard_group", func(t *testing.T) {
+		rules := []AllowedResourceRule{{APIGroups: []string{"*"}, Kinds: []string{"NetworkPolicy"}}}
+		u := &unstructured.Unstructured{}
+		u.SetAPIVersion("networking.k8s.io/v1")
+		u.SetKind("NetworkPolicy")
+		assert.NoError(t, validateAdditionalResource(u, rules))
+	})
+	t.Run("wildcard_kind", func(t *testing.T) {
+		rules := []AllowedResourceRule{{APIGroups: []string{"apps"}, Kinds: []string{"*"}}}
+		u := &unstructured.Unstructured{}
+		u.SetAPIVersion("apps/v1")
+		u.SetKind("StatefulSet")
+		assert.NoError(t, validateAdditionalResource(u, rules))
+	})
+}
+
+// Allowlist empty: function is a no-op even with a ref set.
+func TestAddAdditionalResources_NoAllowlist(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "common/additional_resources/01-FeatureDisabled.yaml")
 
 	res := AddAdditionalResources[*vshnv1.VSHNPostgreSQL](context.Background(), &vshnv1.VSHNPostgreSQL{}, svc)

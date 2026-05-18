@@ -21,7 +21,7 @@ input:
     labels:
       name: xfn-config
   data:
-    additionalResourcesEnabled: "true"
+    additionalResourcesAllowed: '[{"apiGroups":[""],"kinds":["ConfigMap"]}]'
 observed:
   composite:
     resource:

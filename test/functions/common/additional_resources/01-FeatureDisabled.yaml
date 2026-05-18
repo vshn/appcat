@@ -21,7 +21,7 @@ input:
     labels:
       name: xfn-config
   data:
-    additionalResourcesEnabled: "false"
+    additionalResourcesAllowed: ""
 observed:
   composite:
     resource:

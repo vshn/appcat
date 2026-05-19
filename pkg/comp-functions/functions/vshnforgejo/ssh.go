@@ -62,7 +62,7 @@ func ConfigureSSHAccess(ctx context.Context, comp *vshnv1.VSHNForgejo, svc *runt
 		svc.SetConnectionDetail("FORGEJO_SSH_PORT", []byte(strconv.FormatInt(int64(state.Port), 10)))
 		err = enableSSHInRelease(svc, comp, state.Domain, state.Port)
 		if err != nil {
-			return runtime.NewFatalResult(fmt.Errorf("cannot update forgejo release: %w", err))
+			return runtime.NewWarningResult(fmt.Sprintf("cannot update forgejo release: %s", err))
 		}
 	}
 

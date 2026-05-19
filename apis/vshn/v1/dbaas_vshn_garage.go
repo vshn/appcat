@@ -70,6 +70,10 @@ type VSHNGarageParameters struct {
 
 	// Instances defines the number of instances to run.
 	Instances int `json:"instances,omitempty"`
+
+	// AdditionalResources contains arbitrary Kubernetes resources to deploy into the instance namespace.
+	// Note: this feature is not enabled on all clusters.
+	AdditionalResources VSHNAdditionalResources `json:"additionalResources,omitempty"`
 }
 
 // VSHNGarageServiceSpec contains Garage DBaaS specific properties
@@ -185,6 +189,10 @@ func (v *VSHNGarage) GetSize() VSHNSizeSpec {
 
 func (v *VSHNGarage) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNGarage) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
 }
 
 func (v *VSHNGarage) GetInstances() int {

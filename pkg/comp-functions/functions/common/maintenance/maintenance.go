@@ -362,6 +362,14 @@ func (m *Maintenance) buildMaintenancePodTemplateSpec(imageTag, serviceAccount s
 			Name:  "DISABLE_APPCAT_RELEASE",
 			Value: strconv.FormatBool(m.schedule.DisableAppcatRelease),
 		},
+		{
+			Name:  "CONTROL_NAMESPACE",
+			Value: m.svc.Config.Data["controlNamespace"],
+		},
+		{
+			Name:  "MAINTENANCE_CONFIGMAP_NAME",
+			Value: m.svc.Config.Data["maintenanceConfigMapName"],
+		},
 	}
 
 	return corev1.PodTemplateSpec{

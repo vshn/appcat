@@ -32,6 +32,10 @@ func init() {
 				Execute: common.AddUserAlerting[*vshnv1.VSHNMariaDB],
 			},
 			{
+				Name:    "additional-resources",
+				Execute: common.AddAdditionalResources[*vshnv1.VSHNMariaDB],
+			},
+			{
 				Name:    "non-sla-prometheus-rules",
 				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNMariaDB](nonsla.NewAlertSetBuilder("mariadb-galera").AddAllDB().GetAlerts()),
 			},

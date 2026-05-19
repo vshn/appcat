@@ -77,6 +77,10 @@ type VSHNForgejoParameters struct {
 
 	// Instances defines the number of instances to run.
 	Instances int `json:"instances,omitempty"`
+
+	// AdditionalResources contains arbitrary Kubernetes resources to deploy into the instance namespace.
+	// Note: this feature is not enabled on all clusters.
+	AdditionalResources VSHNAdditionalResources `json:"additionalResources,omitempty"`
 }
 
 // VSHNForgejoServiceSpec contains Forgejo DBaaS specific properties
@@ -201,6 +205,10 @@ type VSHNForgejoStatus struct {
 
 func (v *VSHNForgejo) GetClaimNamespace() string {
 	return v.GetLabels()["crossplane.io/claim-namespace"]
+}
+
+func (v *VSHNForgejo) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
 }
 
 func (v *VSHNForgejo) GetInstanceNamespace() string {

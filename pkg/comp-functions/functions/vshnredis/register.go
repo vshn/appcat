@@ -39,6 +39,10 @@ func init() {
 				Execute: common.AddUserAlerting[*vshnv1.VSHNRedis],
 			},
 			{
+				Name:    "additional-resources",
+				Execute: common.AddAdditionalResources[*vshnv1.VSHNRedis],
+			},
+			{
 				Name:    "non-sla-prometheus-rules",
 				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNRedis](nonsla.NewAlertSetBuilder("redis").AddAllDB().GetAlerts()),
 			},

@@ -278,6 +278,9 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 				"serverCASecret":  certificateSecretName,
 				"serverTLSSecret": certificateSecretName,
 			},
+			"affinity": map[string]any{
+				"topologyKey": "kubernetes.io/hostname",
+			},
 			// The following will be overwritten by setResources() later
 			"storage": map[string]any{},
 			"resources": map[string]any{

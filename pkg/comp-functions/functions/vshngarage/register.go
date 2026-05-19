@@ -22,6 +22,10 @@ func init() {
 				Execute: common.AddUserAlerting[*vshnv1.VSHNGarage],
 			},
 			{
+				Name:    "additional-resources",
+				Execute: common.AddAdditionalResources[*vshnv1.VSHNGarage],
+			},
+			{
 				Name:    "pdb",
 				Execute: common.AddPDBSettings[*vshnv1.VSHNGarage],
 			},

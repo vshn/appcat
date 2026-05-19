@@ -8,6 +8,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/vshn/appcat/v4/apis/garage"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/sliexporter/probes"
@@ -17,7 +18,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,17 +30,10 @@ const (
 	adminTokenSecret     = "garage-admin-token"
 )
 
-var garageBucketGVK = schema.GroupVersionKind{
-	Group:   "garage.rajsingh.info",
-	Version: "v1beta1",
-	Kind:    "GarageBucket",
-}
-
-var garageKeyGVK = schema.GroupVersionKind{
-	Group:   "garage.rajsingh.info",
-	Version: "v1beta1",
-	Kind:    "GarageKey",
-}
+var (
+	garageBucketGVK = garage.GarageBucketGVK
+	garageKeyGVK    = garage.GarageKeyGVK
+)
 
 type VSHNGarageReconciler struct {
 	client.Client

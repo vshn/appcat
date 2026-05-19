@@ -99,6 +99,10 @@ type VSHNNextcloudParameters struct {
 	// Instances configures the number of Nextcloud instances for the cluster.
 	// Each instance contains one Nextcloud server.
 	Instances int `json:"instances,omitempty"`
+
+	// AdditionalResources contains arbitrary Kubernetes resources to deploy into the instance namespace.
+	// Note: this feature is not enabled on all clusters.
+	AdditionalResources VSHNAdditionalResources `json:"additionalResources,omitempty"`
 }
 
 // VSHNNextcloudServiceSpec contains nextcloud DBaaS specific properties
@@ -350,6 +354,10 @@ func (v *VSHNNextcloud) GetAllowedNamespaces() []string {
 
 func (v *VSHNNextcloud) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNNextcloud) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
 }
 
 func (v *VSHNNextcloud) GetSize() VSHNSizeSpec {

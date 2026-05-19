@@ -84,6 +84,10 @@ type VSHNRedisParameters struct {
 
 	// Instances configures the number of Redis instances for the cluster.
 	Instances int `json:"instances,omitempty"`
+
+	// AdditionalResources contains arbitrary Kubernetes resources to deploy into the instance namespace.
+	// Note: this feature is not enabled on all clusters.
+	AdditionalResources VSHNAdditionalResources `json:"additionalResources,omitempty"`
 }
 
 // VSHNRedisServiceSpec contains Redis DBaaS specific properties
@@ -220,6 +224,10 @@ type XVSHNRedisList struct {
 
 func (v *VSHNRedis) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNRedis) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
 }
 
 func (v *VSHNRedis) GetInstanceNamespace() string {

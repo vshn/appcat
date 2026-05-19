@@ -25,6 +25,10 @@ func init() {
 				Execute: common.AddUserAlerting[*vshnv1.VSHNPostgreSQL],
 			},
 			{
+				Name:    "additional-resources",
+				Execute: common.AddAdditionalResources[*vshnv1.VSHNPostgreSQL],
+			},
+			{
 				Name:    "restart",
 				Execute: TransformRestart,
 			},

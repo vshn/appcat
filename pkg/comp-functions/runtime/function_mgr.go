@@ -885,19 +885,23 @@ func (s *ServiceRuntime) AddResult(result *xfnproto.Result) {
 
 // NewFatalResult creates a new result with the `FATAL` severity.
 // The pipeline will be considdered failed.
+// Fatal results are surfaced as events on both the composite and the claim.
 func NewFatalResult(err error) *xfnproto.Result {
 	return &xfnproto.Result{
 		Severity: xfnproto.Severity_SEVERITY_FATAL,
 		Message:  err.Error(),
+		Target:   ptr.To(xfnproto.Target_TARGET_COMPOSITE_AND_CLAIM),
 	}
 }
 
 // NewWarningResult will return a new warning.
 // The pipelines will run through and are not considdered failed.
+// Warning results are surfaced as events on both the composite and the claim.
 func NewWarningResult(message string) *xfnproto.Result {
 	return &xfnproto.Result{
 		Severity: xfnproto.Severity_SEVERITY_WARNING,
 		Message:  message,
+		Target:   ptr.To(xfnproto.Target_TARGET_COMPOSITE_AND_CLAIM),
 	}
 }
 

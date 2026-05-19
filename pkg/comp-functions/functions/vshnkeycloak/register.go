@@ -32,6 +32,10 @@ func init() {
 				Execute: common.AddUserAlerting[*vshnv1.VSHNKeycloak],
 			},
 			{
+				Name:    "additional-resources",
+				Execute: common.AddAdditionalResources[*vshnv1.VSHNKeycloak],
+			},
+			{
 				Name:    "non-sla-prometheus-rules",
 				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNKeycloak](nonsla.NewAlertSetBuilder("keycloak").AddMemory().GetAlerts()),
 			},

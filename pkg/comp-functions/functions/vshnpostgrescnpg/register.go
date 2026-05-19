@@ -50,6 +50,10 @@ func init() {
 				Execute: common.AddUserAlerting[*vshnv1.VSHNPostgreSQL],
 			},
 			{
+				Name:    "additional-resources",
+				Execute: common.AddAdditionalResources[*vshnv1.VSHNPostgreSQL],
+			},
+			{
 				Name:    "encrypted-pvc-secret",
 				Execute: AddPvcSecret,
 			},

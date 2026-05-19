@@ -90,6 +90,10 @@ type VSHNPostgreSQLParameters struct {
 
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
+
+	// AdditionalResources contains arbitrary Kubernetes resources to deploy into the instance namespace.
+	// Note: this feature is not enabled on all clusters.
+	AdditionalResources VSHNAdditionalResources `json:"additionalResources,omitempty"`
 }
 
 type VSHNPostgreSQLReplicationStrategy struct {
@@ -280,6 +284,10 @@ type VSHNPostgreSQLRestore struct {
 
 func (v *VSHNPostgreSQL) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNPostgreSQL) GetAdditionalResources() VSHNAdditionalResources {
+	return v.Spec.Parameters.AdditionalResources
 }
 
 // VSHNPostgreSQLEncryption contains storage encryption specific parameters

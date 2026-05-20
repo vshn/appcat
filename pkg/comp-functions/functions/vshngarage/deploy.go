@@ -2,6 +2,7 @@ package vshngarage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -19,6 +20,25 @@ const (
 	// GarageHost is env variable in the connection secret
 	GarageHost = "GARAGE_URL"
 )
+
+// applyAllowedNamespaces decodes the comma-coupled JSON list provided through
+// the comp-function xfn-config (key: garageAllowedNamespaces) and injects it
+// into the vshngaragecluster chart values. Empty input leaves values
+// untouched so older component-appcat releases that don't ship the key keep
+// working — the chart simply skips the GarageReferenceGrant template.
+func applyAllowedNamespaces(values map[string]any, raw string) error {
+	if raw == "" {
+		return nil
+	}
+	var allowed []string
+	if err := json.Unmarshal([]byte(raw), &allowed); err != nil {
+		return fmt.Errorf("cannot parse garageAllowedNamespaces %q: %w", raw, err)
+	}
+	if len(allowed) > 0 {
+		values["allowedNamespaces"] = allowed
+	}
+	return nil
+}
 
 func DeployGarage(ctx context.Context, comp *vshnv1.VSHNGarage, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	l := svc.Log
@@ -69,6 +89,10 @@ func DeployGarage(ctx context.Context, comp *vshnv1.VSHNGarage, svc *runtime.Ser
 		},
 		"storageDataSpace":     calcResources.Disk.String(),
 		"storageMetadataSpace": comp.Spec.Parameters.Service.MetadataStorage,
+	}
+
+	if err := applyAllowedNamespaces(values, svc.Config.Data["garageAllowedNamespaces"]); err != nil {
+		return runtime.NewFatalResult(err)
 	}
 
 	connectionDetails := []v1beta1.ConnectionDetail{

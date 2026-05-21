@@ -19,17 +19,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-func newTestHandler(t *testing.T, existingXLS ...*unstructured.Unstructured) *XListenerSetHandler {
+func newTestHandler(t *testing.T, existingXLS ...*unstructured.Unstructured) *ListenerSetHandler {
 	t.Helper()
 
 	scheme := k8sruntime.NewScheme()
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
 
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSet"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSet"},
 		&unstructured.Unstructured{},
 	)
 
@@ -41,34 +41,34 @@ func newTestHandler(t *testing.T, existingXLS ...*unstructured.Unstructured) *XL
 	}
 	c := builder.Build()
 
-	return &XListenerSetHandler{
+	return &ListenerSetHandler{
 		allocator: NewPortAllocator(c, 10000, 29999),
 		log:       logr.Discard(),
 		leaseNS:   "test-ns",
 	}
 }
 
-func newTestHandlerWithClient(t *testing.T, c client.Client) *XListenerSetHandler {
+func newTestHandlerWithClient(t *testing.T, c client.Client) *ListenerSetHandler {
 	t.Helper()
 
-	return &XListenerSetHandler{
+	return &ListenerSetHandler{
 		allocator: NewPortAllocator(c, 10000, 29999),
 		log:       logr.Discard(),
 		leaseNS:   "test-ns",
 	}
 }
 
-func newTestHandlerWithSharding(t *testing.T, capacity int, xlsSets []*unstructured.Unstructured, gateways []GatewayKey) *XListenerSetHandler {
+func newTestHandlerWithSharding(t *testing.T, capacity int, xlsSets []*unstructured.Unstructured, gateways []GatewayKey) *ListenerSetHandler {
 	t.Helper()
 
 	scheme := k8sruntime.NewScheme()
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
 
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSet"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSet"},
 		&unstructured.Unstructured{},
 	)
 
@@ -80,7 +80,7 @@ func newTestHandlerWithSharding(t *testing.T, capacity int, xlsSets []*unstructu
 	}
 	c := builder.Build()
 
-	handler := &XListenerSetHandler{
+	handler := &ListenerSetHandler{
 		allocator: NewPortAllocator(c, 10000, 29999),
 		log:       logr.Discard(),
 		leaseNS:   "test-ns",
@@ -107,12 +107,12 @@ func makeAdmissionRequest(t *testing.T, xls *unstructured.Unstructured) admissio
 }
 
 func TestHandle_PortZeroGetsAllocated(t *testing.T) {
-	// Existing XListenerSets use ports 10000-10004
+	// Existing ListenerSets use ports 10000-10004
 	handler := newTestHandler(t,
-		newXListenerSet("existing", "gw-ns", 10000, 10001, 10002, 10003, 10004),
+		newListenerSet("existing", "gw-ns", 10000, 10001, 10002, 10003, 10004),
 	)
 
-	xls := newXListenerSet("test", "ns", 0)
+	xls := newListenerSet("test", "ns", 0)
 
 	raw, err := json.Marshal(xls)
 	require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestHandle_PortZeroGetsAllocated(t *testing.T) {
 func TestHandle_NonZeroPortPassesThrough(t *testing.T) {
 	handler := newTestHandler(t)
 
-	xls := newXListenerSet("test", "ns", 22222)
+	xls := newListenerSet("test", "ns", 22222)
 
 	resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
 	assert.True(t, resp.Allowed)
@@ -141,11 +141,11 @@ func TestHandle_NonZeroPortPassesThrough(t *testing.T) {
 func TestHandle_MultipleListeners_OnlyZeroAllocated(t *testing.T) {
 	// 10000-10009 are taken
 	handler := newTestHandler(t,
-		newXListenerSet("a", "ns", 10000, 10001, 10002, 10003, 10004),
-		newXListenerSet("b", "ns", 10005, 10006, 10007, 10008, 10009),
+		newListenerSet("a", "ns", 10000, 10001, 10002, 10003, 10004),
+		newListenerSet("b", "ns", 10005, 10006, 10007, 10008, 10009),
 	)
 
-	xls := newXListenerSet("test", "ns", 0, 9999, 0)
+	xls := newListenerSet("test", "ns", 0, 9999, 0)
 
 	raw, err := json.Marshal(xls)
 	require.NoError(t, err)
@@ -166,7 +166,7 @@ func TestHandle_MultipleListeners_OnlyZeroAllocated(t *testing.T) {
 func TestHandle_NonCreateOperation_Allowed(t *testing.T) {
 	handler := newTestHandler(t)
 
-	xls := newXListenerSet("test", "ns", 0)
+	xls := newListenerSet("test", "ns", 0)
 	raw, err := json.Marshal(xls)
 	require.NoError(t, err)
 
@@ -185,10 +185,10 @@ func TestHandle_NonCreateOperation_Allowed(t *testing.T) {
 func TestHandle_AllowedRoutesPreserved(t *testing.T) {
 	handler := newTestHandler(t)
 
-	// Build an XListenerSet with allowedRoutes using raw JSON
+	// Build an ListenerSet with allowedRoutes using raw JSON
 	raw := []byte(`{
-		"apiVersion": "gateway.networking.x-k8s.io/v1alpha1",
-		"kind": "XListenerSet",
+		"apiVersion": "gateway.networking.k8s.io/v1",
+		"kind": "ListenerSet",
 		"spec": {
 			"parentRef": {
 				"name": "tcp-gateway",
@@ -239,7 +239,7 @@ func TestHandle_AllowedRoutesPreserved(t *testing.T) {
 func TestHandle_ShardingReassignsGateway(t *testing.T) {
 	// gw-1 already has 10 listeners (at capacity)
 	existingXLS := []*unstructured.Unstructured{
-		newXListenerSetWithGateway("existing", "ns", "gw-1", "gw-ns", 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009),
+		newListenerSetWithGateway("existing", "ns", "gw-1", "gw-ns", 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009),
 	}
 	gateways := []GatewayKey{
 		{Namespace: "gw-ns", Name: "gw-1"},
@@ -248,7 +248,7 @@ func TestHandle_ShardingReassignsGateway(t *testing.T) {
 
 	handler := newTestHandlerWithSharding(t, 10, existingXLS, gateways)
 
-	xls := newXListenerSetWithGateway("new", "ns", "gw-1", "gw-ns", 0)
+	xls := newListenerSetWithGateway("new", "ns", "gw-1", "gw-ns", 0)
 
 	raw, err := json.Marshal(xls)
 	require.NoError(t, err)
@@ -278,7 +278,7 @@ func TestHandle_ShardingReassignsGateway(t *testing.T) {
 func TestHandle_ShardingDisabled_NoReassignment(t *testing.T) {
 	// capacity=0 disables sharding, handler should not touch parentRef
 	existingXLS := []*unstructured.Unstructured{
-		newXListenerSetWithGateway("existing", "ns", "gw-1", "gw-ns", 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009),
+		newListenerSetWithGateway("existing", "ns", "gw-1", "gw-ns", 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009),
 	}
 	gateways := []GatewayKey{
 		{Namespace: "gw-ns", Name: "gw-1"},
@@ -287,7 +287,7 @@ func TestHandle_ShardingDisabled_NoReassignment(t *testing.T) {
 
 	handler := newTestHandlerWithSharding(t, 0, existingXLS, gateways)
 
-	xls := newXListenerSetWithGateway("new", "ns", "gw-1", "gw-ns", 0)
+	xls := newListenerSetWithGateway("new", "ns", "gw-1", "gw-ns", 0)
 
 	raw, err := json.Marshal(xls)
 	require.NoError(t, err)
@@ -312,8 +312,8 @@ func TestHandle_ShardingDisabled_NoReassignment(t *testing.T) {
 func TestHandle_AllGatewaysFull_Denied(t *testing.T) {
 	// Both gateways at capacity
 	existingXLS := []*unstructured.Unstructured{
-		newXListenerSetWithGateway("a", "ns", "gw-1", "gw-ns", 10000, 10001),
-		newXListenerSetWithGateway("b", "ns", "gw-2", "gw-ns", 10002, 10003),
+		newListenerSetWithGateway("a", "ns", "gw-1", "gw-ns", 10000, 10001),
+		newListenerSetWithGateway("b", "ns", "gw-2", "gw-ns", 10002, 10003),
 	}
 	gateways := []GatewayKey{
 		{Namespace: "gw-ns", Name: "gw-1"},
@@ -322,7 +322,7 @@ func TestHandle_AllGatewaysFull_Denied(t *testing.T) {
 
 	handler := newTestHandlerWithSharding(t, 2, existingXLS, gateways)
 
-	xls := newXListenerSetWithGateway("new", "ns", "gw-1", "gw-ns", 0)
+	xls := newListenerSetWithGateway("new", "ns", "gw-1", "gw-ns", 0)
 
 	resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
 	assert.False(t, resp.Allowed)
@@ -331,10 +331,10 @@ func TestHandle_AllGatewaysFull_Denied(t *testing.T) {
 
 func TestHandle_ShardingRespectsAllowedGateways(t *testing.T) {
 	// gw-1 full, gw-2 has room, gw-3 has room.
-	// XListenerSet annotation only allows gw-1 and gw-3.
+	// ListenerSet annotation only allows gw-1 and gw-3.
 	// Should shard to gw-3, not gw-2.
 	existingXLS := []*unstructured.Unstructured{
-		newXListenerSetWithGateway("existing", "ns", "gw-1", "gw-ns", 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009),
+		newListenerSetWithGateway("existing", "ns", "gw-1", "gw-ns", 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009),
 	}
 	gateways := []GatewayKey{
 		{Namespace: "gw-ns", Name: "gw-1"},
@@ -346,8 +346,8 @@ func TestHandle_ShardingRespectsAllowedGateways(t *testing.T) {
 
 	xls := &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": "gateway.networking.x-k8s.io/v1alpha1",
-			"kind":       "XListenerSet",
+			"apiVersion": "gateway.networking.k8s.io/v1",
+			"kind":       "ListenerSet",
 			"metadata": map[string]any{
 				"name":      "new",
 				"namespace": "ns",
@@ -392,16 +392,16 @@ func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
 	// simulates shared etcd across replicas.
 	scheme := k8sruntime.NewScheme()
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSet"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSet"},
 		&unstructured.Unstructured{},
 	)
 	require.NoError(t, coordinationv1.AddToScheme(scheme))
 
-	existing := newXListenerSet("existing", "gw-ns", 10000, 10001, 10002)
+	existing := newListenerSet("existing", "gw-ns", 10000, 10001, 10002)
 	sharedClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existing).Build()
 
 	const numReplicas = 5
@@ -409,7 +409,7 @@ func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
 	ports := make([]float64, numReplicas)
 	for i := range numReplicas {
 		handler := newTestHandlerWithClient(t, sharedClient)
-		xls := newXListenerSet(fmt.Sprintf("test-%d", i), "ns", 0)
+		xls := newListenerSet(fmt.Sprintf("test-%d", i), "ns", 0)
 		raw, _ := json.Marshal(xls)
 
 		resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
@@ -442,11 +442,11 @@ func TestHandle_ShardingMissingParentRef_Denied(t *testing.T) {
 
 	handler := newTestHandlerWithSharding(t, 10, nil, gateways)
 
-	// XListenerSet without parentRef name
+	// ListenerSet without parentRef name
 	xls := &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": "gateway.networking.x-k8s.io/v1alpha1",
-			"kind":       "XListenerSet",
+			"apiVersion": "gateway.networking.k8s.io/v1",
+			"kind":       "ListenerSet",
 			"metadata": map[string]any{
 				"name":      "test",
 				"namespace": "ns",

@@ -204,7 +204,7 @@ func TestCreateHTTPRoute(t *testing.T) {
 			}
 		}
 		assert.True(t, foundRoute, "HTTPRoute must be created")
-		assert.True(t, foundLS, "XListenerSet must be created")
+		assert.True(t, foundLS, "ListenerSet must be created")
 		assert.False(t, foundGrant, "ReferenceGrant must NOT be created")
 		assert.True(t, foundBCP, "BackendConfigPolicy must be created for TLS backend")
 

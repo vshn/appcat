@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func newXListenerSetWithGateway(name, ns, gwName, gwNs string, ports ...int64) *unstructured.Unstructured {
+func newListenerSetWithGateway(name, ns, gwName, gwNs string, ports ...int64) *unstructured.Unstructured {
 	listeners := make([]any, len(ports))
 	for i, p := range ports {
 		listeners[i] = map[string]any{
@@ -24,8 +24,8 @@ func newXListenerSetWithGateway(name, ns, gwName, gwNs string, ports ...int64) *
 
 	return &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": "gateway.networking.x-k8s.io/v1alpha1",
-			"kind":       "XListenerSet",
+			"apiVersion": "gateway.networking.k8s.io/v1",
+			"kind":       "ListenerSet",
 			"metadata": map[string]any{
 				"name":      name,
 				"namespace": ns,
@@ -211,19 +211,19 @@ func TestSelectGateway_AllowedGateways_AllFull(t *testing.T) {
 func TestCountListenersPerGateway(t *testing.T) {
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-		newXListenerSetWithGateway("a", "ns1", "gw-1", "gw-ns", 10000, 10001),
-		newXListenerSetWithGateway("b", "ns1", "gw-1", "gw-ns", 10002),
-		newXListenerSetWithGateway("c", "ns2", "gw-2", "gw-ns", 10003, 10004, 10005),
+		newListenerSetWithGateway("a", "ns1", "gw-1", "gw-ns", 10000, 10001),
+		newListenerSetWithGateway("b", "ns1", "gw-1", "gw-ns", 10002),
+		newListenerSetWithGateway("c", "ns2", "gw-2", "gw-ns", 10003, 10004, 10005),
 	).Build()
 
 	alloc := NewPortAllocator(c, 10000, 29999)
 
-	items, err := alloc.listXListenerSets(context.Background())
+	items, err := alloc.listListenerSets(context.Background())
 	require.NoError(t, err)
 	counts := alloc.extractListenerCounts(items)
 

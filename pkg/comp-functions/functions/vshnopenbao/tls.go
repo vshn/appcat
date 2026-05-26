@@ -19,7 +19,19 @@ func SetupTLSCertificates(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *ru
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
-	_, err = common.CreateTLSCerts(ctx, comp.GetInstanceNamespace(), comp.GetName(), svc, nil)
+	name := comp.GetName()
+	ns := comp.GetInstanceNamespace()
+
+	opts := &common.TLSOptions{
+		// Wildcard covers every StatefulSet pod addressed via the headless service:
+		// {name}-N.{name}-internal.{ns}.svc.cluster.local
+		AdditionalSans: []string{
+			fmt.Sprintf("*.%s-internal.%s.svc.cluster.local", name, ns),
+			fmt.Sprintf("%s-internal.%s.svc.cluster.local", name, ns),
+		},
+	}
+
+	_, err = common.CreateTLSCerts(ctx, ns, name, svc, opts)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot setup TLS for OpenBao: %w", err).Error())
 	}

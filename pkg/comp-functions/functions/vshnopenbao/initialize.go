@@ -8,24 +8,20 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
-	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 )
 
 //go:embed scripts/init_cluster.sh
 var initClusterScript string
 
 const (
-	initSuffix             = "openbao-init"
 	initOutputSecretSuffix = "-init-output"
 	unsealKeysSecretSuffix = "-unseal-keys"
-	initJobSuffix          = "-init-job"
 	observerSuffix         = "-observer"
+	initRoleSuffix         = "-init-role"
 )
 
 func InitializeCluster(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
@@ -45,28 +41,17 @@ func InitializeCluster(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runti
 		return runtime.NewFatalResult(fmt.Errorf("cannot observe init connection details: %w", err))
 	}
 
-	if comp.Status.InitializationComplete {
-		svc.Log.Info("OpenBao already initialized, skipping init job")
-		return nil
+	err = createInitRBAC(comp, svc)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("cannot create init RBAC: %w", err))
 	}
 
-	if isInitSecretPopulated(comp, svc) {
+	if !comp.Status.InitializationComplete && isInitSecretPopulated(comp, svc) {
 		svc.Log.Info("Init secret detected, marking initialization as complete")
 		comp.Status.InitializationComplete = true
 		if err = svc.SetDesiredCompositeStatus(comp); err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("cannot set initialization status: %w", err))
 		}
-		return nil
-	}
-
-	err = createSA(ctx, comp, svc)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create init RBAC: %w", err))
-	}
-
-	err = createInitJob(comp, svc)
-	if err != nil {
-		return runtime.NewFatalResult(fmt.Errorf("cannot create init job: %w", err))
 	}
 
 	return nil
@@ -81,63 +66,52 @@ func isInitSecretPopulated(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime
 	return len(secret.Data["VAULT_TOKEN"]) > 0
 }
 
-func createSA(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
-	svc.Log.Info("Create RBAC for OpenBao init job")
-	return common.AddSaWithRole(ctx, svc, []rbacv1.PolicyRule{
-		{
-			APIGroups: []string{""},
-			Resources: []string{"secrets"},
-			Verbs:     []string{"create", "get", "update", "patch"},
-		},
-	}, comp.GetName(), comp.GetInstanceNamespace(), initSuffix, true)
-}
-
-func createInitJob(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
+func createInitRBAC(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {
+	svc.Log.Info("Create RBAC for OpenBao init sidecar")
 	serviceName := comp.GetName()
 	ns := comp.GetInstanceNamespace()
+	roleName := serviceName + initRoleSuffix
 
-	secretShares := comp.Spec.Parameters.OpenBao.Init.SecretShares
-	secretThreshold := comp.Spec.Parameters.OpenBao.Init.SecretThreshold
-	rootTokenSecretName := serviceName + initOutputSecretSuffix
-	unsealKeysSecretName := serviceName + unsealKeysSecretSuffix
-	jobName := serviceName + initJobSuffix
-	openbaoAddr := fmt.Sprintf("https://%s:8200", serviceName)
-
-	svc.Log.Info("Creating OpenBao init job")
-	job := &batchv1.Job{
+	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
+			Name:      roleName,
 			Namespace: ns,
 		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            ptr.To(int32(100)),
-			TTLSecondsAfterFinished: ptr.To(int32(3600)),
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					RestartPolicy:      corev1.RestartPolicyNever,
-					ServiceAccountName: "sa-" + initSuffix,
-					Containers: []corev1.Container{
-						{
-							Name:    "init-openbao",
-							Image:   svc.Config.Data["kubectl_image"],
-							Command: []string{"bash", "-c"},
-							Args:    []string{initClusterScript},
-							Env: []corev1.EnvVar{
-								{Name: "VAULT_ADDR", Value: openbaoAddr},
-								{Name: "NAMESPACE", Value: ns},
-								{Name: "ROOT_TOKEN_SECRET_NAME", Value: rootTokenSecretName},
-								{Name: "UNSEAL_KEYS_SECRET_NAME", Value: unsealKeysSecretName},
-								{Name: "SECRET_SHARES", Value: fmt.Sprintf("%d", secretShares)},
-								{Name: "SECRET_THRESHOLD", Value: fmt.Sprintf("%d", secretThreshold)},
-							},
-						},
-					},
-				},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{"secrets"},
+				Verbs:     []string{"create", "get", "update", "patch"},
 			},
 		},
 	}
+	if err := svc.SetDesiredKubeObject(role, roleName); err != nil {
+		return fmt.Errorf("cannot set init role: %w", err)
+	}
 
-	return svc.SetDesiredKubeObject(job, jobName, runtime.KubeOptionAllowDeletion)
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      roleName,
+			Namespace: ns,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      rbacv1.ServiceAccountKind,
+				Name:      serviceName,
+				Namespace: ns,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     roleName,
+		},
+	}
+	if err := svc.SetDesiredKubeObject(rb, roleName+"-binding"); err != nil {
+		return fmt.Errorf("cannot set init rolebinding: %w", err)
+	}
+
+	return nil
 }
 
 func observeInitConnectionDetails(comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) error {

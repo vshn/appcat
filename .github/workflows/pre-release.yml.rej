@@ -1,0 +1,24 @@
+diff a/.github/workflows/pre-release.yml b/.github/workflows/pre-release.yml	(rejected hunks)
+@@ -70,7 +70,7 @@ jobs:
+           exit 1
+ 
+       - name: Merge PR
+-        run: gh pr merge ${{ steps.pr_info.outputs.pr_number }} --merge
++        run: gh pr merge ${{ steps.pr_info.outputs.pr_number }} --merge --admin
+         env:
+           GH_TOKEN: ${{ secrets.MERGE_TOKEN }}
+ 
+@@ -85,6 +85,13 @@ jobs:
+           git push origin $NEW_TAG
+           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+ 
++      - name: Fast forward develop to master
++        run: |
++          git checkout develop
++          git merge master --ff-only
++          git push origin develop
++        env:
++          GH_TOKEN: ${{ secrets.MERGE_TOKEN }}
+ 
+   create-component-release-pr:
+     needs: create-and-merge-appcat-pr

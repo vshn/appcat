@@ -2,6 +2,7 @@ package vshngarage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -71,6 +72,10 @@ func DeployGarage(ctx context.Context, comp *vshnv1.VSHNGarage, svc *runtime.Ser
 		"storageMetadataSpace": comp.Spec.Parameters.Service.MetadataStorage,
 	}
 
+	if err := applyAllowedNamespaces(values, svc.Config.Data["garageAllowedNamespaces"]); err != nil {
+		return runtime.NewFatalResult(err)
+	}
+
 	connectionDetails := []v1beta1.ConnectionDetail{
 		{
 			ObjectReference: corev1.ObjectReference{
@@ -101,5 +106,24 @@ func DeployGarage(ctx context.Context, comp *vshnv1.VSHNGarage, svc *runtime.Ser
 		return runtime.NewWarningResult(fmt.Sprintf("cannot add observed connection details for garage: %s", err))
 	}
 
+	return nil
+}
+
+// applyAllowedNamespaces decodes the JSON array through
+// the comp-functions config key (`garageAllowedNamespaces`) and injects it
+// into the vshngaragecluster chart values.
+// An empty input leaves values untouched, for backwards compatibility.
+// the chart simply skips the GarageReferenceGrant template.
+func applyAllowedNamespaces(values map[string]any, raw string) error {
+	if raw == "" {
+		return nil
+	}
+	var allowed []string
+	if err := json.Unmarshal([]byte(raw), &allowed); err != nil {
+		return fmt.Errorf("cannot parse garageAllowedNamespaces %q: %w", raw, err)
+	}
+	if len(allowed) > 0 {
+		values["allowedNamespaces"] = allowed
+	}
 	return nil
 }

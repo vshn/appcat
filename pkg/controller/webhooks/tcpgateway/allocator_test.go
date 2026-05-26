@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func newXListenerSet(name, namespace string, ports ...int64) *unstructured.Unstructured {
+func newListenerSet(name, namespace string, ports ...int64) *unstructured.Unstructured {
 	listeners := make([]any, len(ports))
 	for i, p := range ports {
 		listeners[i] = map[string]any{
@@ -30,8 +30,8 @@ func newXListenerSet(name, namespace string, ports ...int64) *unstructured.Unstr
 
 	return &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": "gateway.networking.x-k8s.io/v1alpha1",
-			"kind":       "XListenerSet",
+			"apiVersion": "gateway.networking.k8s.io/v1",
+			"kind":       "ListenerSet",
 			"metadata": map[string]any{
 				"name":      name,
 				"namespace": namespace,
@@ -48,11 +48,11 @@ func newTestAllocator(t *testing.T, objects ...*unstructured.Unstructured) *Port
 
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSet"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSet"},
 		&unstructured.Unstructured{},
 	)
 	require.NoError(t, coordinationv1.AddToScheme(scheme))
@@ -69,7 +69,7 @@ func newTestAllocator(t *testing.T, objects ...*unstructured.Unstructured) *Port
 func TestAllocatePort_EmptyCluster(t *testing.T) {
 	alloc := newTestAllocator(t)
 
-	items, err := alloc.listXListenerSets(context.Background())
+	items, err := alloc.listListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
 	port, err := alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
@@ -79,12 +79,12 @@ func TestAllocatePort_EmptyCluster(t *testing.T) {
 
 func TestAllocatePort_SkipsUsedPorts(t *testing.T) {
 	alloc := newTestAllocator(t,
-		newXListenerSet("a-ssh", "gw-ns", 10000),
-		newXListenerSet("b-ssh", "gw-ns", 10001),
-		newXListenerSet("c-ssh", "gw-ns", 10003),
+		newListenerSet("a-ssh", "gw-ns", 10000),
+		newListenerSet("b-ssh", "gw-ns", 10001),
+		newListenerSet("c-ssh", "gw-ns", 10003),
 	)
 
-	items, err := alloc.listXListenerSets(context.Background())
+	items, err := alloc.listListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
 	port, err := alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
@@ -96,22 +96,22 @@ func TestAllocatePort_SkipsUsedPorts(t *testing.T) {
 func TestAllocatePort_RangeExhausted(t *testing.T) {
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
 	require.NoError(t, coordinationv1.AddToScheme(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
 	builder = builder.WithObjects(
-		newXListenerSet("a", "ns", 20000),
-		newXListenerSet("b", "ns", 20001),
-		newXListenerSet("c", "ns", 20002),
+		newListenerSet("a", "ns", 20000),
+		newListenerSet("b", "ns", 20001),
+		newListenerSet("c", "ns", 20002),
 	)
 	c := builder.Build()
 
 	alloc := NewPortAllocator(c, 20000, 20002)
 
-	items, err := alloc.listXListenerSets(context.Background())
+	items, err := alloc.listListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
 	_, err = alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
@@ -121,10 +121,10 @@ func TestAllocatePort_RangeExhausted(t *testing.T) {
 
 func TestAllocatePort_IgnoresZeroPorts(t *testing.T) {
 	alloc := newTestAllocator(t,
-		newXListenerSet("pending", "gw-ns", 0),
+		newListenerSet("pending", "gw-ns", 0),
 	)
 
-	items, err := alloc.listXListenerSets(context.Background())
+	items, err := alloc.listListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
 	port, err := alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
@@ -134,10 +134,10 @@ func TestAllocatePort_IgnoresZeroPorts(t *testing.T) {
 
 func TestAllocatePort_MultipleListenersPerXLS(t *testing.T) {
 	alloc := newTestAllocator(t,
-		newXListenerSet("multi", "gw-ns", 10000, 10001),
+		newListenerSet("multi", "gw-ns", 10000, 10001),
 	)
 
-	items, err := alloc.listXListenerSets(context.Background())
+	items, err := alloc.listListenerSets(context.Background())
 	require.NoError(t, err)
 	usedPorts := alloc.extractUsedPorts(items)
 	port, err := alloc.AllocatePort(context.Background(), usedPorts, "test-ns", "holder")
@@ -155,11 +155,11 @@ func newTestClient(t *testing.T, objects ...client.Object) client.Client {
 
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSetList"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSetList"},
 		&unstructured.UnstructuredList{},
 	)
 	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Kind: "XListenerSet"},
+		schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "ListenerSet"},
 		&unstructured.Unstructured{},
 	)
 	require.NoError(t, coordinationv1.AddToScheme(scheme))
@@ -185,7 +185,7 @@ func TestTryReclaimStaleLease_HolderGone(t *testing.T) {
 	alloc := newTestAllocatorWithClient(t, c)
 
 	reclaimed := alloc.tryReclaimStaleLease(context.Background(), lease.Name, "test-ns")
-	assert.True(t, reclaimed, "should reclaim lease when holder XListenerSet is gone")
+	assert.True(t, reclaimed, "should reclaim lease when holder ListenerSet is gone")
 
 	err := c.Get(context.Background(), client.ObjectKeyFromObject(lease), &coordinationv1.Lease{})
 	assert.True(t, apierrors.IsNotFound(err), "lease should be deleted")
@@ -203,12 +203,12 @@ func TestTryReclaimStaleLease_HolderExists(t *testing.T) {
 		},
 	}
 
-	xls := newXListenerSet("existing-xls", "vshn-forgejo-test", 10000)
+	xls := newListenerSet("existing-xls", "vshn-forgejo-test", 10000)
 	c := newTestClient(t, lease, xls)
 	alloc := newTestAllocatorWithClient(t, c)
 
 	reclaimed := alloc.tryReclaimStaleLease(context.Background(), lease.Name, "test-ns")
-	assert.False(t, reclaimed, "should not reclaim lease when holder XListenerSet still exists")
+	assert.False(t, reclaimed, "should not reclaim lease when holder ListenerSet still exists")
 }
 
 func TestTryReclaimStaleLease_NoHolderIdentity(t *testing.T) {

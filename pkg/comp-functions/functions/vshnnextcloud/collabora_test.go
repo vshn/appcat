@@ -91,7 +91,7 @@ func Test_addCollaboraHTTPRoute(t *testing.T) {
 		}
 	}
 	assert.True(t, foundRoute, "Collabora HTTPRoute must be created")
-	assert.True(t, foundLS, "Collabora XListenerSet must be created")
+	assert.True(t, foundLS, "Collabora ListenerSet must be created")
 	assert.False(t, foundGrant, "Collabora ReferenceGrant must NOT be created")
 }
 

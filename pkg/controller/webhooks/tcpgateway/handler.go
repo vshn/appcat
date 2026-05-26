@@ -16,27 +16,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-//+kubebuilder:webhook:path=/mutate-gateway-networking-x-k8s-io-v1alpha1-xlistenerset,mutating=true,failurePolicy=fail,groups=gateway.networking.x-k8s.io,resources=xlistenersets,verbs=create,versions=v1alpha1,name=mxlistenerset.kb.io,admissionReviewVersions=v1,sideEffects=None
+//+kubebuilder:webhook:path=/mutate-gateway-networking-k8s-io-v1-listenerset,mutating=true,failurePolicy=fail,groups=gateway.networking.k8s.io,resources=listenersets,verbs=create,versions=v1,name=mlistenerset.kb.io,admissionReviewVersions=v1,sideEffects=None
 
-//+kubebuilder:rbac:groups=gateway.networking.x-k8s.io,resources=xlistenersets,verbs=get;list;watch
+//+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=listenersets,verbs=get;list;watch
 //+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=create;get;list;watch;delete
 
-// XListenerSetHandler handles mutating admission requests for XListenerSet resources.
+// ListenerSetHandler handles mutating admission requests for ListenerSet resources.
 // It allocates unique TCP ports for listeners that have port 0 (sentinel value).
-type XListenerSetHandler struct {
+type ListenerSetHandler struct {
 	allocator *PortAllocator
 	sharding  *GatewaySharding
 	log       logr.Logger
 	leaseNS   string
 }
 
-// SetupXListenerSetWebhookWithManager registers the XListenerSet mutating webhook.
+// SetupListenerSetWebhookWithManager registers the ListenerSet mutating webhook.
 // gatewayCapacity of 0 disables gateway sharding.
-func SetupXListenerSetWebhookWithManager(mgr ctrl.Manager, portRangeStart, portRangeEnd int32, gatewayCapacity int, gatewayNS string, gatewayNames []string) error {
+func SetupListenerSetWebhookWithManager(mgr ctrl.Manager, portRangeStart, portRangeEnd int32, gatewayCapacity int, gatewayNS string, gatewayNames []string) error {
 	allocator := NewPortAllocator(mgr.GetClient(), portRangeStart, portRangeEnd)
-	handler := &XListenerSetHandler{
+	handler := &ListenerSetHandler{
 		allocator: allocator,
-		log:       mgr.GetLogger().WithName("webhook").WithName("xlistenerset-tcpgateway"),
+		log:       mgr.GetLogger().WithName("webhook").WithName("listenerset-tcpgateway"),
 		leaseNS:   gatewayNS,
 	}
 
@@ -48,21 +48,21 @@ func SetupXListenerSetWebhookWithManager(mgr ctrl.Manager, portRangeStart, portR
 		handler.sharding = NewGatewaySharding(gateways, gatewayCapacity)
 	}
 
-	mgr.GetWebhookServer().Register("/mutate-gateway-networking-x-k8s-io-v1alpha1-xlistenerset",
+	mgr.GetWebhookServer().Register("/mutate-gateway-networking-k8s-io-v1-listenerset",
 		&webhook.Admission{Handler: handler})
 	return nil
 }
 
-// Handle processes the admission request for XListenerSet resources.
+// Handle processes the admission request for ListenerSet resources.
 // It works with map[string]any to preserve all fields through the marshal/unmarshal roundtrip.
-func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request) admission.Response {
+func (h *ListenerSetHandler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	if req.Operation != admissionv1.Create {
 		return admission.Allowed("")
 	}
 
 	var obj map[string]any
 	if err := json.Unmarshal(req.Object.Raw, &obj); err != nil {
-		return admission.Errored(http.StatusBadRequest, fmt.Errorf("unmarshaling XListenerSet: %w", err))
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("unmarshaling ListenerSet: %w", err))
 	}
 
 	metadata, _ := obj["metadata"].(map[string]any)
@@ -76,10 +76,10 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("missing or invalid spec"))
 	}
 
-	items, err := h.allocator.listXListenerSets(ctx)
+	items, err := h.allocator.listListenerSets(ctx)
 	if err != nil {
-		l.Error(err, "Failed to list XListenerSets")
-		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("listing XListenerSets: %w", err))
+		l.Error(err, "Failed to list ListenerSets")
+		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("listing ListenerSets: %w", err))
 	}
 
 	modified := false
@@ -107,7 +107,7 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 		selected, changed, err := h.sharding.SelectGateway(currentRef, len(listeners), listenerCounts, allowedGateways)
 		if err != nil {
 			l.Info("All gateways full, denying admission", "error", err.Error())
-			return admission.Denied(fmt.Sprintf("cannot place XListenerSet: %s", err))
+			return admission.Denied(fmt.Sprintf("cannot place ListenerSet: %s", err))
 		}
 
 		if changed {
@@ -151,7 +151,7 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 
 	patched, err := json.Marshal(obj)
 	if err != nil {
-		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("marshaling patched XListenerSet: %w", err))
+		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("marshaling patched ListenerSet: %w", err))
 	}
 
 	return admission.PatchResponseFromRaw(req.Object.Raw, patched)

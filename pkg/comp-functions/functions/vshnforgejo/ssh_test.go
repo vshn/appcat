@@ -25,8 +25,8 @@ func TestSSH(t *testing.T) {
 
 		// Verify no SSH-related resources were created
 		xls := &unstructured.Unstructured{}
-		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-		xls.SetKind("XListenerSet")
+		xls.SetAPIVersion("gateway.networking.k8s.io/v1")
+		xls.SetKind("ListenerSet")
 		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-ssh-xls"), runtime.ErrNotFound)
 	})
 
@@ -66,7 +66,7 @@ func TestSSH(t *testing.T) {
 	})
 
 	t.Run("AllocatedGatewayPreserved_ConnectionDetails", func(t *testing.T) {
-		// Observed XListenerSet has gateway tcp-gateway-2 (different from config's tcp-gateway)
+		// Observed ListenerSet has gateway tcp-gateway-2 (different from config's tcp-gateway)
 		svc, comp := bootstrapSSHTestFromFixture(t, "vshnforgejo/02_ssh_with_port_sharded.yaml")
 
 		result := ConfigureSSHAccess(context.TODO(), comp, svc)

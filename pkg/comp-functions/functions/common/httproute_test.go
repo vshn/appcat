@@ -37,9 +37,9 @@ func TestGenerateHTTPRoute(t *testing.T) {
 		assert.Len(t, route.Spec.ParentRefs, 1)
 		pr := route.Spec.ParentRefs[0]
 		assert.NotNil(t, pr.Group)
-		assert.Equal(t, gatewayv1.Group("gateway.networking.x-k8s.io"), *pr.Group)
+		assert.Equal(t, gatewayv1.Group("gateway.networking.k8s.io"), *pr.Group)
 		assert.NotNil(t, pr.Kind)
-		assert.Equal(t, gatewayv1.Kind("XListenerSet"), *pr.Kind)
+		assert.Equal(t, gatewayv1.Kind("ListenerSet"), *pr.Kind)
 		assert.Equal(t, gatewayv1.ObjectName(compName+"-listenerset"), pr.Name)
 		assert.Nil(t, pr.Namespace, "parentRef must have no Namespace (same-ns)")
 
@@ -171,12 +171,12 @@ func TestGenerateHTTPRoute(t *testing.T) {
 	})
 }
 
-func TestGenerateXListenerSet(t *testing.T) {
-	t.Run("GivenSingleFQDN_ExpectXListenerSetInInstanceNs", func(t *testing.T) {
+func TestGenerateListenerSet(t *testing.T) {
+	t.Run("GivenSingleFQDN_ExpectListenerSetInInstanceNs", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "common/03_httproute.yaml")
 		comp := &baaSComposite{ObjectMeta: metav1.ObjectMeta{Name: compName}}
 
-		ls, err := GenerateXListenerSet(comp, svc, HTTPRouteConfig{
+		ls, err := GenerateListenerSet(comp, svc, HTTPRouteConfig{
 			FQDNs: []string{"my-domain.com"},
 			ServiceConfig: IngressRuleConfig{
 				ServiceNameSuffix: svcNameSuffix,
@@ -186,13 +186,13 @@ func TestGenerateXListenerSet(t *testing.T) {
 			GatewayNamespace: httpGatewayNamespace,
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, "gateway.networking.x-k8s.io/v1alpha1", ls.GetAPIVersion())
-		assert.Equal(t, "XListenerSet", ls.GetKind())
+		assert.Equal(t, "gateway.networking.k8s.io/v1", ls.GetAPIVersion())
+		assert.Equal(t, "ListenerSet", ls.GetKind())
 		assert.Equal(t, compName+"-listenerset", ls.GetName())
 		assert.Equal(t, "vshn-"+compName, ls.GetNamespace())
 
-		// ingress_annotations must not propagate to the XListenerSet:
-		// cert-manager's Gateway API shim doesn't understand XListenerSet,
+		// ingress_annotations must not propagate to the ListenerSet:
+		// cert-manager's Gateway API shim doesn't understand ListenerSet,
 		// so Certificates are created explicitly by GenerateCertificates.
 		assert.Empty(t, ls.GetAnnotations())
 
@@ -228,7 +228,7 @@ func TestGenerateXListenerSet(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "common/03_httproute.yaml")
 		comp := &baaSComposite{ObjectMeta: metav1.ObjectMeta{Name: compName}}
 
-		ls, err := GenerateXListenerSet(comp, svc, HTTPRouteConfig{
+		ls, err := GenerateListenerSet(comp, svc, HTTPRouteConfig{
 			FQDNs: []string{"a.example.com", "b.example.com", "c.example.com"},
 			ServiceConfig: IngressRuleConfig{
 				ServiceNameSuffix: svcNameSuffix,
@@ -245,7 +245,7 @@ func TestGenerateXListenerSet(t *testing.T) {
 	t.Run("GivenNameSuffix_ExpectSuffixedName", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "common/03_httproute.yaml")
 		comp := &baaSComposite{ObjectMeta: metav1.ObjectMeta{Name: compName}}
-		ls, err := GenerateXListenerSet(comp, svc, HTTPRouteConfig{
+		ls, err := GenerateListenerSet(comp, svc, HTTPRouteConfig{
 			FQDNs:            []string{"collabora.example.com"},
 			NameSuffix:       "collabora-code",
 			ServiceConfig:    IngressRuleConfig{ServiceNameSuffix: "collabora-code", ServicePortNumber: 9980},
@@ -259,7 +259,7 @@ func TestGenerateXListenerSet(t *testing.T) {
 	t.Run("GivenMissingGatewayName_ExpectError", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "common/03_httproute.yaml")
 		comp := &baaSComposite{ObjectMeta: metav1.ObjectMeta{Name: compName}}
-		_, err := GenerateXListenerSet(comp, svc, HTTPRouteConfig{
+		_, err := GenerateListenerSet(comp, svc, HTTPRouteConfig{
 			FQDNs:            []string{"example.com"},
 			ServiceConfig:    IngressRuleConfig{ServiceNameSuffix: "x", ServicePortNumber: 80},
 			GatewayNamespace: httpGatewayNamespace,
@@ -271,7 +271,7 @@ func TestGenerateXListenerSet(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "common/03_httproute.yaml")
 		longName := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 		comp := &baaSComposite{ObjectMeta: metav1.ObjectMeta{Name: longName}}
-		ls, err := GenerateXListenerSet(comp, svc, HTTPRouteConfig{
+		ls, err := GenerateListenerSet(comp, svc, HTTPRouteConfig{
 			FQDNs:            []string{"example.com"},
 			NameSuffix:       "collabora-code",
 			ServiceConfig:    IngressRuleConfig{ServiceNameSuffix: "x", ServicePortNumber: 80},

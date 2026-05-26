@@ -31,6 +31,10 @@ func init() {
 				Execute: AddBilling,
 			},
 			{
+				Name:    "runner",
+				Execute: DeployForgejoRunner,
+			},
+			{
 				Name:    "additional-resources",
 				Execute: common.AddAdditionalResources[*vshnv1.VSHNForgejo],
 			},

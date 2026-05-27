@@ -11961,6 +11961,10 @@ spec:
                 description: CurrentReleaseTag contains the currently deployed image
                   tag.
                 type: string
+              currentRevision:
+                description: CurrentRevision is the AppCat revision couplet this instance
+                  is running on.
+                type: string
               initialMaintenance:
                 description: |-
                   InitialMaintenance tracks the status of the initial maintenance job,

@@ -332,6 +332,10 @@ type VSHNPostgreSQLStatus struct {
 	// VersionCompatibilityConditions surfaces service-version / AppCat-revision compatibility.
 	VersionCompatibilityConditions []Condition `json:"versionCompatibilityConditions,omitempty"`
 
+	// CurrentRevision is the AppCat revision couplet this instance is running on,
+	// recorded by the composition function from its (per-revision) input.
+	CurrentRevision string `json:"currentRevision,omitempty"`
+
 	// IsEOL indicates if this instance is using an EOL version of PostgreSQL.
 	IsEOL bool `json:"isEOL,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

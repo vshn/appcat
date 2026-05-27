@@ -5950,6 +5950,10 @@ spec:
                   CurrentInstances tracks the current amount of instances.
                   Mainly used to detect if there was a change in instances
                 type: integer
+              currentRevision:
+                description: CurrentRevision is the AppCat revision couplet this instance
+                  is running on.
+                type: string
               initialMaintenance:
                 description: |-
                   InitialMaintenance tracks the status of the initial maintenance job,

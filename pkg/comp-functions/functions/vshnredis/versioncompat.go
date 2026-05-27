@@ -8,7 +8,6 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/compat"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 )
 
 // AddRedisVersionCompatCheck flags and surfaces a version/revision
@@ -19,7 +18,8 @@ func AddRedisVersionCompatCheck(ctx context.Context, comp *vshnv1.VSHNRedis, svc
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
-	revision := comp.GetLabels()[release.RevisionLabel]
+	revision := svc.Config.Data["revision"]
+	comp.Status.CurrentRevision = revision
 
 	res := compat.RunCompatCheck(ctx, svc, "redis",
 		comp.Spec.Parameters.Service.Version, revision,

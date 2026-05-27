@@ -6016,6 +6016,11 @@ spec:
                 description: Conditions of the resource.
                 type: array
                 x-kubernetes-list-type: map
+              currentRevision:
+                description: |-
+                  CurrentRevision is the AppCat revision couplet this instance is running on,
+                  recorded by the composition function from its (per-revision) input.
+                type: string
               currentVersion:
                 description: CurrentVersion contains the current version of PostgreSQL.
                 type: string

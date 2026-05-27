@@ -44,6 +44,27 @@ func TestVersionCompat_allowCompatible(t *testing.T) {
 	assert.Nil(t, checkVersionCompat(context.Background(), c, pg))
 }
 
+func TestVersionCompat_statusRevisionTakesPrecedence(t *testing.T) {
+	// CM's currentRevision is compatible, but the instance is pinned (via status)
+	// to an older, incompatible revision. The status revision must win.
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: compat.MatrixConfigMapName, Namespace: compat.MatrixNamespace},
+		Data: map[string]string{
+			"currentRevision": "v3.80.0-v4.0.0", // 16.x compatible (>=v3.70.0)
+			"matrix.yaml":     "postgresql:\n  - versionRange: \"16.x\"\n    compatibleRevisions: \">=v3.70.0\"\n",
+		},
+	}
+	c := fake.NewClientBuilder().WithScheme(pkg.SetupScheme()).WithObjects(cm).Build()
+
+	pg := &vshnv1.VSHNPostgreSQL{}
+	pg.Spec.Parameters.Service.MajorVersion = "16"
+	pg.Status.CurrentRevision = "v3.60.0-v4.0.0" // pinned old, < v3.70.0 -> incompatible
+
+	err := checkVersionCompat(context.Background(), c, pg)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Detail, "incompatible")
+}
+
 func TestVersionCompat_missingMatrix_failOpen(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(pkg.SetupScheme()).Build() // no ConfigMap
 

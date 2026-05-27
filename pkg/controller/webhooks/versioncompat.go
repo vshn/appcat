@@ -35,6 +35,28 @@ func versionExtractor(obj runtime.Object) (service, version string, ok bool) {
 	}
 }
 
+// currentRevisionFromStatus returns the AppCat revision the instance is actually
+// running on, recorded by the composition function in status. Empty when the
+// instance has not reconciled yet (e.g. on create).
+func currentRevisionFromStatus(obj runtime.Object) string {
+	switch o := obj.(type) {
+	case *vshnv1.VSHNPostgreSQL:
+		return o.Status.CurrentRevision
+	case *vshnv1.VSHNRedis:
+		return o.Status.CurrentRevision
+	case *vshnv1.VSHNMariaDB:
+		return o.Status.CurrentRevision
+	case *vshnv1.VSHNKeycloak:
+		return o.Status.CurrentRevision
+	case *vshnv1.VSHNNextcloud:
+		return o.Status.CurrentRevision
+	case *vshnv1.VSHNForgejo:
+		return o.Status.CurrentRevision
+	default:
+		return ""
+	}
+}
+
 // loadCompatMatrix reads the matrix ConfigMap and returns the cluster's current
 // AppCat revision couplet and the parsed matrix. ok=false on any read/parse
 // problem so callers fail open.
@@ -61,9 +83,16 @@ func checkVersionCompat(ctx context.Context, c client.Client, obj runtime.Object
 	if !ok {
 		return nil
 	}
-	revision, matrix, ok := loadCompatMatrix(ctx, c)
+	cmRevision, matrix, ok := loadCompatMatrix(ctx, c)
 	if !ok {
 		return nil
+	}
+	// Prefer the instance's actual running revision (recorded in status by the
+	// composition function); fall back to the cluster's latest revision from the
+	// matrix CM for instances that have not reconciled yet (e.g. on create).
+	revision := cmRevision
+	if sr := currentRevisionFromStatus(obj); sr != "" {
+		revision = sr
 	}
 	result := compat.Verdict(matrix, revision, service, version)
 	if result.Compatible {

@@ -38,6 +38,10 @@ func init() {
 				Name:    "additional-resources",
 				Execute: common.AddAdditionalResources[*vshnv1.VSHNNextcloud],
 			},
+			{
+				Name:    "version-compatibility",
+				Execute: AddNextcloudVersionCompatCheck,
+			},
 		},
 	})
 }

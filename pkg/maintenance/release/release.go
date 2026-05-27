@@ -152,6 +152,28 @@ func (vh *DefaultVersionHandler) getLatestRevision(ctx context.Context, minAge t
 		eligibleRevisions = crl.Items
 	}
 
+	matrix, runningVersion, serviceName := vh.loadMatrixAndVersion(ctx)
+	if len(matrix) > 0 && serviceName != "" {
+		labels := make([]string, 0, len(eligibleRevisions))
+		labelToRev := map[string]v1.CompositionRevision{}
+		for _, item := range eligibleRevisions {
+			l := item.GetLabels()[RevisionLabel]
+			labels = append(labels, l)
+			labelToRev[l] = item
+		}
+		compatible := filterRevisionsByCompatibility(labels, matrix, serviceName, runningVersion)
+		if len(compatible) > 0 {
+			filtered := make([]v1.CompositionRevision, 0, len(compatible))
+			for _, l := range compatible {
+				filtered = append(filtered, labelToRev[l])
+			}
+			eligibleRevisions = filtered
+		} else {
+			vh.log.Info("no compatible revision found, staying on current revision",
+				"service", serviceName, "version", runningVersion)
+		}
+	}
+
 	latestRevision := eligibleRevisions[0]
 	for _, item := range eligibleRevisions[1:] {
 		if item.Spec.Revision > latestRevision.Spec.Revision {

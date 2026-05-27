@@ -238,6 +238,8 @@ type VSHNKeycloakTLSSpec struct {
 
 // VSHNKeycloakStatus reflects the observed state of a VSHNKeycloak.
 type VSHNKeycloakStatus struct {
+	// VersionCompatibilityConditions surfaces service-version / AppCat-revision compatibility.
+	VersionCompatibilityConditions []Condition `json:"versionCompatibilityConditions,omitempty"`
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

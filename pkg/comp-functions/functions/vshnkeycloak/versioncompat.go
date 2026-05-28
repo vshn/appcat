@@ -8,6 +8,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/compat"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	"github.com/vshn/appcat/v4/pkg/maintenance/release"
 )
 
 // AddKeycloakVersionCompatCheck flags and surfaces a version/revision
@@ -17,8 +18,7 @@ func AddKeycloakVersionCompatCheck(ctx context.Context, comp *vshnv1.VSHNKeycloa
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
 	}
 
-	revision := svc.Config.Data["revision"]
-	comp.Status.CurrentRevision = revision
+	revision := svc.GetCompositionRevisionSelectorLabel(release.RevisionLabel)
 
 	res := compat.RunCompatCheck(ctx, svc, "keycloak",
 		comp.Spec.Parameters.Service.Version, revision,

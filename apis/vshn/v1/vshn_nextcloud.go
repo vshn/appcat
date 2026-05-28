@@ -182,8 +182,6 @@ type VSHNNextcloudSizeSpec struct {
 type VSHNNextcloudStatus struct {
 	// VersionCompatibilityConditions surfaces service-version / AppCat-revision compatibility.
 	VersionCompatibilityConditions []Condition `json:"versionCompatibilityConditions,omitempty"`
-	// CurrentRevision is the AppCat revision couplet this instance is running on.
-	CurrentRevision string `json:"currentRevision,omitempty"`
 	// InstanceNamespace contains the name of the namespace where the instance resides
 	InstanceNamespace string `json:"instanceNamespace,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

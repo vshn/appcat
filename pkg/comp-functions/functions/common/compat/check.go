@@ -38,6 +38,13 @@ func RunCompatCheck(
 	serviceName, runningVersion, revision string,
 	setCondition func(vshnv1.Condition),
 ) *xfnproto.Result {
+	// An empty revision means the instance is not pinned to a composition
+	// revision (e.g. release management is disabled). The feature does not apply
+	// there: skip silently rather than observe the matrix or set a condition.
+	if revision == "" {
+		return nil
+	}
+
 	log := controllerruntime.LoggerFrom(ctx)
 
 	observerCM := &corev1.ConfigMap{

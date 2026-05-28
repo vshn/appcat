@@ -102,6 +102,14 @@ func TestUpsertCondition(t *testing.T) {
 	assert.Equal(t, metav1.ConditionFalse, got[0].Status)
 }
 
+func TestRunCompatCheck_emptyRevision_noop(t *testing.T) {
+	called := false
+	res := RunCompatCheck(context.Background(), &runtime.ServiceRuntime{}, "postgresql", "16", "",
+		func(c vshnv1.Condition) { called = true })
+	assert.Nil(t, res)
+	assert.False(t, called, "no condition should be set when the instance is unpinned")
+}
+
 func TestRunCompatCheck_compatible_setsFalseCondition(t *testing.T) {
 	matrixCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: MatrixConfigMapName, Namespace: MatrixNamespace},

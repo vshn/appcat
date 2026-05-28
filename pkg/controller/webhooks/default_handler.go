@@ -147,10 +147,6 @@ func (r *DefaultWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 
 	allErrs.Add(r.checkGuaranteedAvailability(comp)...)
 
-	if verErr := checkVersionCompat(ctx, r.client, obj); verErr != nil {
-		allErrs.Add(verErr)
-	}
-
 	warn := checkManualVersionManagementWarnings(comp.GetFullMaintenanceSchedule())
 	return warn, allErrs.Get()
 }

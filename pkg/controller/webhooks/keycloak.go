@@ -70,15 +70,10 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 
 	allErrs := newFielErrors(keycloak.GetName(), keycloakGK)
 
-	warning, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
+	defaultWarnings, err := n.DefaultWebhookHandler.ValidateCreate(ctx, obj)
 	if err != nil {
 		tmpErr := err.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
-	}
-	// Only return here if there are no errors. Errors should take
-	// precedence.
-	if warning != nil && err == nil {
-		return warning, nil
 	}
 
 	if err := validateCustomImageMutualExclusion(keycloak); err != nil {
@@ -89,9 +84,7 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 		allErrs.Add(err)
 	}
 
-	warn := isDeprecatedFieldInUse(keycloak)
-
-	return warn, allErrs.Get()
+	return append(defaultWarnings, isDeprecatedFieldInUse(keycloak)...), allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -111,13 +104,10 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 
 	allErrs := newFielErrors(newKeycloak.GetName(), keycloakGK)
 
-	warnings, err := p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
+	defaultWarnings, err := p.DefaultWebhookHandler.ValidateUpdate(ctx, oldObj, newObj)
 	if err != nil {
 		tmpErr := err.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
-	}
-	if warnings != nil && err == nil {
-		return warnings, nil
 	}
 
 	if err := validateCustomImageMutualExclusion(newKeycloak); err != nil {
@@ -128,7 +118,6 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 		allErrs.Add(err)
 	}
 
-	// Validate PostgreSQL encryption changes
 	if newKeycloak.Spec.Parameters.Service.PostgreSQLParameters != nil && oldKeycloak.Spec.Parameters.Service.PostgreSQLParameters != nil {
 		newEncryption := &newKeycloak.Spec.Parameters.Service.PostgreSQLParameters.Encryption
 		oldEncryption := &oldKeycloak.Spec.Parameters.Service.PostgreSQLParameters.Encryption
@@ -138,9 +127,7 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 		}
 	}
 
-	warn := isDeprecatedFieldInUse(newKeycloak)
-
-	return warn, allErrs.Get()
+	return append(defaultWarnings, isDeprecatedFieldInUse(newKeycloak)...), allErrs.Get()
 }
 
 func validateCustomImageMutualExclusion(keycloak *vshnv1.VSHNKeycloak) *field.Error {

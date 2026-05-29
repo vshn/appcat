@@ -81,6 +81,10 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 		return warning, nil
 	}
 
+	if err := validateCustomImageMutualExclusion(keycloak); err != nil {
+		allErrs.Add(err)
+	}
+
 	if err := validateCustomFileObject(keycloak); err != nil {
 		allErrs.Add(err)
 	}
@@ -116,6 +120,10 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 		return warnings, nil
 	}
 
+	if err := validateCustomImageMutualExclusion(newKeycloak); err != nil {
+		allErrs.Add(err)
+	}
+
 	if err := validateCustomFileObject(newKeycloak); err != nil {
 		allErrs.Add(err)
 	}
@@ -133,6 +141,18 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 	warn := isDeprecatedFieldInUse(newKeycloak)
 
 	return warn, allErrs.Get()
+}
+
+func validateCustomImageMutualExclusion(keycloak *vshnv1.VSHNKeycloak) *field.Error {
+	if keycloak.Spec.Parameters.Service.Image.Image != "" &&
+		keycloak.Spec.Parameters.Service.CustomizationImage.Image != "" {
+		return field.Invalid(
+			field.NewPath("spec", "parameters", "service", "image", "image"),
+			keycloak.Spec.Parameters.Service.Image.Image,
+			"cannot set both 'image' and 'customizationImage': 'customizationImage' is deprecated, use 'image' instead",
+		)
+	}
+	return nil
 }
 
 func validateCustomFileObject(keycloak *vshnv1.VSHNKeycloak) *field.Error {
@@ -187,13 +207,18 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) *field
 }
 
 func isDeprecatedFieldInUse(comp *vshnv1.VSHNKeycloak) admission.Warnings {
+	var warnings admission.Warnings
 	if comp.Spec.Parameters.Service.CustomEnvVariablesRef != nil {
-		return admission.Warnings{
-			fmt.Sprintf("Field 'customEnvVariablesRef' in %s has been deprecated, please use 'envFrom' instead.",
-				field.NewPath("spec", "parameters", "service").String(),
-			),
-		}
+		warnings = append(warnings, fmt.Sprintf(
+			"Field 'customEnvVariablesRef' in %s has been deprecated, please use 'envFrom' instead.",
+			field.NewPath("spec", "parameters", "service").String(),
+		))
 	}
-
-	return nil
+	if comp.Spec.Parameters.Service.CustomizationImage.Image != "" {
+		warnings = append(warnings, fmt.Sprintf(
+			"Field 'customizationImage' in %s has been deprecated, please use 'image' instead.",
+			field.NewPath("spec", "parameters", "service").String(),
+		))
+	}
+	return warnings
 }

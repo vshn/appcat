@@ -130,6 +130,13 @@ type VSHNKeycloakServiceSpec struct {
 	// underlying PostgreSQL instance.
 	PostgreSQLParameters *VSHNPostgreSQLParameters `json:"postgreSQLParameters,omitempty"`
 
+	// Image allows specifying a full custom Keycloak image built from
+	// https://github.com/vshn/custom-keycloak-image-template.
+	// When set, automatic maintenance/upgrades are disabled and the image is used directly.
+	// This supersedes the deprecated customizationImage and customFiles fields.
+	Image VSHNKeycloakImage `json:"image,omitempty"`
+
+	// Deprecated: use Image instead.
 	// CustomizationImage can be used to provide an image with custom themes, providers and other files.
 	// Themes and providers are automatically copied and need to be placed in '/themes' and '/providers' respectively.
 	// Other custom data will be copied according to the `customFiles` field.
@@ -159,6 +166,7 @@ type VSHNKeycloakServiceSpec struct {
 	CustomMounts []VSHNCustomMount `json:"customMounts,omitempty"`
 }
 
+<<<<<<< Updated upstream
 // VSHNKeycloakAdminConsoleSpec configures the Keycloak admin console access.
 type VSHNKeycloakAdminConsoleSpec struct {
 	// Private disables access to the Keycloak admin console via the main FQDN.
@@ -169,6 +177,17 @@ type VSHNKeycloakAdminConsoleSpec struct {
 	// FQDN is the hostname for a dedicated admin console ingress.
 	// If not set, the admin console is accessible via the main FQDN (unless Disabled is true).
 	FQDN string `json:"fqdn,omitempty"`
+||||||| Stash base
+=======
+// VSHNKeycloakImage defines a full custom Keycloak image with optional private registry credentials.
+type VSHNKeycloakImage struct {
+	// Image is the full Docker image reference (repository:tag).
+	Image string `json:"image,omitempty"`
+
+	// ImagePullSecretRef references a secret in the claim namespace containing
+	// Docker registry credentials for pulling the image.
+	ImagePullSecretRef corev1.SecretReference `json:"imagePullSecretRef,omitempty"`
+>>>>>>> Stashed changes
 }
 
 type VSHNKeycloakCustomizationImage struct {

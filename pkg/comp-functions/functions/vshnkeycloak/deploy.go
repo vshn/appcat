@@ -52,7 +52,21 @@ const (
 	cdCertsSuffix                 = "-keycloakx-http-server-cert"
 	customMountTypeSecret         = "secret"
 	customMountTypeConfigMap      = "configMap"
+	fullImagePullsecretName       = "fullimagepullsecret"
 )
+
+// splitImageRef splits a Docker image reference into repository and tag.
+// It handles registries with ports (e.g. "registry:5000/repo:tag").
+// If no tag is present the tag is returned as empty string.
+func splitImageRef(ref string) (repo, tag string) {
+	// Find the last colon that appears after any slash (to skip port in registry)
+	lastSlash := strings.LastIndex(ref, "/")
+	lastColon := strings.LastIndex(ref, ":")
+	if lastColon > lastSlash {
+		return ref[:lastColon], ref[lastColon+1:]
+	}
+	return ref, ""
+}
 
 //go:embed scripts/copy-kc-creds.sh
 var keycloakCredentialsCopyJobScript string
@@ -648,14 +662,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	extraVolumesMap := []map[string]any{
 		{
-			"name":     "custom-providers",
-			"emptyDir": nil,
-		},
-		{
-			"name":     "custom-themes",
-			"emptyDir": nil,
-		},
-		{
 			"name":     "custom-files",
 			"emtpyDir": nil,
 		},
@@ -676,6 +682,16 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"defaultMode": 420,
 			},
 		},
+	}
+
+	// custom-providers and custom-themes are only needed for the runtime-copy approach
+	// (old customizationImage path). A full custom image has these baked in; mounting
+	// empty emptyDirs at those paths would shadow the image content.
+	if comp.Spec.Parameters.Service.Image.Image == "" {
+		extraVolumesMap = append([]map[string]any{
+			{"name": "custom-providers", "emptyDir": nil},
+			{"name": "custom-themes", "emptyDir": nil},
+		}, extraVolumesMap...)
 	}
 
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
@@ -700,14 +716,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	extraVolumeMountsMap := []map[string]any{
 		{
-			"name":      "custom-providers",
-			"mountPath": "/opt/keycloak/providers",
-		},
-		{
-			"name":      "custom-themes",
-			"mountPath": "/opt/keycloak/themes",
-		},
-		{
 			"name":      "postgresql-certs",
 			"mountPath": "/certs/pg",
 		},
@@ -715,6 +723,13 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			"name":      "keycloak-certs",
 			"mountPath": "/certs/keycloak",
 		},
+	}
+
+	if comp.Spec.Parameters.Service.Image.Image == "" {
+		extraVolumeMountsMap = append([]map[string]any{
+			{"name": "custom-providers", "mountPath": "/opt/keycloak/providers"},
+			{"name": "custom-themes", "mountPath": "/opt/keycloak/themes"},
+		}, extraVolumeMountsMap...)
 	}
 
 	// Custom file volumes and mounts
@@ -775,16 +790,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"extraVolumes":      extraVolumes,
 		"extraVolumeMounts": extraVolumeMounts,
 
-		"command": []string{
-			"/opt/keycloak/bin/kc-with-setup.sh",
-			"--verbose",
-			"start",
-			"--http-enabled=true",
-			"--http-port=8080",
-			"--hostname-strict=false",
-			"--spi-events-listener-jboss-logging-success-level=info",
-			"--spi-events-listener-jboss-logging-error-level=warn",
-		},
+		"command": buildKeycloakCommand(comp, svc),
 		"database": map[string]any{
 			"hostname": string(cd[vshnpostgres.PostgresqlHost]),
 			"port":     string(cd[vshnpostgres.PostgresqlPort]),
@@ -862,7 +868,14 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		values["extraEnvFrom"] = envFrom
 	}
 
-	if svc.Config.Data["imageRegistry"] != "" {
+	if comp.Spec.Parameters.Service.Image.Image != "" {
+		repo, tag := splitImageRef(comp.Spec.Parameters.Service.Image.Image)
+		imageVal := map[string]interface{}{"repository": repo}
+		if tag != "" {
+			imageVal["tag"] = tag
+		}
+		values["image"] = imageVal
+	} else if svc.Config.Data["imageRegistry"] != "" {
 		values["image"] = map[string]interface{}{
 			"repository": svc.Config.Data["imageRegistry"],
 		}
@@ -890,21 +903,28 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return nil, err
 	}
 
-	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName()+"-release")
-	if err != nil {
-		return nil, fmt.Errorf("cannot get observed release values: %w", err)
-	}
+	var releaseTag string
+	if comp.Spec.Parameters.Service.Image.Image != "" {
+		// Custom image: version is embedded in the image reference.
+		// Skip SetReleaseVersion to prevent it from overwriting values["image"]["tag"]
+		// with the Keycloak service version.
+		_, releaseTag = splitImageRef(comp.Spec.Parameters.Service.Image.Image)
+	} else {
+		observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName()+"-release")
+		if err != nil {
+			return nil, fmt.Errorf("cannot get observed release values: %w", err)
+		}
 
-	releaseTag, err := maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.PinImageTag)
-	if err != nil {
-		return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
-	}
+		releaseTag, err = maintenance.SetReleaseVersion(ctx, comp.Spec.Parameters.Service.Version, values, observedValues, []string{"image", "tag"}, comp.Spec.Parameters.Maintenance.PinImageTag)
+		if err != nil {
+			return nil, fmt.Errorf("cannot set keycloak version for release: %w", err)
+		}
 
-	// Update status with current release tag
-	if releaseTag != "" {
-		comp.Status.CurrentReleaseTag = releaseTag
-		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
-			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+		if releaseTag != "" {
+			comp.Status.CurrentReleaseTag = releaseTag
+			if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+				svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+			}
 		}
 	}
 
@@ -935,6 +955,30 @@ func isCustomFileDestinationValid(destination string) bool {
 func toYAML(obj any) (string, error) {
 	yamlBytes, err := yaml.Marshal(obj)
 	return string(yamlBytes), err
+}
+
+func copyFullImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	secretInstance := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fullImagePullsecretName,
+			Namespace: comp.GetInstanceNamespace(),
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+	}
+	secretClaimRef := xkubev1.Reference{
+		PatchesFrom: &xkubev1.PatchesFrom{
+			DependsOn: xkubev1.DependsOn{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  comp.GetClaimNamespace(),
+				Name:       comp.Spec.Parameters.Service.Image.ImagePullSecretRef.Name,
+			},
+			FieldPath: ptr.To("data"),
+		},
+		ToFieldPath: ptr.To("data"),
+	}
+
+	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-full-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef), runtime.KubeOptionAllowDeletion)
 }
 
 func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
@@ -1006,15 +1050,19 @@ func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, v
 		},
 	}
 
+	if comp.Spec.Parameters.Service.Image.ImagePullSecretRef.Name != "" {
+		if err := copyFullImagePullSecret(comp, svc); err != nil {
+			return err
+		}
+		pullSecrets = append(pullSecrets, map[string]any{"name": fullImagePullsecretName})
+	}
+
 	if comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.Name != "" {
 		err := copyCustomImagePullSecret(comp, svc)
 		if err != nil {
 			return err
 		}
-		customImagePullSecret := map[string]any{
-			"name": customImagePullsecretName,
-		}
-		pullSecrets = append(pullSecrets, customImagePullSecret)
+		pullSecrets = append(pullSecrets, map[string]any{"name": customImagePullsecretName})
 	}
 
 	values["serviceAccount"] = map[string]any{
@@ -1025,7 +1073,39 @@ func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, v
 	return nil
 }
 
+// buildKeycloakCommand builds the Keycloak startup command.
+// --optimized is only added for the default Inventage-managed image and only when
+// keycloak_images_optimized="true" is set in the composition config, to avoid
+// breaking existing instances that may be running non-optimized images.
+// Custom images (Image.Image set) are never started with --optimized because
+// images built from the user template are not built with kc.sh build --optimized.
+func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) []string {
+	cmd := []string{
+		"/opt/keycloak/bin/kc-with-setup.sh",
+		"--verbose",
+		"start",
+		"--http-enabled=true",
+		"--http-port=8080",
+		"--hostname-strict=false",
+		"--spi-events-listener-jboss-logging-success-level=info",
+		"--spi-events-listener-jboss-logging-error-level=warn",
+	}
+	// --optimized is incompatible with the deprecated customizationImage (runtime-copy) path.
+	// Both the default Inventage image and customer images built from the template are
+	// optimized builds (template runs kc.sh build), so both get --optimized when the flag is on.
+	if comp.Spec.Parameters.Service.CustomizationImage.Image == "" && svc.Config.Data["keycloak_images_optimized"] == "true" {
+		cmd = append(cmd, "--optimized")
+	}
+	return cmd
+}
+
 func addInitContainer(comp *vshnv1.VSHNKeycloak, values map[string]any, version string) error {
+	if comp.Spec.Parameters.Service.Image.Image != "" {
+		// Full custom image: providers/themes are baked in by kc.sh build.
+		// No init containers needed; omit the key entirely rather than setting it to "".
+		return nil
+	}
+
 	extraInitContainersMap := []map[string]any{
 		{
 			"name":            providerInitName,

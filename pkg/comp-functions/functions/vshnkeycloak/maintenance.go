@@ -22,6 +22,11 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runt
 		}
 	}
 
+	if comp.Spec.Parameters.Service.Image.Image != "" {
+		svc.Log.Info("Custom image set – skipping maintenance job")
+		return runtime.NewNormalResult("Maintenance disabled: custom image is in use")
+	}
+
 	maintTime := common.SetRandomMaintenanceSchedule(comp)
 	common.SetRandomBackupSchedule(comp, &maintTime)
 

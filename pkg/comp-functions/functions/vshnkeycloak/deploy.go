@@ -56,10 +56,11 @@ const (
 )
 
 // splitImageRef splits a Docker image reference into repository and tag.
-// It handles registries with ports (e.g. "registry:5000/repo:tag").
-// If no tag is present the tag is returned as empty string.
+// It handles registries with ports (e.g. "registry:5000/repo:tag") by only treating
+// a colon as a tag separator when it appears after the last slash.
+// Digest references (repo@sha256:...) are not supported; use repo:tag form.
+// If no tag is present, tag is returned as empty string.
 func splitImageRef(ref string) (repo, tag string) {
-	// Find the last colon that appears after any slash (to skip port in registry)
 	lastSlash := strings.LastIndex(ref, "/")
 	lastColon := strings.LastIndex(ref, ":")
 	if lastColon > lastSlash {
@@ -660,39 +661,34 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, err
 	}
 
-	extraVolumesMap := []map[string]any{
-		{
-			"name":     "custom-files",
-			"emtpyDir": nil,
-		},
-		{
-			"name": "keycloak-dist",
-		},
-		{
+	// custom-providers and custom-themes are only needed for the runtime-copy approach
+	// (old customizationImage path). A full custom image has providers/themes baked in;
+	// mounting emptyDirs at those paths would shadow the image content.
+	var extraVolumesMap []map[string]any
+	if comp.Spec.Parameters.Service.Image.Image == "" {
+		extraVolumesMap = append(extraVolumesMap,
+			map[string]any{"name": "custom-providers", "emptyDir": nil},
+			map[string]any{"name": "custom-themes", "emptyDir": nil},
+		)
+	}
+	extraVolumesMap = append(extraVolumesMap,
+		map[string]any{"name": "custom-files", "emptyDir": nil},
+		map[string]any{"name": "keycloak-dist"},
+		map[string]any{
 			"name": "postgresql-certs",
 			"secret": map[string]any{
 				"secretName":  pgSecret,
 				"defaultMode": 420,
 			},
 		},
-		{
+		map[string]any{
 			"name": "keycloak-certs",
 			"secret": map[string]any{
 				"secretName":  "tls-server-certificate",
 				"defaultMode": 420,
 			},
 		},
-	}
-
-	// custom-providers and custom-themes are only needed for the runtime-copy approach
-	// (old customizationImage path). A full custom image has these baked in; mounting
-	// empty emptyDirs at those paths would shadow the image content.
-	if comp.Spec.Parameters.Service.Image.Image == "" {
-		extraVolumesMap = append([]map[string]any{
-			{"name": "custom-providers", "emptyDir": nil},
-			{"name": "custom-themes", "emptyDir": nil},
-		}, extraVolumesMap...)
-	}
+	)
 
 	for _, mount := range comp.Spec.Parameters.Service.CustomMounts {
 		if mount.Type == customMountTypeSecret {
@@ -714,23 +710,17 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
-	extraVolumeMountsMap := []map[string]any{
-		{
-			"name":      "postgresql-certs",
-			"mountPath": "/certs/pg",
-		},
-		{
-			"name":      "keycloak-certs",
-			"mountPath": "/certs/keycloak",
-		},
-	}
-
+	var extraVolumeMountsMap []map[string]any
 	if comp.Spec.Parameters.Service.Image.Image == "" {
-		extraVolumeMountsMap = append([]map[string]any{
-			{"name": "custom-providers", "mountPath": "/opt/keycloak/providers"},
-			{"name": "custom-themes", "mountPath": "/opt/keycloak/themes"},
-		}, extraVolumeMountsMap...)
+		extraVolumeMountsMap = append(extraVolumeMountsMap,
+			map[string]any{"name": "custom-providers", "mountPath": "/opt/keycloak/providers"},
+			map[string]any{"name": "custom-themes", "mountPath": "/opt/keycloak/themes"},
+		)
 	}
+	extraVolumeMountsMap = append(extraVolumeMountsMap,
+		map[string]any{"name": "postgresql-certs", "mountPath": "/certs/pg"},
+		map[string]any{"name": "keycloak-certs", "mountPath": "/certs/keycloak"},
+	)
 
 	// Custom file volumes and mounts
 	if len(comp.Spec.Parameters.Service.CustomFiles) > 0 {
@@ -957,10 +947,13 @@ func toYAML(obj any) (string, error) {
 	return string(yamlBytes), err
 }
 
-func copyFullImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+// copyImagePullSecret copies a Docker registry secret from the claim namespace into the
+// instance namespace so the Keycloak pod can pull its image. Both the full custom image
+// and the deprecated customizationImage paths use this helper.
+func copyImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, destSecretName, composedObjectName, sourceSecretName string) error {
 	secretInstance := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fullImagePullsecretName,
+			Name:      destSecretName,
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Type: corev1.SecretTypeDockerConfigJson,
@@ -971,38 +964,29 @@ func copyFullImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 				APIVersion: "v1",
 				Kind:       "Secret",
 				Namespace:  comp.GetClaimNamespace(),
-				Name:       comp.Spec.Parameters.Service.Image.ImagePullSecretRef.Name,
+				Name:       sourceSecretName,
 			},
 			FieldPath: ptr.To("data"),
 		},
 		ToFieldPath: ptr.To("data"),
 	}
+	return svc.SetDesiredKubeObject(secretInstance, composedObjectName, runtime.KubeOptionAddRefs(secretClaimRef), runtime.KubeOptionAllowDeletion)
+}
 
-	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-full-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef), runtime.KubeOptionAllowDeletion)
+func copyFullImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
+	return copyImagePullSecret(comp, svc,
+		fullImagePullsecretName,
+		comp.GetName()+"-full-image-pull-secret",
+		comp.Spec.Parameters.Service.Image.ImagePullSecretRef.Name,
+	)
 }
 
 func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
-	secretInstance := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      customImagePullsecretName,
-			Namespace: comp.GetInstanceNamespace(),
-		},
-		Type: corev1.SecretTypeDockerConfigJson,
-	}
-	secretClaimRef := xkubev1.Reference{
-		PatchesFrom: &xkubev1.PatchesFrom{
-			DependsOn: xkubev1.DependsOn{
-				APIVersion: "v1",
-				Kind:       "Secret",
-				Namespace:  comp.GetClaimNamespace(),
-				Name:       comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.Name,
-			},
-			FieldPath: ptr.To("data"),
-		},
-		ToFieldPath: ptr.To("data"),
-	}
-
-	return svc.SetDesiredKubeObject(secretInstance, comp.GetName()+"-custom-image-pull-secret", runtime.KubeOptionAddRefs(secretClaimRef), runtime.KubeOptionAllowDeletion)
+	return copyImagePullSecret(comp, svc,
+		customImagePullsecretName,
+		comp.GetName()+"-custom-image-pull-secret",
+		comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.Name,
+	)
 }
 
 func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
@@ -1074,11 +1058,12 @@ func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, v
 }
 
 // buildKeycloakCommand builds the Keycloak startup command.
-// --optimized is only added for the default Inventage-managed image and only when
-// keycloak_images_optimized="true" is set in the composition config, to avoid
-// breaking existing instances that may be running non-optimized images.
-// Custom images (Image.Image set) are never started with --optimized because
-// images built from the user template are not built with kc.sh build --optimized.
+// --optimized is added for both the default Inventage image and full custom images built
+// from the template (both run kc.sh build and produce optimized images).
+// It is intentionally omitted for the deprecated customizationImage path, which copies
+// JARs at runtime and is incompatible with --optimized.
+// The flag is gated behind keycloak_images_optimized="true" in the composition config so
+// it can be rolled out to lab/prod after Edwin confirms the managed images are optimized builds.
 func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) []string {
 	cmd := []string{
 		"/opt/keycloak/bin/kc-with-setup.sh",
@@ -1090,9 +1075,6 @@ func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 		"--spi-events-listener-jboss-logging-success-level=info",
 		"--spi-events-listener-jboss-logging-error-level=warn",
 	}
-	// --optimized is incompatible with the deprecated customizationImage (runtime-copy) path.
-	// Both the default Inventage image and customer images built from the template are
-	// optimized builds (template runs kc.sh build), so both get --optimized when the flag is on.
 	if comp.Spec.Parameters.Service.CustomizationImage.Image == "" && svc.Config.Data["keycloak_images_optimized"] == "true" {
 		cmd = append(cmd, "--optimized")
 	}

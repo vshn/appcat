@@ -166,7 +166,6 @@ type VSHNKeycloakServiceSpec struct {
 	CustomMounts []VSHNCustomMount `json:"customMounts,omitempty"`
 }
 
-<<<<<<< Updated upstream
 // VSHNKeycloakAdminConsoleSpec configures the Keycloak admin console access.
 type VSHNKeycloakAdminConsoleSpec struct {
 	// Private disables access to the Keycloak admin console via the main FQDN.
@@ -177,8 +176,8 @@ type VSHNKeycloakAdminConsoleSpec struct {
 	// FQDN is the hostname for a dedicated admin console ingress.
 	// If not set, the admin console is accessible via the main FQDN (unless Disabled is true).
 	FQDN string `json:"fqdn,omitempty"`
-||||||| Stash base
-=======
+}
+
 // VSHNKeycloakImage defines a full custom Keycloak image with optional private registry credentials.
 type VSHNKeycloakImage struct {
 	// Image is the full Docker image reference (repository:tag).
@@ -187,7 +186,6 @@ type VSHNKeycloakImage struct {
 	// ImagePullSecretRef references a secret in the claim namespace containing
 	// Docker registry credentials for pulling the image.
 	ImagePullSecretRef corev1.SecretReference `json:"imagePullSecretRef,omitempty"`
->>>>>>> Stashed changes
 }
 
 type VSHNKeycloakCustomizationImage struct {

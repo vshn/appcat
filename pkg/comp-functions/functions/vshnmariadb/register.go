@@ -51,6 +51,10 @@ func init() {
 				Name:    "proxySQL",
 				Execute: AddProxySQL,
 			},
+			{
+				Name:    "version-compatibility",
+				Execute: AddMariaDBVersionCompatCheck,
+			},
 		},
 	})
 }

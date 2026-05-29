@@ -772,6 +772,19 @@ func (s *ServiceRuntime) GetObservedComposite(obj client.Object) error {
 	return json.Unmarshal(jsonBytes, obj)
 }
 
+// GetCompositionRevisionSelectorLabel returns the value stored under labelKey in
+// the observed composite's spec.compositionRevisionSelector.matchLabels, or "" if
+// no selector is set. Release management pins the running AppCat revision here;
+// an empty result means the instance is unpinned (e.g. release management is off),
+// in which case version-compatibility consumers fail open.
+func (s *ServiceRuntime) GetCompositionRevisionSelectorLabel(labelKey string) string {
+	selector := s.observedComposite.GetCompositionRevisionSelector()
+	if selector == nil || selector.MatchLabels == nil {
+		return ""
+	}
+	return selector.MatchLabels[labelKey]
+}
+
 // SetDesiredCompositeStatus takes the given composite and updates the status accordingly.
 // All other fields will not be updated by crossplane.
 func (s *ServiceRuntime) SetDesiredCompositeStatus(obj client.Object) error {

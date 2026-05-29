@@ -88,6 +88,10 @@ func init() {
 				Name:    "custom-exporter-configs",
 				Execute: PgExporterConfig,
 			},
+			{
+				Name:    "version-compatibility",
+				Execute: AddPostgreSQLVersionCompatCheck,
+			},
 		},
 	})
 }

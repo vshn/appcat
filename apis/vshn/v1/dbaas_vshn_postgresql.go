@@ -329,6 +329,9 @@ type VSHNPostgreSQLStatus struct {
 	LocalCAConditions            []Condition `json:"localCAConditions,omitempty"`
 	CertificateConditions        []Condition `json:"certificateConditions,omitempty"`
 
+	// VersionCompatibilityConditions surfaces service-version / AppCat-revision compatibility.
+	VersionCompatibilityConditions []Condition `json:"versionCompatibilityConditions,omitempty"`
+
 	// IsEOL indicates if this instance is using an EOL version of PostgreSQL.
 	IsEOL bool `json:"isEOL,omitempty"`
 	// Schedules keeps track of random generated schedules, is overwriten by

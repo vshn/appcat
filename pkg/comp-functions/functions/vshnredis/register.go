@@ -50,6 +50,10 @@ func init() {
 				Name:    "billing",
 				Execute: AddBilling,
 			},
+			{
+				Name:    "version-compatibility",
+				Execute: AddRedisVersionCompatCheck,
+			},
 		},
 	})
 }

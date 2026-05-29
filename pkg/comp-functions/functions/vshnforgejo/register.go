@@ -34,6 +34,10 @@ func init() {
 				Name:    "additional-resources",
 				Execute: common.AddAdditionalResources[*vshnv1.VSHNForgejo],
 			},
+			{
+				Name:    "version-compatibility",
+				Execute: AddForgejoVersionCompatCheck,
+			},
 		},
 	})
 }

@@ -194,6 +194,17 @@ func (r *DefaultWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 
 	allErrs.Add(r.checkGuaranteedAvailability(comp)...)
 
+	// Only block updates that introduce a version change to an incompatible
+	// version. Pre-existing drift (version unchanged) is surfaced via the
+	// composition-function condition instead, not blocked here.
+	_, oldVer, ok1 := versionExtractor(oldObj)
+	_, newVer, ok2 := versionExtractor(newObj)
+	if ok1 && ok2 && oldVer != newVer {
+		if verErr := checkVersionCompat(ctx, r.client, newObj); verErr != nil {
+			allErrs.Add(verErr)
+		}
+	}
+
 	warn := checkManualVersionManagementWarnings(comp.GetFullMaintenanceSchedule())
 	return warn, allErrs.Get()
 }

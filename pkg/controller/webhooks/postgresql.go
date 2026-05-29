@@ -217,6 +217,15 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 			allErrs.Add(errList...)
 		}
 
+		// Block version changes to a version incompatible with the revision the
+		// instance is pinned to. Unchanged-version drift is surfaced via the
+		// composition-function condition, not blocked here.
+		if oldPg.Spec.Parameters.Service.MajorVersion != newPg.Spec.Parameters.Service.MajorVersion {
+			if verErr := checkVersionCompat(ctx, p.client, newPg); verErr != nil {
+				allErrs.Add(verErr)
+			}
+		}
+
 		// Validate encryption changes
 		newEncryption := &newPg.Spec.Parameters.Encryption
 		oldEncryption := &oldPg.Spec.Parameters.Encryption

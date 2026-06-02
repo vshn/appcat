@@ -5493,6 +5493,33 @@ spec:
                               type: string
                           type: object
                         type: array
+                      customImage:
+                        description: |-
+                          CustomImage allows specifying a full custom Keycloak image built from
+                          https://github.com/vshn/custom-keycloak-image-template.
+                          When set, automatic maintenance/upgrades are disabled and the image is used directly.
+                          This supersedes the deprecated customizationImage and customFiles fields.
+                        properties:
+                          image:
+                            description: Image is the full Docker image reference
+                              (repository:tag).
+                            type: string
+                          imagePullSecretRef:
+                            description: |-
+                              ImagePullSecretRef references a secret in the claim namespace containing
+                              Docker registry credentials for pulling the image.
+                            properties:
+                              name:
+                                description: name is unique within a namespace to
+                                  reference a secret resource.
+                                type: string
+                              namespace:
+                                description: namespace defines the space within which
+                                  the secret name must be unique.
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                        type: object
                       customMounts:
                         description: |-
                           CustomMounts is a list of Secrets/ConfigMaps that get observed and copied into the Keycloak instance namespace.
@@ -5599,33 +5626,6 @@ spec:
                           If it's not set, no ingress will be deployed.
                           This also enables strict hostname checking for this FQDN.
                         type: string
-                      image:
-                        description: |-
-                          Image allows specifying a full custom Keycloak image built from
-                          https://github.com/vshn/custom-keycloak-image-template.
-                          When set, automatic maintenance/upgrades are disabled and the image is used directly.
-                          This supersedes the deprecated customizationImage and customFiles fields.
-                        properties:
-                          image:
-                            description: Image is the full Docker image reference
-                              (repository:tag).
-                            type: string
-                          imagePullSecretRef:
-                            description: |-
-                              ImagePullSecretRef references a secret in the claim namespace containing
-                              Docker registry credentials for pulling the image.
-                            properties:
-                              name:
-                                description: name is unique within a namespace to
-                                  reference a secret resource.
-                                type: string
-                              namespace:
-                                description: namespace defines the space within which
-                                  the secret name must be unique.
-                                type: string
-                            type: object
-                            x-kubernetes-map-type: atomic
-                        type: object
                       postgreSQLParameters:
                         description: |-
                           PostgreSQLParameters can be used to set any supported setting in the

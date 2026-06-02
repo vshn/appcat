@@ -130,11 +130,11 @@ type VSHNKeycloakServiceSpec struct {
 	// underlying PostgreSQL instance.
 	PostgreSQLParameters *VSHNPostgreSQLParameters `json:"postgreSQLParameters,omitempty"`
 
-	// Image allows specifying a full custom Keycloak image built from
+	// CustomImage allows specifying a full custom Keycloak image built from
 	// https://github.com/vshn/custom-keycloak-image-template.
 	// When set, automatic maintenance/upgrades are disabled and the image is used directly.
 	// This supersedes the deprecated customizationImage and customFiles fields.
-	Image VSHNKeycloakImage `json:"image,omitempty"`
+	CustomImage VSHNKeycloakImage `json:"customImage,omitempty"`
 
 	// Deprecated: use Image instead.
 	// CustomizationImage can be used to provide an image with custom themes, providers and other files.

@@ -76,6 +76,54 @@ func Test_validateCustomFilePaths(t *testing.T) {
 	))
 }
 
+func TestWarnPinImageTagIgnoredForCustomImage(t *testing.T) {
+	t.Log("Both customImage and pinImageTag set: expect warning")
+	keycloak := &vshnv1.VSHNKeycloak{
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					CustomImage: vshnv1.VSHNKeycloakImage{
+						Image: "ghcr.io/my-org/my-keycloak:26.6.1",
+					},
+				},
+				Maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+					PinImageTag: "26.6.1",
+				},
+			},
+		},
+	}
+	warnings := warnPinImageTagIgnoredForCustomImage(keycloak)
+	assert.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "has no effect")
+	assert.Contains(t, warnings[0], "customImage takes precedence")
+
+	t.Log("Only pinImageTag set, no customImage: expect no warning")
+	keycloakPinOnly := &vshnv1.VSHNKeycloak{
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+					PinImageTag: "26.6.1",
+				},
+			},
+		},
+	}
+	assert.Empty(t, warnPinImageTagIgnoredForCustomImage(keycloakPinOnly))
+
+	t.Log("Only customImage set, no pinImageTag: expect no warning")
+	keycloakImageOnly := &vshnv1.VSHNKeycloak{
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					CustomImage: vshnv1.VSHNKeycloakImage{
+						Image: "ghcr.io/my-org/my-keycloak:26.6.1",
+					},
+				},
+			},
+		},
+	}
+	assert.Empty(t, warnPinImageTagIgnoredForCustomImage(keycloakImageOnly))
+}
+
 func TestKeycloakWebhookHandler_ValidatePostgreSQLEncryptionChanges(t *testing.T) {
 	ctx := context.TODO()
 	fclient := fake.NewClientBuilder().

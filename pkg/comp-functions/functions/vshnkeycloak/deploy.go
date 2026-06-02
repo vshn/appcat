@@ -665,7 +665,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	// (old customizationImage path). A full custom image has providers/themes baked in;
 	// mounting emptyDirs at those paths would shadow the image content.
 	var extraVolumesMap []map[string]any
-	if comp.Spec.Parameters.Service.Image.Image == "" {
+	if comp.Spec.Parameters.Service.CustomImage.Image == "" {
 		extraVolumesMap = append(extraVolumesMap,
 			map[string]any{"name": "custom-providers", "emptyDir": nil},
 			map[string]any{"name": "custom-themes", "emptyDir": nil},
@@ -711,7 +711,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	var extraVolumeMountsMap []map[string]any
-	if comp.Spec.Parameters.Service.Image.Image == "" {
+	if comp.Spec.Parameters.Service.CustomImage.Image == "" {
 		extraVolumeMountsMap = append(extraVolumeMountsMap,
 			map[string]any{"name": "custom-providers", "mountPath": "/opt/keycloak/providers"},
 			map[string]any{"name": "custom-themes", "mountPath": "/opt/keycloak/themes"},
@@ -858,8 +858,8 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		values["extraEnvFrom"] = envFrom
 	}
 
-	if comp.Spec.Parameters.Service.Image.Image != "" {
-		repo, tag := splitImageRef(comp.Spec.Parameters.Service.Image.Image)
+	if comp.Spec.Parameters.Service.CustomImage.Image != "" {
+		repo, tag := splitImageRef(comp.Spec.Parameters.Service.CustomImage.Image)
 		imageVal := map[string]interface{}{"repository": repo}
 		if tag != "" {
 			imageVal["tag"] = tag
@@ -894,11 +894,11 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	var releaseTag string
-	if comp.Spec.Parameters.Service.Image.Image != "" {
+	if comp.Spec.Parameters.Service.CustomImage.Image != "" {
 		// Custom image: version is embedded in the image reference.
 		// Skip SetReleaseVersion to prevent it from overwriting values["image"]["tag"]
 		// with the Keycloak service version.
-		_, releaseTag = splitImageRef(comp.Spec.Parameters.Service.Image.Image)
+		_, releaseTag = splitImageRef(comp.Spec.Parameters.Service.CustomImage.Image)
 	} else {
 		observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName()+"-release")
 		if err != nil {
@@ -977,7 +977,7 @@ func copyFullImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 	return copyImagePullSecret(comp, svc,
 		fullImagePullsecretName,
 		comp.GetName()+"-full-image-pull-secret",
-		comp.Spec.Parameters.Service.Image.ImagePullSecretRef.Name,
+		comp.Spec.Parameters.Service.CustomImage.ImagePullSecretRef.Name,
 	)
 }
 
@@ -1034,7 +1034,7 @@ func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, v
 		},
 	}
 
-	if comp.Spec.Parameters.Service.Image.ImagePullSecretRef.Name != "" {
+	if comp.Spec.Parameters.Service.CustomImage.ImagePullSecretRef.Name != "" {
 		if err := copyFullImagePullSecret(comp, svc); err != nil {
 			return err
 		}
@@ -1082,7 +1082,7 @@ func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 }
 
 func addInitContainer(comp *vshnv1.VSHNKeycloak, values map[string]any, version string) error {
-	if comp.Spec.Parameters.Service.Image.Image != "" {
+	if comp.Spec.Parameters.Service.CustomImage.Image != "" {
 		// Full custom image: providers/themes are baked in by kc.sh build.
 		// No init containers needed; omit the key entirely rather than setting it to "".
 		return nil

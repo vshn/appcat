@@ -84,7 +84,7 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 		allErrs.Add(err)
 	}
 
-	return append(defaultWarnings, isDeprecatedFieldInUse(keycloak)...), allErrs.Get()
+	return append(defaultWarnings, append(isDeprecatedFieldInUse(keycloak), warnPinImageTagIgnoredForCustomImage(keycloak)...)...), allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -127,16 +127,16 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 		}
 	}
 
-	return append(defaultWarnings, isDeprecatedFieldInUse(newKeycloak)...), allErrs.Get()
+	return append(defaultWarnings, append(isDeprecatedFieldInUse(newKeycloak), warnPinImageTagIgnoredForCustomImage(newKeycloak)...)...), allErrs.Get()
 }
 
 func validateCustomImageMutualExclusion(keycloak *vshnv1.VSHNKeycloak) *field.Error {
-	if keycloak.Spec.Parameters.Service.Image.Image != "" &&
+	if keycloak.Spec.Parameters.Service.CustomImage.Image != "" &&
 		keycloak.Spec.Parameters.Service.CustomizationImage.Image != "" {
 		return field.Invalid(
-			field.NewPath("spec", "parameters", "service", "image", "image"),
-			keycloak.Spec.Parameters.Service.Image.Image,
-			"cannot set both 'image' and 'customizationImage': 'customizationImage' is deprecated, use 'image' instead",
+			field.NewPath("spec", "parameters", "service", "customImage", "image"),
+			keycloak.Spec.Parameters.Service.CustomImage.Image,
+			"cannot set both 'customImage' and 'customizationImage': 'customizationImage' is deprecated, use 'customImage' instead",
 		)
 	}
 	return nil
@@ -190,6 +190,18 @@ func validateCustomFilePaths(customFiles []vshnv1.VSHNKeycloakCustomFile) *field
 		}
 	}
 
+	return nil
+}
+
+func warnPinImageTagIgnoredForCustomImage(keycloak *vshnv1.VSHNKeycloak) admission.Warnings {
+	if keycloak.Spec.Parameters.Service.CustomImage.Image != "" &&
+		keycloak.Spec.Parameters.Maintenance.PinImageTag != "" {
+		return admission.Warnings{fmt.Sprintf(
+			"%s has no effect when %s is set; the image tag from customImage takes precedence",
+			field.NewPath("spec", "parameters", "maintenance", "pinImageTag").String(),
+			field.NewPath("spec", "parameters", "service", "customImage", "image").String(),
+		)}
+	}
 	return nil
 }
 

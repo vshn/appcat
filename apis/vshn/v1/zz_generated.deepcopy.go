@@ -1053,7 +1053,7 @@ func (in *VSHNKeycloakServiceSpec) DeepCopyInto(out *VSHNKeycloakServiceSpec) {
 		*out = new(VSHNPostgreSQLParameters)
 		(*in).DeepCopyInto(*out)
 	}
-	out.Image = in.Image
+	out.CustomImage = in.CustomImage
 	out.CustomizationImage = in.CustomizationImage
 	if in.CustomFiles != nil {
 		in, out := &in.CustomFiles, &out.CustomFiles

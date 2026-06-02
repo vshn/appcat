@@ -76,6 +76,56 @@ func Test_validateCustomFilePaths(t *testing.T) {
 	))
 }
 
+func TestValidateCustomImageMutualExclusion(t *testing.T) {
+	t.Log("Both customImage and customizationImage set: expect error")
+	keycloak := &vshnv1.VSHNKeycloak{
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					CustomImage: vshnv1.VSHNKeycloakImage{
+						Image: "ghcr.io/my-org/my-keycloak:26.6.1",
+					},
+					CustomizationImage: vshnv1.VSHNKeycloakCustomizationImage{
+						Image: "registry/user/image:tag",
+					},
+				},
+			},
+		},
+	}
+	assert.Error(t, validateCustomImageMutualExclusion(keycloak))
+
+	t.Log("Only customImage set: expect no error")
+	keycloakCustomOnly := &vshnv1.VSHNKeycloak{
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					CustomImage: vshnv1.VSHNKeycloakImage{
+						Image: "ghcr.io/my-org/my-keycloak:26.6.1",
+					},
+				},
+			},
+		},
+	}
+	assert.Nil(t, validateCustomImageMutualExclusion(keycloakCustomOnly))
+
+	t.Log("Only customizationImage set: expect no error")
+	keycloakCustomizationOnly := &vshnv1.VSHNKeycloak{
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					CustomizationImage: vshnv1.VSHNKeycloakCustomizationImage{
+						Image: "registry/user/image:tag",
+					},
+				},
+			},
+		},
+	}
+	assert.Nil(t, validateCustomImageMutualExclusion(keycloakCustomizationOnly))
+
+	t.Log("Neither set: expect no error")
+	assert.Nil(t, validateCustomImageMutualExclusion(&vshnv1.VSHNKeycloak{}))
+}
+
 func TestWarnPinImageTagIgnoredForCustomImage(t *testing.T) {
 	t.Log("Both customImage and pinImageTag set: expect warning")
 	keycloak := &vshnv1.VSHNKeycloak{

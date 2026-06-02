@@ -32,8 +32,9 @@ func AddMaintenanceJob(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runt
 	// the custom image reference so the maintenance job does not upgrade the Keycloak version.
 	// AppCat release updates are unaffected and continue to run as normal.
 	if comp.Spec.Parameters.Service.CustomImage.Image != "" {
-		_, tag := splitImageRef(comp.Spec.Parameters.Service.CustomImage.Image)
-		schedule.PinImageTag = tag
+		if _, tag := splitImageRef(comp.Spec.Parameters.Service.CustomImage.Image); tag != "" {
+			schedule.PinImageTag = tag
+		}
 	}
 
 	username := svc.Config.Data["registry_username"]

@@ -5510,12 +5510,13 @@ spec:
                               Docker registry credentials for pulling the image.
                             properties:
                               name:
-                                description: name is unique within a namespace to
-                                  reference a secret resource.
-                                type: string
-                              namespace:
-                                description: namespace defines the space within which
-                                  the secret name must be unique.
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                 type: string
                             type: object
                             x-kubernetes-map-type: atomic
@@ -5546,7 +5547,7 @@ spec:
                         type: array
                       customizationImage:
                         description: |-
-                          Deprecated: use Image instead.
+                          Deprecated: use customImage instead.
                           CustomizationImage can be used to provide an image with custom themes, providers and other files.
                           Themes and providers are automatically copied and need to be placed in '/themes' and '/providers' respectively.
                           Other custom data will be copied according to the `customFiles` field.

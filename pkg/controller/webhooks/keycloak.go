@@ -215,7 +215,7 @@ func isDeprecatedFieldInUse(comp *vshnv1.VSHNKeycloak) admission.Warnings {
 	}
 	if comp.Spec.Parameters.Service.CustomizationImage.Image != "" {
 		warnings = append(warnings, fmt.Sprintf(
-			"Field 'customizationImage' in %s has been deprecated, please use 'image' instead.",
+			"Field 'customizationImage' in %s has been deprecated, please use 'customImage' instead.",
 			field.NewPath("spec", "parameters", "service").String(),
 		))
 	}

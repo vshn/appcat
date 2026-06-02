@@ -669,10 +669,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		extraVolumesMap = append(extraVolumesMap,
 			map[string]any{"name": "custom-providers", "emptyDir": nil},
 			map[string]any{"name": "custom-themes", "emptyDir": nil},
+			map[string]any{"name": "custom-files", "emtpyDir": nil},
 		)
 	}
 	extraVolumesMap = append(extraVolumesMap,
-		map[string]any{"name": "custom-files", "emptyDir": nil},
 		map[string]any{"name": "keycloak-dist"},
 		map[string]any{
 			"name": "postgresql-certs",
@@ -899,6 +899,12 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		// Skip SetReleaseVersion to prevent it from overwriting values["image"]["tag"]
 		// with the Keycloak service version.
 		_, releaseTag = splitImageRef(comp.Spec.Parameters.Service.CustomImage.Image)
+		if releaseTag != "" {
+			comp.Status.CurrentReleaseTag = releaseTag
+			if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+				svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
+			}
+		}
 	} else {
 		observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName()+"-release")
 		if err != nil {

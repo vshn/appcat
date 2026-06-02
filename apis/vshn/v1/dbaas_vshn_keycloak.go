@@ -136,7 +136,7 @@ type VSHNKeycloakServiceSpec struct {
 	// This supersedes the deprecated customizationImage and customFiles fields.
 	CustomImage VSHNKeycloakImage `json:"customImage,omitempty"`
 
-	// Deprecated: use Image instead.
+	// Deprecated: use customImage instead.
 	// CustomizationImage can be used to provide an image with custom themes, providers and other files.
 	// Themes and providers are automatically copied and need to be placed in '/themes' and '/providers' respectively.
 	// Other custom data will be copied according to the `customFiles` field.
@@ -185,7 +185,7 @@ type VSHNKeycloakImage struct {
 
 	// ImagePullSecretRef references a secret in the claim namespace containing
 	// Docker registry credentials for pulling the image.
-	ImagePullSecretRef corev1.SecretReference `json:"imagePullSecretRef,omitempty"`
+	ImagePullSecretRef corev1.LocalObjectReference `json:"imagePullSecretRef,omitempty"`
 }
 
 type VSHNKeycloakCustomizationImage struct {

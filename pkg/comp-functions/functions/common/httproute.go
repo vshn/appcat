@@ -321,8 +321,9 @@ func GenerateCertificates(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTP
 
 // CreateCertificates applies generated Certificates using svc.SetDesiredKubeObject().
 func CreateCertificates(svc *runtime.ServiceRuntime, certs []*cmv1.Certificate, opts ...runtime.KubeObjectOption) error {
+	certOpts := append([]runtime.KubeObjectOption{runtime.KubeOptionAllowDeletion}, opts...)
 	for _, c := range certs {
-		if err := svc.SetDesiredKubeObject(c, c.Name, opts...); err != nil {
+		if err := svc.SetDesiredKubeObject(c, c.Name, certOpts...); err != nil {
 			return err
 		}
 	}

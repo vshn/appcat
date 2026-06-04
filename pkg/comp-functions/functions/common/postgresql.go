@@ -117,9 +117,17 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		}
 	}
 
+	// Inherit only the maintenance window. Other fields are parent-specific and must not
+	// leak (e.g. PinImageTag would pin the PG image to the parent's tag). Copy explicitly
+	// so future struct fields don't leak either.
+	parentMaintenance := a.comp.GetFullMaintenanceSchedule()
+
 	params := &vshnv1.VSHNPostgreSQLParameters{
-		Size:        a.comp.GetSize(),
-		Maintenance: a.comp.GetFullMaintenanceSchedule(),
+		Size: a.comp.GetSize(),
+		Maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+			DayOfWeek: parentMaintenance.DayOfWeek,
+			TimeOfDay: parentMaintenance.TimeOfDay,
+		},
 		Backup: vshnv1.VSHNPostgreSQLBackup{
 			Retention:          retention,
 			DeletionProtection: ptr.To(true),

@@ -132,7 +132,7 @@ type VSHNKeycloakServiceSpec struct {
 
 	// CustomImage allows specifying a full custom Keycloak image built from
 	// https://github.com/vshn/custom-keycloak-image-template.
-	// When set, automatic maintenance/upgrades are disabled and the image is used directly.
+	// When set, automatic maintenance/upgrades are disabled and the image is used directly. It takes precedence over pinnedImage
 	// This supersedes the deprecated customizationImage and customFiles fields.
 	CustomImage VSHNKeycloakImage `json:"customImage,omitempty"`
 

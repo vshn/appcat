@@ -86,9 +86,15 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 			kubeObject := &xkube.Object{}
 			assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, v))
 
+			// The Object CR name must be composite-prefixed so it doesn't collide with
+			// other composites' identically-named CNPG instances, while the inner Secret
+			// keeps the bare, CSI-referenced name.
+			assert.Equal(t, comp.GetName()+"-"+v, kubeObject.GetName())
+
 			s := &v1.Secret{}
 			assert.NoError(t, yaml.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, s))
 			assert.NotEmpty(t, s.Data["luksKey"])
+			assert.Equal(t, v, s.GetName())
 		}
 	})
 

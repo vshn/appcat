@@ -104,8 +104,13 @@ func writeLuksSecret(svc *runtime.ServiceRuntime, log logr.Logger, comp *vshnv1.
 			},
 		}
 
+		// CNPG always names its cluster "postgresql", so luksKeyName collides across
+		// composites on the cluster-scoped Object CR. Prefix with the composite name to
+		// keep it unique. resourceName stays luksKeyName so the existing key is read back
+		// and preserved (no rotation), and the inner Secret keeps its CSI-referenced name.
+		objectName := comp.GetName() + "-" + luksKeyName
 		// Allow deletion is required for scaling
-		err = svc.SetDesiredKubeObject(secret, luksKeyName, runtime.KubeOptionAllowDeletion)
+		err = svc.SetDesiredKubeObjectWithName(secret, objectName, luksKeyName, runtime.KubeOptionAllowDeletion)
 		if err != nil {
 			return runtime.NewFatalResult(fmt.Errorf("cannot add luks secret object: %w", err))
 		}

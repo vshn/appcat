@@ -28,6 +28,10 @@ func init() {
 				Name:    "deploy-openbao",
 				Execute: DeployOpenBao,
 			},
+			{
+				Name:    "init-openbao",
+				Execute: InitOpenBao,
+			},
 		},
 	})
 }

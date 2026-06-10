@@ -3,7 +3,6 @@ package vshnopenbao
 import (
 	"cmp"
 	"context"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 
@@ -18,9 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
-
-//go:embed scripts/init_cluster.sh
-var initClusterScript string
 
 const (
 	initOutputSecretSuffix = "-init-output"
@@ -74,8 +70,9 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 				},
 			},
 			"ha": map[string]any{
-				"enabled": true,
-				"config":  "# Config provided via external file\n",
+				"enabled":  true,
+				"replicas": cmp.Or(comp.GetInstances(), 3),
+				"config":   "# Config provided via external file\n",
 				"raft": map[string]any{
 					"enabled": true,
 					"config":  "# Config provided via external file\n",
@@ -129,37 +126,6 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 					"mountPath": hclConfigTlsCertsMountPath,
 					"name":      hclConfigTlsVolumeName,
 					"readOnly":  true,
-				},
-			},
-			"extraContainers": []map[string]any{
-				{
-					"name":    "init-openbao",
-					"image":   svc.Config.Data["openbao_image"],
-					"command": []string{"sh", "-c"},
-					"args":    []string{initClusterScript},
-					"volumeMounts": []map[string]any{
-						{
-							"name":      hclConfigTlsVolumeName,
-							"mountPath": "/tls",
-							"readOnly":  true,
-						},
-					},
-					"env": []map[string]any{
-						// POD_NAME must come first — VAULT_INIT_ADDR below references $(POD_NAME)
-						// via Kubernetes env-var substitution so it resolves to the pod's headless DNS.
-						{"name": "POD_NAME", "valueFrom": map[string]any{
-							"fieldRef": map[string]any{"fieldPath": "metadata.name"},
-						}},
-						{"name": "VAULT_ADDR", "value": fmt.Sprintf("https://%s:8200", serviceName)},
-						// Headless pod address used for init API calls. The regular service only routes
-						// to ready pods, but pod-0 is not ready until after initialization.
-						{"name": "VAULT_INIT_ADDR", "value": fmt.Sprintf("https://$(POD_NAME).%s-internal.%s.svc.cluster.local:8200", serviceName, comp.GetInstanceNamespace())},
-						{"name": "NAMESPACE", "value": comp.GetInstanceNamespace()},
-						{"name": "ROOT_TOKEN_SECRET_NAME", "value": serviceName + initOutputSecretSuffix},
-						{"name": "UNSEAL_KEYS_SECRET_NAME", "value": serviceName + unsealKeysSecretSuffix},
-						{"name": "SECRET_SHARES", "value": "5"},
-						{"name": "SECRET_THRESHOLD", "value": "3"},
-					},
 				},
 			},
 		},

@@ -18,3 +18,13 @@ func getOpenBaoTestComp(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNOpen
 
 	return svc, comp
 }
+
+func getOpenBaoTestCompWithInitSecret(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNOpenBao) {
+	svc := commontest.LoadRuntimeFromFile(t, "vshnopenbao/deploy/02_initialized.yaml")
+
+	comp := &vshnv1.VSHNOpenBao{}
+	err := svc.GetObservedComposite(comp)
+	assert.NoError(t, err)
+
+	return svc, comp
+}

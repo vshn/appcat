@@ -4683,6 +4683,15 @@ spec:
                     service:
                       description: Service contains OpenBao DBaaS specific properties
                       properties:
+                        init:
+                          description: Init contains settings to control the init job of this OpenBao instance.
+                          properties:
+                            enabled:
+                              default: true
+                              description: Enabled enables or disables the automatic init job for this OpenBao instance.
+                              type: boolean
+                          type: object
+                          default: {}
                         serviceLevel:
                           default: besteffort
                           description: ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
@@ -4820,6 +4829,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                initialized:
+                  description: Initialized indicates whether the OpenBao instance has been initialized.
+                  type: boolean
                 instanceNamespace:
                   description: InstanceNamespace contains the name of the namespace where the instance resides
                   type: string

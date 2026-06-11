@@ -28,6 +28,10 @@ observed:
           service:
             version: "2.0"
             serviceLevel: besteffort
+            init:
+              enabled: true
+              ttlSecondsAfterFinished: 86400
+              backoffLimit: 3
           tls:
             enabled: true
             authClients: true

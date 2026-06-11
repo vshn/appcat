@@ -101,6 +101,20 @@ type VSHNOpenBaoInitSpec struct {
 
 	// Enabled enables or disables the automatic init job for this OpenBao instance.
 	Enabled bool `json:"enabled,omitempty"`
+
+	// +kubebuilder:default=86400
+	// +kubebuilder:validation:Minimum=0
+
+	// TTLSecondsAfterFinished defines how many seconds the init job and its pod
+	// are kept after the job finishes. Defaults to 86400 (1 day).
+	TTLSecondsAfterFinished int32 `json:"ttlSecondsAfterFinished,omitempty"`
+
+	// +kubebuilder:default=3
+	// +kubebuilder:validation:Minimum=0
+
+	// BackoffLimit defines how many times the init job may be retried before
+	// it is considered failed. Defaults to 3.
+	BackoffLimit int32 `json:"backoffLimit,omitempty"`
 }
 
 // VSHNOpenBaoSizeSpec contains settings to control the sizing of a service.
@@ -158,7 +172,7 @@ type VSHNOpenBaoStatus struct {
 	// schedules set in the service's spec.
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
 	// Initialized indicates whether the OpenBao instance has been initialized.
-	Initialized bool `json:"initialized,omitempty"`
+	Initialized bool `json:"initialized"`
 }
 
 func (v *VSHNOpenBao) GetClaimNamespace() string {

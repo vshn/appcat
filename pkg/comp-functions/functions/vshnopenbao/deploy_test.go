@@ -45,6 +45,8 @@ func TestInitOpenBao_CreatesJobWhenNotInitialized(t *testing.T) {
 	assert.Equal(t, "openbao-test-init", job.Name)
 	assert.Equal(t, "vshn-openbao-openbao-test", job.Namespace)
 	assert.Equal(t, "openbao-test", job.Spec.Template.Spec.ServiceAccountName)
+	assert.EqualValues(t, 3, *job.Spec.BackoffLimit)
+	assert.EqualValues(t, 86400, *job.Spec.TTLSecondsAfterFinished)
 }
 
 func TestInitOpenBao_SkipsJobWhenAlreadyInitialized(t *testing.T) {
@@ -57,4 +59,16 @@ func TestInitOpenBao_SkipsJobWhenAlreadyInitialized(t *testing.T) {
 	job := &batchv1.Job{}
 	assert.ErrorIs(t, svc.GetDesiredKubeObject(job, "openbao-test-init"), runtime.ErrNotFound,
 		"init job should not be in desired state when already initialized")
+}
+
+func TestInitOpenBao_SkipsJobWhenStatusInitialized(t *testing.T) {
+	ctx := context.TODO()
+
+	svc, comp := getOpenBaoTestCompWithStatusInitialized(t)
+	assert.Nil(t, DeployOpenBao(ctx, comp, svc))
+	assert.Nil(t, InitOpenBao(ctx, comp, svc))
+
+	job := &batchv1.Job{}
+	assert.ErrorIs(t, svc.GetDesiredKubeObject(job, "openbao-test-init"), runtime.ErrNotFound,
+		"init job should not be in desired state when status.initialized is true")
 }

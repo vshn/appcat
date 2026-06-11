@@ -4686,10 +4686,26 @@ spec:
                         init:
                           description: Init contains settings to control the init job of this OpenBao instance.
                           properties:
+                            backoffLimit:
+                              default: 3
+                              description: |-
+                                BackoffLimit defines how many times the init job may be retried before
+                                it is considered failed. Defaults to 3.
+                              format: int32
+                              minimum: 0
+                              type: integer
                             enabled:
                               default: true
                               description: Enabled enables or disables the automatic init job for this OpenBao instance.
                               type: boolean
+                            ttlSecondsAfterFinished:
+                              default: 86400
+                              description: |-
+                                TTLSecondsAfterFinished defines how many seconds the init job and its pod
+                                are kept after the job finishes. Defaults to 86400 (1 day).
+                              format: int32
+                              minimum: 0
+                              type: integer
                           type: object
                           default: {}
                         serviceLevel:
@@ -5081,6 +5097,8 @@ spec:
                         type: string
                     type: object
                   type: array
+              required:
+                - initialized
               type: object
           required:
             - spec

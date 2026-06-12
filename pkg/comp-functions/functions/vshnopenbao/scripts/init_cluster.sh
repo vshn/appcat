@@ -4,7 +4,7 @@ set -eu
 # Only pod-0 initializes the cluster.
 case "${POD_NAME}" in
   *-0) echo "Running on pod-0, proceeding with init check." ;;
-  *)   echo "Not pod-0 (${POD_NAME}), skipping."; exec sleep infinity ;;
+  *)   echo "Not pod-0 (${POD_NAME}), skipping."; exit 0 ;;
 esac
 
 K8S_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
@@ -20,7 +20,7 @@ HTTP_STATUS=$(SSL_CERT_FILE="${K8S_CACERT}" wget -qS --spider \
   | awk '/HTTP/{print $2}' | head -1) || true
 if [ "${HTTP_STATUS}" = "200" ]; then
   echo "Credentials already saved (secret ${ROOT_TOKEN_SECRET_NAME} exists), nothing to do."
-  exec sleep infinity
+  exit 0
 fi
 
 # Wait for OpenBao to be reachable and determine initialization state.
@@ -36,7 +36,7 @@ while true; do
   if echo "${STATUS}" | grep -qi '"initialized".*true'; then
     echo "ERROR: OpenBao is already initialized but the credentials secret is missing."
     echo "Manual recovery required — the init output cannot be retrieved after the fact."
-    exec sleep infinity
+    exit 1
   fi
 
   if echo "${STATUS}" | grep -qi '"initialized".*false'; then
@@ -94,4 +94,3 @@ SSL_CERT_FILE="${K8S_CACERT}" wget -q -O /dev/null \
 echo "Unseal-keys secret created: ${UNSEAL_KEYS_SECRET_NAME}"
 
 echo "Initialization complete."
-exec sleep infinity

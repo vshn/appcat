@@ -19,7 +19,6 @@ import (
 
 const serverRoleSuffix = "-server"
 
-
 func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	if err := svc.GetObservedComposite(comp); err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))

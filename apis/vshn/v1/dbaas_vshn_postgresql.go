@@ -479,7 +479,7 @@ func (v *XVSHNPostgreSQL) GetInstances() int {
 
 // GetBackupRetention returns the retention definition for this backup.
 func (v *VSHNPostgreSQL) GetBackupRetention() K8upRetentionPolicy {
-	return K8upRetentionPolicy{}
+	return K8upRetentionPolicy{KeepDaily: v.Spec.Parameters.Backup.Retention}
 }
 
 // GetServiceName returns the name of this service

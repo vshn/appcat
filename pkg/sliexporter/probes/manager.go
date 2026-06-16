@@ -19,8 +19,9 @@ import (
 
 // Manager manages a collection of Probers the check connectivity to AppCat services.
 type Manager struct {
-	hist prometheus.ObserverVec
-	log  logr.Logger
+	hist          prometheus.ObserverVec
+	activeProbers prometheus.Gauge
+	log           logr.Logger
 
 	mu                *sync.Mutex
 	probers           map[key]context.CancelFunc
@@ -79,8 +80,14 @@ func NewManager(l logr.Logger, maintenanceStatus maintenancecontroller.Maintenan
 		Buckets: []float64{0.001, 0.002, 0.003, 0.004, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1, .5, 1},
 	}, []string{"service", "claim_namespace", "instance_namespace", "name", "reason", "organization", "ha", "sla", "maintenance", "composition"})
 
+	activeProbers := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "appcat_probes_active",
+		Help: "Number of AppCat service instances currently being probed",
+	})
+
 	return Manager{
 		hist:              hist,
+		activeProbers:     activeProbers,
 		log:               l,
 		mu:                &sync.Mutex{},
 		probers:           map[key]context.CancelFunc{},
@@ -91,7 +98,7 @@ func NewManager(l logr.Logger, maintenanceStatus maintenancecontroller.Maintenan
 
 // Collectors returns all collectors including service-specific ones
 func (m Manager) Collectors() []prometheus.Collector {
-	collectors := []prometheus.Collector{m.hist}
+	collectors := []prometheus.Collector{m.hist, m.activeProbers}
 
 	collectors = append(collectors, GetRedisCollectors()...)
 
@@ -114,6 +121,7 @@ func (m Manager) StartProbe(p Prober) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	m.probers[probeKey] = cancel
+	m.activeProbers.Set(float64(len(m.probers)))
 	l.Info("Start Probe")
 	go m.runProbe(ctx, p)
 }
@@ -130,6 +138,7 @@ func (m Manager) StopProbe(pi ProbeInfo) {
 		cancel()
 		// Remove the entry so the map doesn't grow unboundedly.
 		delete(m.probers, probeKey)
+		m.activeProbers.Set(float64(len(m.probers)))
 	}
 }
 

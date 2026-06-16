@@ -92,17 +92,17 @@ Kubernetes names have a **63-character limit**. When using `com.GetName` or comp
   - `deletionprotection.go` / `claim_deletionprotection.go` — deletion protection
   - `disk_downsize.go` — prevents disk shrinking
   - `objectbuckets.go` / `xobjectbuckets.go` — bucket validation
-  - `tcpgateway/` — generic TCP port allocation + gateway sharding for XListenerSets (used by any service needing TCP routing)
+  - `tcpgateway/` — generic TCP port allocation + gateway sharding for ListenerSets (used by any service needing TCP routing)
 - Webhook files live in `pkg/controller/webhooks/`
 
 ## TCP Routing (Gateway API)
 
 Services needing TCP exposure (e.g., Forgejo SSH) use a shared two-layer system:
 
-1. **Composition function layer** (`pkg/comp-functions/functions/common/tcproute/`): `AddTCPRoute()` creates XListenerSet + TCPRoute + NetworkPolicy via provider-kubernetes. Any service can call this with a `TCPRouteConfig`.
-2. **Webhook layer** (`pkg/controller/webhooks/tcpgateway/`): service-agnostic mutating webhook allocates ports (via Leases) and shards across Gateways for any XListenerSet.
+1. **Composition function layer** (`pkg/comp-functions/functions/common/tcproute/`): `AddTCPRoute()` creates ListenerSet + TCPRoute + NetworkPolicy via provider-kubernetes. Any service can call this with a `TCPRouteConfig`.
+2. **Webhook layer** (`pkg/controller/webhooks/tcpgateway/`): service-agnostic mutating webhook allocates ports (via Leases) and shards across Gateways for any ListenerSet.
 
-When adding TCP routing to a new service: use `tcproute.AddTCPRoute()` in the composition function. No webhook changes needed — the existing `tcpgateway/` handler covers all XListenerSets.
+When adding TCP routing to a new service: use `tcproute.AddTCPRoute()` in the composition function. No webhook changes needed — the existing `tcpgateway/` handler covers all ListenerSets.
 
 ## Testing
 

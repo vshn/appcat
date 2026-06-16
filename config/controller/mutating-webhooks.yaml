@@ -10,16 +10,16 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-gateway-networking-x-k8s-io-v1alpha1-xlistenerset
+      path: /mutate-gateway-networking-k8s-io-v1-listenerset
   failurePolicy: Fail
-  name: mxlistenerset.kb.io
+  name: mlistenerset.kb.io
   rules:
   - apiGroups:
-    - gateway.networking.x-k8s.io
+    - gateway.networking.k8s.io
     apiVersions:
-    - v1alpha1
+    - v1
     operations:
     - CREATE
     resources:
-    - xlistenersets
+    - listenersets
   sideEffects: None

@@ -8,7 +8,7 @@ const (
 type TCPRouteConfig struct {
 	// Name prefix for all created resources (e.g. "mycomp-ssh")
 	ResourceName string
-	// Listener name inside XListenerSet (e.g. "ssh", "mariadb")
+	// Listener name inside ListenerSet (e.g. "ssh", "mariadb")
 	ListenerName string
 	// Target service name + port for the TCPRoute backend
 	BackendServiceName string

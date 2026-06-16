@@ -168,7 +168,7 @@ func (c *controller) executeController(cmd *cobra.Command, _ []string) error {
 	if c.tcpGateways != "" && c.tcpGatewayNamespace != "" {
 		gatewayNames := strings.Split(c.tcpGateways, ",")
 
-		err = tcpgateway.SetupXListenerSetWebhookWithManager(mgr, c.tcpPortRangeStart, c.tcpPortRangeEnd, c.tcpGatewayCapacity, c.tcpGatewayNamespace, gatewayNames)
+		err = tcpgateway.SetupListenerSetWebhookWithManager(mgr, c.tcpPortRangeStart, c.tcpPortRangeEnd, c.tcpGatewayCapacity, c.tcpGatewayNamespace, gatewayNames)
 		if err != nil {
 			return err
 		}

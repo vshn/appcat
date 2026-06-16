@@ -33,12 +33,12 @@ func TestAddTCPRoute(t *testing.T) {
 
 		result, state := AddTCPRoute(svc, cfg)
 		assert.Nil(t, result)
-		assert.Equal(t, int32(0), state.Port, "port should be 0 when no observed XListenerSet")
+		assert.Equal(t, int32(0), state.Port, "port should be 0 when no observed ListenerSet")
 
-		// Verify XListenerSet
+		// Verify ListenerSet
 		xls := &unstructured.Unstructured{}
-		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-		xls.SetKind("XListenerSet")
+		xls.SetAPIVersion("gateway.networking.k8s.io/v1")
+		xls.SetKind("ListenerSet")
 		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 		assert.Equal(t, cfg.ResourceName, xls.GetName())
 		assert.Equal(t, cfg.InstanceNamespace, xls.GetNamespace())
@@ -75,7 +75,7 @@ func TestAddTCPRoute(t *testing.T) {
 		parentRefs, _, _ := unstructured.NestedSlice(tcpRoute.Object, "spec", "parentRefs")
 		require.Len(t, parentRefs, 1)
 		pRef := parentRefs[0].(map[string]any)
-		assert.Equal(t, "XListenerSet", pRef["kind"])
+		assert.Equal(t, "ListenerSet", pRef["kind"])
 		assert.Equal(t, cfg.ResourceName, pRef["name"])
 		assert.Equal(t, "tcp", pRef["sectionName"])
 		assert.Nil(t, pRef["namespace"], "parentRef must have no namespace (same-ns)")
@@ -127,10 +127,10 @@ func TestAddTCPRoute(t *testing.T) {
 		assert.Equal(t, int32(10005), state.Port)
 		assert.Equal(t, "tcp.example.com", state.Domain)
 
-		// Verify XListenerSet has the allocated port
+		// Verify ListenerSet has the allocated port
 		xls := &unstructured.Unstructured{}
-		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-		xls.SetKind("XListenerSet")
+		xls.SetAPIVersion("gateway.networking.k8s.io/v1")
+		xls.SetKind("ListenerSet")
 		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 		listeners, _, _ := unstructured.NestedSlice(xls.Object, "spec", "listeners")
 		require.Len(t, listeners, 1)
@@ -149,10 +149,10 @@ func TestAddTCPRoute(t *testing.T) {
 		assert.Equal(t, int32(10005), state.Port)
 		assert.Equal(t, "tcp2.example.com", state.Domain)
 
-		// Verify XListenerSet uses observed gateway
+		// Verify ListenerSet uses observed gateway
 		xls := &unstructured.Unstructured{}
-		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-		xls.SetKind("XListenerSet")
+		xls.SetAPIVersion("gateway.networking.k8s.io/v1")
+		xls.SetKind("ListenerSet")
 		require.NoError(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"))
 
 		parentName, _, _ := unstructured.NestedString(xls.Object, "spec", "parentRef", "name")
@@ -171,8 +171,8 @@ func TestAddTCPRoute(t *testing.T) {
 
 		// Verify no resources exist before calling AddTCPRoute
 		xls := &unstructured.Unstructured{}
-		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-		xls.SetKind("XListenerSet")
+		xls.SetAPIVersion("gateway.networking.k8s.io/v1")
+		xls.SetKind("ListenerSet")
 		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, cfg.ResourceName+"-xls"), runtime.ErrNotFound)
 	})
 }

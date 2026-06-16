@@ -41,27 +41,27 @@ SSH access uses a **generalized TCP routing layer** shared across services. The 
 
 1. Forgejo's `ConfigureSSHAccess()` builds a `TCPRouteConfig` and calls `tcproute.AddTCPRoute()`
 2. `AddTCPRoute()` creates three resources via provider-kubernetes:
-   - **XListenerSet** (`gateway.networking.x-k8s.io/v1alpha1`) with `port: 0` (sentinel for new) or observed port (for existing)
-   - **TCPRoute** (`gateway.networking.k8s.io/v1alpha2`) routing traffic from XListenerSet listener to backend service
+   - **ListenerSet** (`gateway.networking.k8s.io/v1`) with `port: 0` (sentinel for new) or observed port (for existing)
+   - **TCPRoute** (`gateway.networking.k8s.io/v1alpha2`) routing traffic from ListenerSet listener to backend service
    - **NetworkPolicy** restricting ingress to gateway namespace only
 3. Returns `ObservedState` with allocated port + domain, which Forgejo uses to set connection details and Helm values
 
 ### Webhook Side (tcpgateway/)
 
-The mutating webhook is **service-agnostic** — it handles any XListenerSet, not just Forgejo's.
+The mutating webhook is **service-agnostic** — it handles any ListenerSet, not just Forgejo's.
 
-1. A **mutating webhook** intercepts XListenerSet CREATE and allocates ports
+1. A **mutating webhook** intercepts ListenerSet CREATE and allocates ports
 2. Port allocation uses **Kubernetes Leases** (`coordination.v1`) for atomic reservations
-3. **Gateway sharding** distributes XListenerSets across multiple TCP Gateways by capacity
+3. **Gateway sharding** distributes ListenerSets across multiple TCP Gateways by capacity
 
 ### Port Allocation (allocator.go)
-- Scans all XListenerSets cluster-wide for used ports
+- Scans all ListenerSets cluster-wide for used ports
 - Allocates from configurable range (e.g., 10000-65535)
-- Creates `ssh-port-{port}` Lease as atomic lock (holder = XListenerSet namespace/name)
+- Creates `ssh-port-{port}` Lease as atomic lock (holder = ListenerSet namespace/name)
 - Stale lease reclamation: deletes leases if holder doesn't exist and was acquired >30s ago
 
 ### Gateway Sharding (sharding.go)
-- Distributes XListenerSets across multiple TCP Gateways
+- Distributes ListenerSets across multiple TCP Gateways
 - Per-gateway listener capacity limit (e.g., 100 per gateway)
 - New listeners go to least-loaded gateway with capacity
 - Denies creation if all gateways are full

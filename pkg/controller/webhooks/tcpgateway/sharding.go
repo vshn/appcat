@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// GatewaySharding selects the best Gateway for new XListenerSets based on
+// GatewaySharding selects the best Gateway for new ListenerSets based on
 // per-gateway listener capacity.
 type GatewaySharding struct {
 	gateways []GatewayKey
@@ -21,7 +21,7 @@ func NewGatewaySharding(gateways []GatewayKey, capacity int) *GatewaySharding {
 	}
 }
 
-// SelectGateway determines which gateway should host the new XListenerSet.
+// SelectGateway determines which gateway should host the new ListenerSet.
 // If the current gateway has room, it returns unchanged.
 // Otherwise it picks the gateway with the fewest listeners that still has capacity.
 // If allowedGateways is non-empty, only those gateways are considered as candidates.

@@ -27,8 +27,8 @@ func TestConfigureTCPGateway(t *testing.T) {
 		assert.Nil(t, result)
 
 		xls := &unstructured.Unstructured{}
-		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-		xls.SetKind("XListenerSet")
+		xls.SetAPIVersion("gateway.networking.k8s.io/v1")
+		xls.SetKind("ListenerSet")
 		assert.ErrorIs(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-xls"), runtime.ErrNotFound)
 	})
 
@@ -66,10 +66,10 @@ func TestConfigureTCPGateway(t *testing.T) {
 		result := ConfigureTCPGateway(context.TODO(), comp, svc)
 		assert.Nil(t, result)
 
-		// XListenerSet created
+		// ListenerSet created
 		xls := &unstructured.Unstructured{}
-		xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-		xls.SetKind("XListenerSet")
+		xls.SetAPIVersion("gateway.networking.k8s.io/v1")
+		xls.SetKind("ListenerSet")
 		assert.NoError(t, svc.GetDesiredKubeObject(xls, comp.GetName()+"-xls"))
 
 		// TCPRoute created

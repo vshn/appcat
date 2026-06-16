@@ -15,16 +15,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var xListenerSetSingleGVK = schema.GroupVersionKind{
-	Group:   "gateway.networking.x-k8s.io",
-	Version: "v1alpha1",
-	Kind:    "XListenerSet",
+var listenerSetSingleGVK = schema.GroupVersionKind{
+	Group:   "gateway.networking.k8s.io",
+	Version: "v1",
+	Kind:    "ListenerSet",
 }
 
-var xListenerSetGVK = schema.GroupVersionKind{
-	Group:   "gateway.networking.x-k8s.io",
-	Version: "v1alpha1",
-	Kind:    "XListenerSetList",
+var listenerSetGVK = schema.GroupVersionKind{
+	Group:   "gateway.networking.k8s.io",
+	Version: "v1",
+	Kind:    "ListenerSetList",
 }
 
 // GatewayKey uniquely identifies a Gateway by namespace and name.
@@ -33,10 +33,10 @@ type GatewayKey struct {
 	Name      string
 }
 
-// PortAllocator allocates unique TCP ports by scanning existing XListenerSet
+// PortAllocator allocates unique TCP ports by scanning existing ListenerSet
 // resources on the cluster to find used ports, then picking the first free
 // port in the configured range.
-// Deleted XListenerSets automatically free their ports.
+// Deleted ListenerSets automatically free their ports.
 type PortAllocator struct {
 	client         client.Client
 	portRangeStart int32
@@ -52,13 +52,13 @@ func NewPortAllocator(c client.Client, portRangeStart, portRangeEnd int32) *Port
 	}
 }
 
-// listXListenerSets lists all XListenerSet resources across all namespaces.
-func (a *PortAllocator) listXListenerSets(ctx context.Context) ([]unstructured.Unstructured, error) {
+// listListenerSets lists all ListenerSet resources across all namespaces.
+func (a *PortAllocator) listListenerSets(ctx context.Context) ([]unstructured.Unstructured, error) {
 	list := &unstructured.UnstructuredList{}
-	list.SetGroupVersionKind(xListenerSetGVK)
+	list.SetGroupVersionKind(listenerSetGVK)
 
 	if err := a.client.List(ctx, list); err != nil {
-		return nil, fmt.Errorf("listing XListenerSets: %w", err)
+		return nil, fmt.Errorf("listing ListenerSets: %w", err)
 	}
 
 	return list.Items, nil
@@ -106,7 +106,7 @@ func (a *PortAllocator) AllocatePort(ctx context.Context, usedPorts map[int32]bo
 	return 0, fmt.Errorf("port range exhausted: all ports in %d-%d are in use", a.portRangeStart, a.portRangeEnd)
 }
 
-// tryReclaimStaleLease checks if the holder XListenerSet of an existing Lease
+// tryReclaimStaleLease checks if the holder ListenerSet of an existing Lease
 // still exists. If the holder is gone/empty, the Lease is deleted.
 // The holder identity is expected in "namespace/name" format.
 func (a *PortAllocator) tryReclaimStaleLease(ctx context.Context, name, namespace string) bool {
@@ -123,7 +123,7 @@ func (a *PortAllocator) tryReclaimStaleLease(ctx context.Context, name, namespac
 	holderNs, holderName, _ := strings.Cut(*existing.Spec.HolderIdentity, "/")
 
 	holder := &unstructured.Unstructured{}
-	holder.SetGroupVersionKind(xListenerSetSingleGVK)
+	holder.SetGroupVersionKind(listenerSetSingleGVK)
 
 	err := a.client.Get(ctx, client.ObjectKey{Namespace: holderNs, Name: holderName}, holder)
 	if err == nil {
@@ -142,7 +142,7 @@ func (a *PortAllocator) tryReclaimStaleLease(ctx context.Context, name, namespac
 	return a.client.Delete(ctx, existing, client.Preconditions{UID: &uid}) == nil
 }
 
-// extractUsedPorts collects the ports from XListenerSet listeners.
+// extractUsedPorts collects the ports from ListenerSet listeners.
 func (a *PortAllocator) extractUsedPorts(items []unstructured.Unstructured) map[int32]bool {
 	usedPorts := make(map[int32]bool)
 	for _, item := range items {
@@ -193,7 +193,7 @@ func (a *PortAllocator) extractListenerCounts(items []unstructured.Unstructured)
 	return counts
 }
 
-// extractGatewayKey reads the parentRef from an XListenerSet
+// extractGatewayKey reads the parentRef from a ListenerSet
 // and returns it as a GatewayKey.
 func extractGatewayKey(obj unstructured.Unstructured) GatewayKey {
 	ns, _, _ := unstructured.NestedString(obj.Object, "spec", "parentRef", "namespace")

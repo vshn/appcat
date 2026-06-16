@@ -24,9 +24,9 @@ const (
 )
 
 const (
-	xListenerSetGroup   = "gateway.networking.x-k8s.io"
-	xListenerSetVersion = "v1alpha1"
-	xListenerSetKind    = "XListenerSet"
+	listenerSetGroup   = "gateway.networking.k8s.io"
+	listenerSetVersion = "v1"
+	listenerSetKind    = "ListenerSet"
 
 	gatewayGroup = "gateway.networking.k8s.io"
 	gatewayKind  = "Gateway"
@@ -39,13 +39,13 @@ const (
 )
 
 // IsHTTPRouteMode reports whether the composition is configured to render
-// HTTPRoute/XListenerSet objects instead of Ingress.
+// HTTPRoute/ListenerSet objects instead of Ingress.
 func IsHTTPRouteMode(svc *runtime.ServiceRuntime) bool {
 	return svc.Config.Data["routeType"] == RouteTypeHTTPRoute
 }
 
 // HTTPRouteConfig contains configuration for generating an HTTPRoute and its
-// accompanying XListenerSet.
+// accompanying ListenerSet.
 type HTTPRouteConfig struct {
 	AdditionalLabels map[string]string
 	FQDNs            []string
@@ -73,7 +73,7 @@ func validateHTTPRouteConfig(cfg HTTPRouteConfig) error {
 	return nil
 }
 
-// compBaseName returns the shared prefix used for the HTTPRoute, XListenerSet,
+// compBaseName returns the shared prefix used for the HTTPRoute, ListenerSet,
 // and any other per-composite Gateway API objects: "<comp>[-<nameSuffix>]".
 func compBaseName(comp InfoGetter, cfg HTTPRouteConfig) string {
 	name := comp.GetName()
@@ -105,7 +105,7 @@ func listenerName(fqdn string) string {
 }
 
 // GenerateHTTPRoute creates an HTTPRoute in the instance namespace, parented to
-// the XListenerSet (same ns) so no cross-namespace ref is needed.
+// the ListenerSet (same ns) so no cross-namespace ref is needed.
 func GenerateHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteConfig) (*gatewayv1.HTTPRoute, error) {
 	if err := validateHTTPRouteConfig(cfg); err != nil {
 		return nil, err
@@ -125,8 +125,8 @@ func GenerateHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRou
 		hostnames[i] = gatewayv1.Hostname(fqdn)
 	}
 
-	parentGroup := gatewayv1.Group(xListenerSetGroup)
-	parentKind := gatewayv1.Kind(xListenerSetKind)
+	parentGroup := gatewayv1.Group(listenerSetGroup)
+	parentKind := gatewayv1.Kind(listenerSetKind)
 	port := gatewayv1.PortNumber(cfg.ServiceConfig.ServicePortNumber)
 
 	labels := getIngressLabels(svc, cfg.AdditionalLabels)
@@ -182,11 +182,11 @@ func GenerateHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRou
 	return route, nil
 }
 
-// GenerateXListenerSet creates an XListenerSet in the instance namespace,
+// GenerateListenerSet creates a ListenerSet in the instance namespace,
 // attached to the shared Gateway. TLS secrets per listener are produced by
 // GenerateCertificates (see that func for why ingress_annotations aren't
 // propagated here).
-func GenerateXListenerSet(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteConfig) (*unstructured.Unstructured, error) {
+func GenerateListenerSet(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteConfig) (*unstructured.Unstructured, error) {
 	if err := validateHTTPRouteConfig(cfg); err != nil {
 		return nil, err
 	}
@@ -216,8 +216,8 @@ func GenerateXListenerSet(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTP
 	labels := getIngressLabels(svc, cfg.AdditionalLabels)
 
 	ls := &unstructured.Unstructured{}
-	ls.SetAPIVersion(xListenerSetGroup + "/" + xListenerSetVersion)
-	ls.SetKind(xListenerSetKind)
+	ls.SetAPIVersion(listenerSetGroup + "/" + listenerSetVersion)
+	ls.SetKind(listenerSetKind)
 	ls.SetName(lsName)
 	ls.SetNamespace(comp.GetInstanceNamespace())
 	if len(labels) > 0 {
@@ -246,8 +246,8 @@ func CreateHTTPRoutes(svc *runtime.ServiceRuntime, routes []*gatewayv1.HTTPRoute
 	return nil
 }
 
-// CreateXListenerSets applies generated XListenerSets using svc.SetDesiredKubeObject().
-func CreateXListenerSets(svc *runtime.ServiceRuntime, sets []*unstructured.Unstructured, opts ...runtime.KubeObjectOption) error {
+// CreateListenerSets applies generated ListenerSets using svc.SetDesiredKubeObject().
+func CreateListenerSets(svc *runtime.ServiceRuntime, sets []*unstructured.Unstructured, opts ...runtime.KubeObjectOption) error {
 	for _, ls := range sets {
 		err := svc.SetDesiredKubeObject(ls, ls.GetName(), opts...)
 		if err != nil {
@@ -284,10 +284,10 @@ func issuerRefFromAnnotations(annotations map[string]string) *cmmetav1.ObjectRef
 
 // GenerateCertificates creates cert-manager Certificate resources, one per
 // FQDN, with secret names matching the listeners produced by
-// GenerateXListenerSet. Returns (nil, nil) if no cert-manager issuer annotation
+// GenerateListenerSet. Returns (nil, nil) if no cert-manager issuer annotation
 // is configured (in that case the user is expected to provide the TLS secret
 // themselves). cert-manager's Gateway API shim does not yet understand
-// XListenerSet, so we create Certificates explicitly instead of relying on
+// ListenerSet, so we create Certificates explicitly instead of relying on
 // annotation propagation.
 func GenerateCertificates(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteConfig) ([]*cmv1.Certificate, error) {
 	if err := validateHTTPRouteConfig(cfg); err != nil {
@@ -334,7 +334,7 @@ func CreateCertificates(svc *runtime.ServiceRuntime, certs []*cmv1.Certificate, 
 // returning *xfnproto.Result should surface it as Fatal.
 var ErrHTTPGatewayNotConfigured = errors.New("httpGatewayName and httpGatewayNamespace must be set when routeType=HTTPRoute")
 
-// ApplyHTTPRoute applies the XListenerSet, HTTPRoute, and Certificates for
+// ApplyHTTPRoute applies the ListenerSet, HTTPRoute, and Certificates for
 // comp. cfg.GatewayName/Namespace default to svc.Config.Data if empty.
 func ApplyHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteConfig, opts ...runtime.KubeObjectOption) error {
 	if cfg.GatewayName == "" {
@@ -347,12 +347,12 @@ func ApplyHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRouteC
 		return ErrHTTPGatewayNotConfigured
 	}
 
-	ls, err := GenerateXListenerSet(comp, svc, cfg)
+	ls, err := GenerateListenerSet(comp, svc, cfg)
 	if err != nil {
-		return fmt.Errorf("cannot generate XListenerSet: %w", err)
+		return fmt.Errorf("cannot generate ListenerSet: %w", err)
 	}
-	if err := CreateXListenerSets(svc, []*unstructured.Unstructured{ls}, opts...); err != nil {
-		return fmt.Errorf("cannot create XListenerSet: %w", err)
+	if err := CreateListenerSets(svc, []*unstructured.Unstructured{ls}, opts...); err != nil {
+		return fmt.Errorf("cannot create ListenerSet: %w", err)
 	}
 
 	route, err := GenerateHTTPRoute(comp, svc, cfg)

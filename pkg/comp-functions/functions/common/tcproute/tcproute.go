@@ -23,7 +23,7 @@ const (
 )
 
 // AddTCPRoute creates the Gateway API resources needed for TCP routing:
-// an XListenerSet, a TCPRoute, and a NetworkPolicy.
+// a ListenerSet, a TCPRoute, and a NetworkPolicy.
 func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Result, ObservedState) {
 	if !svc.GetBoolFromCompositionConfig(gatewayEnabledConfigKey) {
 		return runtime.NewWarningResult("gateway not enabled in composition input"), ObservedState{}
@@ -43,7 +43,7 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 
 	svc.Log.Info("Configuring TCPRoute", "resource", cfg.ResourceName)
 
-	observed := observeXListenerSet(svc, cfg.ResourceName+"-xls")
+	observed := observeListenerSet(svc, cfg.ResourceName+"-xls")
 
 	effectiveGatewayName := tcpGatewayName
 	effectiveGatewayNamespace := gatewayNamespace
@@ -58,8 +58,8 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 		return runtime.NewFatalResult(err), observed
 	}
 
-	if err := createXListenerSet(svc, cfg, effectiveGatewayNamespace, effectiveGatewayName, observed.Port, gwNames); err != nil {
-		return runtime.NewWarningResult(fmt.Sprintf("cannot create XListenerSet: %s", err)), observed
+	if err := createListenerSet(svc, cfg, effectiveGatewayNamespace, effectiveGatewayName, observed.Port, gwNames); err != nil {
+		return runtime.NewWarningResult(fmt.Sprintf("cannot create ListenerSet: %s", err)), observed
 	}
 
 	if err := createTCPRoute(svc, cfg); err != nil {
@@ -79,25 +79,25 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 	return nil, observed
 }
 
-func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace, gatewayName string, port int32, allowedGateways []string) error {
-	xls := &unstructured.Unstructured{
+func createListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace, gatewayName string, port int32, allowedGateways []string) error {
+	ls := &unstructured.Unstructured{
 		Object: map[string]any{},
 	}
-	xls.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-	xls.SetKind("XListenerSet")
-	xls.SetName(cfg.ResourceName)
-	xls.SetNamespace(cfg.InstanceNamespace)
-	xls.SetLabels(map[string]string{
+	ls.SetAPIVersion("gateway.networking.k8s.io/v1")
+	ls.SetKind("ListenerSet")
+	ls.SetName(cfg.ResourceName)
+	ls.SetNamespace(cfg.InstanceNamespace)
+	ls.SetLabels(map[string]string{
 		runtime.TCPGatewayLabel: "true",
 	})
 	if len(allowedGateways) > 0 {
 		sort.Strings(allowedGateways)
-		xls.SetAnnotations(map[string]string{
+		ls.SetAnnotations(map[string]string{
 			runtime.TCPGatewayAllowedAnnotation: strings.Join(allowedGateways, ","),
 		})
 	}
 
-	err := unstructured.SetNestedMap(xls.Object, map[string]any{
+	err := unstructured.SetNestedMap(ls.Object, map[string]any{
 		"group":     "gateway.networking.k8s.io",
 		"kind":      "Gateway",
 		"namespace": gatewayNamespace,
@@ -128,12 +128,12 @@ func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gateway
 		return fmt.Errorf("setting allowedRoutes.kinds: %w", err)
 	}
 
-	err = unstructured.SetNestedSlice(xls.Object, []any{listener}, "spec", "listeners")
+	err = unstructured.SetNestedSlice(ls.Object, []any{listener}, "spec", "listeners")
 	if err != nil {
 		return fmt.Errorf("setting listeners: %w", err)
 	}
 
-	return svc.SetDesiredKubeObject(xls, cfg.ResourceName+"-xls", runtime.KubeOptionAllowDeletion)
+	return svc.SetDesiredKubeObject(ls, cfg.ResourceName+"-xls", runtime.KubeOptionAllowDeletion)
 }
 
 func createTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) error {
@@ -147,8 +147,8 @@ func createTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) error {
 
 	err := unstructured.SetNestedSlice(tcpRoute.Object, []any{
 		map[string]any{
-			"group":       "gateway.networking.x-k8s.io",
-			"kind":        "XListenerSet",
+			"group":       "gateway.networking.k8s.io",
+			"kind":        "ListenerSet",
 			"name":        cfg.ResourceName,
 			"sectionName": cfg.ListenerName,
 		},
@@ -216,16 +216,16 @@ func createGatewayNetworkPolicy(svc *runtime.ServiceRuntime, cfg TCPRouteConfig,
 	return svc.SetDesiredKubeObject(netPol, cfg.ResourceName+"-gw-netpol", runtime.KubeOptionAllowDeletion)
 }
 
-func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState {
+func observeListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState {
 	observed := &unstructured.Unstructured{
 		Object: map[string]any{},
 	}
-	observed.SetAPIVersion("gateway.networking.x-k8s.io/v1alpha1")
-	observed.SetKind("XListenerSet")
+	observed.SetAPIVersion("gateway.networking.k8s.io/v1")
+	observed.SetKind("ListenerSet")
 
 	err := svc.GetObservedKubeObject(observed, name)
 	if err != nil {
-		svc.Log.Info("XListenerSet not yet observed, skipping readback")
+		svc.Log.Info("ListenerSet not yet observed, skipping readback")
 		return ObservedState{}
 	}
 
@@ -238,7 +238,7 @@ func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState
 
 	listeners, found, err := unstructured.NestedSlice(observed.Object, "spec", "listeners")
 	if err != nil || !found || len(listeners) == 0 {
-		svc.Log.Info("No listeners found in observed XListenerSet")
+		svc.Log.Info("No listeners found in observed ListenerSet")
 		return state
 	}
 

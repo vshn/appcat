@@ -332,6 +332,61 @@ func Test_dbcheckerImage(t *testing.T) {
 	})
 }
 
+func Test_probeRelativePath(t *testing.T) {
+	tests := map[string]struct {
+		relativePath string
+		wantLiveness string
+		wantReady    string
+		wantStartup  string
+	}{
+		"default root path": {
+			relativePath: "/",
+			wantLiveness: "/health/live",
+			wantReady:    "/health/ready",
+			wantStartup:  "/health",
+		},
+		"custom relative path": {
+			relativePath: "/auth",
+			wantLiveness: "/auth/health/live",
+			wantReady:    "/auth/health/ready",
+			wantStartup:  "/auth/health",
+		},
+		"custom relative path with trailing slash": {
+			relativePath: "/auth/",
+			wantLiveness: "/auth/health/live",
+			wantReady:    "/auth/health/ready",
+			wantStartup:  "/auth/health",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+			comp := &vshnv1.VSHNKeycloak{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mycloak",
+					Namespace: "default",
+				},
+				Spec: vshnv1.VSHNKeycloakSpec{
+					Parameters: vshnv1.VSHNKeycloakParameters{
+						Service: vshnv1.VSHNKeycloakServiceSpec{
+							Version:      "26",
+							RelativePath: tc.relativePath,
+						},
+					},
+				},
+			}
+
+			values, err := newValues(context.TODO(), svc, comp, "mysecret", "mypgsecret")
+			assert.NoError(t, err)
+
+			assert.Contains(t, values["livenessProbe"], "\"path\": \""+tc.wantLiveness+"\"")
+			assert.Contains(t, values["readinessProbe"], "\"path\": \""+tc.wantReady+"\"")
+			assert.Contains(t, values["startupProbe"], "\"path\": \""+tc.wantStartup+"\"")
+		})
+	}
+}
+
 func Test_configOrEnvChanged(t *testing.T) {
 	configHash1 := "0bee89b07a248e27c83fc3d5951213c1"
 	configHash2 := "b6273b589df2dfdbd8fe35b1011e3183"

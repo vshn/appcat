@@ -189,10 +189,12 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 				"allowInsecureImages": true,
 			},
 		},
-		"existingSecret":       secretName,
-		"fullnameOverride":     comp.GetName(),
-		"replicaCount":         comp.GetInstances(),
-		"mariadbConfiguration": defaultVSHNSettings,
+		"existingSecret":   secretName,
+		"fullnameOverride": comp.GetName(),
+		"replicaCount":     comp.GetInstances(),
+		// Don't set mariadbConfiguration here: it would replace the chart defaults
+		// (pid_file, [galera]) and intermittently hang bootstrap. manageCustomDBSettings
+		// layers in the VSHN settings via !include once the release secret exists.
 		"resources": map[string]interface{}{
 			"requests": map[string]interface{}{
 				"memory": res.ReqMem.String(),

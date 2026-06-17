@@ -3,6 +3,8 @@ package pkg
 import (
 	"github.com/vshn/appcat/v4/apis/codey"
 	xhelm "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
+	xhttp "github.com/vshn/appcat/v4/apis/http/request/v1alpha2"
+	xhttppc "github.com/vshn/appcat/v4/apis/http/v1alpha1"
 
 	apixv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	apixalphav1 "github.com/crossplane/crossplane/apis/apiextensions/v1alpha1"
@@ -62,6 +64,8 @@ func AddToScheme(s *runtime.Scheme) {
 	_ = batchv1.SchemeBuilder.AddToScheme(s)
 	_ = k8upv1.SchemeBuilder.AddToScheme(s)
 	_ = xhelm.SchemeBuilder.AddToScheme(s)
+	_ = xhttp.SchemeBuilder.AddToScheme(s)
+	_ = xhttppc.SchemeBuilder.AddToScheme(s)
 	_ = appsv1.SchemeBuilder.AddToScheme(s)
 	_ = miniov1.SchemeBuilder.AddToScheme(s)
 	_ = minioproviderv1.SchemeBuilder.AddToScheme(s)

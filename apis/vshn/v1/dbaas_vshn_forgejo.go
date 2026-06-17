@@ -71,6 +71,10 @@ type VSHNForgejoParameters struct {
 	// Monitoring contains settings to control the monitoring of a service.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
+	// Runners is the list of Forgejo runner groups to deploy. Each entry is a
+	// separately-sized runner deployment; removing an entry decommissions it.
+	Runners []VSHNForgejoRunnerSpec `json:"runners,omitempty"`
+
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=1
@@ -81,6 +85,34 @@ type VSHNForgejoParameters struct {
 	// AdditionalResources contains arbitrary Kubernetes resources to deploy into the instance namespace.
 	// Note: this feature is not enabled on all clusters.
 	AdditionalResources VSHNAdditionalResources `json:"additionalResources,omitempty"`
+}
+
+// VSHNForgejoRunnerSpec configures a single Forgejo runner group.
+type VSHNForgejoRunnerSpec struct {
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern="^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+	// +kubebuilder:validation:MaxLength=20
+
+	// Name uniquely identifies this runner group within the instance. It is used
+	// to name the runner's resources, so it must be a short DNS-1123 label.
+	Name string `json:"name"`
+
+	// Size controls the compute sizing of the runner pods. CPU, Memory and
+	// Plan are used; Disk is unused for runners.
+	Size VSHNSizeSpec `json:"size,omitempty"`
+
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=0
+
+	// Replicas is the fixed number of runner pods. Runners do not dynamically
+	// spawn job pods; concurrency is bounded by pre-provisioned capacity.
+	Replicas int `json:"replicas,omitempty"`
+
+	// +kubebuilder:default={"ubuntu-latest","linux"}
+
+	// Labels the runner advertises to Forgejo. They determine which jobs the
+	// runner picks up and are written to the runner registration.
+	Labels []string `json:"labels,omitempty"`
 }
 
 // VSHNForgejoServiceSpec contains Forgejo DBaaS specific properties
@@ -364,6 +396,11 @@ func (v *VSHNForgejo) GetMonitoring() VSHNMonitoring {
 
 func (v *VSHNForgejo) GetInstances() int {
 	return v.Spec.Parameters.Instances
+}
+
+// GetPlan returns the runner plan name, falling back to defaultPlan.
+func (r *VSHNForgejoRunnerSpec) GetPlan(defaultPlan string) string {
+	return r.Size.GetPlan(defaultPlan)
 }
 
 func (v *VSHNForgejo) GetBillingName() string {

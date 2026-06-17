@@ -247,6 +247,15 @@ clean:
 get-crds:
 	./hack/get_crds.sh https://github.com/vshn/provider-helm provider-helm apis/release apis/helm
 	./hack/get_crds.sh https://github.com/vshn/provider-kubernetes provider-kubernetes apis/object/v1alpha2 apis/kubernetes
+	# v1.0.12 is the latest release on crossplane-runtime v1
+	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-http provider-http apis/request apis/http v1.0.12
+	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-http provider-http apis/common apis/http v1.0.12
+	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-http provider-http apis/interfaces apis/http v1.0.12
+	./hack/get_crds.sh https://github.com/crossplane-contrib/provider-http provider-http apis/v1alpha1 apis/http v1.0.12
+	$(sed) -i 's#github.com/crossplane-contrib/provider-http/apis/common#github.com/vshn/appcat/v4/apis/http/common#g' apis/http/request/v1alpha1/*.go apis/http/request/v1alpha2/*.go apis/http/interfaces/*.go apis/http/v1alpha1/*.go
+	$(sed) -i 's#github.com/crossplane-contrib/provider-http/apis/interfaces#github.com/vshn/appcat/v4/apis/http/interfaces#g' apis/http/request/v1alpha1/*.go apis/http/request/v1alpha2/*.go
+	# Drop vendored upstream test files; they import provider-http packages we don't vendor (e.g. disposablerequest)
+	find apis/http -name '*_test.go' -delete
 	# We don't need the conversion function and it messes with the v1alpha1 version
 	rm apis/kubernetes/v1alpha2/conversion.go
 	# There is currently a bug with the serialization if `inline` and  `omitempty` are set: https://github.com/crossplane/function-sdk-go/issues/161

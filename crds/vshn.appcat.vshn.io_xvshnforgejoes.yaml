@@ -5366,6 +5366,77 @@ spec:
                         description: Email necessary to send alerts via email
                         type: string
                     type: object
+                  runners:
+                    description: |-
+                      Runners is the list of Forgejo runner groups to deploy. Each entry is a
+                      separately-sized runner deployment; removing an entry decommissions it.
+                    items:
+                      description: VSHNForgejoRunnerSpec configures a single Forgejo
+                        runner group.
+                      properties:
+                        labels:
+                          default:
+                          - ubuntu-latest
+                          - linux
+                          description: |-
+                            Labels the runner advertises to Forgejo. They determine which jobs the
+                            runner picks up and are written to the runner registration.
+                          items:
+                            type: string
+                          type: array
+                        name:
+                          description: |-
+                            Name uniquely identifies this runner group within the instance. It is used
+                            to name the runner's resources, so it must be a short DNS-1123 label.
+                          maxLength: 20
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        replicas:
+                          default: 1
+                          description: |-
+                            Replicas is the fixed number of runner pods. Runners do not dynamically
+                            spawn job pods; concurrency is bounded by pre-provisioned capacity.
+                          minimum: 0
+                          type: integer
+                        size:
+                          description: |-
+                            Size controls the compute sizing of the runner pods. CPU, Memory and
+                            Plan are used; Disk is unused for runners.
+                          properties:
+                            cpu:
+                              description: CPU defines the amount of Kubernetes CPUs
+                                for an instance.
+                              type: string
+                            disk:
+                              description: Disk defines the amount of disk space for
+                                an instance.
+                              type: string
+                            memory:
+                              description: Memory defines the amount of memory in
+                                units of bytes for an instance.
+                              type: string
+                            plan:
+                              description: Plan is the name of the resource plan that
+                                defines the compute resources.
+                              type: string
+                            requests:
+                              description: Requests defines CPU and memory requests
+                                for an instance
+                              properties:
+                                cpu:
+                                  description: CPU defines the amount of Kubernetes
+                                    CPUs for an instance.
+                                  type: string
+                                memory:
+                                  description: Memory defines the amount of memory
+                                    in units of bytes for an instance.
+                                  type: string
+                              type: object
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
                   scheduling:
                     description: Scheduling contains settings to control the scheduling
                       of an instance.

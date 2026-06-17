@@ -49,16 +49,20 @@ func FetchPlansFromCluster(ctx context.Context, c client.Client, name, plan stri
 }
 
 func FetchPlansFromConfig(ctx context.Context, svc *runtime.ServiceRuntime, plan string) (Resources, error) {
+	return FetchPlansFromConfigByKey(ctx, svc, "plans", plan)
+}
+
+// FetchPlansFromConfigByKey parses the plan map stored under the given config
+// data key (e.g. "plans" or "runnerPlans") and converts the named plan into Resources.
+func FetchPlansFromConfigByKey(ctx context.Context, svc *runtime.ServiceRuntime, key, plan string) (Resources, error) {
 	p := &Plans{}
 
-	err := json.Unmarshal([]byte(svc.Config.Data["plans"]), p)
+	err := json.Unmarshal([]byte(svc.Config.Data[key]), p)
 	if err != nil {
 		return Resources{}, err
 	}
 
-	r, err := convertPlanToResource(plan, *p)
-
-	return r, err
+	return convertPlanToResource(plan, *p)
 }
 
 func FetchNodeSelectorFromConfig(ctx context.Context, svc *runtime.ServiceRuntime, plan string, nodeSelector map[string]string) (map[string]string, error) {

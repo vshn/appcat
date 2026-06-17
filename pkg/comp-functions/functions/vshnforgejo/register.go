@@ -15,6 +15,10 @@ func init() {
 				Execute: DeployForgejo,
 			},
 			{
+				Name:    "runners",
+				Execute: DeployRunners,
+			},
+			{
 				Name:    "maintenance",
 				Execute: AddMaintenanceJob,
 			},

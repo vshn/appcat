@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/vshn/appcat/v4/pkg"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -148,6 +149,22 @@ func TestFetchPlansFromCluster(t *testing.T) {
 		})
 	}
 
+}
+
+func TestFetchPlansFromConfigByKey_RunnerPlans(t *testing.T) {
+	ctx := context.TODO()
+	svc := &runtime.ServiceRuntime{
+		Config: corev1.ConfigMap{
+			Data: map[string]string{
+				"runnerPlans": `{"runner-mini":{"size":{"cpu":"500m","memory":"1Gi","disk":"0"}}}`,
+			},
+		},
+	}
+
+	res, err := FetchPlansFromConfigByKey(ctx, svc, "runnerPlans", "runner-mini")
+	assert.NoError(t, err)
+	assert.Equal(t, "500m", res.CPURequests.String())
+	assert.Equal(t, "1Gi", res.MemoryRequests.String())
 }
 
 func assertEqualRessource(t assert.TestingT, want, got Resources) {

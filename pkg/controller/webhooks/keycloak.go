@@ -267,9 +267,7 @@ func (h *KeycloakWebhookHandler) optimizedImagesEnabled(ctx context.Context) boo
 		if err := json.Unmarshal(step.Input.Raw, input); err != nil {
 			continue
 		}
-		if input.Data[keycloakImagesOptimizedInput] == "true" {
-			return true
-		}
+		return input.Data[keycloakImagesOptimizedInput] == "true"
 	}
 	return false
 }

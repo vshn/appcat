@@ -1084,8 +1084,23 @@ func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 		"--spi-events-listener-jboss-logging-success-level=info",
 		"--spi-events-listener-jboss-logging-error-level=warn",
 	}
-	if comp.Spec.Parameters.Service.CustomizationImage.Image == "" && svc.Config.Data["keycloak_images_optimized"] == "true" {
-		cmd = append(cmd, "--optimized")
+	wantOptimized := comp.Spec.Parameters.Service.CustomizationImage.Image == "" && svc.Config.Data["keycloak_images_optimized"] == "true"
+
+	if wantOptimized {
+		// http-relative-path is a Keycloak build-time option. With --optimized, Keycloak uses the
+		// image's pre-baked build (relative-path "/") and skips the startup build, so a non-root
+		// relativePath would be silently ignored and Keycloak crash-loops (the setup waits for the
+		// health endpoint under the new path, which is never served). Fall back to a runtime build
+		// (plain start) for non-root relativePath, which rebuilds and honours the value.
+		if strings.TrimSuffix(comp.Spec.Parameters.Service.RelativePath, "/") == "" {
+			cmd = append(cmd, "--optimized")
+		} else {
+			svc.Log.Info("Disabling --optimized: a non-root service.relativePath requires a runtime Keycloak build", "relativePath", comp.Spec.Parameters.Service.RelativePath)
+			svc.AddResult(runtime.NewWarningResult(
+				"keycloak: --optimized disabled because service.relativePath is not '/'; falling back to a " +
+					"runtime build (slower startup). http-relative-path is a build-time option and is " +
+					"incompatible with optimized prebuilt images."))
+		}
 	}
 	return cmd
 }

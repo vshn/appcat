@@ -3,6 +3,7 @@ package vshnkeycloak
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -383,6 +384,89 @@ func Test_probeRelativePath(t *testing.T) {
 			assert.Contains(t, values["livenessProbe"], "\"path\": \""+tc.wantLiveness+"\"")
 			assert.Contains(t, values["readinessProbe"], "\"path\": \""+tc.wantReady+"\"")
 			assert.Contains(t, values["startupProbe"], "\"path\": \""+tc.wantStartup+"\"")
+		})
+	}
+}
+
+func Test_buildKeycloakCommand(t *testing.T) {
+	tests := map[string]struct {
+		optimized          string
+		relativePath       string
+		customizationImage string
+		wantOptimized      bool
+		wantWarning        bool
+	}{
+		"optimized on, root path": {
+			optimized:     "true",
+			relativePath:  "/",
+			wantOptimized: true,
+		},
+		"optimized on, empty path defaults to root": {
+			optimized:     "true",
+			relativePath:  "",
+			wantOptimized: true,
+		},
+		"optimized on, non-root path falls back with warning": {
+			optimized:     "true",
+			relativePath:  "/auth",
+			wantOptimized: false,
+			wantWarning:   true,
+		},
+		"optimized on, non-root path with trailing slash falls back with warning": {
+			optimized:     "true",
+			relativePath:  "/auth/",
+			wantOptimized: false,
+			wantWarning:   true,
+		},
+		"optimized off, non-root path: no flag, no warning": {
+			optimized:     "false",
+			relativePath:  "/auth",
+			wantOptimized: false,
+			wantWarning:   false,
+		},
+		"optimized on but customizationImage set: not eligible, no warning": {
+			optimized:          "true",
+			relativePath:       "/",
+			customizationImage: "my-registry/custom:1",
+			wantOptimized:      false,
+			wantWarning:        false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+			svc.Config.Data["keycloak_images_optimized"] = tc.optimized
+			comp := &vshnv1.VSHNKeycloak{
+				ObjectMeta: metav1.ObjectMeta{Name: "mycloak", Namespace: "default"},
+				Spec: vshnv1.VSHNKeycloakSpec{
+					Parameters: vshnv1.VSHNKeycloakParameters{
+						Service: vshnv1.VSHNKeycloakServiceSpec{
+							Version:            "26",
+							RelativePath:       tc.relativePath,
+							CustomizationImage: vshnv1.VSHNKeycloakCustomizationImage{Image: tc.customizationImage},
+						},
+					},
+				},
+			}
+
+			cmd := buildKeycloakCommand(comp, svc)
+
+			if tc.wantOptimized {
+				assert.Contains(t, cmd, "--optimized")
+			} else {
+				assert.NotContains(t, cmd, "--optimized")
+			}
+
+			resp, err := svc.GetResponse()
+			assert.NoError(t, err)
+			hasWarning := false
+			for _, r := range resp.GetResults() {
+				if strings.Contains(r.GetMessage(), "--optimized disabled") {
+					hasWarning = true
+				}
+			}
+			assert.Equal(t, tc.wantWarning, hasWarning)
 		})
 	}
 }

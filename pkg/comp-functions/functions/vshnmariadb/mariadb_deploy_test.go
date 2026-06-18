@@ -141,10 +141,11 @@ func TestNewValues(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, true, metrics["enabled"])
 
-	// Verify startup probe is disabled
-	startupProbe, ok := values["startupProbe"].(map[string]interface{})
-	assert.True(t, ok)
-	assert.Equal(t, false, startupProbe["enabled"])
+	// Phase 1 must NOT override mariadbConfiguration: doing so replaces the chart's
+	// defaults (pid_file + [galera] section) and intermittently hangs bootstrap.
+	// The chart default applies until manageCustomDBSettings layers in the VSHN include.
+	_, hasCfg := values["mariadbConfiguration"]
+	assert.False(t, hasCfg)
 
 	// Verify pod labels
 	podLabels, ok := values["podLabels"].(map[string]string)

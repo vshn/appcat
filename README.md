@@ -355,3 +355,16 @@ apiserver --secure-port=9443 --kubeconfig=<your-home-path>/.kube/config --authen
 Protocol Buffers (Protobuf) is a free and open-source cross-platform data format used to serialize structured data.
 Kubernetes internally uses gRPC clients with protobuf serialization. APIServer objects when handled internally in K8S
 need to implement protobuf interface. The implementation of the interface is done by [code-generator](https://github.com/kubernetes/code-generator). Two dependencies are required to use this tool [protoc](https://github.com/protocolbuffers/protobuf) and [protoc-gen-go](https://google.golang.org/protobuf/cmd/protoc-gen-go).
+
+## Deprecation guidelines
+
+Software moves fast and it's ok to deprecate features. Still, they mean work for other teams or customers, so communication needs to be clear and transparent. This section describes how to deprecate features in AppCat.
+To announce a deprecation, please follow the steps below:
+
+* Discuss with relevant stakeholders and agree on a deprecation plan.
+* Document the deprecation where appropriate (most likely in the CRD, under the deprecated field, add a validation webhook warning where applicable).
+  * Deprecations should be **actionable**, the user should know how to migrate away from the deprecated feature.
+    * If a deprecation is not yet actionable, add a "please contact us" message to the deprecation notice.
+  * Include a **timeline** for the deprecation.
+  * Add a **why** section to the deprecation notice, explaining why the feature is being deprecated.
+* Add a follow-up ticket to review the deprecation and remove the deprecated feature after the deprecation timeline has passed.

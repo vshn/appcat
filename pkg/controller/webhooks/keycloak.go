@@ -2,14 +2,18 @@ package webhooks
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	apixv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -18,6 +22,7 @@ import (
 
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnkeycloaks,verbs=get;list;watch;patch;update
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnkeycloaks/status,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups=apiextensions.crossplane.io,resources=compositionrevisions,verbs=get;list;watch
 
 var (
 	keycloakGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNKeycloak"}
@@ -84,7 +89,9 @@ func (n *KeycloakWebhookHandler) ValidateCreate(ctx context.Context, obj runtime
 		allErrs.Add(err)
 	}
 
-	return append(defaultWarnings, append(isDeprecatedFieldInUse(keycloak), warnPinImageTagIgnoredForCustomImage(keycloak)...)...), allErrs.Get()
+	warnings := append(isDeprecatedFieldInUse(keycloak), warnPinImageTagIgnoredForCustomImage(keycloak)...)
+	warnings = append(warnings, n.warnRelativePathDisablesOptimized(ctx, keycloak)...)
+	return append(defaultWarnings, warnings...), allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -127,7 +134,9 @@ func (p *KeycloakWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, new
 		}
 	}
 
-	return append(defaultWarnings, append(isDeprecatedFieldInUse(newKeycloak), warnPinImageTagIgnoredForCustomImage(newKeycloak)...)...), allErrs.Get()
+	warnings := append(isDeprecatedFieldInUse(newKeycloak), warnPinImageTagIgnoredForCustomImage(newKeycloak)...)
+	warnings = append(warnings, p.warnRelativePathDisablesOptimized(ctx, newKeycloak)...)
+	return append(defaultWarnings, warnings...), allErrs.Get()
 }
 
 func validateCustomImageMutualExclusion(keycloak *vshnv1.VSHNKeycloak) *field.Error {
@@ -203,6 +212,64 @@ func warnPinImageTagIgnoredForCustomImage(keycloak *vshnv1.VSHNKeycloak) admissi
 		)}
 	}
 	return nil
+}
+
+const (
+	keycloakImagesOptimizedInput = "keycloak_images_optimized"
+	keycloakServiceIDLabel       = "metadata.appcat.vshn.io/serviceID"
+	keycloakServiceID            = "vshn-keycloak"
+)
+
+// warnRelativePathDisablesOptimized warns when a non-root relativePath is combined with optimized
+// Keycloak images. http-relative-path is a Keycloak build-time option, so for such instances the
+// composition omits --optimized and Keycloak rebuilds at startup (slower). It checks the latest
+// composition revision and only warns when keycloak_images_optimized is actually "true".
+func (h *KeycloakWebhookHandler) warnRelativePathDisablesOptimized(ctx context.Context, keycloak *vshnv1.VSHNKeycloak) admission.Warnings {
+	if strings.TrimSuffix(keycloak.Spec.Parameters.Service.RelativePath, "/") == "" {
+		return nil
+	}
+	if !h.optimizedImagesEnabled(ctx) {
+		return nil
+	}
+	return admission.Warnings{fmt.Sprintf(
+		"%s is not '/': optimized Keycloak images are enabled, so --optimized is omitted for this instance "+
+			"and Keycloak performs a slower runtime build at startup (http-relative-path is a build-time option)",
+		field.NewPath("spec", "parameters", "service", "relativePath").String(),
+	)}
+}
+
+// optimizedImagesEnabled reports whether the latest Keycloak composition revision sets the function
+// input keycloak_images_optimized to "true". The latest revision is what Crossplane binds to new
+// instances by default, so it reflects what an instance will actually run. Returns false on any
+// error so the webhook never blocks admission.
+func (h *KeycloakWebhookHandler) optimizedImagesEnabled(ctx context.Context) bool {
+	list := &apixv1.CompositionRevisionList{}
+	if err := h.client.List(ctx, list, client.MatchingLabels{keycloakServiceIDLabel: keycloakServiceID}); err != nil {
+		return false
+	}
+
+	var latest *apixv1.CompositionRevision
+	for i := range list.Items {
+		r := &list.Items[i]
+		if latest == nil || r.Spec.Revision > latest.Spec.Revision {
+			latest = r
+		}
+	}
+	if latest == nil {
+		return false
+	}
+
+	for _, step := range latest.Spec.Pipeline {
+		if step.Input == nil {
+			continue
+		}
+		input := &corev1.ConfigMap{}
+		if err := json.Unmarshal(step.Input.Raw, input); err != nil {
+			continue
+		}
+		return input.Data[keycloakImagesOptimizedInput] == "true"
+	}
+	return false
 }
 
 func isDeprecatedFieldInUse(comp *vshnv1.VSHNKeycloak) admission.Warnings {

@@ -774,6 +774,8 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, err
 	}
 
+	probeBasePath := strings.TrimSuffix(comp.Spec.Parameters.Service.RelativePath, "/")
+
 	values = map[string]any{
 		"replicas":          comp.Spec.Parameters.Instances,
 		"extraEnv":          extraEnv,
@@ -824,9 +826,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 			},
 		},
 		// Workaround until https://github.com/codecentric/helm-charts/pull/784 is merged
-		"livenessProbe":  "{\"httpGet\": {\"path\": \"/health/live\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 0, \"timeoutSeconds\": 5}",
-		"readinessProbe": "{\"httpGet\": {\"path\": \"/health/ready\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 10, \"timeoutSeconds\": 1}",
-		"startupProbe":   "{\"httpGet\": {\"path\": \"/health\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 15, \"timeoutSeconds\": 1, \"failureThreshold\": 60, \"periodSeconds\": 5}",
+		// Health endpoints are served under KC_HTTP_RELATIVE_PATH, so probes must include it.
+		"livenessProbe":  fmt.Sprintf("{\"httpGet\": {\"path\": \"%s/health/live\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 0, \"timeoutSeconds\": 5}", probeBasePath),
+		"readinessProbe": fmt.Sprintf("{\"httpGet\": {\"path\": \"%s/health/ready\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 10, \"timeoutSeconds\": 1}", probeBasePath),
+		"startupProbe":   fmt.Sprintf("{\"httpGet\": {\"path\": \"%s/health\", \"port\": \"http-internal\", \"scheme\": \"HTTPS\"}, \"initialDelaySeconds\": 15, \"timeoutSeconds\": 1, \"failureThreshold\": 60, \"periodSeconds\": 5}", probeBasePath),
 		"http": map[string]any{
 			"relativePath": comp.Spec.Parameters.Service.RelativePath,
 		},
@@ -1081,8 +1084,23 @@ func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 		"--spi-events-listener-jboss-logging-success-level=info",
 		"--spi-events-listener-jboss-logging-error-level=warn",
 	}
-	if comp.Spec.Parameters.Service.CustomizationImage.Image == "" && svc.Config.Data["keycloak_images_optimized"] == "true" {
-		cmd = append(cmd, "--optimized")
+	wantOptimized := comp.Spec.Parameters.Service.CustomizationImage.Image == "" && svc.Config.Data["keycloak_images_optimized"] == "true"
+
+	if wantOptimized {
+		// http-relative-path is a Keycloak build-time option. With --optimized, Keycloak uses the
+		// image's pre-baked build (relative-path "/") and skips the startup build, so a non-root
+		// relativePath would be silently ignored and Keycloak crash-loops (the setup waits for the
+		// health endpoint under the new path, which is never served). Fall back to a runtime build
+		// (plain start) for non-root relativePath, which rebuilds and honours the value.
+		if strings.TrimSuffix(comp.Spec.Parameters.Service.RelativePath, "/") == "" {
+			cmd = append(cmd, "--optimized")
+		} else {
+			svc.Log.Info("Disabling --optimized: a non-root service.relativePath requires a runtime Keycloak build", "relativePath", comp.Spec.Parameters.Service.RelativePath)
+			svc.AddResult(runtime.NewWarningResult(
+				"keycloak: --optimized disabled because service.relativePath is not '/'; falling back to a " +
+					"runtime build (slower startup). http-relative-path is a build-time option and is " +
+					"incompatible with optimized prebuilt images."))
+		}
 	}
 	return cmd
 }

@@ -2,14 +2,20 @@ package webhooks
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 
+	apixv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -172,6 +178,71 @@ func TestWarnPinImageTagIgnoredForCustomImage(t *testing.T) {
 		},
 	}
 	assert.Empty(t, warnPinImageTagIgnoredForCustomImage(keycloakImageOnly))
+}
+
+func TestWarnRelativePathDisablesOptimized(t *testing.T) {
+	// revision builds a Keycloak CompositionRevision labelled with the serviceID (so the webhook's
+	// List finds it) and carrying the given keycloak_images_optimized value in its function input.
+	revision := func(t *testing.T, name string, revNum int64, optimized string) *apixv1.CompositionRevision {
+		raw, err := json.Marshal(&corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
+			Data:     map[string]string{"keycloak_images_optimized": optimized},
+		})
+		require.NoError(t, err)
+		return &apixv1.CompositionRevision{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   name,
+				Labels: map[string]string{keycloakServiceIDLabel: keycloakServiceID},
+			},
+			Spec: apixv1.CompositionRevisionSpec{
+				Revision: revNum,
+				Pipeline: []apixv1.PipelineStep{
+					{Step: "keycloak-func", Input: &runtime.RawExtension{Raw: raw}},
+				},
+			},
+		}
+	}
+
+	handlerWith := func(objs ...client.Object) KeycloakWebhookHandler {
+		return KeycloakWebhookHandler{DefaultWebhookHandler: DefaultWebhookHandler{
+			client: fake.NewClientBuilder().WithScheme(pkg.SetupScheme()).WithObjects(objs...).Build(),
+			log:    logr.Discard(),
+		}}
+	}
+
+	claim := func(relativePath string) *vshnv1.VSHNKeycloak {
+		return &vshnv1.VSHNKeycloak{
+			Spec: vshnv1.VSHNKeycloakSpec{
+				Parameters: vshnv1.VSHNKeycloakParameters{
+					Service: vshnv1.VSHNKeycloakServiceSpec{RelativePath: relativePath},
+				},
+			},
+		}
+	}
+
+	ctx := context.TODO()
+
+	t.Log("latest revision optimized=true + non-root relativePath: expect warning")
+	h := handlerWith(revision(t, "rev-1", 1, "false"), revision(t, "rev-2", 2, "true"))
+	warnings := h.warnRelativePathDisablesOptimized(ctx, claim("/auth"))
+	assert.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "relativePath")
+	assert.Contains(t, warnings[0], "--optimized is omitted")
+
+	t.Log("trailing slash is also non-root: expect warning")
+	assert.Len(t, h.warnRelativePathDisablesOptimized(ctx, claim("/auth/")), 1)
+
+	t.Log("latest revision optimized=false: expect no warning (older revision is true)")
+	h = handlerWith(revision(t, "rev-1", 1, "true"), revision(t, "rev-2", 2, "false"))
+	assert.Empty(t, h.warnRelativePathDisablesOptimized(ctx, claim("/auth")))
+
+	t.Log("root relativePath: expect no warning (no revision lookup)")
+	h = handlerWith(revision(t, "rev-1", 1, "true"))
+	assert.Empty(t, h.warnRelativePathDisablesOptimized(ctx, claim("/")))
+
+	t.Log("no revisions present: expect no warning, no error")
+	h = handlerWith()
+	assert.Empty(t, h.warnRelativePathDisablesOptimized(ctx, claim("/auth")))
 }
 
 func TestKeycloakWebhookHandler_ValidatePostgreSQLEncryptionChanges(t *testing.T) {

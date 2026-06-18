@@ -28,6 +28,10 @@ func init() {
 				Name:    "deploy-openbao",
 				Execute: DeployOpenBao,
 			},
+			{
+				Name:    "initialize",
+				Execute: InitializeCluster,
+			},
 		},
 	})
 }

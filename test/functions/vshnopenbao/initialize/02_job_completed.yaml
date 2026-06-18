@@ -1,0 +1,61 @@
+desired: {}
+input:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+  data:
+    defaultPlan: standard-2
+    controlNamespace: appcat-control
+    kubectl_image: bitnami/kubectl:latest
+    plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled": true,
+      "memory": "2Gi"}}}'
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNOpenBao
+      metadata:
+        name: openbao-test
+        labels:
+          crossplane.io/claim-name: openbao-test
+          crossplane.io/claim-namespace: unit-test
+      spec:
+        parameters:
+          openBao:
+            init:
+              runInitJob: true
+              secretShares: 5
+              secretThreshold: 3
+      status:
+        instanceNamespace: vshn-openbao-openbao-test
+        initializationComplete: false
+  resources:
+    openbao-test-init-output-observer:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: openbao-test-init-output-observer
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: openbao-test-init-output
+                namespace: vshn-openbao-openbao-test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: openbao-test-init-output
+                namespace: vshn-openbao-openbao-test
+              data:
+                VAULT_TOKEN: dGVzdC1yb290LXRva2Vu
+                VAULT_ADDR: aHR0cHM6Ly9vcGVuYmFvLXRlc3Q6ODIwMA==

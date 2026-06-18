@@ -4631,6 +4631,28 @@ spec:
                           description: Email necessary to send alerts via email
                           type: string
                       type: object
+                    openBao:
+                      description: OpenBao contains service settings
+                      properties:
+                        init:
+                          properties:
+                            runInitJob:
+                              default: true
+                              type: boolean
+                            secretShares:
+                              default: 5
+                              description: SecretShares is the number of key shares to split the generated master key into.
+                              minimum: 1
+                              type: integer
+                            secretThreshold:
+                              default: 3
+                              description: SecretThreshold is the number of key shares required to reconstruct the master key.
+                              minimum: 1
+                              type: integer
+                          required:
+                            - runInitJob
+                          type: object
+                      type: object
                     restore:
                       description: Restore contains settings to control the restore of an instance.
                       properties:
@@ -4820,6 +4842,12 @@ spec:
                         type: string
                     type: object
                   type: array
+                initializationComplete:
+                  description: |-
+                    InitializationComplete is set to true once the init job has run successfully
+                    and the root token secret is populated. Prevents the init job from being
+                    re-created on every reconcile after the TTL expires.
+                  type: boolean
                 instanceNamespace:
                   description: InstanceNamespace contains the name of the namespace where the instance resides
                   type: string

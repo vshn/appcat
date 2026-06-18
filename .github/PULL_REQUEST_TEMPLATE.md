@@ -7,6 +7,7 @@
 
 - [ ] Update tests.
 - [ ] Link this PR to related issues.
+- [ ] Follow [deprecation guidelines](https://github.com/vshn/appcat#deprecation-guidelines) where applicable.
 - [ ] Merge with `/merge` comment.
 
 <!--

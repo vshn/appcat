@@ -1321,6 +1321,8 @@ func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 
 func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
 
+	basePath := strings.TrimSuffix(comp.Spec.Parameters.Service.RelativePath, "/")
+
 	serviceMonitor := prom.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-service-monitor",
@@ -1337,7 +1339,7 @@ func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) e
 			Endpoints: []prom.Endpoint{
 				{
 					Port:     "http-internal",
-					Path:     "/metrics",
+					Path:     basePath + "/metrics",
 					Interval: "15s",
 					Scheme:   "https",
 					TLSConfig: &prom.TLSConfig{
@@ -1348,7 +1350,7 @@ func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) e
 				},
 				{
 					Port:     "http",
-					Path:     "/realms/master/metrics",
+					Path:     basePath + "/realms/master/metrics",
 					Interval: "15s",
 					Scheme:   "http",
 				},

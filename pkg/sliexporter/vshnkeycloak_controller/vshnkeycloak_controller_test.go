@@ -132,6 +132,33 @@ func TestVSHNKeycloak_Suspended_Stop_Running_Probe(t *testing.T) {
 	assert.False(t, manager.probers[getFakeKey(pi)])
 }
 
+func TestKeycloakHealthURL(t *testing.T) {
+	tests := map[string]struct {
+		host         string
+		relativePath string
+		want         string
+	}{
+		"root path empty": {
+			host: "kc.example.svc", relativePath: "", want: "https://kc.example.svc:9000/health",
+		},
+		"root path slash": {
+			host: "kc.example.svc", relativePath: "/", want: "https://kc.example.svc:9000/health",
+		},
+		"custom relative path": {
+			host: "kc.example.svc", relativePath: "/auth", want: "https://kc.example.svc:9000/auth/health",
+		},
+		"custom relative path trailing slash": {
+			host: "kc.example.svc", relativePath: "/auth/", want: "https://kc.example.svc:9000/auth/health",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.want, keycloakHealthURL(tc.host, tc.relativePath))
+		})
+	}
+}
+
 func setupVSHNKeycloakTest(t *testing.T, objs ...client.Object) (VSHNKeycloakReconciler, *fakeProbeManager, client.Client) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))

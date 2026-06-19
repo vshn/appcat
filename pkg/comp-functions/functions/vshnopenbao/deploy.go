@@ -12,7 +12,6 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
-	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -56,13 +55,6 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 		"server": map[string]any{
 			"rbac": map[string]any{
 				"create": false,
-			},
-			"serviceAccount": map[string]any{
-				"serviceDiscovery": map[string]any{
-					// Helm chart creates this role by default, but provider-helm cannot grant
-					// the required pod verbs (get/watch/update). We manage RBAC via provider-kubernetes.
-					"enabled": false,
-				},
 			},
 			"ha": map[string]any{
 				"enabled":  true,
@@ -171,55 +163,6 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 	err = svc.SetDesiredComposedResourceWithName(r, comp.Name+"-release")
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot add %s composed resource: %w", comp.Name+"-release", err).Error())
-	}
-
-	if err := configureDiscoveryRBAC(serviceName, comp.GetInstanceNamespace(), svc); err != nil {
-		return runtime.NewWarningResult(fmt.Errorf("cannot configure discovery RBAC: %w", err).Error())
-	}
-
-	return nil
-}
-
-func configureDiscoveryRBAC(serviceName, ns string, svc *runtime.ServiceRuntime) error {
-	roleName := serviceName + serverRoleSuffix
-
-	role := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
-			Namespace: ns,
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-				Verbs:     []string{"get", "watch", "list", "update", "patch"},
-			},
-		},
-	}
-	if err := svc.SetDesiredKubeObject(role, roleName); err != nil {
-		return fmt.Errorf("cannot add discovery role: %w", err)
-	}
-
-	rb := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
-			Namespace: ns,
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      serviceName,
-				Namespace: ns,
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     roleName,
-		},
-	}
-	if err := svc.SetDesiredKubeObject(rb, roleName+"-binding"); err != nil {
-		return fmt.Errorf("cannot add discovery rolebinding: %w", err)
 	}
 
 	return nil

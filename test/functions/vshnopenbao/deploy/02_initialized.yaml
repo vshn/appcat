@@ -30,53 +30,34 @@ observed:
             serviceLevel: besteffort
             init:
               enabled: true
-              ttlSecondsAfterFinished: 86400
-              backoffLimit: 3
           tls:
             enabled: true
             authClients: true
       status:
         instanceNamespace: vshn-openbao-openbao-test
   resources:
-    openbao-test-claim-ns-observer:
+    openbao-test-init-output-observer:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
         kind: Object
         metadata:
-          name: unit-test
+          name: openbao-test-init-output
         spec:
           forProvider:
             manifest:
               apiVersion: v1
-              kind: Namespace
+              kind: Secret
               metadata:
-                name: unit-test
+                name: openbao-test-init-output
+                namespace: vshn-openbao-openbao-test
         status:
           atProvider:
             manifest:
               apiVersion: v1
-              kind: Namespace
+              kind: Secret
               metadata:
-                name: unit-test
-                labels:
-                  appuio.io/organization: vshn
-    openbao-test-ns:
-      resource:
-        apiVersion: kubernetes.crossplane.io/v1alpha2
-        kind: Object
-        metadata:
-          name: vshn-openbao-openbao-test
-        spec:
-          forProvider:
-            manifest:
-              apiVersion: v1
-              kind: Namespace
-              metadata:
-                name: vshn-openbao-openbao-test
-        status:
-          atProvider:
-            manifest:
-              apiVersion: v1
-              kind: Namespace
-              metadata:
-                name: vshn-openbao-openbao-test
+                name: openbao-test-init-output
+                namespace: vshn-openbao-openbao-test
+              data:
+                VAULT_ADDR: aHR0cHM6Ly9vcGVuYmFvLXRlc3Q6ODIwMA==
+                VAULT_TOKEN: cy5zb21ldG9rZW4=

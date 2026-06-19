@@ -16,6 +16,8 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
+const serverRoleSuffix = "-server"
+
 func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.ServiceRuntime) *xfnproto.Result {
 	if err := svc.GetObservedComposite(comp); err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
@@ -55,8 +57,9 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 				"create": false,
 			},
 			"ha": map[string]any{
-				"enabled": true,
-				"config":  "# Config provided via external file\n",
+				"enabled":  true,
+				"replicas": comp.GetInstances(),
+				"config":   "# Config provided via external file\n",
 				"raft": map[string]any{
 					"enabled": true,
 					"config":  "# Config provided via external file\n",
@@ -64,6 +67,10 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 			},
 			"authDelegator": map[string]any{
 				"enabled": false,
+			},
+			"readinessProbe": map[string]any{
+				"enabled": true,
+				"path":    "/v1/sys/health?standbyok=true",
 			},
 			"resources": map[string]any{
 				"requests": map[string]any{

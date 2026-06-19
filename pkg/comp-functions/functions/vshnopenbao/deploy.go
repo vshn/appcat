@@ -58,7 +58,7 @@ func DeployOpenBao(ctx context.Context, comp *vshnv1.VSHNOpenBao, svc *runtime.S
 			},
 			"ha": map[string]any{
 				"enabled":  true,
-				"replicas": cmp.Or(comp.GetInstances(), 3),
+				"replicas": comp.GetInstances(),
 				"config":   "# Config provided via external file\n",
 				"raft": map[string]any{
 					"enabled": true,

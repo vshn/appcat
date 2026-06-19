@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	prom "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
@@ -384,6 +385,66 @@ func Test_probeRelativePath(t *testing.T) {
 			assert.Contains(t, values["livenessProbe"], "\"path\": \""+tc.wantLiveness+"\"")
 			assert.Contains(t, values["readinessProbe"], "\"path\": \""+tc.wantReady+"\"")
 			assert.Contains(t, values["startupProbe"], "\"path\": \""+tc.wantStartup+"\"")
+		})
+	}
+}
+
+func Test_serviceMonitorRelativePath(t *testing.T) {
+	tests := map[string]struct {
+		relativePath string
+		wantInternal string
+		wantRealms   string
+	}{
+		"default root path": {
+			relativePath: "/",
+			wantInternal: "/metrics",
+			wantRealms:   "/realms/master/metrics",
+		},
+		"empty path": {
+			relativePath: "",
+			wantInternal: "/metrics",
+			wantRealms:   "/realms/master/metrics",
+		},
+		"custom relative path": {
+			relativePath: "/auth",
+			wantInternal: "/auth/metrics",
+			wantRealms:   "/auth/realms/master/metrics",
+		},
+		"custom relative path with trailing slash": {
+			relativePath: "/auth/",
+			wantInternal: "/auth/metrics",
+			wantRealms:   "/auth/realms/master/metrics",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+			comp := &vshnv1.VSHNKeycloak{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mycloak",
+					Namespace: "default",
+				},
+				Spec: vshnv1.VSHNKeycloakSpec{
+					Parameters: vshnv1.VSHNKeycloakParameters{
+						Service: vshnv1.VSHNKeycloakServiceSpec{
+							RelativePath: tc.relativePath,
+						},
+					},
+				},
+			}
+
+			assert.NoError(t, addServiceMonitor(comp, svc))
+
+			sm := &prom.ServiceMonitor{}
+			assert.NoError(t, svc.GetDesiredKubeObject(sm, comp.GetName()+"-service-monitor"))
+
+			paths := map[string]string{}
+			for _, ep := range sm.Spec.Endpoints {
+				paths[ep.Port] = ep.Path
+			}
+			assert.Equal(t, tc.wantInternal, paths["http-internal"])
+			assert.Equal(t, tc.wantRealms, paths["http"])
 		})
 	}
 }

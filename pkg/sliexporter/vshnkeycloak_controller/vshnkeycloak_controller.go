@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"strings"
 	"time"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -85,7 +86,7 @@ func (r VSHNKeycloakReconciler) getKeycloakProber(ctx context.Context, obj slire
 		return nil, fmt.Errorf("secret does not contain Keycloak url")
 	}
 
-	url := "https://" + string(host) + ":9000/health"
+	url := keycloakHealthURL(string(host), inst.Spec.Parameters.Service.RelativePath)
 
 	rawCACert, ok := credentials.Data["ca.crt"]
 	if !ok {
@@ -104,6 +105,11 @@ func (r VSHNKeycloakReconciler) getKeycloakProber(ctx context.Context, obj slire
 	compositionName := inst.Spec.CompositionRef.Name
 
 	return probes.NewHTTP(url, true, cert, vshnKeycloakServiceKey, inst.GetName(), claimNamespace, instanceNamespace, org, string(sla), compositionName, ha), nil
+}
+
+func keycloakHealthURL(host, relativePath string) string {
+	basePath := strings.TrimSuffix(relativePath, "/")
+	return "https://" + host + ":9000" + basePath + "/health"
 }
 
 // SetupWithManager sets up the controller with the Manager.

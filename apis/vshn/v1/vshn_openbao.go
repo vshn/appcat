@@ -80,6 +80,9 @@ type VSHNOpenBaoParameters struct {
 	// Monitoring contains settings to control the monitoring of a service.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
+	// +kubebuilder:default=3
+	// +kubebuilder:validation:Enum=1;3
+
 	// Instances defines the number of instances to run.
 	Instances int `json:"instances,omitempty"`
 }

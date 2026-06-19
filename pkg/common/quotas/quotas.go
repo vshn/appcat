@@ -206,6 +206,11 @@ func AddInitalNamespaceQuotas(ctx context.Context, ns *corev1.Namespace, s *util
 		added = true
 	}
 
+	if _, ok := annotations[utils.ActiveDeadlineSecondsOverrideAnnotation]; !ok {
+		annotations[utils.ActiveDeadlineSecondsOverrideAnnotation] = utils.DefaultActiveDeadlineSeconds
+		added = true
+	}
+
 	// Add Exoscale-specific storage class quotas
 	if cloudProvider == "exoscale" {
 		if _, ok := annotations[utils.StorageClassesAnnotation]; !ok {

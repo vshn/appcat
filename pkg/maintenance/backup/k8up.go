@@ -35,7 +35,8 @@ func (k *K8upBackupRunner) RunBackup(ctx context.Context, namespace, backupName 
 	}
 
 	if len(scheduleList.Items) == 0 {
-		return fmt.Errorf("no k8up Schedule found in namespace %s", namespace)
+		k.log.Info("No k8up Schedule found in namespace, skipping backup", "namespace", namespace)
+		return nil
 	}
 
 	// Use the first schedule found (there should typically only be one per instance)

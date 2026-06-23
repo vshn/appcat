@@ -61,6 +61,18 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 
 // RunBackup executes a pre-maintenance backup
 func (p *PostgreSQLCNPG) RunBackup(ctx context.Context) error {
+	comp := &vshnv1.XVSHNPostgreSQL{}
+	if err := p.k8sClient.Get(ctx, client.ObjectKey{Name: p.compName}, comp); err != nil {
+		return fmt.Errorf("couldn't get composite: %w", err)
+	}
+
+	// Backup disabled means the barman-cloud plugin is not configured on the cluster,
+	// so a Backup resource would fail. Skip it like the other runners do.
+	if !comp.Spec.Parameters.Backup.IsEnabled() {
+		p.log.Info("Backup disabled, skipping pre-maintenance backup")
+		return nil
+	}
+
 	return p.backupHelper.RunBackup(ctx)
 }
 

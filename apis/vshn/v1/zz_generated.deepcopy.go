@@ -2411,6 +2411,7 @@ func (in *VSHNRedisParameters) DeepCopyInto(out *VSHNRedisParameters) {
 	out.Maintenance = in.Maintenance
 	in.Monitoring.DeepCopyInto(&out.Monitoring)
 	in.Security.DeepCopyInto(&out.Security)
+	in.Network.DeepCopyInto(&out.Network)
 	out.AdditionalResources = in.AdditionalResources
 }
 

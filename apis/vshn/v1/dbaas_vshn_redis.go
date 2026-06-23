@@ -79,6 +79,9 @@ type VSHNRedisParameters struct {
 	// Security defines the security of a service
 	Security Security `json:"security,omitempty"`
 
+	// Network contains any network related settings.
+	Network VSHNDBaaSNetworkSpec `json:"network,omitempty"`
+
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Enum=0;1;3;
 

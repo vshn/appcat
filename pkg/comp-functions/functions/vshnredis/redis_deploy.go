@@ -283,6 +283,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
+	if err := addLoadbalancerConfig(svc, comp, values); err != nil {
+		return nil, fmt.Errorf("cannot add loadbalancer service values to the chart: %w", err)
+	}
+
 	common.MergeSidecarsIntoValues(values, sidecars)
 
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
@@ -373,6 +377,10 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 			ToConnectionSecretKey:  "tls.key",
 			SkipPartOfReleaseCheck: true,
 		},
+	}
+
+	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
+		cd = append(cd, loadBalancerConnectionDetail(comp))
 	}
 
 	rel, err := common.NewRelease(ctx, svc, comp, values, redisRelease, cd...)

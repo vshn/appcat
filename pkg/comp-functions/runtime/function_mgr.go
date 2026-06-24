@@ -62,6 +62,7 @@ const (
 	LastReconcileAnnotation           = "appcat.vshn.io/reconciled-on"
 	TCPGatewayAllowedAnnotation       = "appcat.vshn.io/allowed-gateways"
 	TCPGatewayLabel                   = "appcat.vshn.io/tcpgateway"
+	TCPGatewayAllocatedPortAnnotation = "appcat.vshn.io/allocated-port"
 
 	ResourceReady   ResourceReadiness = ResourceReadiness(resource.ReadyTrue)
 	ResourceUnReady ResourceReadiness = ResourceReadiness(resource.ReadyFalse)

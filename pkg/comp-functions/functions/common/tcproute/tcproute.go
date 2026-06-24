@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
-	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -236,18 +236,9 @@ func observeXListenerSet(svc *runtime.ServiceRuntime, name string) ObservedState
 	state.GatewayName = gwName
 	state.GatewayNamespace = gwNs
 
-	listeners, found, err := unstructured.NestedSlice(observed.Object, "spec", "listeners")
-	if err != nil || !found || len(listeners) == 0 {
-		svc.Log.Info("No listeners found in observed XListenerSet")
-		return state
-	}
-
-	listenerMap, ok := listeners[0].(map[string]any)
-	if !ok {
-		return state
-	}
-
-	state.Port = utils.ToInt32(listenerMap["port"])
+	portStr, _, _ := unstructured.NestedString(observed.Object, "metadata", "annotations", runtime.TCPGatewayAllocatedPortAnnotation)
+	port, _ := strconv.Atoi(portStr)
+	state.Port = int32(port)
 
 	if state.Port == 0 {
 		return state

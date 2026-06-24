@@ -74,6 +74,8 @@ observed:
               metadata:
                 name: redis-gc9x4
                 namespace: vshn-redis-redis-gc9x4
+                annotations:
+                  appcat.vshn.io/allocated-port: "16379"
               spec:
                 parentRef:
                   group: gateway.networking.k8s.io

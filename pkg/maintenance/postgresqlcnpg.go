@@ -67,7 +67,7 @@ func (p *PostgreSQLCNPG) RunBackup(ctx context.Context) error {
 	}
 
 	// Backup disabled means the barman-cloud plugin is not configured on the cluster,
-	// so a Backup resource would fail. Skip it like the other runners do.
+	// so a Backup resource would fail.
 	if !comp.Spec.Parameters.Backup.IsEnabled() {
 		p.log.Info("Backup disabled, skipping pre-maintenance backup")
 		return nil

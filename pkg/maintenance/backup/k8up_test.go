@@ -39,11 +39,10 @@ func TestK8upBackupRunner_RunBackup(t *testing.T) {
 		errContains  string
 	}{
 		{
-			name:        "GivenNoSchedule_ThenReturnError",
-			namespace:   "test-ns",
-			backupName:  "test-backup",
-			wantErr:     true,
-			errContains: "no k8up Schedule found",
+			name:       "GivenNoSchedule_ThenSkip",
+			namespace:  "test-ns",
+			backupName: "test-backup",
+			wantErr:    false,
 		},
 		{
 			name:       "GivenScheduleWithNoBackend_ThenReturnError",

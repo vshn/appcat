@@ -1,4 +1,4 @@
-package vshnpostgrescnpg
+package common
 
 import (
 	"crypto/x509"
@@ -10,12 +10,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// certSANMatcher checks whether a parsed x509 certificate contains the
-// expected SAN (Subject Alternative Name). Returns true if the cert is valid.
-type certSANMatcher func(cert *x509.Certificate) bool
+// CertSANMatcher checks whether a parsed x509 certificate contains the
+// expected SAN (Subject Alternative Name).
+type CertSANMatcher func(cert *x509.Certificate) bool
 
-// certHasIP returns a matcher that checks if the certificate contains the given IP address.
-func certHasIP(ip string) certSANMatcher {
+// CertHasIP returns a matcher that checks if the certificate contains the given IP address.
+func CertHasIP(ip string) CertSANMatcher {
 	return func(cert *x509.Certificate) bool {
 		for _, certIP := range cert.IPAddresses {
 			if certIP.String() == ip {
@@ -26,8 +26,8 @@ func certHasIP(ip string) certSANMatcher {
 	}
 }
 
-// certHasDNS returns a matcher that checks if the certificate contains the given DNS name.
-func certHasDNS(dnsName string) certSANMatcher {
+// CertHasDNS returns a matcher that checks if the certificate contains the given DNS name.
+func CertHasDNS(dnsName string) CertSANMatcher {
 	return func(cert *x509.Certificate) bool {
 		for _, name := range cert.DNSNames {
 			if name == dnsName {
@@ -44,34 +44,30 @@ func certHasDNS(dnsName string) certSANMatcher {
 //
 // This prevents Crossplane from reporting the instance as ready before the
 // certificate covers the external endpoint (LoadBalancer IP or gateway domain).
-func waitForCertSAN(svc *runtime.ServiceRuntime, compName, instanceNamespace string, match certSANMatcher) error {
-	svc.SetDesiredResourceReadiness("certificate", runtime.ResourceUnReady)
+func WaitForCertSAN(svc *runtime.ServiceRuntime, certResourceName, observerName, secretName, instanceNamespace string, match CertSANMatcher) error {
+	svc.SetDesiredResourceReadiness(certResourceName, runtime.ResourceUnReady)
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      certificateSecretName,
+			Name:      secretName,
 			Namespace: instanceNamespace,
 		},
 	}
 
-	err := svc.SetDesiredKubeObject(secret, compName+"-tls-observer", runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion)
-	if err != nil {
+	if err := svc.SetDesiredKubeObject(secret, observerName, runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion); err != nil {
 		svc.Log.Error(err, "cannot deploy certificate secret observer")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot deploy certificate secret observer: %s", err)))
 	}
 
 	obsSecret := &corev1.Secret{}
-
-	err = svc.GetObservedKubeObject(obsSecret, compName+"-tls-observer")
-	if err != nil {
-		svc.Log.Error(err, "cannot observe certificate secret")
-		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot observe certificate secret: %s", err)))
+	if err := svc.GetObservedKubeObject(obsSecret, observerName); err != nil {
+		svc.Log.Info("certificate secret not yet observed")
+		return nil
 	}
 
 	block, _ := pem.Decode(obsSecret.Data["tls.crt"])
 	if block == nil {
 		svc.Log.Info("cannot decode tls certificate")
-		svc.AddResult(runtime.NewWarningResult("cannot decode tls certificate"))
 		return nil
 	}
 
@@ -79,16 +75,11 @@ func waitForCertSAN(svc *runtime.ServiceRuntime, compName, instanceNamespace str
 	if err != nil {
 		svc.Log.Error(err, "cannot parse tls certificate")
 		svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot parse tls certificate: %s", err)))
-	}
-
-	if cert == nil {
-		err := fmt.Errorf("certificate is nil, please check issues with cert-manager")
-		svc.AddResult(runtime.NewFatalResult(err))
-		return err
+		return nil
 	}
 
 	if match(cert) {
-		svc.SetDesiredResourceReadiness("certificate", runtime.ResourceReady)
+		svc.SetDesiredResourceReadiness(certResourceName, runtime.ResourceReady)
 	}
 
 	return nil

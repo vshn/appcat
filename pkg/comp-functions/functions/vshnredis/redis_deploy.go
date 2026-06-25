@@ -12,6 +12,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +31,7 @@ const (
 	redisPasswordConnectionDetailsField = "REDIS_PASSWORD"
 	redisURLConnectionDetailsField      = "REDIS_URL"
 	sentinelHostsConnectionDetailsField = "SENTINEL_HOSTS"
+	redisGatewayHostConnectionDetails   = "REDIS_GATEWAY_HOST"
 
 	redisRelease = "release"
 )
@@ -65,13 +67,36 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 		}
 	}
 
+	cd := svc.GetObservedConnectionDetails()
+	ipSans := []string{}
+	gatewayHost := ""
+	loadbalancerIP := ""
+	if externalAccessEnabled(svc) {
+		if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway {
+			if v := string(cd[redisGatewayHostConnectionDetails]); v != "" {
+				gatewayHost = v
+				additionalSans = append(additionalSans, gatewayHost)
+			}
+		}
+		if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) {
+			if v := string(cd[loadBalancerIPConnectionDetailsField]); v != "" {
+				loadbalancerIP = v
+				ipSans = append(ipSans, loadbalancerIP)
+			}
+		}
+	}
+
 	tlsOpts := &common.TLSOptions{
 		AdditionalSans: additionalSans,
 	}
 
-	_, _, err = createMTLSCerts(comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts)
+	_, _, err = createMTLSCerts(comp.GetInstanceNamespace(), comp.GetName(), ipSans, svc, tlsOpts)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create mTLS certificates: %w", err).Error())
+	}
+
+	if err := gateExternalCertReadiness(svc, comp, gatewayHost, loadbalancerIP); err != nil {
+		return runtime.NewFatalResult(err)
 	}
 
 	if err := createObjectHelmRelease(ctx, comp, svc, secretName); err != nil {

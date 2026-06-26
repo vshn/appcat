@@ -1,0 +1,61 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNRedis
+      metadata:
+        name: redis-gc9x4
+        generateName: redis-
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: redis
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: redis-gc9x4
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generation: 13
+      spec:
+        parameters:
+          service:
+            version: "7.2"
+          instances: 1
+          network:
+            serviceType: TCPGateway
+        writeConnectionSecretToRef: {}
+      status: {}
+input:
+  apiVersion: v1
+  data:
+    defaultPlan: standard-1
+    controlNamespace: appcat-control
+    tcpGatewayNamespace: gateway-system
+    tcpGateways: '{"tcp-gateway":"redis.example.com"}'
+    tcpGatewayEnabled: "true"
+    externalDatabaseConnectionsEnabled: "true"
+    plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true, "memory": "1Gi"}}}'
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNRedis
+      metadata:
+        name: redis-gc9x4
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: redis
+          crossplane.io/claim-namespace: unit-test
+      spec:
+        parameters:
+          service:
+            version: "7.2"
+          instances: 1
+          network:
+            serviceType: TCPGateway
+        writeConnectionSecretToRef: {}
+      status: {}

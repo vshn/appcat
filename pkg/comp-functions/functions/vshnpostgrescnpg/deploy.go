@@ -153,9 +153,10 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	// We look at the actual source certificate and verify the expected SAN is present.
 	// This ensures that we don't have to wait ~1h before the correct connectionDetails
 	// are populated.
+	certObserver := comp.GetName() + "-tls-observer"
 	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
 		if v, ok := cd["LOADBALANCER_IP"]; ok {
-			if err := waitForCertSAN(svc, comp.GetName(), comp.GetInstanceNamespace(), certHasIP(string(v))); err != nil {
+			if err := common.WaitForCertSAN(svc, "certificate", certObserver, certificateSecretName, comp.GetInstanceNamespace(), common.CertHasIP(string(v))); err != nil {
 				return err
 			}
 		} else {
@@ -165,7 +166,7 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 
 	if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && externalAccessEnabled(svc) {
 		if v, ok := cd["POSTGRESQL_GATEWAY_HOST"]; ok && string(v) != "" {
-			if err := waitForCertSAN(svc, comp.GetName(), comp.GetInstanceNamespace(), certHasDNS(string(v))); err != nil {
+			if err := common.WaitForCertSAN(svc, "certificate", certObserver, certificateSecretName, comp.GetInstanceNamespace(), common.CertHasDNS(string(v))); err != nil {
 				return err
 			}
 		} else {

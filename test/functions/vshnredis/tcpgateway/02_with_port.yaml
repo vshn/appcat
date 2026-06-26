@@ -2,44 +2,37 @@ desired:
   composite:
     resource:
       apiVersion: vshn.appcat.vshn.io/v1
-      kind: XVSHNPostgreSQL
+      kind: XVSHNRedis
       metadata:
-        creationTimestamp: "2023-03-21T16:52:31Z"
-        finalizers:
-          - composite.apiextensions.crossplane.io
-        generateName: pgsql-
-        generation: 13
+        name: redis-gc9x4
+        generateName: redis-
         labels:
           appuio.io/organization: vshn
-          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-name: redis
           crossplane.io/claim-namespace: unit-test
-          crossplane.io/composite: pgsql-gc9x4
-        name: pgsql-gc9x4
+          crossplane.io/composite: redis-gc9x4
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generation: 13
       spec:
         parameters:
           service:
-            majorVersion: "15"
+            version: "7.2"
           instances: 1
           network:
             serviceType: TCPGateway
-          backup:
-            schedule: 44 20 * * *
-          maintenance:
-            schedule: 12 34 * * *
         writeConnectionSecretToRef: {}
-      status:
-        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+      status: {}
 input:
   apiVersion: v1
   data:
     defaultPlan: standard-1
     controlNamespace: appcat-control
     tcpGatewayNamespace: gateway-system
-    tcpGateways: '{"tcp-gateway":"pg.example.com"}'
+    tcpGateways: '{"tcp-gateway":"redis.example.com"}'
     tcpGatewayEnabled: "true"
     externalDatabaseConnectionsEnabled: "true"
     plans: '{"standard-1": {"size": {"cpu": "250m", "disk": "16Gi", "enabled": true, "memory": "1Gi"}}}'
-    serviceName: postgresql
   kind: ConfigMap
   metadata:
     annotations: {}
@@ -50,50 +43,39 @@ observed:
   composite:
     resource:
       apiVersion: vshn.appcat.vshn.io/v1
-      kind: XVSHNPostgreSQL
+      kind: XVSHNRedis
       metadata:
-        creationTimestamp: "2023-03-21T16:52:31Z"
-        finalizers:
-          - composite.apiextensions.crossplane.io
-        generateName: pgsql-
-        generation: 13
+        name: redis-gc9x4
         labels:
           appuio.io/organization: vshn
-          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-name: redis
           crossplane.io/claim-namespace: unit-test
-          crossplane.io/composite: pgsql-gc9x4
-        name: pgsql-gc9x4
       spec:
         parameters:
           service:
-            majorVersion: "15"
+            version: "7.2"
           instances: 1
           network:
             serviceType: TCPGateway
-          backup:
-            schedule: 44 20 * * *
-          maintenance:
-            schedule: 12 34 * * *
         writeConnectionSecretToRef: {}
-      status:
-        instanceNamespace: vshn-postgresql-pgsql-gc9x4
+      status: {}
   resources:
-    pgsql-gc9x4-xls:
+    redis-gc9x4-xls:
       resource:
         apiVersion: kubernetes.crossplane.io/v1alpha2
         kind: Object
         metadata:
-          name: pgsql-gc9x4-pg
+          name: redis-gc9x4-xls
         status:
           atProvider:
             manifest:
               apiVersion: gateway.networking.x-k8s.io/v1alpha1
               kind: XListenerSet
               metadata:
-                name: pgsql-gc9x4-pg
-                namespace: vshn-postgresql-pgsql-gc9x4
+                name: redis-gc9x4
+                namespace: vshn-redis-redis-gc9x4
                 annotations:
-                  appcat.vshn.io/allocated-port: "15432"
+                  appcat.vshn.io/allocated-port: "16379"
               spec:
                 parentRef:
                   group: gateway.networking.k8s.io
@@ -101,8 +83,8 @@ observed:
                   namespace: gateway-system
                   name: tcp-gateway
                 listeners:
-                  - name: postgresql
-                    port: 15432
+                  - name: redis
+                    port: 16379
                     protocol: TCP
                     allowedRoutes:
                       kinds:

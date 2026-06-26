@@ -97,10 +97,10 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	ipAddresses := []string{}
 	dnsNames := []string{}
 	cd := svc.GetObservedConnectionDetails()
-	if v, ok := cd["LOADBALANCER_IP"]; ok && comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
+	if v, ok := cd["LOADBALANCER_IP"]; ok && comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && common.ExternalAccessEnabled(svc) {
 		ipAddresses = append(ipAddresses, string(v))
 	}
-	if v, ok := cd["POSTGRESQL_GATEWAY_HOST"]; ok && comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && externalAccessEnabled(svc) {
+	if v, ok := cd["POSTGRESQL_GATEWAY_HOST"]; ok && comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && common.ExternalAccessEnabled(svc) {
 		dnsNames = append(dnsNames, string(v))
 	}
 
@@ -154,7 +154,7 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	// This ensures that we don't have to wait ~1h before the correct connectionDetails
 	// are populated.
 	certObserver := comp.GetName() + "-tls-observer"
-	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
+	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && common.ExternalAccessEnabled(svc) {
 		if v, ok := cd["LOADBALANCER_IP"]; ok {
 			if err := common.WaitForCertSAN(svc, "certificate", certObserver, certificateSecretName, comp.GetInstanceNamespace(), common.CertHasIP(string(v))); err != nil {
 				return err
@@ -164,7 +164,7 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 		}
 	}
 
-	if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && externalAccessEnabled(svc) {
+	if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && common.ExternalAccessEnabled(svc) {
 		if v, ok := cd["POSTGRESQL_GATEWAY_HOST"]; ok && string(v) != "" {
 			if err := common.WaitForCertSAN(svc, "certificate", certObserver, certificateSecretName, comp.GetInstanceNamespace(), common.CertHasDNS(string(v))); err != nil {
 				return err
@@ -529,7 +529,7 @@ func createCnpgSCCRoleBinding(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceR
 
 func addLoadbalancerConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgreSQL, values map[string]any) error {
 
-	if !externalAccessEnabled(svc) {
+	if !common.ExternalAccessEnabled(svc) {
 		return nil
 	}
 
@@ -570,8 +570,4 @@ func addLoadbalancerConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNPostgre
 	}
 
 	return nil
-}
-
-func externalAccessEnabled(svc *runtime.ServiceRuntime) bool {
-	return svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled")
 }

@@ -10,6 +10,7 @@ import (
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -116,7 +117,7 @@ func generateConnectionDetailInfoForRelease(comp *vshnv1.VSHNPostgreSQL, svc *ru
 		ToConnectionSecretKey: ClusterInstanceCdField,
 	})
 
-	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
+	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && common.ExternalAccessEnabled(svc) {
 		connectionDetails = append(connectionDetails, getLoadBalancerConnectionDetail(comp, svc))
 	}
 

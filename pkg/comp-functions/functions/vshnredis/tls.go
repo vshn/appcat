@@ -14,9 +14,9 @@ import (
 )
 
 // createMTLSCerts creates ssl/tls certificates with mutual authentication. Servicename will be concatenated with the given namespace to generate a proper k8s fqdn.
-// ipSans are added as IP SANs to the server certificate (e.g. a loadbalancer IP).
+// opts.IPSans are added as IP SANs to the server certificate (e.g. a loadbalancer IP).
 // In addition to error it returns the name of the server and client certificate secrets.
-func createMTLSCerts(ns string, serviceName string, ipSans []string, svc *runtime.ServiceRuntime, opts *common.TLSOptions) (string, string, error) {
+func createMTLSCerts(ns string, serviceName string, svc *runtime.ServiceRuntime, opts *common.TLSOptions) (string, string, error) {
 	kubeOpts := []runtime.KubeObjectOption{}
 	if opts != nil {
 		kubeOpts = opts.KubeOptions
@@ -168,8 +168,8 @@ func createMTLSCerts(ns string, serviceName string, ipSans []string, svc *runtim
 		}
 	}
 
-	if len(ipSans) > 0 {
-		serverCert.Spec.IPAddresses = ipSans
+	if opts != nil && len(opts.IPSans) > 0 {
+		serverCert.Spec.IPAddresses = opts.IPSans
 	}
 
 	serverCertOpts := append(kubeOpts, runtime.KubeOptionAddConnectionDetails(svc.GetCrossplaneNamespace(),

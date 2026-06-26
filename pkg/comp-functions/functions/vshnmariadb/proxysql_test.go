@@ -35,7 +35,8 @@ func Test_copyCertificateSecret(t *testing.T) {
 	comp := getComp()
 
 	// When applied
-	assert.NoError(t, copyCertificateSecret(comp, svc, false))
+	_, err := copyCertificateSecret(comp, svc, false)
+	assert.NoError(t, err)
 	obj := &xkubev1.Object{}
 	//Then expect secret
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(obj, comp.GetName()+"-proxysql-specific-certs"))
@@ -44,7 +45,8 @@ func Test_copyCertificateSecret(t *testing.T) {
 	// Given no TLS
 	comp.Spec.Parameters.TLS.TLSEnabled = false
 	// When applied
-	assert.NoError(t, copyCertificateSecret(comp, svc, false))
+	_, err = copyCertificateSecret(comp, svc, false)
+	assert.NoError(t, err)
 	//Then expect no secret
 	assert.Error(t, svc.GetDesiredComposedResourceByName(obj, comp.GetName()+"-proxysql-specific-certs"))
 }
@@ -81,7 +83,7 @@ func Test_createProxySQLStatefulset(t *testing.T) {
 	comp := getComp()
 
 	// given TLS enabled
-	assert.NoError(t, createProxySQLStatefulset(comp, svc, "1", false))
+	assert.NoError(t, createProxySQLStatefulset(comp, svc, "1", "1", false))
 
 	sts := &appsv1.StatefulSet{}
 	assert.NoError(t, svc.GetDesiredKubeObject(sts, comp.GetName()+"-proxysql-sts"))
@@ -93,7 +95,7 @@ func Test_createProxySQLStatefulset(t *testing.T) {
 	comp.Spec.Parameters.TLS.TLSEnabled = false
 
 	// given TLS disabled
-	assert.NoError(t, createProxySQLStatefulset(comp, svc, "1", false))
+	assert.NoError(t, createProxySQLStatefulset(comp, svc, "1", "1", false))
 
 	sts = &appsv1.StatefulSet{}
 	assert.NoError(t, svc.GetDesiredKubeObject(sts, comp.GetName()+"-proxysql-sts"))
@@ -201,7 +203,7 @@ func Test_createProxySQLStatefulset_resources(t *testing.T) {
 			comp.Spec.Parameters.TLS.TLSEnabled = false
 			comp.Spec.Parameters.Service.ProxySQL.Resources = tt.claimResources
 
-			assert.NoError(t, createProxySQLStatefulset(comp, svc, "hash", false))
+			assert.NoError(t, createProxySQLStatefulset(comp, svc, "hash", "hash", false))
 
 			sts := &appsv1.StatefulSet{}
 			assert.NoError(t, svc.GetDesiredKubeObject(sts, comp.GetName()+"-proxysql-sts"))

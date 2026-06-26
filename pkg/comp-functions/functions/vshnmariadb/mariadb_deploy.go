@@ -28,9 +28,10 @@ import (
 )
 
 const (
-	mariadbPort = "3306"
-	mariadbUser = "root"
-	extraConfig = "extra.cnf"
+	mariadbPort                 = "3306"
+	mariadbUser                 = "root"
+	serverCertificateSecretName = "tls-server-certificate"
+	extraConfig                 = "extra.cnf"
 	vshnConfig  = "extra-vshn.cnf"
 	// Default VSHN MariaDB configuration for character set and collation
 	defaultVSHNSettings = "[mysqld]\ncharacter-set-server=utf8mb4\ncollation-server=utf8mb4_unicode_ci\n"
@@ -109,7 +110,7 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
 	}
 
-	if err := gateExternalCertReadiness(svc, comp, gatewayHost, loadbalancerIP); err != nil {
+	if err := common.GateExternalCertReadiness(svc, comp, comp.Spec.Parameters.Network.ServiceType, serverCertificateSecretName, gatewayHost, loadbalancerIP); err != nil {
 		return runtime.NewFatalResult(err)
 	}
 

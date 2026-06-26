@@ -14,16 +14,12 @@ import (
 
 const loadBalancerIPConnectionDetailsField = "LOADBALANCER_IP"
 
-func externalAccessEnabled(svc *runtime.ServiceRuntime) bool {
-	return svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled")
-}
-
 func addLoadbalancerConfig(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis, values map[string]any) error {
 	if comp.Spec.Parameters.Network.ServiceType != string(corev1.ServiceTypeLoadBalancer) {
 		return nil
 	}
 
-	if !externalAccessEnabled(svc) {
+	if !common.ExternalAccessEnabled(svc) {
 		svc.AddResult(runtime.NewWarningResult("LoadBalancer requested but external connections are not enabled"))
 		return nil
 	}

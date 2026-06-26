@@ -71,7 +71,7 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 	ipSans := []string{}
 	gatewayHost := ""
 	loadbalancerIP := ""
-	if externalAccessEnabled(svc) {
+	if common.ExternalAccessEnabled(svc) {
 		if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway {
 			if v := string(cd[redisGatewayHostConnectionDetails]); v != "" {
 				gatewayHost = v
@@ -405,7 +405,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 		},
 	}
 
-	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && externalAccessEnabled(svc) {
+	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && common.ExternalAccessEnabled(svc) {
 		cd = append(cd, loadBalancerConnectionDetail(comp))
 	}
 

@@ -7,6 +7,7 @@ import (
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
@@ -33,7 +34,7 @@ func ConfigureTCPGateway(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runti
 		return nil
 	}
 
-	if !externalAccessEnabled(svc) {
+	if !common.ExternalAccessEnabled(svc) {
 		return runtime.NewWarningResult("TCPGateway requested but external connections are not enabled")
 	}
 

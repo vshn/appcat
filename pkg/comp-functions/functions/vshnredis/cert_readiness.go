@@ -14,7 +14,7 @@ import (
 // server certificate's SANs. This forces Crossplane to keep reconciling so the
 // external connection details get published promptly.
 func gateExternalCertReadiness(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNRedis, gatewayHost, loadbalancerIP string) error {
-	if !externalAccessEnabled(svc) {
+	if !common.ExternalAccessEnabled(svc) {
 		return nil
 	}
 

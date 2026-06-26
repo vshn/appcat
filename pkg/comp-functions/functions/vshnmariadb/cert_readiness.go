@@ -10,17 +10,13 @@ import (
 
 const serverCertificateSecretName = "tls-server-certificate"
 
-func externalAccessEnabled(svc *runtime.ServiceRuntime) bool {
-	return svc.GetBoolFromCompositionConfig("externalDatabaseConnectionsEnabled")
-}
-
 // gateExternalCertReadiness keeps the server certificate (and thus the
 // composite) unready until the external endpoint (gateway domain or
 // loadbalancer IP) is present in the connection details and covered by the
 // server certificate's SANs. This forces Crossplane to keep reconciling so the
 // external connection details get published promptly.
 func gateExternalCertReadiness(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNMariaDB, gatewayHost, loadbalancerIP string) error {
-	if !externalAccessEnabled(svc) {
+	if !common.ExternalAccessEnabled(svc) {
 		return nil
 	}
 

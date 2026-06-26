@@ -14,9 +14,9 @@ import (
 
 const (
 	redisListenerName = "redis"
-	// redisHeadlessServiceName is the backend for single-instance deployments.
-	redisHeadlessServiceName = "redis-headless"
-	// redisMasterServiceName is the backend when sentinel HA is enabled (instances > 1).
+	// redisServiceName is the sentinel client service, used as backend for single-instance deployments.
+	redisServiceName = "redis"
+	// redisMasterServiceName is the master-following service, used as backend when instances > 1.
 	redisMasterServiceName  = "redis-master"
 	redisBackendServicePort = 6379
 	redisPodListenPort      = 6379
@@ -38,9 +38,9 @@ func ConfigureTCPGateway(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runti
 		return runtime.NewWarningResult("TCPGateway requested but external connections are not enabled")
 	}
 
-	// Single instance is served by the headless service.
-	// HA exposes the master service.
-	backendServiceName := redisHeadlessServiceName
+	// Single instance is served by the main redis service.
+	// HA exposes the master-following service.
+	backendServiceName := redisServiceName
 	if comp.GetInstances() > 1 {
 		backendServiceName = redisMasterServiceName
 	}

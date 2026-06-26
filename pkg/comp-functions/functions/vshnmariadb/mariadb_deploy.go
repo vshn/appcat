@@ -70,7 +70,7 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 	ipSans := []string{}
 	gatewayHost := ""
 	loadbalancerIP := ""
-	if externalAccessEnabled(svc) {
+	if common.ExternalAccessEnabled(svc) {
 		switch comp.Spec.Parameters.Network.ServiceType {
 		case tcproute.ServiceTypeTCPGateway:
 			if v := string(cd["MARIADB_GATEWAY_HOST"]); v != "" {

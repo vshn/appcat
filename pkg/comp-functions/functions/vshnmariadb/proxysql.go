@@ -13,6 +13,7 @@ import (
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	appsv1 "k8s.io/api/apps/v1"
@@ -80,7 +81,7 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 	// For ClusterIP instances the SANs are static, so we skip the certHash
 	// annotation to avoid an unnecessary ProxySQL roll.
 	st := comp.Spec.Parameters.Network.ServiceType
-	if !externalAccessEnabled(svc) || (st != string(corev1.ServiceTypeLoadBalancer) && st != tcproute.ServiceTypeTCPGateway) {
+	if !common.ExternalAccessEnabled(svc) || (st != string(corev1.ServiceTypeLoadBalancer) && st != tcproute.ServiceTypeTCPGateway) {
 		certHash = ""
 	}
 

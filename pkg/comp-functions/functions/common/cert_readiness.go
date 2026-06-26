@@ -5,10 +5,43 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// GateExternalCertReadiness keeps the <name>-server-cert (and thus the
+// composite) unready until the external endpoint (gateway domain or
+// loadbalancer IP) is present in the connection details and covered by the
+// server certificate's SANs. This forces Crossplane to keep reconciling so the
+// external connection details get published promptly. serviceType is the
+// instance's network.serviceType; secretName is the issued server cert secret.
+func GateExternalCertReadiness(svc *runtime.ServiceRuntime, comp InfoGetter, serviceType, secretName, gatewayHost, loadbalancerIP string) error {
+	if !ExternalAccessEnabled(svc) {
+		return nil
+	}
+
+	certResource := comp.GetName() + "-server-cert"
+	observer := certResource + "-tls-observer"
+
+	switch serviceType {
+	case tcproute.ServiceTypeTCPGateway:
+		if gatewayHost == "" {
+			svc.SetDesiredResourceReadiness(certResource, runtime.ResourceUnReady)
+			return nil
+		}
+		return WaitForCertSAN(svc, certResource, observer, secretName, comp.GetInstanceNamespace(), CertHasDNS(gatewayHost))
+	case string(corev1.ServiceTypeLoadBalancer):
+		if loadbalancerIP == "" {
+			svc.SetDesiredResourceReadiness(certResource, runtime.ResourceUnReady)
+			return nil
+		}
+		return WaitForCertSAN(svc, certResource, observer, secretName, comp.GetInstanceNamespace(), CertHasIP(loadbalancerIP))
+	}
+
+	return nil
+}
 
 // CertSANMatcher checks whether a parsed x509 certificate contains the
 // expected SAN (Subject Alternative Name).

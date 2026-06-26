@@ -96,7 +96,7 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 		return runtime.NewWarningResult(fmt.Errorf("cannot create mTLS certificates: %w", err).Error())
 	}
 
-	if err := gateExternalCertReadiness(svc, comp, gatewayHost, loadbalancerIP); err != nil {
+	if err := common.GateExternalCertReadiness(svc, comp, comp.Spec.Parameters.Network.ServiceType, serverCertificateSecretName, gatewayHost, loadbalancerIP); err != nil {
 		return runtime.NewFatalResult(err)
 	}
 

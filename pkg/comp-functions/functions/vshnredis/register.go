@@ -15,6 +15,10 @@ func init() {
 				Execute: DeployRedis,
 			},
 			{
+				Name:    "tcpgateway",
+				Execute: ConfigureTCPGateway,
+			},
+			{
 				Name:    "backup",
 				Execute: AddBackup,
 			},

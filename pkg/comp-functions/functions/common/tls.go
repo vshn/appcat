@@ -15,9 +15,11 @@ import (
 
 // TLSOptions let's you pass advanced configurations to the underlying objects.
 type TLSOptions struct {
-	// AdditionalSans is a list of additional SANs that should get added to the
+	// AdditionalSans is a list of additional DNS SANs that should get added to the
 	// certificate
 	AdditionalSans []string
+	// IPSans is a list of IP address SANs that should get added to the server certificate
+	IPSans []string
 	// AdditionalOutputFormats is a list of additional output formats for the issued
 	// certificate
 	AdditionalOutputFormats []cmv1.CertificateAdditionalOutputFormat
@@ -187,6 +189,7 @@ func CreateTLSCerts(ctx context.Context, ns string, serviceName string, svc *run
 
 	if opts != nil {
 		serverCert.Spec.DNSNames = append(serverCert.Spec.DNSNames, opts.AdditionalSans...)
+		serverCert.Spec.IPAddresses = append(serverCert.Spec.IPAddresses, opts.IPSans...)
 	}
 
 	cd := []xkube.ConnectionDetail{

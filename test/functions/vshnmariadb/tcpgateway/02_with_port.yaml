@@ -1,0 +1,58 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNMariaDB
+      metadata:
+        name: mariadb-gc9x4
+      spec:
+        parameters:
+          service: {version: "11.5"}
+          instances: 3
+          network: {serviceType: TCPGateway}
+        writeConnectionSecretToRef: {}
+      status: {}
+input:
+  apiVersion: v1
+  data:
+    serviceName: mariadb
+    tcpGatewayNamespace: gateway-system
+    tcpGateways: '{"tcp-gateway":"mariadb.example.com"}'
+    tcpGatewayEnabled: "true"
+    externalDatabaseConnectionsEnabled: "true"
+  kind: ConfigMap
+  metadata: {labels: {name: xfn-config}, name: xfn-config}
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNMariaDB
+      metadata: {name: mariadb-gc9x4}
+      spec:
+        parameters:
+          service: {version: "11.5"}
+          instances: 3
+          network: {serviceType: TCPGateway}
+        writeConnectionSecretToRef: {}
+      status: {}
+  resources:
+    mariadb-gc9x4-xls:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata: {name: mariadb-gc9x4-xls}
+        status:
+          atProvider:
+            manifest:
+              apiVersion: gateway.networking.x-k8s.io/v1alpha1
+              kind: XListenerSet
+              metadata:
+                name: mariadb-gc9x4
+                namespace: vshn-mariadb-mariadb-gc9x4
+                annotations:
+                  appcat.vshn.io/allocated-port: "13306"
+                  appcat.vshn.io/allowed-gateways: "tcp-gateway"
+              spec:
+                parentRef: {group: gateway.networking.k8s.io, kind: Gateway, namespace: gateway-system, name: tcp-gateway}
+                listeners:
+                  - {name: mariadb, port: 13306, protocol: TCP}

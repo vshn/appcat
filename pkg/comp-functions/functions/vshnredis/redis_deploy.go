@@ -12,6 +12,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +31,7 @@ const (
 	redisPasswordConnectionDetailsField = "REDIS_PASSWORD"
 	redisURLConnectionDetailsField      = "REDIS_URL"
 	sentinelHostsConnectionDetailsField = "SENTINEL_HOSTS"
+	redisGatewayHostConnectionDetails   = "REDIS_GATEWAY_HOST"
 
 	redisRelease = "release"
 )
@@ -65,13 +67,37 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 		}
 	}
 
+	cd := svc.GetObservedConnectionDetails()
+	ipSans := []string{}
+	gatewayHost := ""
+	loadbalancerIP := ""
+	if common.ExternalAccessEnabled(svc) {
+		if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway {
+			if v := string(cd[redisGatewayHostConnectionDetails]); v != "" {
+				gatewayHost = v
+				additionalSans = append(additionalSans, gatewayHost)
+			}
+		}
+		if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) {
+			if v := string(cd[loadBalancerIPConnectionDetailsField]); v != "" {
+				loadbalancerIP = v
+				ipSans = append(ipSans, loadbalancerIP)
+			}
+		}
+	}
+
 	tlsOpts := &common.TLSOptions{
 		AdditionalSans: additionalSans,
+		IPSans:         ipSans,
 	}
 
 	_, _, err = createMTLSCerts(comp.GetInstanceNamespace(), comp.GetName(), svc, tlsOpts)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create mTLS certificates: %w", err).Error())
+	}
+
+	if err := common.GateExternalCertReadiness(svc, comp, comp.Spec.Parameters.Network.ServiceType, serverCertificateSecretName, gatewayHost, loadbalancerIP); err != nil {
+		return runtime.NewFatalResult(err)
 	}
 
 	if err := createObjectHelmRelease(ctx, comp, svc, secretName); err != nil {
@@ -283,6 +309,10 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 	}
 
+	if err := addLoadbalancerConfig(svc, comp, values); err != nil {
+		return nil, fmt.Errorf("cannot add loadbalancer service values to the chart: %w", err)
+	}
+
 	common.MergeSidecarsIntoValues(values, sidecars)
 
 	if registry := svc.Config.Data["imageRegistry"]; registry != "" {
@@ -373,6 +403,10 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, values map[str
 			ToConnectionSecretKey:  "tls.key",
 			SkipPartOfReleaseCheck: true,
 		},
+	}
+
+	if comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && common.ExternalAccessEnabled(svc) {
+		cd = append(cd, loadBalancerConnectionDetail(comp))
 	}
 
 	rel, err := common.NewRelease(ctx, svc, comp, values, redisRelease, cd...)

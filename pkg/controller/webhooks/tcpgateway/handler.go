@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -121,7 +122,7 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 	usedPorts := h.allocator.extractUsedPorts(items)
 
 	listeners, _ := spec["listeners"].([]any)
-	for i, l := range listeners {
+	for _, l := range listeners {
 		listenerMap, ok := l.(map[string]any)
 		if !ok {
 			continue
@@ -139,8 +140,16 @@ func (h *XListenerSetHandler) Handle(ctx context.Context, req admission.Request)
 
 			h.log.Info("Allocated port", "listener", listenerName, "port", newPort)
 
-			listenerMap["port"] = float64(newPort)
-			listeners[i] = listenerMap
+			if metadata == nil {
+				metadata = map[string]any{}
+				obj["metadata"] = metadata
+			}
+			anns, _ := metadata["annotations"].(map[string]any)
+			if anns == nil {
+				anns = map[string]any{}
+				metadata["annotations"] = anns
+			}
+			anns[runtime.TCPGatewayAllocatedPortAnnotation] = strconv.Itoa(int(newPort))
 			modified = true
 		}
 	}

@@ -12,6 +12,7 @@ input:
     controlNamespace: appcat-control
     plans: '{"standard-2": {"size": {"cpu": "500m", "disk": "16Gi", "enabled": true,
       "memory": "2Gi"}}}'
+    openbao_image: quay.io/openbao/openbao:2.4.4
 observed:
   composite:
     resource:
@@ -27,6 +28,10 @@ observed:
           service:
             version: "2.0"
             serviceLevel: besteffort
+            init:
+              enabled: true
+              ttlSecondsAfterFinished: 86400
+              backoffLimit: 3
           tls:
             enabled: true
             authClients: true

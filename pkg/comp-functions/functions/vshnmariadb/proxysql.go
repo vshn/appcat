@@ -13,6 +13,8 @@ import (
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -69,9 +71,18 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 
 	// ProxySQL expects the certificates to have specific names...
 	svc.Log.Info("Copying certificate secret")
-	err = copyCertificateSecret(comp, svc, disableProtection)
+	certHash, err := copyCertificateSecret(comp, svc, disableProtection)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot rename secret fields: %s", err))
+	}
+
+	// The cert only changes after ProxySQL startup for externally exposed
+	// instances (the gateway domain / loadbalancer IP SAN is injected late).
+	// For ClusterIP instances the SANs are static, so we skip the certHash
+	// annotation to avoid an unnecessary ProxySQL roll.
+	st := comp.Spec.Parameters.Network.ServiceType
+	if !common.ExternalAccessEnabled(svc) || (st != string(corev1.ServiceTypeLoadBalancer) && st != tcproute.ServiceTypeTCPGateway) {
+		certHash = ""
 	}
 
 	svc.Log.Info("Creating config for proxySQL")
@@ -87,7 +98,7 @@ func AddProxySQL(_ context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.Servi
 	}
 
 	svc.Log.Info("Creating statefulset for proxySQL")
-	err = createProxySQLStatefulset(comp, svc, configHash, disableProtection)
+	err = createProxySQLStatefulset(comp, svc, configHash, certHash, disableProtection)
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create statefulset: %s", err))
 	}
@@ -230,7 +241,18 @@ func createProxySQLHeadlessService(comp *vshnv1.VSHNMariaDB, svc *runtime.Servic
 	return svc.SetDesiredKubeObject(&service, comp.GetName()+"-proxysql-headless-service", opts...)
 }
 
-func createProxySQLStatefulset(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, configHash string, disableProtection bool) error {
+// proxysqlPodAnnotations builds the pod-template annotations. certHash is only
+// included when set (external instances), so existing ClusterIP instances don't
+// roll just because the annotation was introduced.
+func proxysqlPodAnnotations(configHash, certHash string) map[string]string {
+	annotations := map[string]string{"configHash": configHash}
+	if certHash != "" {
+		annotations["certHash"] = certHash
+	}
+	return annotations
+}
+
+func createProxySQLStatefulset(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, configHash, certHash string, disableProtection bool) error {
 
 	cpuLimit := comp.Spec.Parameters.Service.ProxySQL.Resources.Limits.CPU
 	if cpuLimit == "" {
@@ -281,10 +303,8 @@ func createProxySQLStatefulset(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRun
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-					Annotations: map[string]string{
-						"configHash": configHash,
-					},
+					Labels:      labels,
+					Annotations: proxysqlPodAnnotations(configHash, certHash),
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyAlways,
@@ -398,19 +418,19 @@ func createProxySQLStatefulset(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRun
 	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-proxysql-sts", opts...)
 }
 
-func copyCertificateSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, disableProtection bool) error {
+func copyCertificateSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, disableProtection bool) (string, error) {
 	if !comp.Spec.Parameters.TLS.TLSEnabled {
-		return nil
+		return "", nil
 	}
 
 	certs, err := svc.GetObservedComposedResourceConnectionDetails(comp.GetName() + "-server-cert")
 	if err != nil {
-		return fmt.Errorf("cannot get certs for proxysql: %w", err)
+		return "", fmt.Errorf("cannot get certs for proxysql: %w", err)
 	}
 
 	// Secret not yet ready
 	if _, exists := certs["ca.crt"]; !exists {
-		return nil
+		return "", nil
 	}
 
 	secret := &corev1.Secret{
@@ -431,7 +451,8 @@ func copyCertificateSecret(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime
 		opts = append(opts, runtime.KubeOptionAllowDeletion)
 	}
 
-	return svc.SetDesiredKubeObject(secret, comp.GetName()+"-proxysql-specific-certs", opts...)
+	hash := md5.Sum(certs["tls.crt"])
+	return hex.EncodeToString(hash[:]), svc.SetDesiredKubeObject(secret, comp.GetName()+"-proxysql-specific-certs", opts...)
 }
 
 func createProxySQLPDB(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, disableProtection bool) error {

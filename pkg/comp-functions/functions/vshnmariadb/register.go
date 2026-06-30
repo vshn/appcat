@@ -16,6 +16,10 @@ func init() {
 				Execute: DeployMariadb,
 			},
 			{
+				Name:    "tcpgateway",
+				Execute: ConfigureTCPGateway,
+			},
+			{
 				Name:    "maintenance",
 				Execute: AddMaintenanceJob,
 			},

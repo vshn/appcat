@@ -92,6 +92,8 @@ observed:
               metadata:
                 name: pgsql-gc9x4-pg
                 namespace: vshn-postgresql-pgsql-gc9x4
+                annotations:
+                  appcat.vshn.io/allocated-port: "15432"
               spec:
                 parentRef:
                   group: gateway.networking.k8s.io

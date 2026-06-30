@@ -76,6 +76,8 @@ observed:
               metadata:
                 name: forgejo-unit-test-ssh
                 namespace: vshn-forgejo-unit-test
+                annotations:
+                  appcat.vshn.io/allocated-port: "10005"
               spec:
                 parentRef:
                   group: gateway.networking.k8s.io

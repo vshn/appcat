@@ -93,6 +93,7 @@ func TestAllServicesDiskDownsizing(t *testing.T) {
 		{"Forgejo", "VSHNForgejo", createForgejo},
 		{"Nextcloud", "VSHNNextcloud", createNextcloud},
 		{"MinIO", "VSHNMinio", createMinIO},
+		{"Garage", "VSHNGarage", createGarage},
 	}
 
 	for _, service := range services {
@@ -174,6 +175,14 @@ func createMinIO(size vshnv1.VSHNSizeSpec) common.Composite {
 	return &vshnv1.VSHNMinio{
 		Spec: vshnv1.VSHNMinioSpec{
 			Parameters: vshnv1.VSHNMinioParameters{Size: size},
+		},
+	}
+}
+
+func createGarage(size vshnv1.VSHNSizeSpec) common.Composite {
+	return &vshnv1.VSHNGarage{
+		Spec: vshnv1.VSHNGarageSpec{
+			Parameters: vshnv1.VSHNGarageParameters{Size: size},
 		},
 	}
 }

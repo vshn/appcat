@@ -12,6 +12,7 @@ import (
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.size.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.default={})"
+//go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.service.properties.init.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.tls.default={})"
 //go:generate yq -i e ../../generated/vshn.appcat.vshn.io_vshnopenbaos.yaml --expression "with(.spec.versions[]; .schema.openAPIV3Schema.properties.spec.properties.parameters.properties.backup.default={})"
 
@@ -79,6 +80,9 @@ type VSHNOpenBaoParameters struct {
 	// Monitoring contains settings to control the monitoring of a service.
 	Monitoring VSHNMonitoring `json:"monitoring,omitempty"`
 
+	// +kubebuilder:default=3
+	// +kubebuilder:validation:Enum=1;3
+
 	// Instances defines the number of instances to run.
 	Instances int `json:"instances,omitempty"`
 }
@@ -89,6 +93,31 @@ type VSHNOpenBaoServiceSpec struct {
 	// +kubebuilder:default="besteffort"
 	// ServiceLevel defines the service level of this service. Either Best Effort or Guaranteed Availability is allowed.
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
+
+	// Init contains settings to control the init job of this OpenBao instance.
+	Init VSHNOpenBaoInitSpec `json:"init,omitempty"`
+}
+
+// VSHNOpenBaoInitSpec contains settings to control the init job of a VSHNOpenBao instance.
+type VSHNOpenBaoInitSpec struct {
+	// +kubebuilder:default=true
+
+	// Enabled enables or disables the automatic init job for this OpenBao instance.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// +kubebuilder:default=86400
+	// +kubebuilder:validation:Minimum=0
+
+	// TTLSecondsAfterFinished defines how many seconds the init job and its pod
+	// are kept after the job finishes. Defaults to 86400 (1 day).
+	TTLSecondsAfterFinished int32 `json:"ttlSecondsAfterFinished,omitempty"`
+
+	// +kubebuilder:default=3
+	// +kubebuilder:validation:Minimum=0
+
+	// BackoffLimit defines how many times the init job may be retried before
+	// it is considered failed. Defaults to 3.
+	BackoffLimit int32 `json:"backoffLimit,omitempty"`
 }
 
 // VSHNOpenBaoSizeSpec contains settings to control the sizing of a service.
@@ -145,6 +174,8 @@ type VSHNOpenBaoStatus struct {
 	// Schedules keeps track of random generated schedules, is overwriten by
 	// schedules set in the service's spec.
 	Schedules VSHNScheduleStatus `json:"schedules,omitempty"`
+	// Initialized indicates whether the OpenBao instance has been initialized.
+	Initialized bool `json:"initialized"`
 }
 
 func (v *VSHNOpenBao) GetClaimNamespace() string {
@@ -157,6 +188,18 @@ func (v *VSHNOpenBao) GetInstanceNamespace() string {
 
 func (v *VSHNOpenBao) SetInstanceNamespaceStatus() {
 	v.Status.InstanceNamespace = v.GetInstanceNamespace()
+}
+
+func (v *VSHNOpenBao) IsInitJobEnabled() bool {
+	return v.Spec.Parameters.Service.Init.Enabled
+}
+
+func (v *VSHNOpenBao) IsInitialized() bool {
+	return v.Status.Initialized
+}
+
+func (v *VSHNOpenBao) SetInitialized(initialized bool) {
+	v.Status.Initialized = initialized
 }
 
 // +kubebuilder:object:generate=true

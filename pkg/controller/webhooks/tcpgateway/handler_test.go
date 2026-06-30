@@ -122,10 +122,12 @@ func TestHandle_PortZeroGetsAllocated(t *testing.T) {
 	assert.NotEmpty(t, resp.Patches)
 
 	patched := applyPatches(t, raw, resp)
-	listeners, found, err := unstructured.NestedSlice(patched.Object, "spec", "listeners")
-	require.NoError(t, err)
-	require.True(t, found)
-	assert.Equal(t, float64(10005), listeners[0].(map[string]any)["port"])
+	assert.Equal(t, "10005", allocatedPort(patched))
+}
+
+func allocatedPort(p *unstructured.Unstructured) string {
+	v, _, _ := unstructured.NestedString(p.Object, "metadata", "annotations", "appcat.vshn.io/allocated-port")
+	return v
 }
 
 func TestHandle_NonZeroPortPassesThrough(t *testing.T) {
@@ -136,31 +138,6 @@ func TestHandle_NonZeroPortPassesThrough(t *testing.T) {
 	resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
 	assert.True(t, resp.Allowed)
 	assert.Empty(t, resp.Patches)
-}
-
-func TestHandle_MultipleListeners_OnlyZeroAllocated(t *testing.T) {
-	// 10000-10009 are taken
-	handler := newTestHandler(t,
-		newXListenerSet("a", "ns", 10000, 10001, 10002, 10003, 10004),
-		newXListenerSet("b", "ns", 10005, 10006, 10007, 10008, 10009),
-	)
-
-	xls := newXListenerSet("test", "ns", 0, 9999, 0)
-
-	raw, err := json.Marshal(xls)
-	require.NoError(t, err)
-
-	resp := handler.Handle(context.Background(), makeAdmissionRequest(t, xls))
-	assert.True(t, resp.Allowed)
-	assert.NotEmpty(t, resp.Patches)
-
-	patched := applyPatches(t, raw, resp)
-	listeners, found, err := unstructured.NestedSlice(patched.Object, "spec", "listeners")
-	require.NoError(t, err)
-	require.True(t, found)
-	assert.Equal(t, float64(10010), listeners[0].(map[string]any)["port"])
-	assert.Equal(t, float64(9999), listeners[1].(map[string]any)["port"])
-	assert.Equal(t, float64(10011), listeners[2].(map[string]any)["port"])
 }
 
 func TestHandle_NonCreateOperation_Allowed(t *testing.T) {
@@ -224,7 +201,8 @@ func TestHandle_AllowedRoutesPreserved(t *testing.T) {
 	require.True(t, found)
 
 	l0 := listeners[0].(map[string]any)
-	assert.Equal(t, float64(10000), l0["port"])
+	assert.Equal(t, "10000", allocatedPort(patched))
+	assert.Equal(t, float64(0), l0["port"])
 
 	// allowedRoutes must still be present
 	allowedRoutes, ok := l0["allowedRoutes"].(map[string]any)
@@ -269,10 +247,7 @@ func TestHandle_ShardingReassignsGateway(t *testing.T) {
 	require.True(t, found)
 	assert.Equal(t, "gw-ns", ns)
 
-	listeners, found, err := unstructured.NestedSlice(patched.Object, "spec", "listeners")
-	require.NoError(t, err)
-	require.True(t, found)
-	assert.Equal(t, float64(10010), listeners[0].(map[string]any)["port"])
+	assert.Equal(t, "10010", allocatedPort(patched))
 }
 
 func TestHandle_ShardingDisabled_NoReassignment(t *testing.T) {
@@ -406,7 +381,7 @@ func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
 
 	const numReplicas = 5
 
-	ports := make([]float64, numReplicas)
+	ports := make([]string, numReplicas)
 	for i := range numReplicas {
 		handler := newTestHandlerWithClient(t, sharedClient)
 		xls := newXListenerSet(fmt.Sprintf("test-%d", i), "ns", 0)
@@ -416,12 +391,10 @@ func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
 		require.True(t, resp.Allowed)
 		require.NotEmpty(t, resp.Patches)
 
-		patched := applyPatches(t, raw, resp)
-		listeners, _, _ := unstructured.NestedSlice(patched.Object, "spec", "listeners")
-		ports[i] = listeners[0].(map[string]any)["port"].(float64)
+		ports[i] = allocatedPort(applyPatches(t, raw, resp))
 	}
 
-	seen := make(map[float64]bool)
+	seen := make(map[string]bool)
 	for _, p := range ports {
 		seen[p] = true
 	}
@@ -430,7 +403,7 @@ func TestHandle_MultipleReplicas_UniquePorts(t *testing.T) {
 	assert.Equal(t, numReplicas, len(seen),
 		"all replicas should allocate unique ports")
 
-	for i, expected := range []float64{10003, 10004, 10005, 10006, 10007} {
+	for i, expected := range []string{"10003", "10004", "10005", "10006", "10007"} {
 		assert.Equal(t, expected, ports[i], "replica %d should get port %v", i, expected)
 	}
 }
@@ -489,7 +462,7 @@ func applyRawPatches(t *testing.T, raw []byte, resp admission.Response) []byte {
 	require.NoError(t, json.Unmarshal(raw, &obj))
 
 	for _, p := range resp.Patches {
-		if p.Operation == "replace" {
+		if p.Operation == "replace" || p.Operation == "add" {
 			setNestedValue(obj, p.Path, p.Value)
 		}
 	}

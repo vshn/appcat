@@ -1,0 +1,68 @@
+desired:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNRedis
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: redis-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: redis
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: redis-gc9x4
+        name: redis-gc9x4
+      spec:
+        parameters:
+          service:
+            version: "7.0"
+          size:
+            disk: 16Gi
+        writeConnectionSecretToRef: {}
+      status: {}
+  resources:
+    release:
+      resource:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        spec:
+          forProvider:
+            chart:
+              name: redis
+              repository: https://charts.bitnami.com/bitnami
+            values:
+              architecture: standalone
+              fullnameOverride: redis
+              replica:
+                persistence:
+                  size: 16Gi
+          providerConfigRef:
+            name: helm
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNRedis
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: redis-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: redis
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: redis-gc9x4
+        name: redis-gc9x4
+      spec:
+        parameters:
+          service:
+            version: "7.0"
+          size:
+            disk: 16Gi
+        writeConnectionSecretToRef: {}
+      status: {}

@@ -36,6 +36,16 @@ func TestPVCResize(t *testing.T) {
 	assert.Nil(t, ResizePVCs(ctx, &vshnv1.VSHNRedis{}, svc))
 	assert.Error(t, svc.GetDesiredKubeObject(job, "redis-gc9x4-sts-deleter"))
 
+	// Fresh creation: release exists only in desired (not yet observed).
+	// Must not fatal, resize has to read the desired release as fallback.
+	svc = commontest.LoadRuntimeFromFile(t, "vshnredis/pvcresize/01_fresh.yaml")
+	assert.Nil(t, ResizePVCs(ctx, &vshnv1.VSHNRedis{}, svc))
+
+	// No release at all yet (namespace still bootstrapping). Must skip, not
+	// fatal, otherwise the desired state gets discarded and bootstrap deadlocks.
+	svc = commontest.LoadRuntimeFromFile(t, "vshnredis/pvcresize/01_no_release.yaml")
+	assert.Nil(t, ResizePVCs(ctx, &vshnv1.VSHNRedis{}, svc))
+
 }
 
 func Test_needReleasePatch(t *testing.T) {

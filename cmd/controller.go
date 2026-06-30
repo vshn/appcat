@@ -243,6 +243,10 @@ func setupWebhooks(mgr manager.Manager, withQuota bool, withAppcatWebhooks bool,
 		if err != nil {
 			return err
 		}
+		err = webhooks.SetupGarageWebhookHandlerWithManager(mgr, withQuota)
+		if err != nil {
+			return err
+		}
 		err = webhooks.SetupNextcloudWebhookHandlerWithManager(mgr, withQuota)
 		if err != nil {
 			return err

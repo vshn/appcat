@@ -36,6 +36,11 @@ func ResizePVCs(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servic
 	}
 
 	release, err := getObservedOrDesiredRelease(svc)
+	if err == runtime.ErrNotFound {
+		// Release isn't created yet. Nothing to resize and we must not fatal here
+		// or the whole desired state gets discarded, which would deadlock the bootstrap.
+		return nil
+	}
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get release: %w", err))
 	}
@@ -146,18 +151,23 @@ func getSizeAsInt(size string) (int64, error) {
 	return finalSize, nil
 }
 
+// getObservedOrDesiredRelease returns the redis release, preferring the observed
+// one and falling back to the desired one (which the deploy step may have just
+// added in this same reconcile). Returns runtime.ErrNotFound if it exists in
+// neither, so callers can skip rather than fatal.
 func getObservedOrDesiredRelease(svc *runtime.ServiceRuntime) (*helmv1beta1.Release, error) {
 	r := &helmv1beta1.Release{}
 	err := svc.GetObservedComposedResource(r, redisRelease)
-	if err != nil && err != runtime.ErrNotFound {
-		return nil, fmt.Errorf("cannot get redis release from observed iof: %v", err)
+	if err == nil {
+		return r, nil
+	}
+	if err != runtime.ErrNotFound {
+		return nil, fmt.Errorf("cannot get redis release from observed iof: %w", err)
 	}
 
-	if err == runtime.ErrNotFound {
-		err := svc.GetObservedComposedResource(r, redisRelease)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get redis release from desired iof: %v", err)
-		}
+	// Not observed yet, try desired.
+	if err := svc.GetDesiredComposedResourceByName(r, redisRelease); err != nil {
+		return nil, err
 	}
 	return r, nil
 }

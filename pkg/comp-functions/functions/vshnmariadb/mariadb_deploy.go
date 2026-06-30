@@ -18,6 +18,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,10 +28,11 @@ import (
 )
 
 const (
-	mariadbPort = "3306"
-	mariadbUser = "root"
-	extraConfig = "extra.cnf"
-	vshnConfig  = "extra-vshn.cnf"
+	mariadbPort                 = "3306"
+	mariadbUser                 = "root"
+	serverCertificateSecretName = "tls-server-certificate"
+	extraConfig                 = "extra.cnf"
+	vshnConfig                  = "extra-vshn.cnf"
 	// Default VSHN MariaDB configuration for character set and collation
 	defaultVSHNSettings = "[mysqld]\ncharacter-set-server=utf8mb4\ncollation-server=utf8mb4_unicode_ci\n"
 )
@@ -64,10 +66,30 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 		return runtime.NewWarningResult(fmt.Sprintf("cannot create service: %s", err))
 	}
 
+	cd := svc.GetObservedConnectionDetails()
+	externalSans := []string{}
+	ipSans := []string{}
+	gatewayHost := ""
+	loadbalancerIP := ""
+	if common.ExternalAccessEnabled(svc) {
+		switch comp.Spec.Parameters.Network.ServiceType {
+		case tcproute.ServiceTypeTCPGateway:
+			if v := string(cd["MARIADB_GATEWAY_HOST"]); v != "" {
+				gatewayHost = v
+				externalSans = append(externalSans, v)
+			}
+		case string(corev1.ServiceTypeLoadBalancer):
+			if v := string(cd["LOADBALANCER_IP"]); v != "" {
+				loadbalancerIP = v
+				ipSans = append(ipSans, v)
+			}
+		}
+	}
+
 	// To make scaling up and down as seamless as possible we create a cert that also includes the
 	// proxy dns names.
 	tlsOpts := &common.TLSOptions{
-		AdditionalSans: []string{
+		AdditionalSans: append([]string{
 			comp.GetName(),
 			fmt.Sprintf("*.%s-headless.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
 			fmt.Sprintf("*.%s.%s.svc.cluster.local", comp.GetName(), comp.GetInstanceNamespace()),
@@ -77,7 +99,8 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 			fmt.Sprintf("mariadb.%s.svc", comp.GetInstanceNamespace()),
 			fmt.Sprintf("proxysql-0.proxysqlcluster.%s.svc", comp.GetInstanceNamespace()),
 			fmt.Sprintf("proxysql-1.proxysqlcluster.%s.svc", comp.GetInstanceNamespace()),
-		},
+		}, externalSans...),
+		IPSans: ipSans,
 	}
 
 	l.Info("Creating tls certificate for mariadb instance")
@@ -85,6 +108,10 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 
 	if err != nil {
 		return runtime.NewWarningResult(fmt.Errorf("cannot create tls certificate: %w", err).Error())
+	}
+
+	if err := common.GateExternalCertReadiness(svc, comp, comp.Spec.Parameters.Network.ServiceType, serverCertificateSecretName, gatewayHost, loadbalancerIP); err != nil {
+		return runtime.NewFatalResult(err)
 	}
 
 	l.Info("Creating helm release for mariadb instance")
@@ -541,6 +568,10 @@ func createMainService(comp *vshnv1.VSHNMariaDB, svc *runtime.ServiceRuntime, se
 				},
 			},
 		},
+	}
+
+	if serviceType == corev1.ServiceTypeLoadBalancer {
+		service.Spec.LoadBalancerSourceRanges = comp.Spec.Parameters.Network.IPFilter
 	}
 
 	mariadbRootPw, err := getMariaDBRootPassword(secretName, svc)

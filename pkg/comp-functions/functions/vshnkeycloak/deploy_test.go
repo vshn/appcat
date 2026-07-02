@@ -13,6 +13,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"gopkg.in/yaml.v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -57,6 +58,7 @@ func Test_addPostgreSQL(t *testing.T) {
 func Test_addRelease(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
 
+
 	comp := &vshnv1.VSHNKeycloak{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycloak",
@@ -81,6 +83,7 @@ func Test_addRelease(t *testing.T) {
 
 func Test_addHARelease(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+
 
 	comp := &vshnv1.VSHNKeycloak{
 		ObjectMeta: metav1.ObjectMeta{
@@ -294,43 +297,82 @@ func Test_dbcheckerImage(t *testing.T) {
 		},
 	}
 
-	t.Run("busybox_image only sets repository", func(t *testing.T) {
-		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
-		svc.Config.Data["busybox_image"] = "my-registry/busybox"
-
-		values, err := newValues(context.TODO(), svc, comp, "mysecret", "mypgsecret")
-		assert.NoError(t, err)
-
-		dbchecker := values["dbchecker"].(map[string]any)
-		image := dbchecker["image"].(map[string]any)
-		assert.Equal(t, "my-registry/busybox", image["repository"])
-		_, hasTag := image["tag"]
-		assert.False(t, hasTag, "tag should not be set when busybox_image_tag is empty")
-	})
-
-	t.Run("busybox_image and busybox_image_tag sets both fields", func(t *testing.T) {
-		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
-		svc.Config.Data["busybox_image"] = "my-registry/busybox"
-		svc.Config.Data["busybox_image_tag"] = "1.36.1"
-
-		values, err := newValues(context.TODO(), svc, comp, "mysecret", "mypgsecret")
-		assert.NoError(t, err)
-
-		dbchecker := values["dbchecker"].(map[string]any)
-		image := dbchecker["image"].(map[string]any)
-		assert.Equal(t, "my-registry/busybox", image["repository"])
-		assert.Equal(t, "1.36.1", image["tag"])
-	})
-
-	t.Run("no busybox config leaves dbchecker image unset", func(t *testing.T) {
+	t.Run("chart dbchecker is disabled", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
 
 		values, err := newValues(context.TODO(), svc, comp, "mysecret", "mypgsecret")
 		assert.NoError(t, err)
 
 		dbchecker := values["dbchecker"].(map[string]any)
+		assert.Equal(t, false, dbchecker["enabled"])
 		_, hasImage := dbchecker["image"]
-		assert.False(t, hasImage, "image should not be set when busybox_image is empty")
+		assert.False(t, hasImage, "chart dbchecker must not have image set; image is now in extraInitContainers")
+	})
+}
+
+func Test_dbcheckerInitContainer(t *testing.T) {
+	comp := &vshnv1.VSHNKeycloak{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycloak",
+			Namespace: "default",
+		},
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					Version: "23",
+				},
+			},
+		},
+	}
+
+	getRawContainers := func(t *testing.T, svc *runtime.ServiceRuntime) string {
+		t.Helper()
+		assert.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret", "mysecret"))
+		release := &xhelmv1.Release{}
+		assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release"))
+		values := map[string]any{}
+		assert.NoError(t, json.Unmarshal(release.Spec.ForProvider.Values.Raw, &values))
+		rawContainers, ok := values["extraInitContainers"].(string)
+		assert.True(t, ok, "extraInitContainers must be a YAML string")
+		return rawContainers
+	}
+
+	t.Run("uses postgres_client_image", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+	
+
+		raw := getRawContainers(t, svc)
+		assert.Contains(t, raw, "docker.io/library/postgres:17-alpine")
+	})
+
+	t.Run("missing postgres_client_image returns error", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+		delete(svc.Config.Data, "postgres_client_image")
+
+		err := addRelease(context.TODO(), svc, comp, "mysecret", "mysecret")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "postgres_client_image not configured")
+	})
+
+	t.Run("dbchecker is first init container", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+	
+
+		raw := getRawContainers(t, svc)
+		var containers []map[string]any
+		assert.NoError(t, yaml.Unmarshal([]byte(raw), &containers))
+		assert.NotEmpty(t, containers)
+		assert.Equal(t, "dbchecker", containers[0]["name"], "dbchecker must be first init container")
+	})
+
+	t.Run("dbchecker has required env vars", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+	
+
+		raw := getRawContainers(t, svc)
+		for _, envVar := range []string{"PGHOST", "PGPORT", "PGUSER", "PGDATABASE"} {
+			assert.Contains(t, raw, envVar)
+		}
 	})
 }
 

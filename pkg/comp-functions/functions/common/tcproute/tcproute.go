@@ -79,6 +79,27 @@ func AddTCPRoute(svc *runtime.ServiceRuntime, cfg TCPRouteConfig) (*xfnproto.Res
 	return nil, observed
 }
 
+// ObserveGatewayDomain returns the instance's gateway domain from the observed
+// XLS and gateways config, or "" until a port is allocated.
+func ObserveGatewayDomain(svc *runtime.ServiceRuntime, resourceName string) string {
+	state := observeXListenerSet(svc, resourceName+"-xls")
+	if state.Port == 0 {
+		return ""
+	}
+
+	gatewayName := state.GatewayName
+	if gatewayName == "" {
+		gatewayName, _ = defaultGatewayName(svc, defaultGatewaysConfigKey)
+	}
+
+	domain, err := lookupDomain(svc, defaultGatewaysConfigKey, gatewayName)
+	if err != nil {
+		svc.Log.Error(err, "cannot look up gateway domain", "gateway", gatewayName)
+		return ""
+	}
+	return domain
+}
+
 func createXListenerSet(svc *runtime.ServiceRuntime, cfg TCPRouteConfig, gatewayNamespace, gatewayName string, port int32, allowedGateways []string) error {
 	xls := &unstructured.Unstructured{
 		Object: map[string]any{},

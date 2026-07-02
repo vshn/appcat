@@ -26,6 +26,20 @@ func testConfig() TCPRouteConfig {
 	}
 }
 
+func TestObserveGatewayDomain(t *testing.T) {
+	t.Run("ReturnsDomainWhenPortAllocated", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "tcproute/02_with_port.yaml")
+		domain := ObserveGatewayDomain(svc, testConfig().ResourceName)
+		assert.Equal(t, "tcp.example.com", domain)
+	})
+
+	t.Run("EmptyUntilPortAllocated", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "tcproute/01_basic.yaml")
+		domain := ObserveGatewayDomain(svc, testConfig().ResourceName)
+		assert.Empty(t, domain, "no observed XListenerSet yet -> no domain")
+	})
+}
+
 func TestAddTCPRoute(t *testing.T) {
 	t.Run("AllResourcesCreated", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "tcproute/01_basic.yaml")

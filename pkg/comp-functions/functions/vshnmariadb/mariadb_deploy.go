@@ -159,6 +159,13 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 		svc.Log.Error(err, "cannot update MariaDB version in status")
 	}
 
+	if versionTag != "" {
+		maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			svc.Log.Error(err, "cannot update PinImageTagStatus in status")
+		}
+	}
+
 	r, err := newRelease(ctx, svc, values, comp)
 	if err != nil {
 		return err

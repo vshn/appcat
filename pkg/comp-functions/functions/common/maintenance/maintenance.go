@@ -525,6 +525,21 @@ func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
 	return m.svc.SetDesiredKubeObject(job, m.getInitialMaintenanceJobName(), kubeOpts...)
 }
 
+// UpdatePinImageTagStatus updates the pin image tag tracking fields in a service's status.
+// If pinImageTag changed or was newly set, it records the current time and the new tag value.
+// If pinImageTag was cleared, it resets the tracking fields.
+func UpdatePinImageTagStatus(pinImageTag string, status *vshnv1.VSHNMaintenancePinStatus) {
+	if pinImageTag == "" {
+		status.PinImageTagSetAt = ""
+		status.LastKnownPinImageTag = ""
+		return
+	}
+	if status.LastKnownPinImageTag != pinImageTag {
+		status.PinImageTagSetAt = time.Now().UTC().Format(time.RFC3339)
+		status.LastKnownPinImageTag = pinImageTag
+	}
+}
+
 // SetReleaseVersion sets the version from the claim if it's a new instance otherwise it is managed by maintenance function.
 // It will return the concrete observed version as well.
 // If the desired values contain a higher version than either the observed or the comp version, it will take precedence.

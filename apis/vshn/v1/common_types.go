@@ -241,6 +241,17 @@ type VSHNMonitoring struct {
 	Email string `json:"email,omitempty"`
 }
 
+// VSHNMaintenancePinStatus tracks when the pinImageTag was set and what it was last set to.
+// Used to detect stale pinned image tags.
+type VSHNMaintenancePinStatus struct {
+	// PinImageTagSetAt is the RFC3339 timestamp when pinImageTag was last set or changed.
+	// +optional
+	PinImageTagSetAt string `json:"pinImageTagSetAt,omitempty"`
+	// LastKnownPinImageTag is the last known value of pinImageTag, used to detect changes.
+	// +optional
+	LastKnownPinImageTag string `json:"lastKnownPinImageTag,omitempty"`
+}
+
 // InitialMaintenanceStatus tracks the status of the initial maintenance job.
 // It records when the job ran and whether it succeeded or failed.
 type InitialMaintenanceStatus struct {

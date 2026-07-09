@@ -130,6 +130,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *r
 	// Update status with current release tag
 	if releaseTag != "" {
 		comp.Status.CurrentReleaseTag = releaseTag
+		maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
 		}

@@ -909,6 +909,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		_, releaseTag = splitImageRef(comp.Spec.Parameters.Service.CustomImage.Image)
 		if releaseTag != "" {
 			comp.Status.CurrentReleaseTag = releaseTag
+			maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
 			if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 				svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
 			}
@@ -926,6 +927,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 
 		if releaseTag != "" {
 			comp.Status.CurrentReleaseTag = releaseTag
+			maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
 			if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 				svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
 			}

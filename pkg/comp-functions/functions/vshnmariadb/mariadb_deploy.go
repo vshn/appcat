@@ -74,7 +74,7 @@ func DeployMariadb(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc *runtime.S
 	if common.ExternalAccessEnabled(svc) {
 		switch comp.Spec.Parameters.Network.ServiceType {
 		case tcproute.ServiceTypeTCPGateway:
-			if v := string(cd["MARIADB_GATEWAY_HOST"]); v != "" {
+			if v := tcproute.ObserveGatewayDomain(svc, comp.GetName()); v != "" {
 				gatewayHost = v
 				externalSans = append(externalSans, v)
 			}
@@ -157,6 +157,13 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMariaDB, svc 
 	// Extract and update the MariaDB version in status
 	if err := updateMariaDBVersionFromTag(comp, svc, versionTag); err != nil {
 		svc.Log.Error(err, "cannot update MariaDB version in status")
+	}
+
+	if versionTag != "" {
+		maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
+		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
+			svc.Log.Error(err, "cannot update PinImageTagStatus in status")
+		}
 	}
 
 	r, err := newRelease(ctx, svc, values, comp)

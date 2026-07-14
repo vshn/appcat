@@ -130,24 +130,29 @@ func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime
 		return runtime.NewWarningResult(fmt.Sprintf("cannot deploy pull secret: %s", err))
 	}
 
-	svc.Log.Info("Checking readiness of cluster")
+	obsRelease := &xhelmv1.Release{}
+	err = svc.GetObservedComposedResource(obsRelease, comp.GetName()+"-release")
+	if err == runtime.ErrNotFound {
 
-	resourceCDMap := map[string][]string{
-		comp.GetName() + common.PgInstanceNameSuffix: {
-			vshnpostgres.PostgresqlHost,
-			vshnpostgres.PostgresqlPort,
-			vshnpostgres.PostgresqlDb,
-			vshnpostgres.PostgresqlUser,
-			vshnpostgres.PostgresqlPassword,
-		},
-	}
+		svc.Log.Info("Checking readiness of cluster")
 
-	ready, err := svc.WaitForObservedDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
-	if err != nil {
-		// We're returning a fatal here, so in case something is wrong we won't delete anything by mistake.
-		return runtime.NewFatalResult(err)
-	} else if !ready {
-		return runtime.NewWarningResult("postgresql instance not yet ready")
+		resourceCDMap := map[string][]string{
+			comp.GetName() + common.PgInstanceNameSuffix: {
+				vshnpostgres.PostgresqlHost,
+				vshnpostgres.PostgresqlPort,
+				vshnpostgres.PostgresqlDb,
+				vshnpostgres.PostgresqlUser,
+				vshnpostgres.PostgresqlPassword,
+			},
+		}
+
+		ready, err := svc.WaitForObservedDependenciesWithConnectionDetails(comp.GetName(), resourceCDMap)
+		if err != nil {
+			// We're returning a fatal here, so in case something is wrong we won't delete anything by mistake.
+			return runtime.NewFatalResult(err)
+		} else if !ready {
+			return runtime.NewWarningResult("postgresql instance not yet ready")
+		}
 	}
 
 	svc.Log.Info("Adding release")
@@ -904,6 +909,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		_, releaseTag = splitImageRef(comp.Spec.Parameters.Service.CustomImage.Image)
 		if releaseTag != "" {
 			comp.Status.CurrentReleaseTag = releaseTag
+			maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
 			if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 				svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
 			}
@@ -921,6 +927,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 
 		if releaseTag != "" {
 			comp.Status.CurrentReleaseTag = releaseTag
+			maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
 			if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 				svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
 			}

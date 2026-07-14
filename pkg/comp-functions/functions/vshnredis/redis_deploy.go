@@ -31,7 +31,6 @@ const (
 	redisPasswordConnectionDetailsField = "REDIS_PASSWORD"
 	redisURLConnectionDetailsField      = "REDIS_URL"
 	sentinelHostsConnectionDetailsField = "SENTINEL_HOSTS"
-	redisGatewayHostConnectionDetails   = "REDIS_GATEWAY_HOST"
 
 	redisRelease = "release"
 )
@@ -73,7 +72,7 @@ func DeployRedis(ctx context.Context, comp *vshnv1.VSHNRedis, svc *runtime.Servi
 	loadbalancerIP := ""
 	if common.ExternalAccessEnabled(svc) {
 		if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway {
-			if v := string(cd[redisGatewayHostConnectionDetails]); v != "" {
+			if v := tcproute.ObserveGatewayDomain(svc, comp.GetName()); v != "" {
 				gatewayHost = v
 				additionalSans = append(additionalSans, gatewayHost)
 			}
@@ -130,6 +129,7 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNRedis, svc *r
 	// Update status with current release tag
 	if releaseTag != "" {
 		comp.Status.CurrentReleaseTag = releaseTag
+		maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
 		}

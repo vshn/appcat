@@ -265,6 +265,8 @@ type VSHNKeycloakStatus struct {
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
 	// CurrentReleaseTag contains the currently deployed image tag.
 	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
+	// PinImageTagStatus tracks when the pinImageTag was last set or changed.
+	PinImageTagStatus VSHNMaintenancePinStatus `json:"pinImageTag,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 	// LastConfigHash is the hash of last applied customConfigurationRef.

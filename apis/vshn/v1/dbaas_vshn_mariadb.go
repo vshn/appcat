@@ -183,6 +183,8 @@ type VSHNMariaDBStatus struct {
 	CurrentInstances int `json:"currentInstances,omitempty"`
 	// MariaDBVersion contains the current MariaDB server version
 	MariaDBVersion string `json:"mariadbVersion,omitempty"`
+	// PinImageTagStatus tracks when the pinImageTag was last set or changed.
+	PinImageTagStatus VSHNMaintenancePinStatus `json:"pinImageTag,omitempty"`
 	// InitialMaintenance tracks the status of the initial maintenance job,
 	// including when it ran and whether it succeeded or failed.
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`

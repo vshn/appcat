@@ -19,6 +19,7 @@ import (
 
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/tcproute"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	"github.com/vshn/appcat/v4/pkg/controller/webhooks"
@@ -100,8 +101,11 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	if v, ok := cd["LOADBALANCER_IP"]; ok && comp.Spec.Parameters.Network.ServiceType == string(corev1.ServiceTypeLoadBalancer) && common.ExternalAccessEnabled(svc) {
 		ipAddresses = append(ipAddresses, string(v))
 	}
-	if v, ok := cd["POSTGRESQL_GATEWAY_HOST"]; ok && comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && common.ExternalAccessEnabled(svc) {
-		dnsNames = append(dnsNames, string(v))
+
+	if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && common.ExternalAccessEnabled(svc) {
+		if h := tcproute.ObserveGatewayDomain(svc, comp.GetName()); h != "" {
+			dnsNames = append(dnsNames, h)
+		}
 	}
 
 	certificate := &cmv1.Certificate{
@@ -165,8 +169,8 @@ func createCerts(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) error
 	}
 
 	if comp.Spec.Parameters.Network.ServiceType == tcproute.ServiceTypeTCPGateway && common.ExternalAccessEnabled(svc) {
-		if v, ok := cd["POSTGRESQL_GATEWAY_HOST"]; ok && string(v) != "" {
-			if err := common.WaitForCertSAN(svc, "certificate", certObserver, certificateSecretName, comp.GetInstanceNamespace(), common.CertHasDNS(string(v))); err != nil {
+		if h := tcproute.ObserveGatewayDomain(svc, comp.GetName()); h != "" {
+			if err := common.WaitForCertSAN(svc, "certificate", certObserver, certificateSecretName, comp.GetInstanceNamespace(), common.CertHasDNS(h)); err != nil {
 				return err
 			}
 		} else {
@@ -241,6 +245,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 
 	if imageTag != "" {
 		comp.Status.CurrentVersion = imageTag
+		maintenance.UpdatePinImageTagStatus(pinImageTag, &comp.Status.PinImageTagStatus)
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 			svc.Log.Error(err, "cannot update CurrentVersion in status")
 		}

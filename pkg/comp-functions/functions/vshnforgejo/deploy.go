@@ -304,6 +304,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	// Update status with current release tag
 	if releaseTag != "" {
 		comp.Status.CurrentReleaseTag = releaseTag
+		maintenance.UpdatePinImageTagStatus(comp.Spec.Parameters.Maintenance.PinImageTag, &comp.Status.PinImageTagStatus)
 		if err := svc.SetDesiredCompositeStatus(comp); err != nil {
 			svc.Log.Error(err, "cannot update CurrentReleaseTag in status")
 		}

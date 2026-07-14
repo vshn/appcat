@@ -337,6 +337,8 @@ type VSHNPostgreSQLStatus struct {
 	// InitialMaintenance tracks the status of the initial maintenance job,
 	// including when it ran and whether it succeeded or failed.
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
+	// PinImageTagStatus tracks when the pinImageTag was last set or changed.
+	PinImageTagStatus VSHNMaintenancePinStatus `json:"pinImageTag,omitempty"`
 	// ResourceStatus represents the observed state of a managed resource.
 	xpv1.ResourceStatus `json:",inline"`
 }

@@ -26,6 +26,7 @@ type MetricsCollector struct {
 	labelMappings  map[string]string
 	extraResources map[string][]string
 	xrds           map[string][]string
+	pinnedTagDesc  *prometheus.Desc
 }
 
 // NewMetricsCollector creates a new MetricsCollector
@@ -36,6 +37,12 @@ func NewMetricsCollector(client dynamic.Interface, labelMappings map[string]stri
 		labelMappings:  labelMappings,
 		extraResources: extraResources,
 		xrds:           make(map[string][]string),
+		pinnedTagDesc: prometheus.NewDesc(
+			"appcat_pinned_image_tag_set_timestamp",
+			"Unix timestamp when the pinImageTag was last set or changed for an AppCat service instance",
+			[]string{"kind", "name", "namespace", "pin_image_tag"},
+			nil,
+		),
 	}
 
 	discoveredXRDs, err := collector.discoverXRDs(context.Background())
@@ -152,8 +159,8 @@ func (c *MetricsCollector) discoverXRDs(ctx context.Context) (map[string][]strin
 
 // Describe implements the prometheus.Collector interface
 func (c *MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
-	// We use a custom collector, so we send a dummy descriptor
 	ch <- prometheus.NewDesc("crossplane_resource_info", "Generic Crossplane Resource Info", nil, nil)
+	ch <- c.pinnedTagDesc
 }
 
 // Collect implements the prometheus.Collector interface
@@ -200,6 +207,7 @@ func (c *MetricsCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 	}
+
 }
 
 func (c *MetricsCollector) collectResourceKind(
@@ -225,6 +233,9 @@ func (c *MetricsCollector) collectResourceKind(
 	for _, item := range list.Items {
 		if err := c.collectResource(ch, &item, apiVersion, kind); err != nil {
 			c.log.Error(err, "error collecting resource", "name", item.GetName())
+		}
+		if err := c.collectPinnedTagResource(ch, &item, kind); err != nil {
+			c.log.Error(err, "error collecting pinned tag metric", "name", item.GetName())
 		}
 	}
 	return nil
@@ -340,6 +351,54 @@ func (c *MetricsCollector) collectResource(
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create metric: %w", err)
+	}
+
+	ch <- metric
+	return nil
+}
+
+func (c *MetricsCollector) collectPinnedTagResource(ch chan<- prometheus.Metric, resource *unstructured.Unstructured, kind string) error {
+	pinImageTag, found, err := unstructured.NestedString(resource.Object, "spec", "parameters", "maintenance", "pinImageTag")
+	if err != nil {
+		return fmt.Errorf("failed to read pinImageTag: %w", err)
+	}
+	if !found || pinImageTag == "" {
+		return nil
+	}
+
+	setAt, found, err := unstructured.NestedString(resource.Object, "status", "pinImageTag", "pinImageTagSetAt")
+	if err != nil {
+		return fmt.Errorf("failed to read pinImageTagSetAt: %w", err)
+	}
+	if !found || setAt == "" {
+		return nil
+	}
+
+	t, err := time.Parse(time.RFC3339, setAt)
+	if err != nil {
+		return fmt.Errorf("failed to parse pinImageTagSetAt %q: %w", setAt, err)
+	}
+
+	namespace := resource.GetNamespace()
+	if namespace == "" {
+		namespace = resource.GetLabels()["crossplane.io/claim-namespace"]
+	}
+	if namespace == "" {
+		c.log.Info("pinned tag resource has no namespace and no crossplane.io/claim-namespace label, emitting metric with empty namespace",
+			"kind", kind, "name", resource.GetName())
+	}
+
+	metric, err := prometheus.NewConstMetric(
+		c.pinnedTagDesc,
+		prometheus.GaugeValue,
+		float64(t.Unix()),
+		kind,
+		resource.GetName(),
+		namespace,
+		pinImageTag,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create pinned tag metric: %w", err)
 	}
 
 	ch <- metric

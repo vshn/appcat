@@ -196,6 +196,8 @@ type VSHNForgejoStatus struct {
 	InitialMaintenance InitialMaintenanceStatus `json:"initialMaintenance,omitempty"`
 	// CurrentReleaseTag contains the currently deployed image tag.
 	CurrentReleaseTag string `json:"currentReleaseTag,omitempty"`
+	// PinImageTagStatus tracks when the pinImageTag was last set or changed.
+	PinImageTagStatus VSHNMaintenancePinStatus `json:"pinImageTag,omitempty"`
 	// SSHPort contains the allocated SSH gateway port for this instance.
 	SSHPort int32 `json:"sshPort,omitempty"`
 

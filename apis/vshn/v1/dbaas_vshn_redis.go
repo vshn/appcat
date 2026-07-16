@@ -99,7 +99,7 @@ type VSHNRedisServiceSpec struct {
 	// +kubebuilder:default="7.2"
 
 	// Version contains supported version of Redis.
-	// Multiple versions are supported. The latest version "7.2" is the default version.
+	// Multiple versions are supported. Version "7.2" is the default version.
 	Version string `json:"version,omitempty"`
 
 	// RedisSettings contains additional Redis settings.

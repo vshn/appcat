@@ -46,6 +46,9 @@ const (
 	pullsecretName                = "pullsecret"
 	registryURL                   = "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
 	providerInitName              = "copy-original-providers"
+	dbcheckerInitName             = "dbchecker"
+	pgCertsVolumeName             = "postgresql-certs"
+	pgCertsMountPath              = "/certs/pg"
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"
 	restoreCredentialsSuffix      = "restore-credentials"
@@ -683,7 +686,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	extraVolumesMap = append(extraVolumesMap,
 		map[string]any{"name": "keycloak-dist"},
 		map[string]any{
-			"name": "postgresql-certs",
+			"name": pgCertsVolumeName,
 			"secret": map[string]any{
 				"secretName":  pgSecret,
 				"defaultMode": 420,
@@ -726,7 +729,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		)
 	}
 	extraVolumeMountsMap = append(extraVolumeMountsMap,
-		map[string]any{"name": "postgresql-certs", "mountPath": "/certs/pg"},
+		map[string]any{"name": pgCertsVolumeName, "mountPath": pgCertsMountPath},
 		map[string]any{"name": "keycloak-certs", "mountPath": "/certs/keycloak"},
 	)
 
@@ -881,7 +884,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
-
 	return values, nil
 }
 
@@ -924,7 +926,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	err = addInitContainer(comp, svc, values, releaseTag)
+	err = addInitContainer(comp, svc, values, releaseTag, pgSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -1102,8 +1104,8 @@ func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 	return cmd
 }
 
-func addInitContainer(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, values map[string]any, version string) error {
-	dbchecker, err := buildDBCheckerInitContainer(svc, values)
+func addInitContainer(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, values map[string]any, version, pgSecret string) error {
+	dbchecker, err := buildDBCheckerInitContainer(svc, values, pgSecret)
 	if err != nil {
 		return err
 	}
@@ -1162,7 +1164,7 @@ ls -lh /custom-providers`,
 	return nil
 }
 
-func buildDBCheckerInitContainer(svc *runtime.ServiceRuntime, values map[string]any) (map[string]any, error) {
+func buildDBCheckerInitContainer(svc *runtime.ServiceRuntime, values map[string]any, pgSecret string) (map[string]any, error) {
 	db, ok := values["database"].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("database values not set in helm values")
@@ -1174,15 +1176,29 @@ func buildDBCheckerInitContainer(svc *runtime.ServiceRuntime, values map[string]
 	}
 
 	return map[string]any{
-		"name":            "dbchecker",
+		"name":            dbcheckerInitName,
 		"image":           image,
 		"imagePullPolicy": "IfNotPresent",
 		"command":         []string{"sh", "-c", dbcheckerScript},
 		"env": []map[string]any{
-			{"name": "PGHOST", "value": fmt.Sprintf("%s", db["hostname"])},
-			{"name": "PGPORT", "value": fmt.Sprintf("%s", db["port"])},
-			{"name": "PGUSER", "value": fmt.Sprintf("%s", db["username"])},
-			{"name": "PGDATABASE", "value": fmt.Sprintf("%s", db["database"])},
+			{"name": "PGHOST", "value": db["hostname"]},
+			{"name": "PGPORT", "value": db["port"]},
+			{"name": "PGUSER", "value": db["username"]},
+			{"name": "PGDATABASE", "value": db["database"]},
+			// Must match Keycloak's KC_DB_URL_PROPERTIES, otherwise the check
+			// validates a connection path Keycloak never uses.
+			{"name": "PGSSLMODE", "value": "verify-full"},
+			{"name": "PGSSLROOTCERT", "value": pgCertsMountPath + "/ca.crt"},
+			{"name": "PGCONNECT_TIMEOUT", "value": "5"},
+			{"name": "PGPASSWORD", "valueFrom": map[string]any{
+				"secretKeyRef": map[string]any{
+					"name": pgSecret,
+					"key":  vshnpostgres.PostgresqlPassword,
+				},
+			}},
+		},
+		"volumeMounts": []map[string]any{
+			{"name": pgCertsVolumeName, "mountPath": pgCertsMountPath},
 		},
 		"securityContext": map[string]any{
 			"allowPrivilegeEscalation": false,

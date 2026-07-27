@@ -8,6 +8,7 @@ import (
 
 	prom "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -58,7 +59,6 @@ func Test_addPostgreSQL(t *testing.T) {
 func Test_addRelease(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
 
-
 	comp := &vshnv1.VSHNKeycloak{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycloak",
@@ -83,7 +83,6 @@ func Test_addRelease(t *testing.T) {
 
 func Test_addHARelease(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
-
 
 	comp := &vshnv1.VSHNKeycloak{
 		ObjectMeta: metav1.ObjectMeta{
@@ -339,7 +338,6 @@ func Test_dbcheckerInitContainer(t *testing.T) {
 
 	t.Run("uses postgres_client_image", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
-	
 
 		raw := getRawContainers(t, svc)
 		assert.Contains(t, raw, "docker.io/library/postgres:17-alpine")
@@ -356,7 +354,6 @@ func Test_dbcheckerInitContainer(t *testing.T) {
 
 	t.Run("dbchecker is first init container", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
-	
 
 		raw := getRawContainers(t, svc)
 		var containers []map[string]any
@@ -365,15 +362,97 @@ func Test_dbcheckerInitContainer(t *testing.T) {
 		assert.Equal(t, "dbchecker", containers[0]["name"], "dbchecker must be first init container")
 	})
 
-	t.Run("dbchecker has required env vars", func(t *testing.T) {
+	t.Run("dbchecker targets the same database as keycloak", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
-	
 
-		raw := getRawContainers(t, svc)
-		for _, envVar := range []string{"PGHOST", "PGPORT", "PGUSER", "PGDATABASE"} {
-			assert.Contains(t, raw, envVar)
+		values, err := newValues(context.TODO(), svc, comp, "mysecret", "mysecret")
+		require.NoError(t, err)
+		db := values["database"].(map[string]any)
+
+		dbchecker := getDBChecker(t, getRawContainers(t, svc))
+		env := map[string]string{}
+		for _, e := range dbchecker.Env {
+			env[e.Name] = e.Value
 		}
+
+		// A check against a different host/db than Keycloak proves nothing.
+		assert.Equal(t, db["hostname"], env["PGHOST"])
+		assert.Equal(t, db["port"], env["PGPORT"])
+		assert.Equal(t, db["username"], env["PGUSER"])
+		assert.Equal(t, db["database"], env["PGDATABASE"])
 	})
+
+	t.Run("dbchecker uses the same TLS settings as keycloak", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+
+		dbchecker := getDBChecker(t, getRawContainers(t, svc))
+		env := map[string]string{}
+		for _, e := range dbchecker.Env {
+			env[e.Name] = e.Value
+		}
+
+		// Keycloak's KC_DB_URL_PROPERTIES pins sslmode=verify-full against the
+		// mounted CA. If the checker skips TLS it validates a path Keycloak
+		// never takes, and can pass while Keycloak still fails to connect.
+		assert.Equal(t, "verify-full", env["PGSSLMODE"])
+		assert.Equal(t, "/certs/pg/ca.crt", env["PGSSLROOTCERT"])
+
+		require.Len(t, dbchecker.VolumeMounts, 1)
+		assert.Equal(t, "postgresql-certs", dbchecker.VolumeMounts[0].Name)
+		assert.Equal(t, "/certs/pg", dbchecker.VolumeMounts[0].MountPath)
+	})
+
+	t.Run("dbchecker takes password from secret, not plaintext", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+
+		dbchecker := getDBChecker(t, getRawContainers(t, svc))
+
+		var pgPassword *initContainerEnv
+		for i, e := range dbchecker.Env {
+			if e.Name == "PGPASSWORD" {
+				pgPassword = &dbchecker.Env[i]
+			}
+		}
+		require.NotNil(t, pgPassword, "PGPASSWORD must be set")
+		assert.Empty(t, pgPassword.Value, "password must not be inlined")
+		require.NotNil(t, pgPassword.ValueFrom)
+		assert.Equal(t, "mysecret", pgPassword.ValueFrom.SecretKeyRef.Name)
+		assert.Equal(t, "POSTGRESQL_PASSWORD", pgPassword.ValueFrom.SecretKeyRef.Key)
+	})
+}
+
+type initContainerEnv struct {
+	Name      string `yaml:"name"`
+	Value     string `yaml:"value"`
+	ValueFrom *struct {
+		SecretKeyRef struct {
+			Name string `yaml:"name"`
+			Key  string `yaml:"key"`
+		} `yaml:"secretKeyRef"`
+	} `yaml:"valueFrom"`
+}
+
+type initContainer struct {
+	Name         string             `yaml:"name"`
+	Image        string             `yaml:"image"`
+	Env          []initContainerEnv `yaml:"env"`
+	VolumeMounts []struct {
+		Name      string `yaml:"name"`
+		MountPath string `yaml:"mountPath"`
+	} `yaml:"volumeMounts"`
+}
+
+func getDBChecker(t *testing.T, raw string) initContainer {
+	t.Helper()
+	var containers []initContainer
+	require.NoError(t, yaml.Unmarshal([]byte(raw), &containers))
+	for _, c := range containers {
+		if c.Name == "dbchecker" {
+			return c
+		}
+	}
+	t.Fatal("dbchecker init container not found")
+	return initContainer{}
 }
 
 func Test_probeRelativePath(t *testing.T) {

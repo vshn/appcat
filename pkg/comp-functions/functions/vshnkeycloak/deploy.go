@@ -46,6 +46,9 @@ const (
 	pullsecretName                = "pullsecret"
 	registryURL                   = "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
 	providerInitName              = "copy-original-providers"
+	dbcheckerInitName             = "dbchecker"
+	pgCertsVolumeName             = "postgresql-certs"
+	pgCertsMountPath              = "/certs/pg"
 	realmInitName                 = "copy-original-realm-setup"
 	customImagePullsecretName     = "customimagepullsecret"
 	restoreCredentialsSuffix      = "restore-credentials"
@@ -71,6 +74,9 @@ func splitImageRef(ref string) (repo, tag string) {
 
 //go:embed scripts/copy-kc-creds.sh
 var keycloakCredentialsCopyJobScript string
+
+//go:embed scripts/dbchecker.sh
+var dbcheckerScript string
 
 //go:embed templates/copy-custom-files.tmpl
 var keycloakCustomFilesCopyCommandTemplate string
@@ -680,7 +686,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	extraVolumesMap = append(extraVolumesMap,
 		map[string]any{"name": "keycloak-dist"},
 		map[string]any{
-			"name": "postgresql-certs",
+			"name": pgCertsVolumeName,
 			"secret": map[string]any{
 				"secretName":  pgSecret,
 				"defaultMode": 420,
@@ -723,7 +729,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		)
 	}
 	extraVolumeMountsMap = append(extraVolumeMountsMap,
-		map[string]any{"name": "postgresql-certs", "mountPath": "/certs/pg"},
+		map[string]any{"name": pgCertsVolumeName, "mountPath": pgCertsMountPath},
 		map[string]any{"name": "keycloak-certs", "mountPath": "/certs/keycloak"},
 	)
 
@@ -816,8 +822,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		},
 		"nodeSelector": nodeSelector,
 		"dbchecker": map[string]any{
-			"enabled":         true,
-			"securityContext": nil,
+			"enabled": false,
 		},
 		// See https://github.com/keycloak/keycloak/issues/11286
 		// readOnlyRootFilesystem: true
@@ -879,19 +884,6 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}
 	}
 
-	if busyBoxImage := svc.Config.Data["busybox_image"]; busyBoxImage != "" {
-		dbcheckerImage := map[string]any{
-			"repository": busyBoxImage,
-		}
-		if tag := svc.Config.Data["busybox_image_tag"]; tag != "" {
-			dbcheckerImage["tag"] = tag
-		}
-		err := common.SetNestedObjectValue(values, []string{"dbchecker", "image"}, dbcheckerImage)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return values, nil
 }
 
@@ -934,7 +926,7 @@ func newRelease(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
-	err = addInitContainer(comp, values, releaseTag)
+	err = addInitContainer(comp, svc, values, releaseTag, pgSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -1112,14 +1104,25 @@ func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 	return cmd
 }
 
-func addInitContainer(comp *vshnv1.VSHNKeycloak, values map[string]any, version string) error {
+func addInitContainer(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, values map[string]any, version, pgSecret string) error {
+	dbchecker, err := buildDBCheckerInitContainer(svc, values, pgSecret)
+	if err != nil {
+		return err
+	}
+
 	if comp.Spec.Parameters.Service.CustomImage.Image != "" {
 		// Full custom image: providers/themes are baked in by kc.sh build.
-		// No init containers needed; omit the key entirely rather than setting it to "".
+		// Only dbchecker init container needed.
+		extraInitContainers, err := toYAML([]map[string]any{dbchecker})
+		if err != nil {
+			return err
+		}
+		values["extraInitContainers"] = extraInitContainers
 		return nil
 	}
 
 	extraInitContainersMap := []map[string]any{
+		dbchecker,
 		{
 			"name":            providerInitName,
 			"image":           fmt.Sprintf("%s:%s", registryURL, version),
@@ -1141,7 +1144,7 @@ ls -lh /custom-providers`,
 			},
 		},
 	}
-	extraInitContainersMap, err := addCustomInitContainer(comp, extraInitContainersMap)
+	extraInitContainersMap, err = addCustomInitContainer(comp, extraInitContainersMap)
 	if err != nil {
 		return err
 	}
@@ -1159,6 +1162,51 @@ ls -lh /custom-providers`,
 	values["extraInitContainers"] = extraInitContainers
 
 	return nil
+}
+
+func buildDBCheckerInitContainer(svc *runtime.ServiceRuntime, values map[string]any, pgSecret string) (map[string]any, error) {
+	db, ok := values["database"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("database values not set in helm values")
+	}
+
+	image := svc.Config.Data["postgres_client_image"]
+	if image == "" {
+		return nil, fmt.Errorf("postgres_client_image not configured")
+	}
+
+	return map[string]any{
+		"name":            dbcheckerInitName,
+		"image":           image,
+		"imagePullPolicy": "IfNotPresent",
+		"command":         []string{"sh", "-c", dbcheckerScript},
+		"env": []map[string]any{
+			{"name": "PGHOST", "value": db["hostname"]},
+			{"name": "PGPORT", "value": db["port"]},
+			{"name": "PGUSER", "value": db["username"]},
+			{"name": "PGDATABASE", "value": db["database"]},
+			// Must match Keycloak's KC_DB_URL_PROPERTIES, otherwise the check
+			// validates a connection path Keycloak never uses.
+			{"name": "PGSSLMODE", "value": "verify-full"},
+			{"name": "PGSSLROOTCERT", "value": pgCertsMountPath + "/ca.crt"},
+			{"name": "PGCONNECT_TIMEOUT", "value": "5"},
+			{"name": "PGPASSWORD", "valueFrom": map[string]any{
+				"secretKeyRef": map[string]any{
+					"name": pgSecret,
+					"key":  vshnpostgres.PostgresqlPassword,
+				},
+			}},
+		},
+		"volumeMounts": []map[string]any{
+			{"name": pgCertsVolumeName, "mountPath": pgCertsMountPath},
+		},
+		"securityContext": map[string]any{
+			"allowPrivilegeEscalation": false,
+			"capabilities": map[string]any{
+				"drop": []string{"ALL"},
+			},
+		},
+	}, nil
 }
 
 func addCustomInitContainer(comp *vshnv1.VSHNKeycloak, extraInitContainersMap []map[string]any) ([]map[string]any, error) {

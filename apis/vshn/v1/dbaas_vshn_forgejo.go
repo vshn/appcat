@@ -160,6 +160,9 @@ type VSHNForgejoConfig struct {
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#incoming-email-emailincoming
 	EmailIncoming map[string]string `json:"email.incoming,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#cors-cors
+	Cors map[string]string `json:"cors,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

@@ -4755,7 +4755,7 @@ spec:
                           minItems: 1
                           type: array
                         majorVersion:
-                          default: 14.0.0
+                          default: 15.0.0
                           description: |-
                             Version contains supported version of Forgejo.
                             Multiple versions are supported. Defaults to 14.0.0 if not set.

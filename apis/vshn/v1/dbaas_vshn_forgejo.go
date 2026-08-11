@@ -109,7 +109,7 @@ type VSHNForgejoServiceSpec struct {
 
 	// Version contains supported version of Forgejo.
 	// Multiple versions are supported. Defaults to 14.0.0 if not set.
-	// +kubebuilder:default="14.0.0"
+	// +kubebuilder:default="15.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
 
 	// SSH contains settings for SSH access to the Forgejo instance.

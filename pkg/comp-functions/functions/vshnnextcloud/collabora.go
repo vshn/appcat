@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
-
 	"crypto/x509"
-	_ "embed"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"time"
+
+	_ "embed"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certmgrv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
@@ -42,7 +43,6 @@ var coolwsd string
 var coolkit string
 
 func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewWarningResult("Cannot GetObservedComposite: " + err.Error())
@@ -149,7 +149,6 @@ func DeployCollabora(ctx context.Context, comp *vshnv1.VSHNNextcloud, svc *runti
 }
 
 func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-
 	collaboraBaseImage := svc.Config.Data["collabora_image"]
 	defaultImageTag := svc.Config.Data["collabora_image_tag"]
 	collaboraVersion := comp.Spec.Parameters.Service.Collabora.Version
@@ -310,7 +309,6 @@ func AddCollaboraSts(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) er
 }
 
 func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-collabora-code",
@@ -331,10 +329,9 @@ func AddCollaboraService(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime
 	}
 
 	return svc.SetDesiredKubeObject(service, comp.GetName()+"-collabora-code-service", runtime.KubeOptionAddLabels(labelMap))
-
 }
-func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 
+func AddCollaboraIngress(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
 	if comp.Spec.Parameters.Service.Collabora.FQDN == "" {
 		return fmt.Errorf("collabora FQDN is not set")
 	}
@@ -396,6 +393,12 @@ func createCertificate(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) 
 			DNSNames:   []string{comp.Spec.Parameters.Service.Collabora.FQDN},
 			IssuerRef: certmgrv1.ObjectReference{
 				Name: comp.GetName() + "-collabora-code-issuer",
+			},
+			Duration: &metav1.Duration{
+				Duration: time.Duration(87600 * time.Hour),
+			},
+			RenewBefore: &metav1.Duration{
+				Duration: time.Duration(2400 * time.Hour),
 			},
 		},
 	}
@@ -505,7 +508,6 @@ func createSecretForOpenshiftRoute(comp *vshnv1.VSHNNextcloud, svc *runtime.Serv
 }
 
 func createInstallCollaboraJob(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime) error {
-
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      comp.GetName() + "-install-collabora",

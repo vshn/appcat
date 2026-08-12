@@ -14,6 +14,23 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
+func Test_getPgInstanceNamespace(t *testing.T) {
+	t.Log("legitimate postgresql host: return instance namespace")
+	ns, err := getPgInstanceNamespace("myinstance.vshn-postgresql-myinstance.svc.cluster.local")
+	assert.NoError(t, err)
+	assert.Equal(t, "vshn-postgresql-myinstance", ns)
+
+	t.Log("hostile host pointing at a foreign namespace: rejected")
+	ns, err = getPgInstanceNamespace("x.kube-system.svc.cluster.local")
+	assert.Error(t, err)
+	assert.Empty(t, ns)
+
+	t.Log("host without a namespace segment: rejected")
+	ns, err = getPgInstanceNamespace("nodots")
+	assert.Error(t, err)
+	assert.Empty(t, ns)
+}
+
 func Test_addNextcloud(t *testing.T) {
 	svc, comp := getNextcloudComp(t, "vshnnextcloud/01_default.yaml")
 

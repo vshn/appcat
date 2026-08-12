@@ -9,13 +9,13 @@ then
     xrdservicename=$(kubectl -n "${CLAIM_NAMESPACE}" get "${xrdtype#?}" "${CLAIM_NAME}" -ojson | jq -r '.spec.resourceRef.name')
     xrdname=$(kubectl -n "${CLAIM_NAMESPACE}" get "${xrdtype}" "${xrdservicename}" -ojson | jq -r '.spec.resourceRefs | map(select(.kind == "XVSHNPostgreSQL")) | .[].name')
 else
-    xrdname=$(kubectl -n "${CLAIM_NAMESPACE}" get vshnpostgresqls "${CLAIM_NAME}" -ojson | jq -r '.spec.resourceRef.name')
+    xrdname=$(kubectl -n "${CLAIM_NAMESPACE}" get vshnpostgresqls.vshn.appcat.vshn.io "${CLAIM_NAME}" -ojson | jq -r '.spec.resourceRef.name')
 fi
 
 echo "resolved source composite: ${xrdname}"
 
 # Get source instance's major version
-source_major_version=$(kubectl get xvshnpostgresqls "${xrdname}" -ojson | jq -r '.spec.parameters.service.majorVersion')
+source_major_version=$(kubectl get xvshnpostgresqls.vshn.appcat.vshn.io "${xrdname}" -ojson | jq -r '.spec.parameters.service.majorVersion')
 echo "source major version: ${source_major_version}"
 
 # Read backup bucket credentials from the Crossplane namespace

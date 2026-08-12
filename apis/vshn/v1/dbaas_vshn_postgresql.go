@@ -134,7 +134,7 @@ type VSHNPostgreSQLUpdateStrategy struct {
 // VSHNPostgreSQLServiceSpec contains PostgreSQL DBaaS specific properties
 type VSHNPostgreSQLServiceSpec struct {
 	// +kubebuilder:validation:Enum="12";"13";"14";"15";"16";"17";"18"
-	// +kubebuilder:default="15"
+	// +kubebuilder:default="18"
 
 	// MajorVersion contains supported version of PostgreSQL.
 	// Multiple versions are supported. The latest version "15" is the default version.

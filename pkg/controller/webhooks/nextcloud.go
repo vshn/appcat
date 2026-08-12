@@ -63,9 +63,6 @@ func (n *NextcloudWebhookHandler) ValidateCreate(ctx context.Context, obj runtim
 		tmpErr := err.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
 	}
-	if warning != nil && err == nil {
-		return warning, nil
-	}
 
 	if err := validateFQDNs(nx.Spec.Parameters.Service.FQDN); err != nil {
 		allErrs.Add(err)
@@ -84,7 +81,7 @@ func (n *NextcloudWebhookHandler) ValidateCreate(ctx context.Context, obj runtim
 		}
 	}
 
-	return nil, allErrs.Get()
+	return warning, allErrs.Get()
 }
 
 func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -103,9 +100,6 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 	if err != nil {
 		tmpErr := err.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
-	}
-	if warning != nil && err == nil {
-		return warning, err
 	}
 
 	oldNx, ok := oldObj.(*vshnv1.VSHNNextcloud)
@@ -146,7 +140,7 @@ func (n *NextcloudWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, ne
 		}
 	}
 
-	return nil, allErrs.Get()
+	return warning, allErrs.Get()
 }
 
 func validateNoVersionDowngrade(oldVersion, newVersion string) *field.Error {

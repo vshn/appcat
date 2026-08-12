@@ -69,9 +69,6 @@ func (n *ForgejoWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 		tmpErr := err.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
 	}
-	if warning != nil && err == nil {
-		return warning, nil
-	}
 
 	if err := validateFQDNs(forgejo.Spec.Parameters.Service.FQDN); err != nil {
 		allErrs.Add(err)
@@ -81,7 +78,7 @@ func (n *ForgejoWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.
 		allErrs.Add(err)
 	}
 
-	return nil, allErrs.Get()
+	return warning, allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -106,9 +103,6 @@ func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		tmpErr := err.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
 	}
-	if warnings != nil && err == nil {
-		return warnings, nil
-	}
 
 	if err := validateFQDNs(newForgejo.Spec.Parameters.Service.FQDN); err != nil {
 		allErrs.Add(err)
@@ -118,7 +112,7 @@ func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		allErrs.Add(err)
 	}
 
-	return nil, allErrs.Get()
+	return warnings, allErrs.Get()
 }
 
 func validateForgejoConfig(settings vshnv1.VSHNForgejoSettings) *field.Error {

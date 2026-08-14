@@ -297,6 +297,31 @@ func TestInitialMaintenanceJob(t *testing.T) {
 	}
 }
 
+func TestInitialMaintenanceJobReadiness(t *testing.T) {
+	ctx := context.TODO()
+
+	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/maintenance/01-GivenSchedule.yaml")
+
+	comp := &vshnv1.VSHNPostgreSQL{}
+	assert.NoError(t, svc.GetObservedComposite(comp))
+
+	in := "vshn-postgresql-" + comp.GetName()
+	result := New(comp, svc, comp.Spec.Parameters.Maintenance, in, "postgresql").
+		WithPolicyRules([]rbacv1.PolicyRule{}).
+		WithAdditionalClusterRoleBinding("cluster-role-binding").
+		WithRole("crossplane:appcat:job:postgres:maintenance").
+		WithExtraResources(createMaintenanceSecretTest(in, svc.Config.Data["sgNamespace"], comp.GetName()+"-maintenance-secret")).
+		Run(ctx)
+	assert.Nil(t, result)
+
+	obj := &xkubev1.Object{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(obj, comp.GetName()+"-initial-maintenance"))
+
+	// The composite must stay unready until the job completed.
+	assert.Equal(t, xkubev1.ReadinessPolicyDeriveFromCelQuery, obj.Spec.Readiness.Policy)
+	assert.Contains(t, obj.Spec.Readiness.CelQuery, `c.type == "Complete" && c.status == "True"`)
+}
+
 func createMaintenanceSecretTest(instanceNamespace, sgNamespace, resourceName string) ExtraResource {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

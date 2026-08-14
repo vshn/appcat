@@ -163,6 +163,9 @@ type VSHNForgejoConfig struct {
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#cors-cors
 	Cors map[string]string `json:"cors,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#git---timeout-settings-gittimeout
+	GitTimeout map[string]string `json:"git.timeout,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

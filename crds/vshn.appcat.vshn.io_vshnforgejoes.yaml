@@ -4718,6 +4718,11 @@ spec:
                                     type: string
                                   description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#incoming-email-emailincoming
                                   type: object
+                                git.timeout:
+                                  additionalProperties:
+                                    type: string
+                                  description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#git---timeout-settings-gittimeout
+                                  type: object
                                 mailer:
                                   additionalProperties:
                                     type: string

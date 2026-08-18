@@ -5439,6 +5439,11 @@ spec:
                                   type: string
                                 description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#actions-actions
                                 type: object
+                              admin:
+                                additionalProperties:
+                                  type: string
+                                description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#admin-admin
+                                type: object
                               cors:
                                 additionalProperties:
                                   type: string
@@ -5473,6 +5478,11 @@ spec:
                                 additionalProperties:
                                   type: string
                                 description: https://forgejo.org/docs/latest/admin/config-cheat-sheet/#openid-openid
+                                type: object
+                              repository:
+                                additionalProperties:
+                                  type: string
+                                description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#repository-repository
                                 type: object
                               service:
                                 additionalProperties:

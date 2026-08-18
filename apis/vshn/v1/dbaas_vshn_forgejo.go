@@ -166,6 +166,12 @@ type VSHNForgejoConfig struct {
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#git---timeout-settings-gittimeout
 	GitTimeout map[string]string `json:"git.timeout,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#admin-admin
+	Admin map[string]string `json:"admin,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#repository-repository
+	Repository map[string]string `json:"repository,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

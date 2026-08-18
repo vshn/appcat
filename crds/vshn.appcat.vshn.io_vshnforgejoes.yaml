@@ -4753,6 +4753,11 @@ spec:
                                     type: string
                                   description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#repository-repository
                                   type: object
+                                server:
+                                  additionalProperties:
+                                    type: string
+                                  description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#server-server
+                                  type: object
                                 service:
                                   additionalProperties:
                                     type: string

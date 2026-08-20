@@ -11,6 +11,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func TestDeployment(t *testing.T) {
@@ -233,6 +234,10 @@ func TestDeploymentHTTPRoute(t *testing.T) {
 		assert.True(t, foundRoute)
 		assert.True(t, foundLS)
 		assert.False(t, foundGrant)
+
+		route := &gatewayv1.HTTPRoute{}
+		assert.NoError(t, svc.GetDesiredKubeObject(route, comp.GetName()+"-httproute"))
+		assert.Equal(t, gatewayv1.Duration("1h"), *route.Spec.Rules[0].Timeouts.Request)
 	})
 }
 

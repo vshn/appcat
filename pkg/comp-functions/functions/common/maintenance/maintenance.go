@@ -520,7 +520,18 @@ func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
 		},
 	}
 
+	// The initial maintenance runs a backup and, if necessary, a security upgrade, which
+	// restarts the instance. As long as the job hasn't completed, the object stays unready,
+	// which propagates to the composite. Parent composites (e.g. Nextcloud) wait for the
+	// readiness of their database before deploying on top of it, so this keeps them from
+	// bootstrapping into a restart.
+	readiness := xkubev1.Readiness{
+		Policy:   xkubev1.ReadinessPolicyDeriveFromCelQuery,
+		CelQuery: `has(object.status) && has(object.status.conditions) && object.status.conditions.exists(c, c.type == "Complete" && c.status == "True")`,
+	}
+
 	kubeOpts := append([]runtime.KubeObjectOption{runtime.KubeOptionAllowDeletion}, m.extraKubeOptions...)
+	kubeOpts = append(kubeOpts, runtime.KubeOptionCustomReadiness(readiness))
 
 	return m.svc.SetDesiredKubeObject(job, m.getInitialMaintenanceJobName(), kubeOpts...)
 }

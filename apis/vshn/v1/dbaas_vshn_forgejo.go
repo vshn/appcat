@@ -109,7 +109,7 @@ type VSHNForgejoServiceSpec struct {
 
 	// Version contains supported version of Forgejo.
 	// Multiple versions are supported. Defaults to 14.0.0 if not set.
-	// +kubebuilder:default="14.0.0"
+	// +kubebuilder:default="15.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
 
 	// SSH contains settings for SSH access to the Forgejo instance.
@@ -163,6 +163,30 @@ type VSHNForgejoConfig struct {
 
 	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#cors-cors
 	Cors map[string]string `json:"cors,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#git---timeout-settings-gittimeout
+	GitTimeout map[string]string `json:"git.timeout,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#admin-admin
+	Admin map[string]string `json:"admin,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#repository-repository
+	Repository map[string]string `json:"repository,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#server-server
+	Server map[string]string `json:"server,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#cron-cron
+	Cron map[string]string `json:"cron,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#cron---cleanup-old-repository-archives-cronarchive_cleanup
+	CronArchiveCleanup map[string]string `json:"cron.archive_cleanup,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#extended-cron-tasks-not-enabled-by-default
+	CronGitGCRepos map[string]string `json:"cron.git_gc_repos,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#git---config-options-gitconfig
+	GitConfig map[string]string `json:"git.config,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.

@@ -115,6 +115,15 @@ func (r *Resources) CheckResourcesAgainstQuotas(ctx context.Context, c client.Cl
 
 	var nsQuotas Resources
 	s := &Sidecars{}
+	// The sidecars are part of the defaults, so they have to be fetched for both cases.
+	if gk.Kind == "VSHNPostgreSQL" {
+		var err error
+		s, err = FetchSidecarsFromCluster(ctx, c, "vshnpostgresqlplans")
+		if err != nil {
+			return apierrors.NewInternalError(err)
+		}
+	}
+
 	if instanceNamespace != "" {
 		q, err := r.getNamespaceQuotas(ctx, c, instanceNamespace)
 		if err != nil {
@@ -124,13 +133,6 @@ func (r *Resources) CheckResourcesAgainstQuotas(ctx context.Context, c client.Cl
 		}
 		nsQuotas = q
 	} else {
-		if gk.Kind == "VSHNPostgreSQL" {
-			var err error
-			s, err = FetchSidecarsFromCluster(ctx, c, "vshnpostgresqlplans")
-			if err != nil {
-				return apierrors.NewInternalError(err)
-			}
-		}
 		nsQuotas = *GetDefaultResources(gk.Kind, s)
 	}
 
@@ -216,50 +218,30 @@ func (r *Resources) checkAgainstResources(quotaResources Resources, kind string,
 
 	rDef := GetDefaultResources(kind, s)
 
-	errCPURequests := field.Forbidden(r.CPURequestsPath, "Max allowed CPU requests: "+quotaResources.CPURequests.String()+". Configured requests: "+r.CPURequests.String()+". "+contactSupportMessage)
-
-	if !quotaResources.CPURequests.IsZero() {
-		if r.CPURequests.Cmp(quotaResources.CPURequests) == 1 {
-			foundErrs = append(foundErrs, errCPURequests)
-		}
-	} else if r.CPURequests.Cmp(rDef.CPURequests) == 1 {
-		foundErrs = append(foundErrs, errCPURequests)
+	checks := []struct {
+		name       string
+		path       *field.Path
+		configured string
+		requested  resource.Quantity
+		quota      resource.Quantity
+		fallback   resource.Quantity
+	}{
+		{"CPU requests", r.CPURequestsPath, "requests", r.CPURequests, quotaResources.CPURequests, rDef.CPURequests},
+		{"CPU limits", r.CPULimitsPath, "limits", r.CPULimits, quotaResources.CPULimits, rDef.CPULimits},
+		{"Memory requests", r.MemoryRequestsPath, "requests", r.MemoryRequests, quotaResources.MemoryRequests, rDef.MemoryRequests},
+		{"Memory limits", r.MemoryLimitsPath, "limits", r.MemoryLimits, quotaResources.MemoryLimits, rDef.MemoryLimits},
+		{"Disk", r.DiskPath, "requests", r.Disk, quotaResources.Disk, *DefaultDiskRequests},
 	}
 
-	errCPULimits := field.Forbidden(r.CPULimitsPath, "Max allowed CPU limits: "+quotaResources.CPULimits.String()+". Configured limits: "+r.CPULimits.String()+". "+contactSupportMessage)
-	if !quotaResources.CPULimits.IsZero() {
-		if r.CPULimits.Cmp(quotaResources.CPULimits) == 1 {
-			foundErrs = append(foundErrs, errCPULimits)
+	for _, c := range checks {
+		max := c.quota
+		if max.IsZero() {
+			max = c.fallback
 		}
-	} else if r.CPULimits.Cmp(rDef.CPULimits) == 1 {
-		foundErrs = append(foundErrs, errCPULimits)
-	}
-
-	errMemoryRequests := field.Forbidden(r.MemoryRequestsPath, "Max allowed Memory requests: "+quotaResources.MemoryRequests.String()+". Configured requests: "+r.MemoryRequests.String()+". "+contactSupportMessage)
-	if !quotaResources.MemoryRequests.IsZero() {
-		if r.MemoryRequests.Cmp(quotaResources.MemoryRequests) == 1 {
-			foundErrs = append(foundErrs, errMemoryRequests)
+		if c.requested.Cmp(max) == 1 {
+			foundErrs = append(foundErrs, field.Forbidden(c.path,
+				"Max allowed "+c.name+": "+max.String()+". Configured "+c.configured+": "+c.requested.String()+". "+contactSupportMessage))
 		}
-	} else if r.MemoryRequests.Cmp(rDef.MemoryRequests) == 1 {
-		foundErrs = append(foundErrs, errMemoryRequests)
-	}
-
-	errMemoryLimits := field.Forbidden(r.MemoryLimitsPath, "Max allowed Memory limits: "+quotaResources.MemoryLimits.String()+". Configured limits: "+r.MemoryLimits.String()+". "+contactSupportMessage)
-	if !quotaResources.MemoryLimits.IsZero() {
-		if r.MemoryLimits.Cmp(quotaResources.MemoryLimits) == 1 {
-			foundErrs = append(foundErrs, errMemoryLimits)
-		}
-	} else if r.MemoryLimits.Cmp(rDef.MemoryLimits) == 1 {
-		foundErrs = append(foundErrs, errMemoryLimits)
-	}
-
-	errDisk := field.Forbidden(r.DiskPath, "Max allowed Disk: "+quotaResources.Disk.String()+". Configured requests: "+r.Disk.String()+". "+contactSupportMessage)
-	if !quotaResources.Disk.IsZero() {
-		if r.Disk.Cmp(quotaResources.Disk) == 1 {
-			foundErrs = append(foundErrs, errDisk)
-		}
-	} else if r.Disk.Cmp(*DefaultDiskRequests) == 1 {
-		foundErrs = append(foundErrs, errDisk)
 	}
 
 	if len(foundErrs) == 0 {

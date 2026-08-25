@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -227,7 +228,10 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		common.SetNestedObjectValue(values, []string{"gitea", "config", "APP_NAME"}, appName)
 	}
 
-	// Automagically inject the entirety of VSHNForgejoConfig into values
+	// Automagically inject the entirety of VSHNForgejoConfig into values.
+	// User config sections are deep-merged into the defaults set above,
+	// so setting a single key (e.g. server.LANDING_PAGE) does not wipe
+	// the rest of the section (e.g. server.DOMAIN/ROOT_URL).
 	svc.Log.Info("Updating forgejo settings")
 	var objmap map[string]any
 	o, err := json.Marshal(comp.Spec.Parameters.Service.ForgejoSettings.Config)
@@ -235,12 +239,32 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return err
 	}
 
-	json.Unmarshal(o, &objmap)
-	for k, v := range objmap {
-		if v != nil {
-			common.SetNestedObjectValue(values, []string{"gitea", "config", k}, v)
-		}
+	if err := json.Unmarshal(o, &objmap); err != nil {
+		return err
 	}
+
+	giteaConfig := values["gitea"].(map[string]any)["config"].(map[string]any)
+	for section, v := range objmap {
+		if v == nil {
+			continue
+		}
+
+		// Merge into an existing default section instead of replacing it.
+		if userSection, ok := v.(map[string]any); ok {
+			if baseSection, ok := giteaConfig[section].(map[string]any); ok {
+				maps.Copy(baseSection, userSection) // user keys win per key
+				continue
+			}
+		}
+		giteaConfig[section] = v
+	}
+
+	// These server keys are Appcat managed and need to be re-asserted after the merge
+	// so a user config can not break this config.
+	forgejoServer := giteaConfig["server"].(map[string]any)
+	forgejoServer["DOMAIN"] = comp.Spec.Parameters.Service.FQDN[0]
+	forgejoServer["ROOT_URL"] = "https://" + comp.Spec.Parameters.Service.FQDN[0]
+	forgejoServer["DISABLE_SSH"] = true
 
 	// Ingress / HTTPRoute
 	svcNameSuffix := "http"

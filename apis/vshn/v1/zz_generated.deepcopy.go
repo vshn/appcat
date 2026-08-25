@@ -638,6 +638,20 @@ func (in *VSHNForgejoConfig) DeepCopyInto(out *VSHNForgejoConfig) {
 			(*out)[key] = val
 		}
 	}
+	if in.CronArchiveCleanup != nil {
+		in, out := &in.CronArchiveCleanup, &out.CronArchiveCleanup
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.CronGitGCRepos != nil {
+		in, out := &in.CronGitGCRepos, &out.CronGitGCRepos
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.GitConfig != nil {
 		in, out := &in.GitConfig, &out.GitConfig
 		*out = make(map[string]string, len(*in))

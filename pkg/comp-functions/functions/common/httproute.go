@@ -53,6 +53,7 @@ type HTTPRouteConfig struct {
 	GatewayNamespace string
 	NameSuffix       string
 	ServiceConfig    IngressRuleConfig
+	Timeouts         *gatewayv1.HTTPRouteTimeouts
 }
 
 func validateHTTPRouteConfig(cfg HTTPRouteConfig) error {
@@ -164,7 +165,8 @@ func GenerateHTTPRoute(comp InfoGetter, svc *runtime.ServiceRuntime, cfg HTTPRou
 			Hostnames: hostnames,
 			Rules: []gatewayv1.HTTPRouteRule{
 				{
-					Matches: matches,
+					Matches:  matches,
+					Timeouts: cfg.Timeouts,
 					BackendRefs: []gatewayv1.HTTPBackendRef{
 						{
 							BackendRef: gatewayv1.BackendRef{

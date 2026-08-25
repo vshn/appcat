@@ -14,6 +14,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/maintenance"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // DeployForgejo deploys a Forgejo instance via the Helm Chart.
@@ -274,11 +275,18 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 
 	if common.IsHTTPRouteMode(svc) {
 		svc.Log.Info("Adding HTTPRoute for Forgejo")
+
+		// Large repo clone/push/LFS outlives the gateway's 15s default request timeout.
+		requestTimeout := gatewayv1.Duration("1h")
+
 		if err := common.ApplyHTTPRoute(comp, svc, common.HTTPRouteConfig{
 			FQDNs: comp.Spec.Parameters.Service.FQDN,
 			ServiceConfig: common.IngressRuleConfig{
 				ServiceNameSuffix: svcNameSuffix,
 				ServicePortNumber: 3000,
+			},
+			Timeouts: &gatewayv1.HTTPRouteTimeouts{
+				Request: &requestTimeout,
 			},
 		}); err != nil {
 			return err

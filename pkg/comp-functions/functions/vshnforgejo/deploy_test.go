@@ -198,6 +198,25 @@ func TestForgejoConfigMerge(t *testing.T) {
 		assert.Equal(t, "smtp", mailer["PROTOCOL"])
 		assert.Equal(t, "mail.example.com", mailer["SMTP_ADDR"])
 	})
+
+	t.Run("CronArchiveCleanupOverride_DefaultScheduleKept", func(t *testing.T) {
+		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{CronArchiveCleanup: map[string]string{
+			"OLDER_THAN": "72h",
+		}})
+		archive := config["cron.archive_cleanup"].(map[string]any)
+		assert.Equal(t, "72h", archive["OLDER_THAN"])
+		assert.Equal(t, "@hourly", archive["SCHEDULE"])
+	})
+
+	t.Run("CronGitGCRepos_SetWholesale", func(t *testing.T) {
+		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{CronGitGCRepos: map[string]string{
+			"SCHEDULE": "@every 72h",
+			"TIMEOUT":  "120s",
+		}})
+		gc := config["cron.git_gc_repos"].(map[string]any)
+		assert.Equal(t, "@every 72h", gc["SCHEDULE"])
+		assert.Equal(t, "120s", gc["TIMEOUT"])
+	})
 }
 
 func TestDeploymentHTTPRoute(t *testing.T) {

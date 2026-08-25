@@ -179,7 +179,13 @@ type VSHNForgejoConfig struct {
 	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#cron-cron
 	Cron map[string]string `json:"cron,omitempty"`
 
-	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#git---timeout-settings-gittimeout
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#cron---cleanup-old-repository-archives-cronarchive_cleanup
+	CronArchiveCleanup map[string]string `json:"cron.archive_cleanup,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#extended-cron-tasks-not-enabled-by-default
+	CronGitGCRepos map[string]string `json:"cron.git_gc_repos,omitempty"`
+
+	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#git---config-options-gitconfig
 	GitConfig map[string]string `json:"git.config,omitempty"`
 }
 

@@ -4723,6 +4723,16 @@ spec:
                                     type: string
                                   description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#cron-cron
                                   type: object
+                                cron.archive_cleanup:
+                                  additionalProperties:
+                                    type: string
+                                  description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#cron---cleanup-old-repository-archives-cronarchive_cleanup
+                                  type: object
+                                cron.git_gc_repos:
+                                  additionalProperties:
+                                    type: string
+                                  description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#extended-cron-tasks-not-enabled-by-default
+                                  type: object
                                 email.incoming:
                                   additionalProperties:
                                     type: string
@@ -4731,7 +4741,7 @@ spec:
                                 git.config:
                                   additionalProperties:
                                     type: string
-                                  description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#git---timeout-settings-gittimeout
+                                  description: https://forgejo.org/docs/next/admin/config-cheat-sheet/#git---config-options-gitconfig
                                   type: object
                                 git.timeout:
                                   additionalProperties:

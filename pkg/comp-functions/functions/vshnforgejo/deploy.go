@@ -108,10 +108,10 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				},
 				"cron": map[string]any{
 					"ENABLED": true,
-					"archive_cleanup": map[string]any{
-						"SCHEDULE":   "@hourly",
-						"OLDER_THAN": "2h",
-					},
+				},
+				"cron.archive_cleanup": map[string]any{
+					"SCHEDULE":   "@hourly",
+					"OLDER_THAN": "2h",
 				},
 				"database": map[string]any{
 					"DB_TYPE":             "sqlite3",

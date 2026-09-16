@@ -3,6 +3,7 @@ package vshnforgejo
 import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/nonsla"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
@@ -29,6 +30,10 @@ func init() {
 			{
 				Name:    "billing",
 				Execute: AddBilling,
+			},
+			{
+				Name:    "non-sla-prometheus-rules",
+				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNForgejo](nonsla.NewAlertSetBuilder("forgejo").AddAll().GetAlerts()),
 			},
 			{
 				Name:    "additional-resources",

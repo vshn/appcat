@@ -1,10 +1,15 @@
 package nonsla
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
 
 	promV1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 )
 
 var (
@@ -94,4 +99,26 @@ func TestNewAlertSetBuilder(t *testing.T) {
 	assert.Equal(t, len(rules), 1)
 	assert.Equal(t, rules[0].Expr.StrVal, keycloakMemoryCritical)
 
+}
+
+func TestGenerateNonSLAPromRulesStampsNamespace(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/07-GivenEmail.yaml")
+	alerts := NewAlertSetBuilder("postgres").
+		AddAllDB().
+		AddCustom([]promV1.Rule{{Alert: "Prebuilt"}}).
+		GetAlerts()
+
+	fn := GenerateNonSLAPromRules[*vshnv1.VSHNPostgreSQL](alerts)
+	assert.Nil(t, fn(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
+
+	kubeObject := &xkube.Object{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, "psql-non-slo-rules"))
+	pr := &promV1.PrometheusRule{}
+	assert.NoError(t, json.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, pr))
+
+	rules := pr.Spec.Groups[0].Rules
+	assert.NotEmpty(t, rules)
+	for _, r := range rules {
+		assert.Equal(t, "vshn-postgresql-psql", r.Labels["namespace"], r.Alert)
+	}
 }

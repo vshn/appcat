@@ -391,6 +391,10 @@ func (v *VSHNForgejo) GetMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 
+func (v *VSHNForgejo) GetVSHNMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
 func (v *VSHNForgejo) GetInstances() int {
 	return v.Spec.Parameters.Instances
 }

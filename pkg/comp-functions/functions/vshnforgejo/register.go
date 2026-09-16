@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	runtime.RegisterService("forgejo", runtime.Service[*vshnv1.VSHNForgejo]{
+	runtime.RegisterService[*vshnv1.VSHNForgejo]("forgejo", runtime.Service[*vshnv1.VSHNForgejo]{
 		Steps: []runtime.Step[*vshnv1.VSHNForgejo]{
 
 			{
@@ -30,6 +30,14 @@ func init() {
 			{
 				Name:    "billing",
 				Execute: AddBilling,
+			},
+			{
+				Name:    "mailgun-alerting",
+				Execute: common.MailgunAlerting[*vshnv1.VSHNForgejo],
+			},
+			{
+				Name:    "user-alerting",
+				Execute: common.AddUserAlerting[*vshnv1.VSHNForgejo],
 			},
 			{
 				Name:    "non-sla-prometheus-rules",

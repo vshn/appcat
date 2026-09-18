@@ -1,23 +1,28 @@
 package nonsla
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
 
 	promV1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
+	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
 )
 
 var (
 	// PostgreSQL alerts - most specific as currently those are the only ones where we have different container name and namespace
-	patroniPersistentVolumeExpectedToFillUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet",metrics_path="/metrics"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics"}) < 0.15 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job="kubelet",metrics_path="/metrics"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
+	patroniPersistentVolumeExpectedToFillUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-postgresql-test"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-postgresql-test"}) < 0.15 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-postgresql-test"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-postgresql-test"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
 
-	patroniMemoryCritical = `label_replace( topk(1, (max(container_memory_rss{container="patroni"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
+	patroniMemoryCritical = `label_replace( topk(1, (max(container_memory_rss{container="patroni", namespace="vshn-postgresql-test"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
 
-	patroniPersistentVolumeFillingUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics"}) < 0.03 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
+	patroniPersistentVolumeFillingUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics", namespace="vshn-postgresql-test"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-postgresql-test"}) < 0.03 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-postgresql-test"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
 
-	mariadbPersistentVolumeFillingUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics"}) < 0.03 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-mariadb-myinstance)")`
+	mariadbPersistentVolumeFillingUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics", namespace="vshn-mariadb-myinstance"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-mariadb-myinstance"}) < 0.03 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-mariadb-myinstance"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-mariadb-myinstance)")`
 
-	keycloakMemoryCritical = `label_replace( topk(1, (max(container_memory_working_set_bytes{container="keycloak"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-keycloak-myinstance)")`
+	keycloakMemoryCritical = `label_replace( topk(1, (max(container_memory_working_set_bytes{container="keycloak", namespace="vshn-keycloak-myinstance"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-keycloak-myinstance)")`
 )
 
 func TestNewAlertSetBuilder(t *testing.T) {
@@ -94,4 +99,26 @@ func TestNewAlertSetBuilder(t *testing.T) {
 	assert.Equal(t, len(rules), 1)
 	assert.Equal(t, rules[0].Expr.StrVal, keycloakMemoryCritical)
 
+}
+
+func TestGenerateNonSLAPromRulesStampsNamespace(t *testing.T) {
+	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/07-GivenEmail.yaml")
+	alerts := NewAlertSetBuilder("postgres").
+		AddAllDB().
+		AddCustom([]promV1.Rule{{Alert: "Prebuilt"}}).
+		GetAlerts()
+
+	fn := GenerateNonSLAPromRules[*vshnv1.VSHNPostgreSQL](alerts)
+	assert.Nil(t, fn(context.TODO(), &vshnv1.VSHNPostgreSQL{}, svc))
+
+	kubeObject := &xkube.Object{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(kubeObject, "psql-non-slo-rules"))
+	pr := &promV1.PrometheusRule{}
+	assert.NoError(t, json.Unmarshal(kubeObject.Spec.ForProvider.Manifest.Raw, pr))
+
+	rules := pr.Spec.Groups[0].Rules
+	assert.NotEmpty(t, rules)
+	for _, r := range rules {
+		assert.Equal(t, "vshn-postgresql-psql", r.Labels["namespace"], r.Alert)
+	}
 }

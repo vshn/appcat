@@ -7,9 +7,10 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-var pgAlerts = nonsla.NewAlertSetBuilder("patroni").
+var pgAlerts = nonsla.NewAlertSetBuilder("postgres").
 	AddAllDB().
 	AddCustomServiceRule("maxconnections", maxConnectionsAlert).
+	AddCustomServiceRule("cnpgclusteroffline", clusterOfflineAlert).
 	AddCustomServiceRule("longrunningtx", longRunningTransactionAlert).
 	AddCustomServiceRule("backendwaiting", backendsWaitingAlert).
 	AddCustomServiceRule("deadlocks", deadlockConflictsAlert).

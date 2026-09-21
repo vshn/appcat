@@ -48,7 +48,6 @@ func NewQuotaChecker(c client.Client, claimName, claimNamespace, instanceNamespa
 // CheckQuotas runs the given quotas against a namespace.
 // It also checks if the amount of namepsaces is within the quota as well.
 func (q *QuotaChecker) CheckQuotas(ctx context.Context) *apierrors.StatusError {
-
 	orgName, err := q.getOrgFromNamespace(ctx, q.claimNamespace)
 	if err != nil {
 		return apierrors.NewInternalError(err)
@@ -67,7 +66,6 @@ func (q *QuotaChecker) CheckQuotas(ctx context.Context) *apierrors.StatusError {
 
 // areNamespacesWithinQuota checks for the given organization if there are still enough namespaces available.
 func (q QuotaChecker) areNamespacesWithinQuota(ctx context.Context, orgName string) *apierrors.StatusError {
-
 	l := ctrl.LoggerFrom(ctx)
 
 	orgReq, err := labels.NewRequirement(utils.OrgLabelName, selection.Equals, []string{orgName})
@@ -153,72 +151,33 @@ func (q *QuotaChecker) getNamespaceOverrides(ctx context.Context, c client.Clien
 // For Exoscale clusters, it also adds storage-class-specific quotas.
 func AddInitalNamespaceQuotas(ctx context.Context, ns *corev1.Namespace, s *utils.Sidecars, kind string, cloudProvider string) bool {
 	annotations := ns.GetAnnotations()
-	if annotations == nil {
-		annotations = map[string]string{}
-	}
-
-	added := false
-
 	r := utils.GetDefaultResources(kind, s)
 
-	if _, ok := annotations[utils.DiskAnnotation]; !ok {
-		annotations[utils.DiskAnnotation] = utils.DefaultDiskRequests.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.CpuRequestAnnotation]; !ok {
-		annotations[utils.CpuRequestAnnotation] = r.CPURequests.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.CpuLimitAnnotation]; !ok {
-		annotations[utils.CpuLimitAnnotation] = r.CPULimits.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.MemoryRequestAnnotation]; !ok {
-		annotations[utils.MemoryRequestAnnotation] = r.MemoryRequests.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.MemoryLimitAnnotation]; !ok {
-		annotations[utils.MemoryLimitAnnotation] = r.MemoryLimits.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.CpuRequestTerminationQuota]; !ok {
-		annotations[utils.CpuRequestTerminationQuota] = r.CPURequests.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.CpuLimitTerminationQuota]; !ok {
-		annotations[utils.CpuLimitTerminationQuota] = r.CPULimits.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.MemoryRequestTerminationQuota]; !ok {
-		annotations[utils.MemoryRequestTerminationQuota] = r.MemoryRequests.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.MemoryLimitTerminationQuota]; !ok {
-		annotations[utils.MemoryLimitTerminationQuota] = r.MemoryLimits.String()
-		added = true
-	}
-
-	if _, ok := annotations[utils.ActiveDeadlineSecondsOverrideAnnotation]; !ok {
-		annotations[utils.ActiveDeadlineSecondsOverrideAnnotation] = utils.DefaultActiveDeadlineSeconds
-		added = true
+	defaults := map[string]string{
+		utils.DiskAnnotation:                          utils.DefaultDiskRequests.String(),
+		utils.CpuRequestAnnotation:                    r.CPURequests.String(),
+		utils.CpuLimitAnnotation:                      r.CPULimits.String(),
+		utils.MemoryRequestAnnotation:                 r.MemoryRequests.String(),
+		utils.MemoryLimitAnnotation:                   r.MemoryLimits.String(),
+		utils.CpuRequestTerminationQuota:              r.CPURequests.String(),
+		utils.CpuLimitTerminationQuota:                r.CPULimits.String(),
+		utils.MemoryRequestTerminationQuota:           r.MemoryRequests.String(),
+		utils.MemoryLimitTerminationQuota:             r.MemoryLimits.String(),
+		utils.ActiveDeadlineSecondsOverrideAnnotation: utils.DefaultActiveDeadlineSeconds,
 	}
 
 	// Add Exoscale-specific storage class quotas
 	if cloudProvider == "exoscale" {
-		if _, ok := annotations[utils.StorageClassesAnnotation]; !ok {
-			annotations[utils.StorageClassesAnnotation] = utils.GetExoscaleStorageClassQuota()
-			added = true
+		defaults[utils.StorageClassesAnnotation] = utils.GetExoscaleStorageClassQuota()
+	}
+
+	apply := map[string]string{}
+	for annotation, value := range defaults {
+		if _, ok := annotations[annotation]; !ok {
+			apply[annotation] = value
 		}
 	}
 
-	ns.SetAnnotations(annotations)
-	return added
+	ns.SetAnnotations(apply)
+	return len(apply) > 0
 }

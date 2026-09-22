@@ -1,0 +1,77 @@
+desired:
+  resources:
+    namespace:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-namespace
+          namespace: test
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              data: null
+              kind: Namespace
+              metadata:
+                name: myns
+input:
+  apiVersion: v1
+  data:
+    quotasEnabled: 'true'
+  kind: ConfigMap
+  metadata:
+    annotations: {}
+    labels:
+      name: xfn-config
+    name: xfn-config
+observed:
+  composite:
+    resource:
+      apiVersion: vshn.appcat.vshn.io/v1
+      kind: XVSHNPostgreSQL
+      metadata:
+        creationTimestamp: "2023-03-21T16:52:31Z"
+        finalizers:
+        - composite.apiextensions.crossplane.io
+        generateName: pgsql-
+        generation: 13
+        labels:
+          appuio.io/organization: vshn
+          crossplane.io/claim-name: pgsql
+          crossplane.io/claim-namespace: unit-test
+          crossplane.io/composite: pgsql-gc9x4
+        name: pgsql-gc9x4
+      spec:
+        parameters: null
+        writeConnectionSecretToRef: {}
+      status:
+        instanceNamespace: my-psql
+  resources:
+    namespace:
+      resource:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        metadata:
+          name: pgsql-gc9x4-namespace
+          namespace: test
+        status:
+          atProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: myns
+                annotations:
+                  kubectl.kubernetes.io/last-applied-configuration: ""
+                  openshift.io/sa.scc.mcs: s0:c64,c54
+                  appuio.io/active-deadline-seconds-override: "7200"
+                  resourcequota.appuio.io/organization-compute.limits.cpu: "10"
+                  resourcequota.appuio.io/organization-compute.limits.memory: 44Gi
+                  resourcequota.appuio.io/organization-compute.requests.cpu: "10"
+                  resourcequota.appuio.io/organization-compute.requests.memory: 44Gi
+                  resourcequota.appuio.io/organization-compute-terminating.limits.cpu: "10"
+                  resourcequota.appuio.io/organization-compute-terminating.limits.memory: 44Gi
+                  resourcequota.appuio.io/organization-compute-terminating.requests.cpu: "10"
+                  resourcequota.appuio.io/organization-compute-terminating.requests.memory: 44Gi
+                  resourcequota.appuio.io/organization-objects.requests.storage: "1099511627776"

@@ -334,14 +334,35 @@ func addInitialNamespaceQuotas(ctx context.Context, svc *runtime.ServiceRuntime,
 		s = &utils.Sidecars{}
 	}
 
-	// We only act if either the quotas were missing or the organization label is not on the
-	// namespace. Otherwise we ignore updates. This is to prevent any unwanted overwriting.
+	// AddNamespaceQuotas only fills in the quotas that are missing, any existing value
+	// on the observed namespace is kept as is. This is to prevent any unwanted overwriting.
 	cloudProvider := svc.Config.Data["cloudProvider"]
-	if quotas.AddInitalNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind, cloudProvider) {
-		err = svc.SetDesiredKubeObjectWithName(ns, ns.GetName(), namespaceKon)
-		if err != nil {
-			return fmt.Errorf("cannot save namespace quotas: %w", err)
+	quotas.AddNamespaceQuotas(ctx, ns, s, objectMeta.TypeMeta.Kind, cloudProvider)
+
+	// The desired namespace is built from scratch on every reconcile and doesn't contain any
+	// quota annotations. So we always have to write the quotas back to the desired namespace,
+	// even if they were already present on the observed one. Otherwise provider-kubernetes
+	// would prune them again with its next server-side apply.
+	desiredNs := &corev1.Namespace{}
+	err = svc.GetDesiredKubeObject(desiredNs, namespaceKon)
+	if err != nil {
+		return fmt.Errorf("cannot get desired namespace: %w", err)
+	}
+
+	annotations := desiredNs.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	for _, annotation := range utils.QuotaAnnotations {
+		if value, ok := ns.GetAnnotations()[annotation]; ok {
+			annotations[annotation] = value
 		}
+	}
+	desiredNs.SetAnnotations(annotations)
+
+	err = svc.SetDesiredKubeObjectWithName(desiredNs, desiredNs.GetName(), namespaceKon)
+	if err != nil {
+		return fmt.Errorf("cannot save namespace quotas: %w", err)
 	}
 
 	return nil

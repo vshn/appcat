@@ -103,6 +103,23 @@ var (
 	DefaultMemoryLimits = DefaultMemoryRequests
 	// defaultDiskRequests should be plenty for a large amount of replicas for any service
 	DefaultDiskRequests = resource.NewQuantity(1099511627776, resource.DecimalSI)
+
+	// QuotaAnnotations contains all annotations that AppCat manages on an instance namespace
+	// to configure the quotas. It's used to carry over already existing values from the
+	// observed namespace to the desired namespace.
+	QuotaAnnotations = []string{
+		DiskAnnotation,
+		StorageClassesAnnotation,
+		CpuRequestAnnotation,
+		CpuLimitAnnotation,
+		MemoryRequestAnnotation,
+		MemoryLimitAnnotation,
+		CpuRequestTerminationQuota,
+		CpuLimitTerminationQuota,
+		MemoryRequestTerminationQuota,
+		MemoryLimitTerminationQuota,
+		ActiveDeadlineSecondsOverrideAnnotation,
+	}
 )
 
 // CheckResourcesAgainstQuotas will check the given resources either against:

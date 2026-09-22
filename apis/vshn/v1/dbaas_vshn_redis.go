@@ -99,7 +99,7 @@ type VSHNRedisServiceSpec struct {
 	// +kubebuilder:default="7.2"
 
 	// Version contains supported version of Redis.
-	// Multiple versions are supported. The latest version "7.2" is the default version.
+	// Multiple versions are supported. The latest "7.2" is the default version.
 	Version string `json:"version,omitempty"`
 
 	// RedisSettings contains additional Redis settings.
@@ -114,7 +114,6 @@ type VSHNRedisServiceSpec struct {
 
 // VSHNRedisSizeSpec contains settings to control the sizing of a service.
 type VSHNRedisSizeSpec struct {
-
 	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
 	CPURequests string `json:"cpuRequests,omitempty"`
 

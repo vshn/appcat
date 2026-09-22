@@ -126,7 +126,7 @@ type VSHNNextcloudServiceSpec struct {
 
 	// Version contains supported version of nextcloud.
 	// Multiple versions are supported. The latest version 31 is the default version.
-	// Only major (e.g., "31") or major.minor (e.g., "31.0") versions are allowed.
+	// Only major (e.g., "32") or major.minor (e.g., "31.0") versions are allowed.
 	// Patch versions (e.g., "31.0.4") are not allowed as they break maintenance.
 	Version string `json:"version,omitempty"`
 
@@ -158,7 +158,6 @@ type VSHNNextcloudSettings struct{}
 
 // VSHNNextcloudSizeSpec contains settings to control the sizing of a service.
 type VSHNNextcloudSizeSpec struct {
-
 	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
 	CPURequests string `json:"cpuRequests,omitempty"`
 

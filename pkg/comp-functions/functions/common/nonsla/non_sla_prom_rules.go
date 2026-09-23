@@ -30,15 +30,21 @@ func GenerateNonSLAPromRules[T client.Object](alerts Alerts) func(ctx context.Co
 			return runtime.NewFatalResult(err)
 		}
 
-		rules := make([]promV1.Rule, 0)
+		instanceNamespace := elem.GetInstanceNamespace()
+		rules := make([]promV1.Rule, 0, len(alerts.alerts)+len(alerts.customRules))
 		for _, a := range alerts.alerts {
-			f := alerts.alertDefinitions[a]
-			r := f(alerts.alertContainerName, elem.GetInstanceNamespace())
-			rules = append(rules, r)
+			rules = append(rules, alerts.alertDefinitions[a](alerts.alertContainerName, instanceNamespace))
 		}
 		rules = append(rules, alerts.customRules...)
 
-		err = generatePromeRules(elem.GetName(), elem.GetInstanceNamespace(), rules, svc)
+		for i := range rules {
+			if rules[i].Labels == nil {
+				rules[i].Labels = map[string]string{}
+			}
+			rules[i].Labels["namespace"] = instanceNamespace
+		}
+
+		err = generatePromeRules(elem.GetName(), instanceNamespace, rules, svc)
 		if err != nil {
 			return runtime.NewWarningResult("can't create prometheus rules: " + err.Error())
 		}

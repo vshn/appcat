@@ -185,3 +185,24 @@ func maxConnectionsAlert(service, namespace string) promv1.Rule {
 		},
 	}
 }
+
+func clusterOfflineAlert(service, namespace string) promv1.Rule {
+	return promv1.Rule{
+		Alert: "CNPGClusterOffline",
+		Annotations: map[string]string{
+			"description": "CNPG Cluster in namespace " + namespace + " has no running instances.",
+			"runbook_url": "https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/docs/runbooks/CNPGClusterOffline.md",
+			"summary":     "CNPG Cluster has no running instances",
+		},
+		Expr: intstr.IntOrString{
+			Type:   intstr.String,
+			StrVal: `(sum(cnpg_collector_up{namespace="` + namespace + `"}) OR on() vector(0)) == 0`,
+		},
+		For: nonsla.FiveMinuteInterval,
+		Labels: map[string]string{
+			"severity": nonsla.SeverityCritical,
+			"syn_team": nonsla.SynTeam,
+			"syn":      "true",
+		},
+	}
+}

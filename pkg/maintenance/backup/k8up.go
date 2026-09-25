@@ -47,6 +47,11 @@ func (k *K8upBackupRunner) RunBackup(ctx context.Context, namespace, backupName 
 		return fmt.Errorf("k8up Schedule %s has no backend configuration", schedule.Name)
 	}
 
+	// Remove leftovers from earlier runs before adding a new one
+	if err := CleanupPreviousBackups(ctx, k.k8sClient, &k8upv1.Backup{}, namespace, k.log); err != nil {
+		k.log.Error(err, "Could not remove previous pre-maintenance backups", "namespace", namespace)
+	}
+
 	// Create a one-off Backup using the same backend configuration
 	k.log.Info("Creating pre-maintenance backup", "namespace", namespace, "name", backupName)
 
@@ -54,9 +59,7 @@ func (k *K8upBackupRunner) RunBackup(ctx context.Context, namespace, backupName 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backupName,
 			Namespace: namespace,
-			Labels: map[string]string{
-				"appcat.vshn.io/backup-type": "pre-maintenance",
-			},
+			Labels:    PreMaintenanceLabels(),
 		},
 		Spec: k8upv1.BackupSpec{
 			RunnableSpec: k8upv1.RunnableSpec{

@@ -66,6 +66,11 @@ func (s *StackGresBackupRunner) RunBackup(ctx context.Context, namespace, jobNam
 	cronJob := &cronJobList.Items[0]
 	s.log.Info("Found StackGres backup CronJob", "name", cronJob.Name, "namespace", namespace)
 
+	// Remove leftovers from earlier runs before adding a new one
+	if err := CleanupPreviousBackups(ctx, s.k8sClient, &batchv1.Job{}, namespace, s.log); err != nil {
+		s.log.Error(err, "Could not remove previous pre-maintenance backup jobs", "namespace", namespace)
+	}
+
 	// Create a one-off Job based on the CronJob's job template
 	s.log.Info("Creating pre-maintenance backup job", "namespace", namespace, "name", jobName)
 
@@ -74,8 +79,8 @@ func (s *StackGresBackupRunner) RunBackup(ctx context.Context, namespace, jobNam
 			Name:      jobName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"appcat.vshn.io/backup-type": "pre-maintenance",
-				"app":                        "StackGresBackup",
+				BackupTypeLabelKey: BackupTypePreMaintenance,
+				"app":              "StackGresBackup",
 			},
 			Annotations: cronJob.Spec.JobTemplate.Annotations,
 		},

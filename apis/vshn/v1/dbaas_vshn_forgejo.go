@@ -108,8 +108,8 @@ type VSHNForgejoServiceSpec struct {
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 
 	// Version contains supported version of Forgejo.
-	// Multiple versions are supported. Defaults to 14.0.0 if not set.
-	// +kubebuilder:default="15.0.0"
+	// Multiple versions are supported. Defaults to 16.0.0 if not set.
+	// +kubebuilder:default="16.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
 
 	// SSH contains settings for SSH access to the Forgejo instance.
@@ -216,7 +216,6 @@ type VSHNForgejoConfig struct {
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.
 type VSHNForgejoSizeSpec struct {
-
 	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
 	CPURequests string `json:"cpuRequests,omitempty"`
 
@@ -380,6 +379,7 @@ func (v *VSHNForgejo) GetBackupSchedule() string {
 func (v *VSHNForgejo) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
 } // GetServiceName returns the name of this service
+
 func (v *VSHNForgejo) GetServiceName() string {
 	return "forgejo"
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"unsafe"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/function-sdk-go/resource/composite"
 	"github.com/stretchr/testify/assert"
 	my1alpha1 "github.com/vshn/appcat/v4/apis/sql/mysql/v1alpha1"
@@ -35,6 +36,28 @@ func Test_addProviderConfig(t *testing.T) {
 	config := &pgv1alpha1.ProviderConfig{}
 	assert.NoError(t, svc.GetDesiredKubeObject(config, comp.GetName()+"-providerconfig"))
 
+}
+
+func Test_addConnectionDetail_IgnoresForeignNamespace(t *testing.T) {
+	// given
+	svc := commontest.LoadRuntimeFromFile(t, "vshnmariadb/usermanagement/01-emptyaccess.yaml")
+
+	comp := &vshnv1.VSHNMariaDB{}
+	assert.NoError(t, svc.GetObservedComposite(comp))
+
+	// when a caller supplies a connection secret ref pointing at a foreign namespace
+	ref := &xpv1.SecretReference{
+		Name:      "stolen-creds",
+		Namespace: "kube-system",
+	}
+	addConnectionDetail(comp, svc, "userpass-unit", "unit", "unit", ref)
+
+	// then the secret is written into the claim namespace, not the foreign one
+	secret := &corev1.Secret{}
+	assert.NoError(t, svc.GetDesiredKubeObject(secret, fmt.Sprintf("%s-user-%s", comp.GetName(), "unit")))
+	assert.Equal(t, "stolen-creds", secret.GetName())
+	assert.Equal(t, comp.GetClaimNamespace(), secret.GetNamespace())
+	assert.NotEqual(t, "kube-system", secret.GetNamespace())
 }
 
 func Test_addUser(t *testing.T) {

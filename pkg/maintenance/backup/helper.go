@@ -158,7 +158,7 @@ func NewBaseRunner(c client.WithWatch, log logr.Logger) BaseRunner {
 	return BaseRunner{
 		k8sClient: c,
 		log:       log,
-		timeout:   1 * time.Hour,
+		timeout:   6 * time.Hour,
 	}
 }
 

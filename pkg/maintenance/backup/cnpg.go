@@ -46,6 +46,11 @@ func (c *CNPGBackupRunner) RunBackup(ctx context.Context, namespace, backupName 
 		return nil
 	}
 
+	// Remove leftovers from earlier runs before adding a new one
+	if err := CleanupPreviousBackups(ctx, c.k8sClient, &cnpgv1.Backup{}, namespace, c.log); err != nil {
+		c.log.Error(err, "Could not remove previous pre-maintenance backups", "namespace", namespace)
+	}
+
 	// Create a one-off Backup using typed API
 	c.log.Info("Creating pre-maintenance backup", "namespace", namespace, "name", backupName)
 
@@ -53,9 +58,7 @@ func (c *CNPGBackupRunner) RunBackup(ctx context.Context, namespace, backupName 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backupName,
 			Namespace: namespace,
-			Labels: map[string]string{
-				"appcat.vshn.io/backup-type": "pre-maintenance",
-			},
+			Labels:    PreMaintenanceLabels(),
 		},
 		Spec: cnpgv1.BackupSpec{
 			Cluster: cnpgv1.BackupCluster{

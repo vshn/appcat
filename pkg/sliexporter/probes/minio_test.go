@@ -18,11 +18,12 @@ func TestProbe(t *testing.T) {
 	t.Parallel()
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		t.Fatal("can't create DockerPool")
+		t.Fatal("can't create DockerPool: ", err)
 	}
 
 	minioServer, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "quay.io/minio/minio",
+		Repository: "ghcr.io/vshn/minio",
+		Tag:        "RELEASE.2025-09-07T16-13-09Z",
 		Cmd: []string{
 			"server",
 			"/data",
@@ -32,7 +33,7 @@ func TestProbe(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Fatal("Can't create minioServer")
+		t.Fatal("can't create minioServer: ", err)
 	}
 
 	endpoint := "127.0.0.1:" + minioServer.GetPort("9000/tcp")
@@ -74,11 +75,11 @@ func TestProbe(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Fatal("can't create Minio instance")
+		t.Fatal("can't create Minio instance: ", err)
 	}
 
 	err = minio.Probe(context.Background())
 	if err != nil {
-		t.Fatal("can't probe")
+		t.Fatal("can't probe: ", err)
 	}
 }

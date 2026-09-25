@@ -158,7 +158,7 @@ func NewBaseRunner(c client.WithWatch, log logr.Logger) BaseRunner {
 	return BaseRunner{
 		k8sClient: c,
 		log:       log,
-		timeout:   1 * time.Hour,
+		timeout:   6 * time.Hour,
 	}
 }
 
@@ -181,4 +181,37 @@ func IsClusterSuspended(instances int, log logr.Logger, namespace string) bool {
 		return true
 	}
 	return false
+}
+
+const (
+	// BackupTypeLabelKey marks the purpose of a backup resource created by AppCat
+	BackupTypeLabelKey = "appcat.vshn.io/backup-type"
+	// BackupTypePreMaintenance is the label value for pre-maintenance backups
+	BackupTypePreMaintenance = "pre-maintenance"
+)
+
+// PreMaintenanceLabels returns the labels put on every pre-maintenance backup resource
+func PreMaintenanceLabels() map[string]string {
+	return map[string]string{
+		BackupTypeLabelKey: BackupTypePreMaintenance,
+	}
+}
+
+// CleanupPreviousBackups removes leftover pre-maintenance backup resources of the given type
+// from the namespace. Failed or timed out runs leave their resource behind, and every run uses
+// a new timestamped name, so without this they pile up.
+func CleanupPreviousBackups(ctx context.Context, c client.Client, obj client.Object, namespace string, log logr.Logger) error {
+	log.Info("Removing previous pre-maintenance backups", "namespace", namespace)
+
+	err := c.DeleteAllOf(
+		ctx, obj,
+		client.InNamespace(namespace),
+		client.MatchingLabels(PreMaintenanceLabels()),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to remove previous pre-maintenance backups: %w", err)
+	}
+
+	return nil
 }

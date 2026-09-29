@@ -153,7 +153,7 @@ func TestNewCNPGBackupRunner(t *testing.T) {
 	runner := NewCNPGBackupRunner(fakeClient, logr.Discard())
 
 	require.NotNil(t, runner)
-	assert.Equal(t, 1*time.Hour, runner.timeout)
+	assert.Equal(t, 6*time.Hour, runner.timeout)
 	assert.NotNil(t, runner.k8sClient)
 }
 

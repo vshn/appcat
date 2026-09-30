@@ -72,8 +72,7 @@ func TestK8upBackupRunner_RunBackup_RemovesPreviousBackups(t *testing.T) {
 		},
 	}
 
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&k8upv1.Backup{}).
 		WithObjects(stale, schedule).
 		WithStatusSubresource(&k8upv1.Backup{}).
 		Build()
@@ -111,8 +110,7 @@ func TestCNPGBackupRunner_RunBackup_RemovesPreviousBackups(t *testing.T) {
 		Spec: cnpgv1.ClusterSpec{Instances: 1},
 	}
 
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&cnpgv1.Backup{}).
 		WithObjects(stale, cluster).
 		WithStatusSubresource(&cnpgv1.Backup{}).
 		Build()
@@ -164,8 +162,7 @@ func TestStackGresBackupRunner_RunBackup_RemovesPreviousJobs(t *testing.T) {
 		},
 	}
 
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&batchv1.Job{}).
 		WithObjects(stale, scheduled, cluster, cronJob).
 		WithStatusSubresource(&batchv1.Job{}).
 		Build()

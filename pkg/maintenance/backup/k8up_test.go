@@ -9,10 +9,8 @@ import (
 	k8upv1 "github.com/k8up-io/k8up/v2/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vshn/appcat/v4/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // Helper function to create a succeeded k8up backup status
@@ -66,8 +64,7 @@ func TestK8upBackupRunner_RunBackup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeClient := fake.NewClientBuilder().
-				WithScheme(pkg.SetupScheme()).
+			fakeClient := newWatchableClientBuilder(&k8upv1.Backup{}).
 				WithObjects(tt.existingObjs...).
 				WithStatusSubresource(&k8upv1.Backup{}).
 				Build()
@@ -155,8 +152,7 @@ func TestK8upBackupRunner_checkSuccess(t *testing.T) {
 }
 
 func TestNewK8upBackupRunner(t *testing.T) {
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&k8upv1.Backup{}).
 		Build()
 
 	runner := NewK8upBackupRunner(fakeClient, logr.Discard())
@@ -168,8 +164,7 @@ func TestNewK8upBackupRunner(t *testing.T) {
 
 func TestK8upBackupRunner_BackupLabels(t *testing.T) {
 	// Test that the created backup has the correct labels
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&k8upv1.Backup{}).
 		WithObjects(
 			&k8upv1.Schedule{
 				ObjectMeta: metav1.ObjectMeta{

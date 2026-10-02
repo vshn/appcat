@@ -132,7 +132,7 @@ func WatchUntilDone(
 	precondition := func(store cache.Store) (bool, error) {
 		item, exists, err := store.GetByKey(targetNamespace + "/" + targetName)
 		if err != nil {
-			return false, fmt.Errorf("failed to get resource state: %w", err)
+			return false, fmt.Errorf("failed to load resource from cache: %w", err)
 		}
 		if !exists {
 			return false, fmt.Errorf("resource %s/%s not found", targetNamespace, targetName)

@@ -71,7 +71,8 @@ const (
 	// DefaultActiveDeadlineSeconds is the deadline (in seconds) we set for
 	// run-once pods so service jobs (backup/restore/maintenance) aren't killed
 	// after the 30m APPUiO Cloud default. 2h.
-	DefaultActiveDeadlineSeconds = "7200"
+	// We set this to 6h, which is the timeout we have for backups
+	DefaultActiveDeadlineSeconds = "21600"
 )
 
 var (

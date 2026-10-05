@@ -105,4 +105,6 @@ func TestWatchUntilDone_GivenAlreadyDone_ThenReturnWithoutWatching(t *testing.T)
 
 	err := WatchUntilDone(context.Background(), c, toWatch, &cnpgv1.BackupList{}, 5*time.Second, runner.checkDone, runner.checkSuccess, logr.Discard())
 	assert.ErrorContains(t, err, "backup failed: boom")
+	// A failed backup isn't a failed watch
+	assert.NotContains(t, err.Error(), "watch failed")
 }

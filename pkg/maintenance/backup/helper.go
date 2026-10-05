@@ -75,6 +75,10 @@ func WatchUntilDone(
 	targetName := obj.GetName()
 	targetNamespace := obj.GetNamespace()
 
+	// Result of checkSuccess, kept apart from the watch errors so a failed resource
+	// isn't reported as a failed watch
+	var resultErr error
+
 	// Define the condition function
 	conditionFunc := func(event watch.Event) (bool, error) {
 		eventObj, ok := event.Object.(client.Object)
@@ -92,7 +96,8 @@ func WatchUntilDone(
 					"kind", obj.GetObjectKind().GroupVersionKind().Kind,
 					"namespace", targetNamespace,
 					"name", targetName)
-				return true, checkSuccess(eventObj)
+				resultErr = checkSuccess(eventObj)
+				return true, nil
 			}
 			log.V(1).Info("Resource updated but not yet complete")
 			return false, nil
@@ -148,7 +153,8 @@ func WatchUntilDone(
 		current = current.DeepCopyObject().(client.Object)
 		if checkDone(current) {
 			log.Info("Resource already in terminal state")
-			return true, checkSuccess(current)
+			resultErr = checkSuccess(current)
+			return true, nil
 		}
 		return false, nil
 	}
@@ -167,7 +173,7 @@ func WatchUntilDone(
 		return fmt.Errorf("watch failed: %w", err)
 	}
 
-	return nil
+	return resultErr
 }
 
 // BaseRunner contains common fields shared by all backup runner implementations

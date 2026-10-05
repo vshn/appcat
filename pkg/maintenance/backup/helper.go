@@ -82,6 +82,8 @@ func WatchUntilDone(
 			log.V(1).Info("Received non-client.Object event", "type", fmt.Sprintf("%T", event.Object))
 			return false, nil
 		}
+		// Events carry the shared object from the informer cache, the callbacks get their own copy
+		eventObj = eventObj.DeepCopyObject().(client.Object)
 
 		switch event.Type {
 		case watch.Added, watch.Modified:
@@ -124,7 +126,7 @@ func WatchUntilDone(
 			return list, c.List(ctx, list, listOpts(o))
 		},
 		WatchFunc: func(o metav1.ListOptions) (watch.Interface, error) {
-			return c.Watch(ctx, listObj, listOpts(o))
+			return c.Watch(ctx, listObj.DeepCopyObject().(client.ObjectList), listOpts(o))
 		},
 	}
 
@@ -142,6 +144,8 @@ func WatchUntilDone(
 		if !ok {
 			return false, fmt.Errorf("unexpected object type %T", item)
 		}
+		// Objects from the informer cache are shared, the callbacks get their own copy
+		current = current.DeepCopyObject().(client.Object)
 		if checkDone(current) {
 			log.Info("Resource already in terminal state")
 			return true, checkSuccess(current)

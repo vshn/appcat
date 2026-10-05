@@ -22,7 +22,8 @@ func TestProbe(t *testing.T) {
 	}
 
 	minioServer, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "quay.io/minio/minio",
+		Repository: "ghcr.io/vshn/minio",
+		Tag:        "RELEASE.2025-09-07T16-13-09Z",
 		Cmd: []string{
 			"server",
 			"/data",

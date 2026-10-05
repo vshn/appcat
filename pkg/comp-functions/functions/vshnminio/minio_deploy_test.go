@@ -2,6 +2,7 @@ package vshnminio
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -54,6 +55,20 @@ func TestMinioDeploy(t *testing.T) {
 	np := &netv1.NetworkPolicy{}
 	assert.NoError(t, svc.GetDesiredKubeObject(np, comp.Name+"-netpol"))
 
+}
+
+func TestMinioDeploy_Image(t *testing.T) {
+	svc, comp := getMinioComp(t)
+
+	assert.Nil(t, DeployMinio(context.TODO(), &vshnv1.VSHNMinio{}, svc))
+
+	r := &xhelmbeta1.Release{}
+	assert.NoError(t, svc.GetDesiredComposedResourceByName(r, comp.Name+"-release"))
+
+	values := map[string]interface{}{}
+	assert.NoError(t, json.Unmarshal(r.Spec.ForProvider.Values.Raw, &values))
+
+	assert.Equal(t, "ghcr.io/vshn/minio", values["image"].(map[string]interface{})["repository"])
 }
 
 func getMinioComp(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNMinio) {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 
@@ -24,6 +25,9 @@ import (
 
 const (
 	SLIBucketName = "vshn-test-bucket-for-sli"
+
+	defaultImageRegistry         = "ghcr.io"
+	defaultImageRepositoryPrefix = "vshn"
 )
 
 // DeployMinio will add deploy the objects to deploy minio
@@ -141,9 +145,19 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, svc *r
 		},
 	}
 
-	if svc.Config.Data["imageRegistry"] != "" {
+	// The minio chart has no separate registry field, so registry and prefix
+	// have to be part of the repository.
+	registry := strings.TrimSuffix(svc.Config.Data["imageRegistry"], "/")
+	imageRepositoryPrefix := strings.Trim(svc.Config.Data["imageRepositoryPrefix"], "/")
+	if registry != "" || imageRepositoryPrefix != "" {
+		if registry == "" {
+			registry = defaultImageRegistry
+		}
+		if imageRepositoryPrefix == "" {
+			imageRepositoryPrefix = defaultImageRepositoryPrefix
+		}
 		values["image"] = map[string]interface{}{
-			"registry": svc.Config.Data["imageRegistry"],
+			"repository": fmt.Sprintf("%s/%s/minio", registry, imageRepositoryPrefix),
 		}
 	}
 

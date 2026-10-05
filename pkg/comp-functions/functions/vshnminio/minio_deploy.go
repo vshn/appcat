@@ -122,6 +122,9 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, svc *r
 		"deploymentUpdate": map[string]interface{}{
 			"type": "Recreate",
 		},
+		"image": map[string]interface{}{
+			"repository": "ghcr.io/vshn/minio",
+		},
 		"resources": map[string]interface{}{
 			"requests": map[string]interface{}{
 				"memory": reqMem,
@@ -139,12 +142,6 @@ func createObjectHelmRelease(ctx context.Context, comp *vshnv1.VSHNMinio, svc *r
 		"securityContext": map[string]interface{}{
 			"enabled": false,
 		},
-	}
-
-	if svc.Config.Data["imageRegistry"] != "" {
-		values["image"] = map[string]interface{}{
-			"registry": svc.Config.Data["imageRegistry"],
-		}
 	}
 
 	vb, err := json.Marshal(values)

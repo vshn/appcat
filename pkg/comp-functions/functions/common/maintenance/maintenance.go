@@ -68,7 +68,10 @@ type ExtraResource struct {
 var (
 	maintServiceAccountName = "maintenanceserviceaccount"
 	maintJobBackoffLimit    = ptr.To(int32(1))
-	dayOfWeekMap            = map[string]int{
+	// The initial maintenance runs right after provisioning, where transient failures
+	// are common, so it keeps the Kubernetes default
+	initialMaintJobBackoffLimit = ptr.To(int32(6))
+	dayOfWeekMap                = map[string]int{
 		"monday":    1,
 		"tuesday":   2,
 		"wednesday": 3,
@@ -518,7 +521,7 @@ func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
 			Namespace: jobNamespace,
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: maintJobBackoffLimit,
+			BackoffLimit: initialMaintJobBackoffLimit,
 			Template:     podTemplateSpec,
 		},
 	}

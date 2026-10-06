@@ -116,8 +116,10 @@ type VSHNPostgreSQLReplicationStrategy struct {
 	Mode string `json:"mode,omitempty"`
 }
 
-const VSHNPostgreSQLUpdateStrategyTypeImmediate = "Immediate"
-const VSHNPostgreSQLUpdateStrategyTypeOnRestart = "OnRestart"
+const (
+	VSHNPostgreSQLUpdateStrategyTypeImmediate = "Immediate"
+	VSHNPostgreSQLUpdateStrategyTypeOnRestart = "OnRestart"
+)
 
 // VSHNPostgreSQLUpdateStrategy indicates how and when updates to the instance spec will be applied.
 type VSHNPostgreSQLUpdateStrategy struct {
@@ -137,7 +139,7 @@ type VSHNPostgreSQLServiceSpec struct {
 	// +kubebuilder:default="18"
 
 	// MajorVersion contains supported version of PostgreSQL.
-	// Multiple versions are supported. The latest version "15" is the default version.
+	// Multiple versions are supported. The latest version "18" is the default version.
 	// Currently it's impossible to change the version of an existing instance - we're working on it.
 	MajorVersion string `json:"majorVersion,omitempty"`
 
@@ -265,7 +267,6 @@ func (v *VSHNPostgreSQLBackup) IsEnabled() bool {
 
 // VSHNPostgreSQLRestore contains restore specific parameters.
 type VSHNPostgreSQLRestore struct {
-
 	// ClaimName specifies the name of the instance you want to restore from.
 	// The claim has to be in the same namespace as this new instance.
 	ClaimName string `json:"claimName,omitempty"`
@@ -292,7 +293,6 @@ func (v *VSHNPostgreSQL) GetAdditionalResources() VSHNAdditionalResources {
 
 // VSHNPostgreSQLEncryption contains storage encryption specific parameters
 type VSHNPostgreSQLEncryption struct {
-
 	// Enabled specifies if the instance should use encrypted storage for the instance.
 	Enabled bool `json:"enabled,omitempty"`
 }

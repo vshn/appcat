@@ -67,7 +67,11 @@ type ExtraResource struct {
 
 var (
 	maintServiceAccountName = "maintenanceserviceaccount"
-	dayOfWeekMap            = map[string]int{
+	maintJobBackoffLimit    = ptr.To(int32(1))
+	// The initial maintenance runs right after provisioning, where transient failures
+	// are common, so it keeps the Kubernetes default
+	initialMaintJobBackoffLimit = ptr.To(int32(6))
+	dayOfWeekMap                = map[string]int{
 		"monday":    1,
 		"tuesday":   2,
 		"wednesday": 3,
@@ -295,7 +299,8 @@ func (m *Maintenance) createMaintenanceJob(_ context.Context, cronSchedule strin
 			SuccessfulJobsHistoryLimit: ptr.To(int32(1)),
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
-					Template: podTemplateSpec,
+					BackoffLimit: maintJobBackoffLimit,
+					Template:     podTemplateSpec,
 				},
 			},
 		},
@@ -391,6 +396,7 @@ func (m *Maintenance) buildMaintenancePodTemplateSpec(imageTag, serviceAccount s
 		},
 	}
 }
+
 func (m *Maintenance) createMaintenanceClusterRoleBinding(_ context.Context) error {
 	name := m.svc.Config.Data["additionalMaintenanceClusterRole"]
 	if name == "" {
@@ -463,7 +469,6 @@ func (m *Maintenance) createMaintenanceServiceAccount(_ context.Context) error {
 }
 
 func (m *Maintenance) parseCron() (string, error) {
-
 	if m.schedule.DayOfWeek == "" || m.schedule.TimeOfDay == "" {
 		return "", nil
 	}
@@ -516,7 +521,8 @@ func (m *Maintenance) createInitialMaintenanceJob(_ context.Context) error {
 			Namespace: jobNamespace,
 		},
 		Spec: batchv1.JobSpec{
-			Template: podTemplateSpec,
+			BackoffLimit: initialMaintJobBackoffLimit,
+			Template:     podTemplateSpec,
 		},
 	}
 

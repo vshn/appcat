@@ -8,7 +8,9 @@ import (
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -73,34 +75,9 @@ func WatchUntilDone(
 	targetName := obj.GetName()
 	targetNamespace := obj.GetNamespace()
 
-	// First, check if already complete
-	if err := c.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
-		return fmt.Errorf("failed to get initial resource state: %w", err)
-	}
-
-	if checkDone(obj) {
-		log.Info("Resource already in terminal state")
-		return checkSuccess(obj)
-	}
-
-	log.Info("Watching resource for completion",
-		"kind", obj.GetObjectKind().GroupVersionKind().Kind,
-		"namespace", targetNamespace,
-		"name", targetName,
-		"timeout", timeout)
-
-	// Set up watch with field selector for the specific resource
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", targetName)
-	watchOpts := &client.ListOptions{
-		Namespace:     targetNamespace,
-		FieldSelector: fieldSelector,
-	}
-
-	// Start the watch using the list object
-	watcher, err := c.Watch(ctx, listObj, watchOpts)
-	if err != nil {
-		return fmt.Errorf("failed to create watch: %w", err)
-	}
+	// Result of checkSuccess, kept apart from the watch errors so a failed resource
+	// isn't reported as a failed watch
+	var resultErr error
 
 	// Define the condition function
 	conditionFunc := func(event watch.Event) (bool, error) {
@@ -109,6 +86,8 @@ func WatchUntilDone(
 			log.V(1).Info("Received non-client.Object event", "type", fmt.Sprintf("%T", event.Object))
 			return false, nil
 		}
+		// Events carry the shared object from the informer cache, the callbacks get their own copy
+		eventObj = eventObj.DeepCopyObject().(client.Object)
 
 		switch event.Type {
 		case watch.Added, watch.Modified:
@@ -117,7 +96,8 @@ func WatchUntilDone(
 					"kind", obj.GetObjectKind().GroupVersionKind().Kind,
 					"namespace", targetNamespace,
 					"name", targetName)
-				return true, checkSuccess(eventObj)
+				resultErr = checkSuccess(eventObj)
+				return true, nil
 			}
 			log.V(1).Info("Resource updated but not yet complete")
 			return false, nil
@@ -136,14 +116,64 @@ func WatchUntilDone(
 		}
 	}
 
-	// Use UntilWithoutRetry for watching with the condition
-	// We don't need the full retry machinery since we're watching a single resource
-	_, err = watchtools.UntilWithoutRetry(ctx, watcher, conditionFunc)
+	// Only list and watch the resource we're interested in
+	listOpts := func(o metav1.ListOptions) *client.ListOptions {
+		return &client.ListOptions{
+			Namespace:     targetNamespace,
+			FieldSelector: fields.OneTermEqualSelector("metadata.name", targetName),
+			Raw:           &o,
+		}
+	}
+
+	lw := &cache.ListWatch{
+		ListFunc: func(o metav1.ListOptions) (runtime.Object, error) {
+			list := listObj.DeepCopyObject().(client.ObjectList)
+			return list, c.List(ctx, list, listOpts(o))
+		},
+		WatchFunc: func(o metav1.ListOptions) (watch.Interface, error) {
+			return c.Watch(ctx, listObj.DeepCopyObject().(client.ObjectList), listOpts(o))
+		},
+	}
+
+	// Check the synced state first, the resource might already be done
+	precondition := func(store cache.Store) (bool, error) {
+		item, exists, err := store.GetByKey(targetNamespace + "/" + targetName)
+		if err != nil {
+			return false, fmt.Errorf("failed to load resource from cache: %w", err)
+		}
+		if !exists {
+			return false, fmt.Errorf("resource %s/%s not found", targetNamespace, targetName)
+		}
+
+		current, ok := item.(client.Object)
+		if !ok {
+			return false, fmt.Errorf("unexpected object type %T", item)
+		}
+		// Objects from the informer cache are shared, the callbacks get their own copy
+		current = current.DeepCopyObject().(client.Object)
+		if checkDone(current) {
+			log.Info("Resource already in terminal state")
+			resultErr = checkSuccess(current)
+			return true, nil
+		}
+		return false, nil
+	}
+
+	log.Info("Watching resource for completion",
+		"kind", obj.GetObjectKind().GroupVersionKind().Kind,
+		"namespace", targetNamespace,
+		"name", targetName,
+		"timeout", timeout)
+
+	// UntilWithSync is backed by an informer, so closed watches (API server timeouts,
+	// restarts, proxies) and "resource version too old" errors are recovered from.
+	// The timeout on ctx still applies to the whole wait.
+	_, err := watchtools.UntilWithSync(ctx, lw, obj, precondition, conditionFunc)
 	if err != nil {
 		return fmt.Errorf("watch failed: %w", err)
 	}
 
-	return nil
+	return resultErr
 }
 
 // BaseRunner contains common fields shared by all backup runner implementations
@@ -158,7 +188,7 @@ func NewBaseRunner(c client.WithWatch, log logr.Logger) BaseRunner {
 	return BaseRunner{
 		k8sClient: c,
 		log:       log,
-		timeout:   1 * time.Hour,
+		timeout:   6 * time.Hour,
 	}
 }
 
@@ -181,4 +211,37 @@ func IsClusterSuspended(instances int, log logr.Logger, namespace string) bool {
 		return true
 	}
 	return false
+}
+
+const (
+	// BackupTypeLabelKey marks the purpose of a backup resource created by AppCat
+	BackupTypeLabelKey = "appcat.vshn.io/backup-type"
+	// BackupTypePreMaintenance is the label value for pre-maintenance backups
+	BackupTypePreMaintenance = "pre-maintenance"
+)
+
+// PreMaintenanceLabels returns the labels put on every pre-maintenance backup resource
+func PreMaintenanceLabels() map[string]string {
+	return map[string]string{
+		BackupTypeLabelKey: BackupTypePreMaintenance,
+	}
+}
+
+// CleanupPreviousBackups removes leftover pre-maintenance backup resources of the given type
+// from the namespace. Failed or timed out runs leave their resource behind, and every run uses
+// a new timestamped name, so without this they pile up.
+func CleanupPreviousBackups(ctx context.Context, c client.Client, obj client.Object, namespace string, log logr.Logger) error {
+	log.Info("Removing previous pre-maintenance backups", "namespace", namespace)
+
+	err := c.DeleteAllOf(
+		ctx, obj,
+		client.InNamespace(namespace),
+		client.MatchingLabels(PreMaintenanceLabels()),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to remove previous pre-maintenance backups: %w", err)
+	}
+
+	return nil
 }

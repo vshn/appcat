@@ -9,12 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
-	"github.com/vshn/appcat/v4/pkg"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestStackGresBackupRunner_RunBackup(t *testing.T) {
@@ -70,8 +68,7 @@ func TestStackGresBackupRunner_RunBackup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeClient := fake.NewClientBuilder().
-				WithScheme(pkg.SetupScheme()).
+			fakeClient := newWatchableClientBuilder(&batchv1.Job{}).
 				WithObjects(tt.existingObjs...).
 				WithStatusSubresource(&batchv1.Job{}).
 				Build()
@@ -270,21 +267,19 @@ func TestStackGresBackupRunner_checkDone(t *testing.T) {
 }
 
 func TestNewStackGresBackupRunner(t *testing.T) {
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&batchv1.Job{}).
 		Build()
 
 	runner := NewStackGresBackupRunner(fakeClient, logr.Discard())
 
 	require.NotNil(t, runner)
-	assert.Equal(t, 1*time.Hour, runner.timeout)
+	assert.Equal(t, 6*time.Hour, runner.timeout)
 	assert.NotNil(t, runner.k8sClient)
 }
 
 func TestStackGresBackupRunner_JobLabels(t *testing.T) {
 	// Test that the created job has the correct labels
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&batchv1.Job{}).
 		WithObjects(
 			&stackgresv1.SGCluster{
 				ObjectMeta: metav1.ObjectMeta{

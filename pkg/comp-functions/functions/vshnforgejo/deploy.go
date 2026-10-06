@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
@@ -229,10 +230,6 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		common.SetNestedObjectValue(values, []string{"gitea", "config", "APP_NAME"}, appName)
 	}
 
-	// Automagically inject the entirety of VSHNForgejoConfig into values.
-	// User config sections are deep-merged into the defaults set above,
-	// so setting a single key (e.g. server.LANDING_PAGE) does not wipe
-	// the rest of the section (e.g. server.DOMAIN/ROOT_URL).
 	svc.Log.Info("Updating forgejo settings")
 	var objmap map[string]any
 	o, err := json.Marshal(comp.Spec.Parameters.Service.ForgejoSettings.Config)
@@ -244,28 +241,23 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		return err
 	}
 
+	// Filter before merging so rejected entries leave defaults intact.
+	dropUnsafeForgejoConfig(objmap)
+
 	giteaConfig := values["gitea"].(map[string]any)["config"].(map[string]any)
 	for section, v := range objmap {
 		if v == nil {
 			continue
 		}
 
-		// Merge into an existing default section instead of replacing it.
 		if userSection, ok := v.(map[string]any); ok {
 			if baseSection, ok := giteaConfig[section].(map[string]any); ok {
-				maps.Copy(baseSection, userSection) // user keys win per key
+				maps.Copy(baseSection, userSection)
 				continue
 			}
 		}
 		giteaConfig[section] = v
 	}
-
-	// These server keys are Appcat managed and need to be re-asserted after the merge
-	// so a user config can not break this config.
-	forgejoServer := giteaConfig["server"].(map[string]any)
-	forgejoServer["DOMAIN"] = comp.Spec.Parameters.Service.FQDN[0]
-	forgejoServer["ROOT_URL"] = "https://" + comp.Spec.Parameters.Service.FQDN[0]
-	forgejoServer["DISABLE_SSH"] = true
 
 	// Ingress / HTTPRoute
 	svcNameSuffix := "http"
@@ -323,6 +315,9 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 		}
 	}
 
+	// Run after all tenant values, including APP_NAME and ADMIN_EMAIL, are assigned.
+	protectForgejoConfig(giteaConfig, comp.Spec.Parameters.Service.FQDN[0])
+
 	// NewRelease doesn't actually use resName, but rather comp.GetName() as is
 	observedValues, err := common.GetObservedReleaseValues(svc, comp.GetName())
 	if err != nil {
@@ -348,6 +343,93 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 	}
 
 	return svc.SetDesiredComposedResource(release)
+}
+
+// The chart merges into an existing app.ini, so safety switches must be explicit.
+func protectForgejoConfig(config map[string]any, fqdn string) {
+	dropUnsafeForgejoConfig(config)
+
+	for section, managed := range map[string]map[string]any{
+		"server": {
+			"DOMAIN":      fqdn,
+			"ROOT_URL":    "https://" + fqdn,
+			"DISABLE_SSH": true,
+		},
+		"security": {
+			"REVERSE_PROXY_TRUSTED_PROXIES":            "*",
+			"INSTALL_LOCK":                             true,
+			"DISABLE_GIT_HOOKS":                        true,
+			"IMPORT_LOCAL_PATHS":                       false,
+			"ONLY_ALLOW_PUSH_IF_GITEA_ENVIRONMENT_SET": true,
+		},
+		"service": {
+			// All proxies are trusted, so header authentication must stay disabled.
+			"ENABLE_REVERSE_PROXY_AUTHENTICATION":     false,
+			"ENABLE_REVERSE_PROXY_AUTHENTICATION_API": false,
+			"ENABLE_REVERSE_PROXY_AUTO_REGISTRATION":  false,
+			"ENABLE_REVERSE_PROXY_EMAIL":              false,
+			"ENABLE_REVERSE_PROXY_FULL_NAME":          false,
+		},
+		"repository": {"ROOT": "/data/git/repositories"},
+	} {
+		sectionConfig, ok := config[section].(map[string]any)
+		if !ok {
+			sectionConfig = map[string]any{}
+			config[section] = sectionConfig
+		}
+		dropForgejoConfigKeys(sectionConfig, slices.Collect(maps.Keys(managed)))
+		maps.Copy(sectionConfig, managed)
+	}
+
+	// Preserve chart-generated secrets and reject alternate secret sources.
+	for section, keys := range map[string][]string{
+		"server": {"LFS_JWT_SECRET", "LFS_JWT_SECRET_URI", "LFS_JWT_SIGNING_ALGORITHM", "LFS_JWT_SIGNING_PRIVATE_KEY_FILE"},
+		"security": {
+			"REVERSE_PROXY_AUTHENTICATION_USER", "REVERSE_PROXY_AUTHENTICATION_EMAIL",
+			"REVERSE_PROXY_AUTHENTICATION_FULL_NAME", "REVERSE_PROXY_LIMIT",
+			"SECRET_KEY", "SECRET_KEY_URI", "INTERNAL_TOKEN", "INTERNAL_TOKEN_URI",
+		},
+		"oauth2": {"JWT_SECRET", "JWT_SECRET_URI", "JWT_SIGNING_ALGORITHM", "JWT_SIGNING_PRIVATE_KEY_FILE"},
+		"picture": {
+			// Leave avatar storage to the defaults.
+			"AVATAR_UPLOAD_PATH", "AVATAR_STORAGE_TYPE",
+			"REPOSITORY_AVATAR_UPLOAD_PATH", "REPOSITORY_AVATAR_STORAGE_TYPE",
+		},
+	} {
+		if sectionConfig, ok := config[section].(map[string]any); ok {
+			dropForgejoConfigKeys(sectionConfig, keys)
+		}
+	}
+}
+
+func dropForgejoConfigKeys(config map[string]any, protected []string) {
+	maps.DeleteFunc(config, func(key string, _ any) bool {
+		// Match the chart's key normalization.
+		return slices.Contains(protected, strings.ToUpper(strings.TrimSpace(key)))
+	})
+}
+
+func dropUnsafeForgejoConfig(config map[string]any) {
+	for key, value := range config {
+		if section, ok := value.(map[string]any); ok {
+			maps.DeleteFunc(section, isUnsafeForgejoEntry)
+			continue
+		}
+		if isUnsafeForgejoEntry(key, value) {
+			delete(config, key)
+		}
+	}
+}
+
+func isUnsafeForgejoEntry(key string, value any) bool {
+	// Reject encoded names, file reads, and injection into the chart's KEY=VALUE lines.
+	normalized := strings.ToUpper(strings.TrimSpace(key))
+	if strings.Contains(normalized, "_0X") || strings.HasSuffix(normalized, "__FILE") ||
+		strings.ContainsAny(key, "\"'\\\r\n=") {
+		return true
+	}
+	text, ok := value.(string)
+	return ok && strings.ContainsAny(text, "\r\n")
 }
 
 // Set compute resources in the values map

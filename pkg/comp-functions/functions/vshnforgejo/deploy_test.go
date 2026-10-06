@@ -3,6 +3,7 @@ package vshnforgejo
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -112,8 +113,6 @@ func TestDeployment(t *testing.T) {
 }
 
 func TestForgejoConfigMerge(t *testing.T) {
-	// configFromRelease runs addForgejo with the given user config and returns
-	// the composed gitea.config map.
 	configFromRelease := func(t *testing.T, cfg vshnv1.VSHNForgejoConfig) (map[string]any, string) {
 		svc, comp, secretName := bootstrapTest(t)
 		comp.Spec.Parameters.Service.ForgejoSettings.Config = cfg
@@ -136,14 +135,19 @@ func TestForgejoConfigMerge(t *testing.T) {
 		assert.Equal(t, true, server["OFFLINE_MODE"])
 	})
 
-	t.Run("OverrideNonLockedDefault_UserWins", func(t *testing.T) {
-		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{Server: map[string]string{
-			"OFFLINE_MODE": "false",
-			"LANDING_PAGE": "explore",
+	t.Run("OverrideNonLockedDefaultAndAddKeys_UserWins", func(t *testing.T) {
+		config, fqdn := configFromRelease(t, vshnv1.VSHNForgejoConfig{Server: map[string]string{
+			"OFFLINE_MODE":    "false",
+			"LANDING_PAGE":    "explore",
+			"CUSTOM_KEY":      "x",
+			"SSH_LISTEN_PORT": "9999",
 		}})
 		server := config["server"].(map[string]any)
 		assert.Equal(t, "false", server["OFFLINE_MODE"])
 		assert.Equal(t, "explore", server["LANDING_PAGE"])
+		assert.Equal(t, "x", server["CUSTOM_KEY"])
+		assert.Equal(t, "9999", server["SSH_LISTEN_PORT"])
+		assert.Equal(t, fqdn, server["DOMAIN"])
 	})
 
 	t.Run("OverrideLockedKeys_LockWins", func(t *testing.T) {
@@ -156,47 +160,6 @@ func TestForgejoConfigMerge(t *testing.T) {
 		assert.Equal(t, fqdn, server["DOMAIN"])
 		assert.Equal(t, "https://"+fqdn, server["ROOT_URL"])
 		assert.Equal(t, true, server["DISABLE_SSH"])
-	})
-
-	t.Run("AddNewServerKeys_Additive", func(t *testing.T) {
-		config, fqdn := configFromRelease(t, vshnv1.VSHNForgejoConfig{Server: map[string]string{
-			"CUSTOM_KEY":      "x",
-			"SSH_LISTEN_PORT": "9999",
-		}})
-		server := config["server"].(map[string]any)
-		assert.Equal(t, "x", server["CUSTOM_KEY"])
-		assert.Equal(t, "9999", server["SSH_LISTEN_PORT"])
-		// unrelated keys do not disturb the defaults
-		assert.Equal(t, fqdn, server["DOMAIN"])
-		assert.Equal(t, true, server["OFFLINE_MODE"])
-	})
-
-	t.Run("RepositoryMerge_RootDefaultPreserved", func(t *testing.T) {
-		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{Repository: map[string]string{
-			"DEFAULT_PRIVATE": "true",
-		}})
-		repo := config["repository"].(map[string]any)
-		assert.Equal(t, "/data/git/repositories", repo["ROOT"])
-		assert.Equal(t, "true", repo["DEFAULT_PRIVATE"])
-	})
-
-	t.Run("AdminMerge_DefaultPreserved", func(t *testing.T) {
-		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{Admin: map[string]string{
-			"DEFAULT_EMAIL_NOTIFICATIONS": "onmention",
-		}})
-		admin := config["admin"].(map[string]any)
-		assert.Equal(t, true, admin["SEND_NOTIFICATION_EMAIL_ON_NEW_USER"])
-		assert.Equal(t, "onmention", admin["DEFAULT_EMAIL_NOTIFICATIONS"])
-	})
-
-	t.Run("UnrelatedSectionWithoutDefault_SetWholesale", func(t *testing.T) {
-		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{Mailer: map[string]string{
-			"PROTOCOL":  "smtp",
-			"SMTP_ADDR": "mail.example.com",
-		}})
-		mailer := config["mailer"].(map[string]any)
-		assert.Equal(t, "smtp", mailer["PROTOCOL"])
-		assert.Equal(t, "mail.example.com", mailer["SMTP_ADDR"])
 	})
 
 	t.Run("CronArchiveCleanupOverride_DefaultScheduleKept", func(t *testing.T) {
@@ -216,6 +179,155 @@ func TestForgejoConfigMerge(t *testing.T) {
 		gc := config["cron.git_gc_repos"].(map[string]any)
 		assert.Equal(t, "@every 72h", gc["SCHEDULE"])
 		assert.Equal(t, "120s", gc["TIMEOUT"])
+	})
+
+	t.Run("ManagedKeys_ExactAndAliasSpellingsDropped", func(t *testing.T) {
+		config, fqdn := configFromRelease(t, vshnv1.VSHNForgejoConfig{
+			Server: map[string]string{
+				"domain": "evil.example.com", " ROOT_URL ": "http://evil.example.com", "disable_ssh": "false",
+			},
+			Security: map[string]string{
+				"disable_git_hooks": "false", "Import_Local_Paths": "true", " secret_key_uri ": "file:/tmp/secret",
+				"DISABLE_GIT_HOOKS__FILE": "/tmp/false", "_0X44495341424C455F4749545F484F4F4B53_": "false",
+				"\"IMPORT_LOCAL_PATHS\"":            "true",
+				"reverse_proxy_trusted_proxies":     "1.2.3.4",
+				"SECRET_KEY":                        "hijack",
+				"REVERSE_PROXY_LIMIT":               "5",
+				"REVERSE_PROXY_AUTHENTICATION_USER": "true",
+				"INSTALL_LOCK":                      "false",
+				"MIN_PASSWORD_LENGTH":               "12",
+			},
+			Picture:    map[string]string{"avatar_upload_path": "/tmp/avatars", "AVATAR_MAX_WIDTH": "1024"},
+			Repository: map[string]string{"root": "/tmp/repos", "ROOT": "/tmp/repos", "DEFAULT_PRIVATE": "true"},
+			GitConfig:  map[string]string{"remote.MyRemote.url": "https://example.com/repo.git"},
+		})
+
+		server := config["server"].(map[string]any)
+		assert.Equal(t, fqdn, server["DOMAIN"])
+		assert.Equal(t, "https://"+fqdn, server["ROOT_URL"])
+		assert.Equal(t, true, server["DISABLE_SSH"])
+		for _, key := range []string{"domain", " ROOT_URL ", "disable_ssh"} {
+			assert.NotContains(t, server, key)
+		}
+		assert.Equal(t, map[string]any{
+			"REVERSE_PROXY_TRUSTED_PROXIES": "*", "MIN_PASSWORD_LENGTH": "12",
+			"INSTALL_LOCK": true, "DISABLE_GIT_HOOKS": true, "IMPORT_LOCAL_PATHS": false,
+			"ONLY_ALLOW_PUSH_IF_GITEA_ENVIRONMENT_SET": true,
+		}, config["security"])
+		assert.Equal(t, map[string]any{"AVATAR_MAX_WIDTH": "1024"}, config["picture"])
+		assert.Equal(t, map[string]any{"ROOT": "/data/git/repositories", "DEFAULT_PRIVATE": "true"}, config["repository"])
+		assert.Equal(t, map[string]any{"remote.MyRemote.url": "https://example.com/repo.git"}, config["git.config"])
+	})
+
+	t.Run("ReverseProxyAuthentication_ExplicitlyDisabled", func(t *testing.T) {
+		for _, cfg := range []vshnv1.VSHNForgejoConfig{
+			{},
+			{Service: map[string]string{
+				"ENABLE_REVERSE_PROXY_AUTHENTICATION": "true", "enable_reverse_proxy_authentication": "true",
+				" Enable_Reverse_Proxy_Authentication_API ": "true", "ENABLE_REVERSE_PROXY_AUTO_REGISTRATION": "true",
+				"ENABLE_REVERSE_PROXY_EMAIL": "true", "ENABLE_REVERSE_PROXY_FULL_NAME": "true",
+				"DISABLE_REGISTRATION": "true",
+			}},
+		} {
+			config, _ := configFromRelease(t, cfg)
+			expected := map[string]any{
+				"ENABLE_REVERSE_PROXY_AUTHENTICATION": false, "ENABLE_REVERSE_PROXY_AUTHENTICATION_API": false,
+				"ENABLE_REVERSE_PROXY_AUTO_REGISTRATION": false, "ENABLE_REVERSE_PROXY_EMAIL": false, "ENABLE_REVERSE_PROXY_FULL_NAME": false,
+			}
+			if cfg.Service != nil {
+				expected["DISABLE_REGISTRATION"] = "true"
+			}
+			assert.Equal(t, expected, config["service"])
+		}
+	})
+
+	t.Run("TokenSigningOverrides_Dropped", func(t *testing.T) {
+		for _, keyCase := range []struct {
+			name string
+			key  func(string) string
+		}{
+			{"uppercase", strings.ToUpper},
+			{"lowercase", strings.ToLower},
+			{"whitespace", func(key string) string { return " " + key + " " }},
+			// _0X5F_ decodes to an underscore.
+			{"encoded", func(key string) string { return strings.ReplaceAll(key, "_", "_0X5F_") }},
+			{"file", func(key string) string { return key + "__FILE" }},
+		} {
+			t.Run(keyCase.name, func(t *testing.T) {
+				oauth2 := map[string]string{"ENABLED": "false"}
+				server := map[string]string{"LANDING_PAGE": "explore"}
+				for key, value := range map[string]string{
+					"JWT_SECRET": "replacement", "JWT_SECRET_URI": "file:/tmp/secret",
+					"JWT_SIGNING_ALGORITHM": "HS512", "JWT_SIGNING_PRIVATE_KEY_FILE": "/tmp/private.pem",
+				} {
+					oauth2[keyCase.key(key)] = value
+					server[keyCase.key("LFS_"+key)] = value
+				}
+				config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{OAuth2: oauth2, Server: server})
+				assert.Equal(t, map[string]any{"ENABLED": "false"}, config["oauth2"])
+				assert.Equal(t, "explore", config["server"].(map[string]any)["LANDING_PAGE"])
+				for key := range server {
+					if key != "LANDING_PAGE" {
+						assert.NotContains(t, config["server"], key)
+					}
+				}
+			})
+		}
+	})
+
+	t.Run("ValueNewline_Dropped", func(t *testing.T) {
+		config, fqdn := configFromRelease(t, vshnv1.VSHNForgejoConfig{
+			Server: map[string]string{"LANDING_PAGE": "login\nDISABLE_SSH=false"},
+			UI:     map[string]string{"THEMES": "forgejo\r\nSHOW_USER_EMAIL=true", "DEFAULT_THEME": "forgejo"},
+			// Sort after the managed key to exercise the chart's last-write-wins behavior.
+			Security: map[string]string{"ZZZ_CARRIER": "true\nDISABLE_GIT_HOOKS=false"},
+		})
+
+		server := config["server"].(map[string]any)
+		assert.Equal(t, true, server["DISABLE_SSH"])
+		assert.Equal(t, fqdn, server["DOMAIN"])
+		// Rejected overrides preserve defaults.
+		assert.Equal(t, "login", server["LANDING_PAGE"])
+		assert.Equal(t, map[string]any{"DEFAULT_THEME": "forgejo"}, config["ui"])
+		assert.NotContains(t, config["security"], "ZZZ_CARRIER")
+		assert.Equal(t, true, config["security"].(map[string]any)["DISABLE_GIT_HOOKS"])
+	})
+
+	t.Run("UnmanagedSections_IndirectKeysDropped", func(t *testing.T) {
+		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{
+			Mailer: map[string]string{
+				"PROTOCOL__FILE": "/tmp/protocol", "PROTOCOL_0X5F_URI": "smtp",
+				"SMTP_ADDR": "mail.example.com",
+			},
+			GitConfig: map[string]string{
+				"core.hooksPath__FILE": "/tmp/hooks", "remote.origin.url": "https://example.com/repo.git",
+			},
+		})
+
+		assert.Equal(t, map[string]any{"SMTP_ADDR": "mail.example.com"}, config["mailer"])
+		assert.Equal(t, map[string]any{"remote.origin.url": "https://example.com/repo.git"}, config["git.config"])
+	})
+
+	t.Run("DefaultsWithQuotedValues_Kept", func(t *testing.T) {
+		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{})
+		assert.Equal(t, "'{\"size\":100, \"recent_ratio\":0.25, \"ghost_ratio\":0.5}'",
+			config["cache"].(map[string]any)["HOST"])
+	})
+
+	t.Run("SectionLessAndLateValues_Scrubbed", func(t *testing.T) {
+		svc, comp, secretName := bootstrapTest(t)
+		comp.Spec.Parameters.Service.ForgejoSettings.AppName = "Forge\nDISABLE_SSH=false"
+		comp.Spec.Parameters.Service.AdminEmail = "admin@example.com\nINSTALL_LOCK=false"
+		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))
+
+		release := &xhelmv1.Release{}
+		assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
+		config := getReleaseValues(t, *release)["gitea"].(map[string]any)["config"].(map[string]any)
+
+		assert.NotContains(t, config, "APP_NAME")
+		assert.NotContains(t, config["admin"], "ADMIN_EMAIL")
+		assert.Equal(t, true, config["server"].(map[string]any)["DISABLE_SSH"])
+		assert.Equal(t, true, config["security"].(map[string]any)["INSTALL_LOCK"])
 	})
 }
 

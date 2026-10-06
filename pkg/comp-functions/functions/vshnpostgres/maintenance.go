@@ -74,6 +74,8 @@ var (
 			},
 			Verbs: []string{
 				"create",
+				"delete",
+				"deletecollection",
 				"get",
 				"list",
 				"watch",

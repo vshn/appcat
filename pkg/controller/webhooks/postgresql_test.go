@@ -243,10 +243,10 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	_, err = handler.ValidateCreate(ctx, pgValid)
 	assert.NoError(t, err)
 
-	// check pgSettings
+	// check pgSettings, blocklist of the default composition (CNPG)
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
-		Raw: []byte(`{"fsync": "bar"}`),
+		Raw: []byte(`{"archive_mode": "bar"}`),
 	}
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
@@ -254,9 +254,18 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 	// check pgSettings
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
-		Raw: []byte(`{"fsync": "bar", "wal_level": "foo", "max_connections": "bar"}`),
+		Raw: []byte(`{"archive_mode": "bar", "listen_addresses": "foo", "max_connections": "bar"}`),
 	}
 
+	_, err = handler.ValidateCreate(ctx, pgInvalid)
+	assert.Error(t, err)
+
+	// check pgSettings, StackGres blocklist on an explicit StackGres instance
+	pgInvalid = pgOrig.DeepCopy()
+	pgInvalid.Spec.CompositionRef.Name = "vshnpostgres.vshn.appcat.vshn.io"
+	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
+		Raw: []byte(`{"fsync": "bar"}`),
+	}
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
 }
@@ -323,7 +332,7 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 	// check pgSettings with single bad setting
 	pgInvalid := pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
-		Raw: []byte(`{"fsync": "bar"}`),
+		Raw: []byte(`{"archive_mode": "bar"}`),
 	}
 	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
 	assert.Error(t, err)
@@ -331,7 +340,7 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 	// check pgSettings, startiong with valid settings
 	pgInvalid = pgOrig.DeepCopy()
 	pgInvalid.Spec.Parameters.Service.PostgreSQLSettings = runtime.RawExtension{
-		Raw: []byte(`{"foo": "bar", "fsync": "bar", "wal_level": "foo", "max_connections": "bar"}`),
+		Raw: []byte(`{"foo": "bar", "archive_mode": "bar", "listen_addresses": "foo", "max_connections": "bar"}`),
 	}
 	_, err = handler.ValidateUpdate(ctx, pgOrig, pgInvalid)
 	assert.Error(t, err)
@@ -824,188 +833,115 @@ func TestXVSHNPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestValidateCNPGExtensionFields(t *testing.T) {
-	tests := []struct {
-		name        string
-		pg          *vshnv1.VSHNPostgreSQL
-		expectErr   bool
-		errContains string
-	}{
-		{
-			name: "GivenNoExtensions_ThenNoError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{},
-			},
-			expectErr: false,
-		},
-		{
-			name: "GivenExtensionWithoutImageFields_ThenNoError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector"},
-							},
-						},
-					},
-				},
-			},
-			expectErr: false,
-		},
-		{
-			name: "GivenExtensionWithImageOnCNPGAndVersion18_ThenNoError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							MajorVersion: "18",
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
-							},
-						},
-					},
-				},
-			},
-			expectErr: false,
-		},
-		{
-			name: "GivenExtensionWithImagePullPolicyOnCNPGAndVersion18_ThenNoError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							MajorVersion: "18",
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector", ImagePullPolicy: "Always"},
-							},
-						},
-					},
-				},
-			},
-			expectErr: false,
-		},
-		{
-			name: "GivenExtensionWithImageOnStackGres_ThenError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							MajorVersion: "18",
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
-							},
-						},
-					},
-				},
-			},
-			expectErr:   true,
-			errContains: "image is only supported for CloudNativePG",
-		},
-		{
-			name: "GivenExtensionWithImagePullPolicyOnStackGres_ThenError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							MajorVersion: "18",
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector", ImagePullPolicy: "IfNotPresent"},
-							},
-						},
-					},
-				},
-			},
-			expectErr:   true,
-			errContains: "imagePullPolicy is only supported for CloudNativePG",
-		},
-		{
-			name: "GivenExtensionWithImageAndNoCompositionRef_ThenError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							MajorVersion: "18",
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
-							},
-						},
-					},
-				},
-			},
-			expectErr:   true,
-			errContains: "image is only supported for CloudNativePG",
-		},
-		{
-			name: "GivenExtensionWithImageOnCNPGButVersionBelow18_ThenError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							MajorVersion: "17",
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
-							},
-						},
-					},
-				},
-			},
-			expectErr:   true,
-			errContains: "image is only supported for PostgreSQL 18 and above",
-		},
-		{
-			name: "GivenExtensionWithImagePullPolicyOnCNPGButVersionBelow18_ThenError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							MajorVersion: "16",
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector", ImagePullPolicy: "Always"},
-							},
-						},
-					},
-				},
-			},
-			expectErr:   true,
-			errContains: "imagePullPolicy is only supported for PostgreSQL 18 and above",
-		},
-		{
-			name: "GivenExtensionWithImageOnCNPGAndVersion19_ThenNoError",
-			pg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters: vshnv1.VSHNPostgreSQLParameters{
-						Service: vshnv1.VSHNPostgreSQLServiceSpec{
-							MajorVersion: "19",
-							Extensions: []vshnv1.VSHNDBaaSPostgresExtension{
-								{Name: "pgvector", Image: "ghcr.io/vshn/pgvector:latest"},
-							},
-						},
-					},
-				},
-			},
-			expectErr: false,
+func TestXVSHNPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
+	ctx := context.TODO()
+	handler := XVSHNPostgreSQLWebhookHandler{}
+
+	base := &vshnv1.XVSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "keycloak-pg",
+			Namespace: "vshn-keycloak-myinstance",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			errs := validateCNPGExtensionFields(tt.pg)
-			if tt.expectErr {
-				assert.NotEmpty(t, errs)
-				assert.Contains(t, errs.ToAggregate().Error(), tt.errContains)
-			} else {
-				assert.Empty(t, errs)
-			}
-		})
+	// Allow: CNPG instances
+	cnpg := base.DeepCopy()
+	cnpg.Spec.CompositionRef.Name = cnpgCompositionRef
+	_, err := handler.ValidateCreate(ctx, cnpg)
+	assert.NoError(t, err)
+
+	// Reject: new StackGres instances
+	stackgres := base.DeepCopy()
+	stackgres.Spec.CompositionRef.Name = "vshnpostgres.vshn.appcat.vshn.io"
+	_, err = handler.ValidateCreate(ctx, stackgres)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "provisioning of new StackGres instances is not allowed")
+
+	// Allow: compositionRef not set yet, the default composition is CNPG
+	_, err = handler.ValidateCreate(ctx, base)
+	assert.NoError(t, err)
+}
+
+func TestPostgreSQLWebhookHandler_ValidateCreateBlocksStackGres(t *testing.T) {
+	ctx := context.TODO()
+	claimNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "claimns",
+			Labels: map[string]string{
+				utils.OrgLabelName: "myorg",
+			},
+		},
 	}
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		WithObjects(claimNS).
+		Build()
+
+	handler := PostgreSQLWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNPostgreSQL{},
+			name:       "postgresql",
+			nameLength: 30,
+		},
+	}
+	pgOrig := &vshnv1.VSHNPostgreSQL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myinstance",
+			Namespace: "claimns",
+		},
+		Spec: vshnv1.VSHNPostgreSQLSpec{
+			Parameters: vshnv1.VSHNPostgreSQLParameters{
+				Instances: 1,
+				Service: vshnv1.VSHNPostgreSQLServiceSpec{
+					RepackEnabled: true,
+					MajorVersion:  "15",
+				},
+			},
+		},
+	}
+
+	// Allow: compositionRef not set yet, the default composition is CNPG
+	_, err := handler.ValidateCreate(ctx, pgOrig)
+	assert.NoError(t, err)
+
+	// Allow: CNPG instances
+	cnpg := pgOrig.DeepCopy()
+	cnpg.Spec.CompositionRef.Name = cnpgCompositionRef
+	_, err = handler.ValidateCreate(ctx, cnpg)
+	assert.NoError(t, err)
+
+	// Reject: new StackGres instances
+	stackgres := pgOrig.DeepCopy()
+	stackgres.Spec.CompositionRef.Name = "vshnpostgres.vshn.appcat.vshn.io"
+	_, err = handler.ValidateCreate(ctx, stackgres)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "provisioning of new StackGres instances is not allowed")
+
+	// Allow: updating an existing StackGres instance
+	_, err = handler.ValidateUpdate(ctx, stackgres, stackgres.DeepCopy())
+	assert.NoError(t, err)
+}
+
+func TestValidatorFor(t *testing.T) {
+	cnpg := &vshnv1.VSHNPostgreSQL{
+		Spec: vshnv1.VSHNPostgreSQLSpec{
+			CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
+		},
+	}
+	assert.IsType(t, cnpgValidator{}, validatorFor(cnpg))
+
+	stackgres := &vshnv1.VSHNPostgreSQL{
+		Spec: vshnv1.VSHNPostgreSQLSpec{
+			CompositionRef: cpv1.CompositionReference{Name: "vshnpostgres.vshn.appcat.vshn.io"},
+		},
+	}
+	assert.IsType(t, stackgresValidator{}, validatorFor(stackgres))
+
+	// An unset compositionRef means the default composition, which is CNPG.
+	assert.IsType(t, cnpgValidator{}, validatorFor(&vshnv1.VSHNPostgreSQL{}))
 }
 
 // disabling this temporarily
@@ -1176,148 +1112,3 @@ func TestValidateCNPGExtensionFields(t *testing.T) {
 // 		})
 // 	}
 // }
-
-func TestValidateMajorVersionUpgrade(t *testing.T) {
-	stackgresRef := "vshnpostgres.vshn.appcat.vshn.io"
-
-	tests := []struct {
-		name        string
-		newPg       *vshnv1.VSHNPostgreSQL
-		oldPg       *vshnv1.VSHNPostgreSQL
-		wantErr     bool
-		errContains string
-	}{
-		// --- StackGres: any version change blocked ---
-		{
-			name: "GivenStackGres_SameVersion_ThenNoError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: stackgresRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "15"}},
-				},
-			},
-			oldPg: &vshnv1.VSHNPostgreSQL{
-				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
-			},
-			wantErr: false,
-		},
-		{
-			name: "GivenStackGres_MajorUpgrade_ThenError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: stackgresRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "16"}},
-				},
-			},
-			oldPg: &vshnv1.VSHNPostgreSQL{
-				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
-			},
-			wantErr:     true,
-			errContains: "major version upgrade is not allowed",
-		},
-		{
-			name: "GivenStackGres_MajorDowngrade_ThenError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: stackgresRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "14"}},
-				},
-			},
-			oldPg: &vshnv1.VSHNPostgreSQL{
-				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
-			},
-			wantErr:     true,
-			errContains: "major version upgrade is not allowed",
-		},
-		// --- CNPG: upgrades allowed, downgrades blocked ---
-		{
-			name: "GivenCNPG_SameVersion_ThenNoError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "15"}},
-				},
-			},
-			oldPg: &vshnv1.VSHNPostgreSQL{
-				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
-			},
-			wantErr: false,
-		},
-		{
-			name: "GivenCNPG_MajorUpgrade_ThenNoError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "16"}},
-				},
-			},
-			oldPg: &vshnv1.VSHNPostgreSQL{
-				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
-			},
-			wantErr: false,
-		},
-		{
-			name: "GivenCNPG_MajorDowngrade_ThenError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "14"}},
-				},
-			},
-			oldPg: &vshnv1.VSHNPostgreSQL{
-				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15"},
-			},
-			wantErr:     true,
-			errContains: "downgrading from",
-		},
-		{
-			name: "GivenCNPG_FullCurrentVersion_MajorUpgrade_ThenNoError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "16"}},
-				},
-			},
-			oldPg: &vshnv1.VSHNPostgreSQL{
-				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15.9"},
-			},
-			wantErr: false,
-		},
-		{
-			name: "GivenCNPG_FullCurrentVersion_MajorDowngrade_ThenError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "14"}},
-				},
-			},
-			oldPg: &vshnv1.VSHNPostgreSQL{
-				Status: vshnv1.VSHNPostgreSQLStatus{CurrentVersion: "15.9"},
-			},
-			wantErr:     true,
-			errContains: "downgrading from",
-		},
-		{
-			name: "GivenCNPG_NoCurrentVersion_ThenNoError",
-			newPg: &vshnv1.VSHNPostgreSQL{
-				Spec: vshnv1.VSHNPostgreSQLSpec{
-					CompositionRef: cpv1.CompositionReference{Name: cnpgCompositionRef},
-					Parameters:     vshnv1.VSHNPostgreSQLParameters{Service: vshnv1.VSHNPostgreSQLServiceSpec{MajorVersion: "16"}},
-				},
-			},
-			oldPg:   &vshnv1.VSHNPostgreSQL{},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			errs := validateMajorVersionUpgrade(tt.newPg, tt.oldPg)
-			if tt.wantErr {
-				assert.NotEmpty(t, errs)
-				assert.Contains(t, errs.ToAggregate().Error(), tt.errContains)
-			} else {
-				assert.Empty(t, errs)
-			}
-		})
-	}
-}

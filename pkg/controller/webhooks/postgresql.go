@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
-	"github.com/blang/semver/v4"
 	"github.com/vshn/appcat/v4/pkg/common/quotas"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -25,8 +23,9 @@ import (
 // See https://book.kubebuilder.io/reference/markers/webhook for docs
 //+kubebuilder:webhook:verbs=create;update;delete,path=/validate-vshn-appcat-vshn-io-v1-vshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=vshnpostgresqls,versions=v1,name=postgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
-// Protect the XVSHNPostgreSQL composite from having its compositionRef changed once set.
-//+kubebuilder:webhook:verbs=update,path=/validate-vshn-appcat-vshn-io-v1-xvshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,versions=v1,name=xvshnpostgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
+// Protect the XVSHNPostgreSQL composite from having its compositionRef changed once set
+// and block the provisioning of new StackGres instances.
+//+kubebuilder:webhook:verbs=create;update,path=/validate-vshn-appcat-vshn-io-v1-xvshnpostgresql,mutating=false,failurePolicy=fail,groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,versions=v1,name=xvshnpostgresql.vshn.appcat.vshn.io,sideEffects=None,admissionReviewVersions=v1
 
 //RBAC
 //+kubebuilder:rbac:groups=vshn.appcat.vshn.io,resources=xvshnpostgresqls,verbs=get;list;watch;patch;update
@@ -51,28 +50,24 @@ var (
 
 	_ webhook.CustomValidator = &PostgreSQLWebhookHandler{}
 	_ webhook.CustomValidator = &XVSHNPostgreSQLWebhookHandler{}
-
-	blocklist = map[string]string{
-		"listen_addresses":      "",
-		"port":                  "",
-		"cluster_name":          "",
-		"hot_standby":           "",
-		"fsync":                 "",
-		"full_page_writes":      "",
-		"log_destination":       "",
-		"logging_collector":     "",
-		"max_replication_slots": "",
-		"max_wal_senders":       "",
-		"wal_keep_segments":     "",
-		"wal_level":             "",
-		"wal_log_hints":         "",
-		"archive_mode":          "",
-		"archive_command":       "",
-	}
 )
+
+type pgValidator interface {
+	// oldPg is nil on create
+	validate(newPg, oldPg *vshnv1.VSHNPostgreSQL) field.ErrorList
+}
 
 type PostgreSQLWebhookHandler struct {
 	DefaultWebhookHandler
+}
+
+// validatorFor picks the validator for the PostgreSQL implementation the instance runs on.
+// An empty compositionRef means the default composition, which is CNPG.
+func validatorFor(pg *vshnv1.VSHNPostgreSQL) pgValidator {
+	if pg.Spec.CompositionRef.Name == "" || pg.Spec.CompositionRef.Name == cnpgCompositionRef {
+		return cnpgValidator{}
+	}
+	return stackgresValidator{}
 }
 
 func SetupPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager, withQuota bool) error {
@@ -104,8 +99,17 @@ func SetupXVSHNPostgreSQLWebhookHandlerWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-func (x *XVSHNPostgreSQLWebhookHandler) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
-	return nil, nil
+func (x *XVSHNPostgreSQLWebhookHandler) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	newPg, ok := obj.(*vshnv1.XVSHNPostgreSQL)
+	if !ok {
+		return nil, fmt.Errorf("provided manifest is not a valid XVSHNPostgreSQL object")
+	}
+
+	allErrs := newFielErrors(newPg.Name, xpgGK)
+	if err := validateNoNewStackGres(newPg.Spec.CompositionRef.Name); err != nil {
+		allErrs.Add(err)
+	}
+	return nil, allErrs.Get()
 }
 
 func (x *XVSHNPostgreSQLWebhookHandler) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -178,8 +182,6 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 	if err := p.validateResourceNameLength(newPg.GetName()); err != nil {
 		allErrs.Add(err)
 	}
-	// Validate PostgreSQL configuration
-	allErrs.Add(validatePgConf(newPg)...)
 
 	// Validate pinImageTag matches majorVersion
 	if err := validatePinImageTag(
@@ -189,11 +191,17 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 		allErrs.Add(err)
 	}
 
-	// Validate that image/imagePullPolicy on extensions are only used with CNPG
-	allErrs.Add(validateCNPGExtensionFields(newPg)...)
+	// oldPg stays nil on create
+	var oldPg *vshnv1.VSHNPostgreSQL
 
-	if !isCreate {
-		oldPg, ok := oldObj.(*vshnv1.VSHNPostgreSQL)
+	if isCreate {
+		// Block the provisioning of new StackGres instances
+		if err := validateNoNewStackGres(newPg.Spec.CompositionRef.Name); err != nil {
+			allErrs.Add(err)
+		}
+	} else {
+		var ok bool
+		oldPg, ok = oldObj.(*vshnv1.VSHNPostgreSQL)
 		if !ok {
 			return nil, fmt.Errorf("provided manifest is not a valid VSHNPostgreSQL object")
 		}
@@ -212,11 +220,6 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 			allErrs.Add(diskErr)
 		}
 
-		// Validate major upgrades
-		if errList := validateMajorVersionUpgrade(newPg, oldPg); errList != nil {
-			allErrs.Add(errList...)
-		}
-
 		// Validate encryption changes
 		newEncryption := &newPg.Spec.Parameters.Encryption
 		oldEncryption := &oldPg.Spec.Parameters.Encryption
@@ -225,6 +228,9 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 			allErrs.Add(err)
 		}
 	}
+
+	// Validate everything that depends on the PostgreSQL implementation in use
+	allErrs.Add(validatorFor(newPg).validate(newPg, oldPg)...)
 
 	return nil, allErrs.Get()
 }
@@ -332,7 +338,9 @@ func validateVacuumRepack(vacuum, repack bool) *field.Error {
 	return nil
 }
 
-func validatePgConf(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
+// validatePgConf checks the PostgreSQL settings against the blocklist of the
+// implementation in use. detail is the message reported for blocked settings.
+func validatePgConf(pg *vshnv1.VSHNPostgreSQL, blocklist map[string]struct{}, detail string) field.ErrorList {
 	allErrs := field.ErrorList{}
 	pgConfBytes := pg.Spec.Parameters.Service.PostgreSQLSettings
 	pgConf := map[string]string{}
@@ -345,87 +353,11 @@ func validatePgConf(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
 
 	for key := range pgConf {
 		if _, blocked := blocklist[key]; blocked {
-			allErrs = append(allErrs, field.Forbidden(field.NewPath(fmt.Sprintf("spec.parameters.service.postgresqlSettings[%s]", key)), "https://stackgres.io/doc/latest/api/responses/error/#postgres-blocklist"))
+			allErrs = append(allErrs, field.Forbidden(field.NewPath(fmt.Sprintf("spec.parameters.service.postgresqlSettings[%s]", key)), detail))
 		}
 	}
 
 	return allErrs
-}
-
-func validateMajorVersionUpgrade(newPg *vshnv1.VSHNPostgreSQL, oldPg *vshnv1.VSHNPostgreSQL) (errList field.ErrorList) {
-	// CNPG supports major version upgrades but not downgrades; StackGres does not support either.
-	if newPg.Spec.CompositionRef.Name == cnpgCompositionRef {
-		if err := validateNoDowngrade(
-			oldPg.Status.CurrentVersion,
-			newPg.Spec.Parameters.Service.MajorVersion,
-			field.NewPath("spec", "parameters", "service", "majorVersion"),
-		); err != nil {
-			errList = append(errList, err)
-		}
-		return errList
-	}
-
-	newVersion, err := strconv.Atoi(newPg.Spec.Parameters.Service.MajorVersion)
-	if err != nil {
-		errList = append(errList, field.Invalid(
-			field.NewPath("spec.parameters.service.majorVersion"),
-			newPg.Spec.Parameters.Service.MajorVersion,
-			fmt.Sprintf("invalid major version: %s", err.Error()),
-		))
-	}
-	var oldVersion int
-	if oldPg.Status.CurrentVersion == "" {
-		oldVersion = newVersion
-	} else {
-		// CurrentVersion can be either major version ("15") or full version ("15.9")
-		// Extract just the major version part
-		currentVersion := oldPg.Status.CurrentVersion
-		if idx := strings.Index(currentVersion, "."); idx > 0 {
-			currentVersion = currentVersion[:idx]
-		}
-		oldVersion, err = strconv.Atoi(currentVersion)
-		if err != nil {
-			errList = append(errList, field.Invalid(
-				field.NewPath("status.currentVersion"),
-				oldPg.Status.CurrentVersion,
-				fmt.Sprintf("invalid major version: %s", err.Error()),
-			))
-		}
-	}
-
-	if newVersion != oldVersion {
-		errList = append(errList, field.Invalid(
-			field.NewPath("spec.parameters.service.majorVersion"),
-			newPg.Spec.Parameters.Service.MajorVersion,
-			"major version upgrade is not allowed.",
-		))
-		return errList
-	}
-
-	// Check if the upgrade is allowed
-	if newVersion != oldVersion {
-		if oldVersion != newVersion-1 {
-			errList = append(errList, field.Forbidden(
-				field.NewPath("spec.parameters.service.majorVersion"),
-				"only one major version upgrade at a time is allowed",
-			))
-		}
-		for _, e := range oldPg.Spec.Parameters.Service.Extensions {
-			if e.Name == "timescaledb" || e.Name == "postgis" {
-				errList = append(errList, field.Forbidden(
-					field.NewPath("spec.parameters.service.majorVersion"),
-					"major upgrades are not supported for instances with timescaledb or postgis extensions",
-				))
-			}
-		}
-		if newPg.Spec.Parameters.Instances > 1 {
-			errList = append(errList, field.Forbidden(
-				field.NewPath("spec.parameters.instances"),
-				"major upgrades are not supported for HA instances",
-			))
-		}
-	}
-	return errList
 }
 
 func validatePostgreSQLEncryptionChanges(newEncryption, oldEncryption *vshnv1.VSHNPostgreSQLEncryption, fieldPath string) *field.Error {
@@ -439,68 +371,24 @@ func validatePostgreSQLEncryptionChanges(newEncryption, oldEncryption *vshnv1.VS
 	return nil
 }
 
+// validateNoNewStackGres blocks the provisioning of new StackGres instances.
+// An empty compositionRef means the default composition, which is CNPG.
+func validateNoNewStackGres(compositionRef string) *field.Error {
+	if compositionRef != "" && compositionRef != cnpgCompositionRef {
+		return field.Forbidden(
+			field.NewPath("spec", "compositionRef"),
+			"provisioning of new StackGres instances is not allowed",
+		)
+	}
+	return nil
+}
+
 // validateCompositionRefImmutability returns a Forbidden error if the compositionRef name has changed after being set
 func validateCompositionRefImmutability(oldRef, newRef string) *field.Error {
 	if oldRef != "" && newRef != oldRef {
 		return field.Forbidden(field.NewPath("spec", "compositionRef"), "compositionRef is immutable")
 	}
 	return nil
-}
-
-// isMajorVersionAtLeast returns true if version >= minVersion (both as major version strings like "18").
-// Returns false if either value cannot be parsed.
-func isMajorVersionAtLeast(version, minVersion string) bool {
-	v, err := strconv.Atoi(version)
-	if err != nil {
-		return false
-	}
-	min, err := strconv.Atoi(minVersion)
-	if err != nil {
-		return false
-	}
-	return v >= min
-}
-
-// validateCNPGExtensionFields ensures that the image and imagePullPolicy fields on extensions
-// are only set when the CNPG composition is explicitly selected via compositionRef and
-// the PostgreSQL major version is at least cnpgExtensionMinMajorVersion.
-func validateCNPGExtensionFields(pg *vshnv1.VSHNPostgreSQL) field.ErrorList {
-	allErrs := field.ErrorList{}
-	for i, ext := range pg.Spec.Parameters.Service.Extensions {
-		if ext.Image == "" && ext.ImagePullPolicy == "" {
-			continue
-		}
-		basePath := field.NewPath("spec", "parameters", "service", "extensions").Index(i)
-		if pg.Spec.CompositionRef.Name != cnpgCompositionRef {
-			if ext.Image != "" {
-				allErrs = append(allErrs, field.Forbidden(
-					basePath.Child("image"),
-					"image is only supported for CloudNativePG",
-				))
-			}
-			if ext.ImagePullPolicy != "" {
-				allErrs = append(allErrs, field.Forbidden(
-					basePath.Child("imagePullPolicy"),
-					"imagePullPolicy is only supported for CloudNativePG",
-				))
-			}
-		}
-		if !isMajorVersionAtLeast(pg.Spec.Parameters.Service.MajorVersion, cnpgExtensionMinMajorVersion) {
-			if ext.Image != "" {
-				allErrs = append(allErrs, field.Forbidden(
-					basePath.Child("image"),
-					fmt.Sprintf("image is only supported for PostgreSQL %s and above", cnpgExtensionMinMajorVersion),
-				))
-			}
-			if ext.ImagePullPolicy != "" {
-				allErrs = append(allErrs, field.Forbidden(
-					basePath.Child("imagePullPolicy"),
-					fmt.Sprintf("imagePullPolicy is only supported for PostgreSQL %s and above", cnpgExtensionMinMajorVersion),
-				))
-			}
-		}
-	}
-	return allErrs
 }
 
 // validatePinImageTag validates that pinImageTag's major version matches the specified majorVersion
@@ -523,26 +411,5 @@ func validatePinImageTag(pinImageTag, majorVersion string) *field.Error {
 		)
 	}
 
-	return nil
-}
-
-// validateNoDowngrade returns an error if newVersion is lower than oldVersion.
-// Both versions are parsed tolerantly, so plain major versions ("15"), semver ("15.9"), and full versions ("15.9.1") are all accepted.
-// If either version is empty or unparseable as an old version, the check is skipped.
-func validateNoDowngrade(oldVersion, newVersion string, path *field.Path) *field.Error {
-	if oldVersion == "" || newVersion == "" {
-		return nil
-	}
-	oldV, err := semver.ParseTolerant(oldVersion)
-	if err != nil {
-		return nil
-	}
-	newV, err := semver.ParseTolerant(newVersion)
-	if err != nil {
-		return field.Invalid(path, newVersion, fmt.Sprintf("invalid version %q", newVersion))
-	}
-	if newV.LT(oldV) {
-		return field.Invalid(path, newVersion, fmt.Sprintf("downgrading from %q to %q is not supported", oldVersion, newVersion))
-	}
 	return nil
 }

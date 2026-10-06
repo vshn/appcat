@@ -108,8 +108,8 @@ type VSHNForgejoServiceSpec struct {
 	ServiceLevel VSHNDBaaSServiceLevel `json:"serviceLevel,omitempty"`
 
 	// Version contains supported version of Forgejo.
-	// Multiple versions are supported. Defaults to 14.0.0 if not set.
-	// +kubebuilder:default="15.0.0"
+	// Multiple versions are supported. Defaults to 16.0.0 if not set.
+	// +kubebuilder:default="16.0.0"
 	MajorVersion string `json:"majorVersion,omitempty"`
 
 	// SSH contains settings for SSH access to the Forgejo instance.
@@ -187,11 +187,35 @@ type VSHNForgejoConfig struct {
 
 	// https://forgejo.org/docs/next/admin/config-cheat-sheet/#git---config-options-gitconfig
 	GitConfig map[string]string `json:"git.config,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#security-security
+	Security map[string]string `json:"security,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#ui-ui
+	UI map[string]string `json:"ui,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#other-other
+	Other map[string]string `json:"other,omitempty"`
+
+	// Gravatar and federated avatars stay off while server.OFFLINE_MODE is true.
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#picture-picture
+	Picture map[string]string `json:"picture,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#api-api
+	API map[string]string `json:"api,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#quota-quota
+	Quota map[string]string `json:"quota,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#default-quota-quotadefault
+	QuotaDefault map[string]string `json:"quota.default,omitempty"`
+
+	// https://forgejo.org/docs/latest/admin/config-cheat-sheet/#authorized-integrations-authorized_integration
+	AuthorizedIntegration map[string]string `json:"authorized_integration,omitempty"`
 }
 
 // VSHNForgejoSizeSpec contains settings to control the sizing of a service.
 type VSHNForgejoSizeSpec struct {
-
 	// CPURequests defines the requests amount of Kubernetes CPUs for an instance.
 	CPURequests string `json:"cpuRequests,omitempty"`
 
@@ -355,6 +379,7 @@ func (v *VSHNForgejo) GetBackupSchedule() string {
 func (v *VSHNForgejo) SetBackupSchedule(schedule string) {
 	v.Status.Schedules.Backup = schedule
 } // GetServiceName returns the name of this service
+
 func (v *VSHNForgejo) GetServiceName() string {
 	return "forgejo"
 }
@@ -388,6 +413,10 @@ func (v *VSHNForgejo) GetSize() VSHNSizeSpec {
 }
 
 func (v *VSHNForgejo) GetMonitoring() VSHNMonitoring {
+	return v.Spec.Parameters.Monitoring
+}
+
+func (v *VSHNForgejo) GetVSHNMonitoring() VSHNMonitoring {
 	return v.Spec.Parameters.Monitoring
 }
 

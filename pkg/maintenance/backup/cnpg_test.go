@@ -9,10 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	cnpgv1 "github.com/vshn/appcat/v4/apis/cnpg/v1"
-	"github.com/vshn/appcat/v4/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestCNPGBackupRunner_RunBackup(t *testing.T) {
@@ -51,8 +49,7 @@ func TestCNPGBackupRunner_RunBackup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeClient := fake.NewClientBuilder().
-				WithScheme(pkg.SetupScheme()).
+			fakeClient := newWatchableClientBuilder(&cnpgv1.Backup{}).
 				WithObjects(tt.existingObjs...).
 				Build()
 
@@ -146,21 +143,19 @@ func TestCNPGBackupRunner_checkSuccess(t *testing.T) {
 }
 
 func TestNewCNPGBackupRunner(t *testing.T) {
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&cnpgv1.Backup{}).
 		Build()
 
 	runner := NewCNPGBackupRunner(fakeClient, logr.Discard())
 
 	require.NotNil(t, runner)
-	assert.Equal(t, 1*time.Hour, runner.timeout)
+	assert.Equal(t, 6*time.Hour, runner.timeout)
 	assert.NotNil(t, runner.k8sClient)
 }
 
 func TestCNPGBackupRunner_BackupLabels(t *testing.T) {
 	// Test that the created backup has the correct labels
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&cnpgv1.Backup{}).
 		WithObjects(
 			&cnpgv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -200,8 +195,7 @@ func TestCNPGBackupRunner_BackupLabels(t *testing.T) {
 
 func TestCNPGBackupRunner_BackupSpec(t *testing.T) {
 	// Test that the created backup has the correct spec
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&cnpgv1.Backup{}).
 		WithObjects(
 			&cnpgv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -247,8 +241,7 @@ func TestCNPGBackupRunner_BackupSpec(t *testing.T) {
 
 func TestCNPGBackupRunner_MultipleClustersTakesFirst(t *testing.T) {
 	// Test that when multiple clusters exist, the first one is used
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(pkg.SetupScheme()).
+	fakeClient := newWatchableClientBuilder(&cnpgv1.Backup{}).
 		WithObjects(
 			&cnpgv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{

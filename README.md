@@ -20,7 +20,6 @@ AI may be used to assist with development on this project but must follow the gu
 .
 ├── apis
 |   ├── appcat // API server related apis
-|   ├── exoscale // exoscale apis
 |   ├── v1 // common apis
 |   ├── vshn // VSHN managed services apis
 ├── cmd // cobra command lines for each AppCat tool

@@ -72,9 +72,6 @@ func (n *CodeyInstanceWebhookHandler) ValidateCreate(ctx context.Context, obj ru
 		tmpErr := err.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
 	}
-	if warning != nil && err == nil {
-		return warning, nil
-	}
 
 	codeyFqdn := codeyInstance.ObjectMeta.Name + codeyUrlSuffix
 
@@ -83,7 +80,7 @@ func (n *CodeyInstanceWebhookHandler) ValidateCreate(ctx context.Context, obj ru
 		allErrs.Add(err)
 	}
 
-	return nil, allErrs.Get()
+	return warning, allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -104,16 +101,13 @@ func (p *CodeyInstanceWebhookHandler) ValidateUpdate(ctx context.Context, oldObj
 		tmpErr := parentErr.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
 	}
-	if warnings != nil {
-		return warnings, nil
-	}
 
 	codeyFqdn := newCodeyInstance.ObjectMeta.Name + codeyUrlSuffix
 	if err := isCodeyFqdnUnique(codeyFqdn, newCodeyInstance.Spec.ResourceRef.Name, p.client); err != nil {
 		allErrs.Add(err)
 	}
 
-	return nil, allErrs.Get()
+	return warnings, allErrs.Get()
 }
 
 // Checks if a given FQDN is already in use by some CodeyInstance in the cluster

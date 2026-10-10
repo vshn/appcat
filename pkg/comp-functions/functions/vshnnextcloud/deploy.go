@@ -213,7 +213,14 @@ func getPgInstanceNamespace(host string) (string, error) {
 	if len(parts) < 2 {
 		return "", fmt.Errorf("invalid host format: %s", host)
 	}
-	return parts[1], nil
+	// The host comes from a tenant-controlled connection secret. Only allow it to
+	// point at a PostgreSQL instance namespace, otherwise a crafted host could make
+	// us apply a network policy into an arbitrary namespace.
+	ns := parts[1]
+	if !strings.HasPrefix(ns, "vshn-postgresql-") {
+		return "", fmt.Errorf("derived namespace %q is not a postgresql instance namespace", ns)
+	}
+	return ns, nil
 }
 
 func getObservedPostgresSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) (map[string]string, map[string]string, string, error) {

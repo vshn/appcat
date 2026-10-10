@@ -186,8 +186,10 @@ func addConnectionDetail(comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntim
 		Namespace: comp.GetClaimNamespace(),
 	}
 	if connectionDetailRef != nil {
+		// The namespace is intentionally ignored: the secret is applied with
+		// control-plane privilege, so a caller-supplied namespace would let a
+		// claim write into an arbitrary namespace. Always use the claim namespace.
 		om.Name = connectionDetailRef.Name
-		om.Namespace = connectionDetailRef.Namespace
 	}
 
 	userpassSecret := &corev1.Secret{

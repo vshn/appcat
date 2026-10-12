@@ -78,7 +78,7 @@ generate: export PATH := $(go_bin):$(PATH)
 generate:  get-crds generate-stackgres-crds generate-cnpg-crds protobuf-gen ## Generate code with controller-gen and protobuf.
 	go version
 	rm -rf apis/generated
-	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="{./apis/v1/..., ./apis/vshn/..., ./apis/exoscale/..., ./apis/apiserver/..., ./apis/syntools/..., ./apis/codey/...}" object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
+	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="{./apis/v1/..., ./apis/vshn/..., ./apis/apiserver/..., ./apis/syntools/..., ./apis/codey/...}" object crd:crdVersions=v1,allowDangerousTypes=true output:artifacts:config=./apis/generated
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="./apis/cnpg/v1/..." object output:object:artifacts:config=./apis/cnpg/v1
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen paths="./apis/barmancloud/v1/..." object output:object:artifacts:config=./apis/barmancloud/v1
 	go generate ./...

@@ -405,6 +405,53 @@ func TestNextcloudWebhookHandler_ValidateUpdate_CollaboraFQDN(t *testing.T) {
 	assert.NoError(t, err, "Updating Collabora FQDN to another valid one should pass validation")
 }
 
+func TestNextcloudWebhookHandler_ValidateCreate_PinImageTagNoBypass(t *testing.T) {
+	ctx := context.TODO()
+	fclient := fake.NewClientBuilder().
+		WithScheme(pkg.SetupScheme()).
+		Build()
+
+	handler := NextcloudWebhookHandler{
+		DefaultWebhookHandler: DefaultWebhookHandler{
+			client:     fclient,
+			log:        logr.Discard(),
+			withQuota:  false,
+			obj:        &vshnv1.VSHNNextcloud{},
+			name:       "nextcloud",
+			nameLength: 30,
+		},
+	}
+
+	newNC := func(pinImageTag string) *vshnv1.VSHNNextcloud {
+		return &vshnv1.VSHNNextcloud{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "myinstance",
+				Namespace: "testns",
+			},
+			Spec: vshnv1.VSHNNextcloudSpec{
+				Parameters: vshnv1.VSHNNextcloudParameters{
+					Service: vshnv1.VSHNNextcloudServiceSpec{
+						FQDN: []string{"n€xtcloud.example.tld"},
+					},
+					Maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+						PinImageTag: pinImageTag,
+					},
+				},
+			},
+		}
+	}
+
+	t.Log("invalid FQDN without pinImageTag: expect rejection")
+	_, err := handler.ValidateCreate(ctx, newNC(""))
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "is not a valid DNS name")
+
+	t.Log("invalid FQDN with pinImageTag set: expect rejection (no bypass)")
+	_, err = handler.ValidateCreate(ctx, newNC("nextcloud:30.0.5"))
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "is not a valid DNS name")
+}
+
 func TestNextcloudWebhookHandler_ValidateUpdate_VersionDowngrade(t *testing.T) {
 	ctx := context.TODO()
 	fclient := fake.NewClientBuilder().

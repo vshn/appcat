@@ -9,19 +9,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// handleItemCreation checks if each item/product has a created event
-func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService *vshnv1.BillingService, item vshnv1.ItemSpec) error {
+// handleItemCreation checks if each item/product has a created event.
+// initialCreation must be true if the BillingService had no events before this reconcile.
+// Items created initially use the instance creation timestamp, so a recreated BillingService
+// keeps the original start time. Items added later (e.g. after a plan change) use the current time.
+func (b *BillingHandler) handleItemCreation(ctx context.Context, billingService *vshnv1.BillingService, item vshnv1.ItemSpec, initialCreation bool) error {
 	if hasEventByInstanceID(billingService, BillingEventTypeCreated, item.InstanceID) {
 		return nil
 	}
 
-	ts, ok := instanceCreationTimestamp(billingService)
-	if !ok {
-		// Annotation not yet set by the comp-function (race: provider-kubernetes may apply
-		// the manifest in two reconcile steps, creating the object before the annotation lands).
-		// Return an error so the controller requeues until the annotation is present.
-		return fmt.Errorf("instance creation timestamp annotation %q not yet set on %s — requeueing",
-			vshnv1.InstanceCreationTimestampAnnotation, billingService.Name)
+	ts := metav1.Now()
+	if initialCreation {
+		var ok bool
+		ts, ok = instanceCreationTimestamp(billingService)
+		if !ok {
+			// Annotation not yet set by the comp-function (race: provider-kubernetes may apply
+			// the manifest in two reconcile steps, creating the object before the annotation lands).
+			// Return an error so the controller requeues until the annotation is present.
+			return fmt.Errorf("instance creation timestamp annotation %q not yet set on %s — requeueing",
+				vshnv1.InstanceCreationTimestampAnnotation, billingService.Name)
+		}
 	}
 
 	event := vshnv1.BillingEventStatus{

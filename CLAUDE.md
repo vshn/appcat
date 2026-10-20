@@ -81,7 +81,6 @@ make render-diff -e DEBUG=Development
   - `vshn/v1/` — VSHN managed service types (PostgreSQL, Redis, MariaDB, MinIO, Keycloak, Nextcloud, Forgejo, Garage)
   - `cnpg/` — CloudNativePG API types
   - `codey/` — Codey service types
-  - `exoscale/v1/` — Exoscale provider types (Kafka, MySQL, OpenSearch, PostgreSQL, Redis)
   - `stackgres/` — StackGres operator types
   - `generated/` — Auto-generated CRDs (no edit)
 - `pkg/`

@@ -175,9 +175,14 @@ func (b *BillingHandler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
+	// Determine once before the loop: handleItemCreation enqueues events directly, so checking
+	// per item would treat the 2nd+ item of a new instance as added later.
+	// Any event (not only create) counts, as create events may have been pruned.
+	initialCreation := len(billingService.Status.Events) == 0
+
 	// Handle lifecycle for each item/product in the spec
 	for _, item := range billingService.Spec.Odoo.Items {
-		if err := b.handleItemCreation(ctx, &billingService, item); err != nil {
+		if err := b.handleItemCreation(ctx, &billingService, item, initialCreation); err != nil {
 			return ctrl.Result{}, err
 		}
 

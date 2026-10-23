@@ -113,7 +113,7 @@ func (r VSHNPostgreSQLReconciler) fetchProberFor(ctx context.Context, obj slirec
 		sla = vshnv1.BestEffort
 	}
 
-	ha := inst.Spec.Parameters.Instances > 1
+	ha := inst.GetInstances() > 1
 
 	compositionName := inst.Spec.CompositionRef.Name
 

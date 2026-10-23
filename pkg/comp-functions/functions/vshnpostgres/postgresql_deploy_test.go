@@ -60,7 +60,7 @@ func TestPostgreSqlDeploy(t *testing.T) {
 	assert.NoError(t, svc.GetDesiredKubeObject(cluster, "cluster"))
 	assert.Equal(t, comp.GetName(), cluster.Name)
 	assert.Equal(t, comp.GetInstanceNamespace(), cluster.Namespace)
-	assert.Equal(t, comp.Spec.Parameters.Instances, cluster.Spec.Instances)
+	assert.Equal(t, comp.GetInstances(), cluster.Spec.Instances)
 	assert.Nil(t, cluster.Spec.InitialData.Restore)
 	assert.Equal(t, comp.GetName(), *cluster.Spec.SgInstanceProfile)
 	assert.Equal(t, fmt.Sprintf("%s-postgres-config-%s", comp.GetName(), comp.Spec.Parameters.Service.MajorVersion), *cluster.Spec.Configurations.SgPostgresConfig)

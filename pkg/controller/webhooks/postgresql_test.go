@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -152,7 +153,7 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 					CPU:    "500m",
 					Memory: "1Gi",
 				},
-				Instances: 1,
+				Instances: ptr.To(1),
 				Service: vshnv1.VSHNPostgreSQLServiceSpec{
 					RepackEnabled: true,
 				},
@@ -230,7 +231,7 @@ func TestPostgreSQLWebhookHandler_ValidateCreate(t *testing.T) {
 
 	// Instances
 	pgInvalid = pgOrig.DeepCopy()
-	pgInvalid.Spec.Parameters.Instances = 1
+	pgInvalid.Spec.Parameters.Instances = ptr.To(1)
 	pgInvalid.Spec.Parameters.Service.ServiceLevel = "guaranteed"
 	_, err = handler.ValidateCreate(ctx, pgInvalid)
 	assert.Error(t, err)
@@ -309,7 +310,7 @@ func TestPostgreSQLWebhookHandler_ValidateUpdate(t *testing.T) {
 					CPU:    "500m",
 					Memory: "1Gi",
 				},
-				Instances: 1,
+				Instances: ptr.To(1),
 				Service: vshnv1.VSHNPostgreSQLServiceSpec{
 					RepackEnabled: true,
 					MajorVersion:  "15",
@@ -496,7 +497,7 @@ func TestPostgreSQLWebhookHandler_ValidateDelete(t *testing.T) {
 					CPU:    "500m",
 					Memory: "1Gi",
 				},
-				Instances: 1,
+				Instances: ptr.To(1),
 				Service: vshnv1.VSHNPostgreSQLServiceSpec{
 					RepackEnabled: true,
 				},
@@ -894,7 +895,7 @@ func TestPostgreSQLWebhookHandler_ValidateCreateBlocksStackGres(t *testing.T) {
 		},
 		Spec: vshnv1.VSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Instances: 1,
+				Instances: ptr.To(1),
 				Service: vshnv1.VSHNPostgreSQLServiceSpec{
 					RepackEnabled: true,
 					MajorVersion:  "15",

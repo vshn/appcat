@@ -151,8 +151,8 @@ func addSchedules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 	}
 
 	// Disable repack and vacuum for suspended instances
-	repackEnabled := comp.Spec.Parameters.Service.RepackEnabled && comp.Spec.Parameters.Instances != 0
-	vacuumEnabled := comp.Spec.Parameters.Service.VacuumEnabled && comp.Spec.Parameters.Instances != 0
+	repackEnabled := comp.Spec.Parameters.Service.RepackEnabled && comp.GetInstances() != 0
+	vacuumEnabled := comp.Spec.Parameters.Service.VacuumEnabled && comp.GetInstances() != 0
 
 	additionalVars := append(extraEnvVars, []corev1.EnvVar{
 		{

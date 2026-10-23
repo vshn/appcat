@@ -111,7 +111,7 @@ func Test_addHARelease(t *testing.T) {
 	_, err := common.NewPostgreSQLDependencyBuilder(svc, comp).AddParameters(comp.Spec.Parameters.Service.PostgreSQLParameters).CreateDependency()
 	assert.NoError(t, err)
 	assert.NoError(t, svc.GetDesiredComposedResourceByName(pg, comp.GetName()+common.PgInstanceNameSuffix))
-	assert.Equal(t, 2, pg.Spec.Parameters.Instances)
+	assert.Equal(t, 2, pg.GetInstances())
 }
 
 func Test_addCustomEnvSecrets(t *testing.T) {

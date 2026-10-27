@@ -52,8 +52,8 @@ var (
 type Maintenance interface {
 	DoMaintenance(ctx context.Context) error
 	ReleaseLatest(ctx context.Context, enabled bool, kubeClient client.Client, minAge time.Duration) error
-	// RunBackup runs a pre-maintenance backup if supported
-	RunBackup(ctx context.Context) error
+	// WaitForRunningBackups waits until no backup of the instance is running anymore
+	WaitForRunningBackups(ctx context.Context) error
 }
 
 type service enumflag.Flag
@@ -200,13 +200,12 @@ func (c *controller) runMaintenance(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// Run backup before any changes; abort if it fails
-	log.Info("Running pre-maintenance backup")
-	if err := m.RunBackup(ctx); err != nil {
-		log.Error(err, "Pre-maintenance backup failed")
-		return fmt.Errorf("pre-maintenance backup failed: %w", err)
+	// A maintenance can restart the instance, so don't interfere with a running backup; abort if it doesn't finish
+	log.Info("Waiting for running backups to finish")
+	if err := m.WaitForRunningBackups(ctx); err != nil {
+		log.Error(err, "Waiting for running backups failed")
+		return fmt.Errorf("waiting for running backups failed: %w", err)
 	}
-	log.Info("Pre-maintenance backup completed successfully")
 
 	if !disableAppcatRelease {
 		enabled, err := strconv.ParseBool(viper.GetString("RELEASE_MANAGEMENT_ENABLED"))

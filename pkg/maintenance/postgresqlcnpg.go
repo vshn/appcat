@@ -25,7 +25,7 @@ import (
 
 // PostgreSQLCNPG handles the maintenance of postgresql services
 type PostgreSQLCNPG struct {
-	backupHelper *backup.Helper
+	backupWaiter *backup.Waiter
 	k8sClient    client.WithWatch
 	httpClient   *http.Client
 	log          logr.Logger
@@ -42,9 +42,8 @@ type PostgreSQLCNPG struct {
 
 // NewPostgreSQL returns a new PostgreSQL maintenance job runner
 func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler release.VersionHandler, log logr.Logger) *PostgreSQLCNPG {
-	runner := backup.NewCNPGBackupRunner(c, log)
 	return &PostgreSQLCNPG{
-		backupHelper:      backup.NewHelper(runner, log),
+		backupWaiter:      backup.NewCNPGWaiter(c, log),
 		k8sClient:         c,
 		httpClient:        hc,
 		timeout:           time.Hour,
@@ -59,21 +58,21 @@ func NewPostgreSQLCNPG(c client.WithWatch, hc *http.Client, versionHandler relea
 	}
 }
 
-// RunBackup executes a pre-maintenance backup
-func (p *PostgreSQLCNPG) RunBackup(ctx context.Context) error {
+// WaitForRunningBackups waits until no backup is running anymore
+func (p *PostgreSQLCNPG) WaitForRunningBackups(ctx context.Context) error {
 	comp := &vshnv1.XVSHNPostgreSQL{}
 	if err := p.k8sClient.Get(ctx, client.ObjectKey{Name: p.compName}, comp); err != nil {
 		return fmt.Errorf("couldn't get composite: %w", err)
 	}
 
 	// Backup disabled means the barman-cloud plugin is not configured on the cluster,
-	// so a Backup resource would fail.
+	// so no backup can be running.
 	if !comp.Spec.Parameters.Backup.IsEnabled() {
-		p.log.Info("Backup disabled, skipping pre-maintenance backup")
+		p.log.Info("Backup disabled, not waiting for running backups")
 		return nil
 	}
 
-	return p.backupHelper.RunBackup(ctx)
+	return p.backupWaiter.WaitForRunningBackups(ctx)
 }
 
 // DoMaintenance will run postgresql's maintenance script.

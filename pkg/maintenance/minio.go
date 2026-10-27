@@ -42,9 +42,9 @@ func NewMinio(c client.Client, hc *http.Client, vh release.VersionHandler, logge
 	}
 }
 
-// Skip MinIO backups
-func (m *Minio) RunBackup(ctx context.Context) error {
-	m.log.Info("MinIO backup not implemented, skipping pre-maintenance backup")
+// MinIO has no backups to wait for
+func (m *Minio) WaitForRunningBackups(ctx context.Context) error {
+	m.log.Info("MinIO backup not implemented, not waiting for running backups")
 	return nil
 }
 

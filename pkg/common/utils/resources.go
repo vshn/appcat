@@ -103,7 +103,7 @@ var (
 	// defaultMemoryLimits same as DefaultMemoryRequests
 	DefaultMemoryLimits = DefaultMemoryRequests
 	// defaultDiskRequests should be plenty for a large amount of replicas for any service
-	DefaultDiskRequests = resource.NewQuantity(1099511627776, resource.DecimalSI)
+	DefaultDiskRequests = resource.NewQuantity(1099511627776, resource.BinarySI)
 
 	// QuotaAnnotations contains all annotations that AppCat manages on an instance namespace
 	// to configure the quotas. It's used to carry over already existing values from the
@@ -243,12 +243,13 @@ func (r *Resources) checkAgainstResources(quotaResources Resources, kind string,
 		requested  resource.Quantity
 		quota      resource.Quantity
 		fallback   resource.Quantity
+		bytes      bool
 	}{
-		{"CPU requests", r.CPURequestsPath, "requests", r.CPURequests, quotaResources.CPURequests, rDef.CPURequests},
-		{"CPU limits", r.CPULimitsPath, "limits", r.CPULimits, quotaResources.CPULimits, rDef.CPULimits},
-		{"Memory requests", r.MemoryRequestsPath, "requests", r.MemoryRequests, quotaResources.MemoryRequests, rDef.MemoryRequests},
-		{"Memory limits", r.MemoryLimitsPath, "limits", r.MemoryLimits, quotaResources.MemoryLimits, rDef.MemoryLimits},
-		{"Disk", r.DiskPath, "requests", r.Disk, quotaResources.Disk, *DefaultDiskRequests},
+		{"CPU requests", r.CPURequestsPath, "requests", r.CPURequests, quotaResources.CPURequests, rDef.CPURequests, false},
+		{"CPU limits", r.CPULimitsPath, "limits", r.CPULimits, quotaResources.CPULimits, rDef.CPULimits, false},
+		{"Memory requests", r.MemoryRequestsPath, "requests", r.MemoryRequests, quotaResources.MemoryRequests, rDef.MemoryRequests, true},
+		{"Memory limits", r.MemoryLimitsPath, "limits", r.MemoryLimits, quotaResources.MemoryLimits, rDef.MemoryLimits, true},
+		{"Disk", r.DiskPath, "requests", r.Disk, quotaResources.Disk, *DefaultDiskRequests, true},
 	}
 
 	for _, c := range checks {
@@ -258,7 +259,7 @@ func (r *Resources) checkAgainstResources(quotaResources Resources, kind string,
 		}
 		if c.requested.Cmp(max) == 1 {
 			foundErrs = append(foundErrs, field.Forbidden(c.path,
-				"Max allowed "+c.name+": "+max.String()+". Configured "+c.configured+": "+c.requested.String()+". "+contactSupportMessage))
+				"Max allowed "+c.name+": "+formatQuantity(max, c.bytes)+". Configured "+c.configured+": "+formatQuantity(c.requested, c.bytes)+". "+contactSupportMessage))
 		}
 	}
 
@@ -267,6 +268,16 @@ func (r *Resources) checkAgainstResources(quotaResources Resources, kind string,
 	}
 
 	return foundErrs
+}
+
+// formatQuantity returns a human-readable representation of the quantity.
+// Byte quantities are rendered with binary suffixes (Ki, Mi, Gi, Ti...), as quotas parsed
+// from plain integer annotations (e.g. "1099511627776") would otherwise print as raw bytes.
+func formatQuantity(q resource.Quantity, bytes bool) string {
+	if !bytes {
+		return q.String()
+	}
+	return resource.NewQuantity(q.Value(), resource.BinarySI).String()
 }
 
 // MultiplyBy multiplies the resources by given integer.

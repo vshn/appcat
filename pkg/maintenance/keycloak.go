@@ -29,9 +29,9 @@ func NewKeycloak(c client.Client, hc *http.Client, vh release.VersionHandler, lo
 	}
 }
 
-// Skip pre-maintenance backup for keycloak
-func (k *Keycloak) RunBackup(ctx context.Context) error {
-	k.log.Info("Pre-maintenance backup disabled")
+// Keycloak has no backups of its own, the PostgreSQL instance waits for its backups in its own maintenance
+func (k *Keycloak) WaitForRunningBackups(ctx context.Context) error {
+	k.log.Info("Keycloak has no backups, not waiting for running backups")
 	return nil
 }
 

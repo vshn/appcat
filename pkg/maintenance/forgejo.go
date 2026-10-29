@@ -14,7 +14,7 @@ import (
 
 // Forgejo contains all necessary dependencies to successfully run a Forgejo maintenance
 type Forgejo struct {
-	backupHelper *backup.Helper
+	backupWaiter *backup.Waiter
 	k8sClient    client.WithWatch
 	httpClient   *http.Client
 	log          logr.Logger
@@ -23,9 +23,8 @@ type Forgejo struct {
 
 // NewForgejo returns a new Forgejo object
 func NewForgejo(c client.WithWatch, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *Forgejo {
-	runner := backup.NewK8upBackupRunner(c, logger)
 	return &Forgejo{
-		backupHelper:   backup.NewHelper(runner, logger),
+		backupWaiter:   backup.NewK8upWaiter(c, logger),
 		k8sClient:      c,
 		httpClient:     hc,
 		log:            logger,
@@ -33,9 +32,9 @@ func NewForgejo(c client.WithWatch, hc *http.Client, vh release.VersionHandler, 
 	}
 }
 
-// RunBackup executes a pre-maintenance backup
-func (f *Forgejo) RunBackup(ctx context.Context) error {
-	return f.backupHelper.RunBackup(ctx)
+// WaitForRunningBackups waits until no backup is running anymore
+func (f *Forgejo) WaitForRunningBackups(ctx context.Context) error {
+	return f.backupWaiter.WaitForRunningBackups(ctx)
 }
 
 // DoMaintenance will run Forgejo's maintenance script.

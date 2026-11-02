@@ -39,7 +39,7 @@ func CNPGBackupsInProgress(ctx context.Context, c client.Client, namespace strin
 
 	running := []string{}
 	for _, b := range backups.Items {
-		if !b.DeletionTimestamp.IsZero() {
+		if !b.DeletionTimestamp.IsZero() || IsBackupStuck(&b, log) {
 			continue
 		}
 		switch b.Status.Phase {

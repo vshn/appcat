@@ -54,7 +54,7 @@ func StackGresBackupsInProgress(ctx context.Context, c client.Client, namespace 
 
 	running := []string{}
 	for _, job := range jobList.Items {
-		if !job.DeletionTimestamp.IsZero() || !ownedByAny(job.OwnerReferences, cronJobs) || isJobFinished(&job) {
+		if !job.DeletionTimestamp.IsZero() || !ownedByAny(job.OwnerReferences, cronJobs) || isJobFinished(&job) || IsBackupStuck(&job, log) {
 			continue
 		}
 		running = append(running, job.Name)

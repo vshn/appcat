@@ -15,7 +15,7 @@ func NewK8upWaiter(c client.Client, log logr.Logger) *Waiter {
 }
 
 // K8upBackupsInProgress returns the k8up Backups in the namespace that haven't finished yet
-func K8upBackupsInProgress(ctx context.Context, c client.Client, namespace string, _ logr.Logger) ([]string, error) {
+func K8upBackupsInProgress(ctx context.Context, c client.Client, namespace string, log logr.Logger) ([]string, error) {
 	backups := &k8upv1.BackupList{}
 	if err := c.List(ctx, backups, client.InNamespace(namespace)); err != nil {
 		return nil, fmt.Errorf("failed to list k8up Backups: %w", err)
@@ -23,7 +23,7 @@ func K8upBackupsInProgress(ctx context.Context, c client.Client, namespace strin
 
 	running := []string{}
 	for _, b := range backups.Items {
-		if !b.DeletionTimestamp.IsZero() || b.Status.HasFinished() {
+		if !b.DeletionTimestamp.IsZero() || b.Status.HasFinished() || IsBackupStuck(&b, log) {
 			continue
 		}
 		running = append(running, b.Name)

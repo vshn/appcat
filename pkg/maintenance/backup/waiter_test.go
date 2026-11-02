@@ -45,6 +45,12 @@ func cnpgBackup(name string, phase cnpgv1.BackupPhase) *cnpgv1.Backup {
 	}
 }
 
+// stuck sets the creation timestamp of the object beyond MaxBackupAge
+func stuck[T client.Object](obj T) T {
+	obj.SetCreationTimestamp(metav1.NewTime(time.Now().Add(-MaxBackupAge - time.Hour)))
+	return obj
+}
+
 func TestWaiter_WaitForRunningBackups(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -65,6 +71,10 @@ func TestWaiter_WaitForRunningBackups(t *testing.T) {
 			name:    "GivenBackupRunning_WhenItDoesNotFinish_ThenFail",
 			objs:    []client.Object{cnpgCluster(1), cnpgBackup("daily", cnpgv1.BackupPhaseRunning)},
 			wantErr: "backups still in progress",
+		},
+		{
+			name: "GivenStuckBackup_ThenReturn",
+			objs: []client.Object{cnpgCluster(1), stuck(cnpgBackup("daily", cnpgv1.BackupPhaseRunning))},
 		},
 	}
 
@@ -201,6 +211,7 @@ func TestCNPGBackupsInProgress(t *testing.T) {
 				cnpgBackup("completed", cnpgv1.BackupPhaseCompleted),
 				cnpgBackup("failed", cnpgv1.BackupPhaseFailed),
 				cnpgBackup("walfailing", cnpgBackupPhaseWalArchivingFailing),
+				stuck(cnpgBackup("stuck", cnpgv1.BackupPhaseRunning)),
 			},
 			want: []string{"new", "pending", "running"},
 		},
@@ -238,6 +249,7 @@ func TestK8upBackupsInProgress(t *testing.T) {
 			k8upBackup("new"),
 			k8upBackup("succeeded", completed(k8upv1.ReasonSucceeded)),
 			k8upBackup("failed", completed(k8upv1.ReasonFailed)),
+			stuck(k8upBackup("stuck")),
 		).
 		Build()
 
@@ -305,6 +317,7 @@ func TestStackGresBackupsInProgress(t *testing.T) {
 				job("complete", true, condition(batchv1.JobComplete)),
 				job("failed", true, condition(batchv1.JobFailed)),
 				job("other-job", false),
+				stuck(job("stuck", true)),
 			},
 			want: []string{"running"},
 		},

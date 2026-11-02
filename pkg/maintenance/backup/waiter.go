@@ -17,6 +17,9 @@ const (
 	BackupTypeLabelKey = "appcat.vshn.io/backup-type"
 	// BackupTypePreMaintenance is the label value of the former pre-maintenance backups
 	BackupTypePreMaintenance = "pre-maintenance"
+	// MaxBackupAge is how long a backup may run before it's considered stuck.
+	// Stuck backups don't block the maintenance, otherwise it would never run.
+	MaxBackupAge = 24 * time.Hour
 )
 
 // InProgressFunc returns the names of the backups in the namespace that are still running
@@ -104,6 +107,21 @@ func CleanupPreMaintenanceBackups(ctx context.Context, c client.Client, obj clie
 	}
 
 	return nil
+}
+
+// IsBackupStuck returns true if the backup was created more than MaxBackupAge ago
+func IsBackupStuck(obj metav1.Object, log logr.Logger) bool {
+	created := obj.GetCreationTimestamp()
+	if created.IsZero() {
+		return false
+	}
+	age := time.Since(created.Time)
+	if age < MaxBackupAge {
+		return false
+	}
+	log.Info("Backup is running for too long, considering it stuck and not waiting for it",
+		"namespace", obj.GetNamespace(), "name", obj.GetName(), "age", age.Round(time.Second).String())
+	return true
 }
 
 // IsClusterSuspended checks if a cluster is suspended (instances == 0) and logs appropriately

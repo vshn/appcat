@@ -22,7 +22,9 @@ var (
 
 	mariadbPersistentVolumeFillingUp = `label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job="kubelet", metrics_path="/metrics", namespace="vshn-mariadb-myinstance"} / kubelet_volume_stats_capacity_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-mariadb-myinstance"}) < 0.03 and kubelet_volume_stats_used_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-mariadb-myinstance"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode="ReadOnlyMany"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-mariadb-myinstance)")`
 
-	keycloakMemoryCritical = `label_replace( topk(1, (max(container_memory_working_set_bytes{container="keycloak", namespace="vshn-keycloak-myinstance"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-keycloak-myinstance)")`
+	keycloakMemoryCritical = `label_replace( topk(1, (max(container_memory_rss{container="keycloak", namespace="vshn-keycloak-myinstance"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-keycloak-myinstance)")`
+
+	oomEventsCritical = `label_replace( topk(1, (increase(container_oom_events_total{container="patroni", namespace="vshn-postgresql-test"}[15m]) > 0) without (name, id)) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
 )
 
 func TestNewAlertSetBuilder(t *testing.T) {
@@ -35,9 +37,9 @@ func TestNewAlertSetBuilder(t *testing.T) {
 	assert.Empty(t, builder.as.customRules)
 	assert.Empty(t, builder.as.alerts)
 
-	builder.AddAllDB()
+	builder.AddAll()
 	// if this test fail, please simply update order and count of alerts in this slice
-	expectedAlerts := []alert{pvFillUp, pvExpectedFillUp, memCritical}
+	expectedAlerts := []alert{pvFillUp, pvExpectedFillUp, memCritical, oomEvents}
 
 	// this check will break if someone adds new alert to map, but no method to Builder
 	assert.Equal(t, len(builder.as.alerts), len(expectedAlerts))
@@ -64,10 +66,14 @@ func TestNewAlertSetBuilder(t *testing.T) {
 			assert.Equal(t, patroniPersistentVolumeFillingUp, rule.Expr.StrVal)
 			checkCount++
 		}
+		if rule.Alert == "MemoryOOMKilled" {
+			assert.Equal(t, oomEventsCritical, rule.Expr.StrVal)
+			checkCount++
+		}
 
 	}
 	// working with arrays is not the best way, but it's enough for this test
-	assert.Equal(t, 3, checkCount)
+	assert.Equal(t, 4, checkCount)
 
 	// test for mariadb
 	containerName = "mariadb-galera"
@@ -104,7 +110,7 @@ func TestNewAlertSetBuilder(t *testing.T) {
 func TestGenerateNonSLAPromRulesStampsNamespace(t *testing.T) {
 	svc := commontest.LoadRuntimeFromFile(t, "vshn-postgres/alerting/07-GivenEmail.yaml")
 	alerts := NewAlertSetBuilder("postgres").
-		AddAllDB().
+		AddAll().
 		AddCustom([]promV1.Rule{{Alert: "Prebuilt"}}).
 		GetAlerts()
 

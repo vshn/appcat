@@ -85,7 +85,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( topk(1, (max(container_memory_working_set_bytes{container=\"" + name + "\", namespace=\"" + namespace + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( topk(1, (max(container_memory_rss{container=\"" + name + "\", namespace=\"" + namespace + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: TwoHourInterval,
 				Labels: map[string]string{
@@ -95,19 +95,19 @@ var (
 				},
 			}
 		},
-		memCriticalDB: func(name, namespace string) promV1.Rule {
+		oomEvents: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
-				Alert: "MemoryCritical",
+				Alert: "MemoryOOMKilled",
 				Annotations: map[string]string{
-					"description": "The memory claimed by the instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} has been over 85% for 2 hours.\n  Please reduce the load of this instance, or increase the memory.",
-					"runbook_url": "https://hub.syn.tools/appcat/runbooks/vshn-generic.html#MemoryCritical",
-					"summary":     "Memory usage critical.",
+					"description": "The container of the instance in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} was killed for memory in the last 15 minutes.\n  Please reduce the load of this instance, or increase the memory.",
+					"runbook_url": "https://hub.syn.tools/appcat/runbooks/vshn-generic.html#MemoryOOMKilled",
+					"summary":     "Container was killed for memory.",
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( topk(1, (max(container_memory_rss{container=\"" + name + "\", namespace=\"" + namespace + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( topk(1, (increase(container_oom_events_total{container=\"" + name + "\", namespace=\"" + namespace + "\"}[15m]) > 0) without (name, id)) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
-				For: TwoHourInterval,
+				For: FiveMinuteInterval,
 				Labels: map[string]string{
 					"severity": SeverityCritical,
 					"syn_team": SynTeam,
@@ -122,7 +122,7 @@ var (
 	pvFillUp         alert = "PersistentVolumeFillingUp"
 	pvExpectedFillUp alert = "PersistentVolumeExpectedToFillUp"
 	memCritical      alert = "MemoryCritical"
-	memCriticalDB    alert = "MemoryCriticalDB"
+	oomEvents        alert = "MemoryOOMKilled"
 )
 
 type AlertBuilder struct {
@@ -153,8 +153,8 @@ func (a *AlertBuilder) AddMemory() *AlertBuilder {
 	return a
 }
 
-func (a *AlertBuilder) AddMemoryDB() *AlertBuilder {
-	a.as.alerts = append(a.as.alerts, memCriticalDB)
+func (a *AlertBuilder) AddMemoryOOM() *AlertBuilder {
+	a.as.alerts = append(a.as.alerts, oomEvents)
 	return a
 }
 
@@ -172,19 +172,7 @@ func (a *AlertBuilder) AddCustomServiceRule(name string, rule ServiceRule) *Aler
 func (a *AlertBuilder) AddAll() *AlertBuilder {
 	a.as.alerts = make([]alert, 0)
 	for alert := range a.as.alertDefinitions {
-		if alert != memCriticalDB {
-			a.as.alerts = append(a.as.alerts, alert)
-		}
-	}
-	return a
-}
-
-func (a *AlertBuilder) AddAllDB() *AlertBuilder {
-	a.as.alerts = make([]alert, 0)
-	for alert := range a.as.alertDefinitions {
-		if alert != memCritical {
-			a.as.alerts = append(a.as.alerts, alert)
-		}
+		a.as.alerts = append(a.as.alerts, alert)
 	}
 	return a
 }

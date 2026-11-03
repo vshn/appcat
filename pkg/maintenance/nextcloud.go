@@ -14,7 +14,7 @@ import (
 
 // Nextcloud contains all necessary dependencies to successfully run a Nextcloud maintenance
 type Nextcloud struct {
-	backupHelper *backup.Helper
+	backupWaiter *backup.Waiter
 	k8sClient    client.WithWatch
 	httpClient   *http.Client
 	log          logr.Logger
@@ -23,9 +23,8 @@ type Nextcloud struct {
 
 // NewNextcloud returns a new Nextcloud object
 func NewNextcloud(c client.WithWatch, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *Nextcloud {
-	runner := backup.NewK8upBackupRunner(c, logger)
 	return &Nextcloud{
-		backupHelper:   backup.NewHelper(runner, logger),
+		backupWaiter:   backup.NewK8upWaiter(c, logger),
 		k8sClient:      c,
 		httpClient:     hc,
 		log:            logger,
@@ -33,9 +32,9 @@ func NewNextcloud(c client.WithWatch, hc *http.Client, vh release.VersionHandler
 	}
 }
 
-// RunBackup executes a pre-maintenance backup
-func (n *Nextcloud) RunBackup(ctx context.Context) error {
-	return n.backupHelper.RunBackup(ctx)
+// WaitForRunningBackups waits until no backup is running anymore
+func (n *Nextcloud) WaitForRunningBackups(ctx context.Context) error {
+	return n.backupWaiter.WaitForRunningBackups(ctx)
 }
 
 // DoMaintenance will run Nextcloud's maintenance script.

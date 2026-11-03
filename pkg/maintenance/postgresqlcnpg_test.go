@@ -272,9 +272,9 @@ func Test_RetrieveObjectsAndPatchImageCatalog(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// When backup is disabled the barman-cloud plugin is absent, so a pre-maintenance
-// Backup would fail. RunBackup must skip instead of aborting maintenance.
-func Test_RunBackup_Disabled_Skips(t *testing.T) {
+// When backup is disabled the barman-cloud plugin is absent, so no backup can be running.
+// WaitForRunningBackups must skip instead of aborting maintenance.
+func Test_WaitForRunningBackups_Disabled_Skips(t *testing.T) {
 	comp, _, _ := newTestObjects(16)
 	disabled := false
 	comp.Spec.Parameters.Backup.Enabled = &disabled
@@ -286,5 +286,5 @@ func Test_RunBackup_Disabled_Skips(t *testing.T) {
 
 	p := newTestRunner(fclient, "")
 
-	require.NoError(t, p.RunBackup(context.TODO()))
+	require.NoError(t, p.WaitForRunningBackups(context.TODO()))
 }

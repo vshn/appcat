@@ -34,7 +34,7 @@ var (
 
 // PostgreSQL handles the maintenance of postgresql services
 type PostgreSQL struct {
-	backupHelper *backup.Helper
+	backupWaiter *backup.Waiter
 	k8sClient    client.WithWatch
 	sClient      *stackgres.StackgresClient
 	log          logr.Logger
@@ -52,9 +52,8 @@ type PostgreSQL struct {
 
 // NewPostgreSQL returns a new PostgreSQL maintenance job runner
 func NewPostgreSQL(c client.WithWatch, sClient *stackgres.StackgresClient, versionHandler release.VersionHandler, log logr.Logger) *PostgreSQL {
-	runner := backup.NewStackGresBackupRunner(c, log)
 	return &PostgreSQL{
-		backupHelper:      backup.NewHelper(runner, log),
+		backupWaiter:      backup.NewStackGresWaiter(c, log),
 		k8sClient:         c,
 		sClient:           sClient,
 		timeout:           time.Hour,
@@ -71,9 +70,9 @@ func NewPostgreSQL(c client.WithWatch, sClient *stackgres.StackgresClient, versi
 	}
 }
 
-// RunBackup executes a pre-maintenance backup
-func (p *PostgreSQL) RunBackup(ctx context.Context) error {
-	return p.backupHelper.RunBackup(ctx)
+// WaitForRunningBackups waits until no backup is running anymore
+func (p *PostgreSQL) WaitForRunningBackups(ctx context.Context) error {
+	return p.backupWaiter.WaitForRunningBackups(ctx)
 }
 
 // DoMaintenance will run postgresql's maintenance script.

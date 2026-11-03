@@ -13,7 +13,7 @@ import (
 
 // Redis holds all the necessary objects to do a Redis maintenance
 type Redis struct {
-	backupHelper *backup.Helper
+	backupWaiter *backup.Waiter
 	k8sClient    client.WithWatch
 	httpClient   *http.Client
 	log          logr.Logger
@@ -22,9 +22,8 @@ type Redis struct {
 
 // NewRedis returns a new Redis maintenance job runner
 func NewRedis(c client.WithWatch, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *Redis {
-	runner := backup.NewK8upBackupRunner(c, logger)
 	return &Redis{
-		backupHelper:   backup.NewHelper(runner, logger),
+		backupWaiter:   backup.NewK8upWaiter(c, logger),
 		k8sClient:      c,
 		httpClient:     hc,
 		log:            logger,
@@ -32,9 +31,9 @@ func NewRedis(c client.WithWatch, hc *http.Client, vh release.VersionHandler, lo
 	}
 }
 
-// RunBackup executes a pre-maintenance backup
-func (r *Redis) RunBackup(ctx context.Context) error {
-	return r.backupHelper.RunBackup(ctx)
+// WaitForRunningBackups waits until no backup is running anymore
+func (r *Redis) WaitForRunningBackups(ctx context.Context) error {
+	return r.backupWaiter.WaitForRunningBackups(ctx)
 }
 
 // DoMaintenance will run redis' maintenance script.

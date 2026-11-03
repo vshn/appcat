@@ -76,3 +76,22 @@ func TestCheckResourcesAgainstQuotas_NamespaceWithoutAnnotations(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "Max allowed CPU limits: 14600m")
 }
+
+func TestCheckAgainstResources_HumanReadableBytes(t *testing.T) {
+	// Quotas from namespace annotations are often plain byte integers.
+	diskQuota := resource.MustParse("1099511627776")
+	memQuota := resource.MustParse("23622320128")
+
+	r := Resources{
+		CPULimits:      *resource.NewMilliQuantity(500, resource.DecimalSI),
+		CPURequests:    *resource.NewMilliQuantity(500, resource.DecimalSI),
+		MemoryLimits:   resource.MustParse("32Gi"),
+		MemoryRequests: resource.MustParse("1Gi"),
+		Disk:           resource.MustParse("1200Gi"),
+	}
+
+	errs := r.checkAgainstResources(Resources{Disk: diskQuota, MemoryLimits: memQuota}, "VSHNRedis", nil)
+	assert.Len(t, errs, 2)
+	assert.Contains(t, errs.ToAggregate().Error(), "Max allowed Memory limits: 22Gi. Configured limits: 32Gi.")
+	assert.Contains(t, errs.ToAggregate().Error(), "Max allowed Disk: 1Ti. Configured requests: 1200Gi.")
+}

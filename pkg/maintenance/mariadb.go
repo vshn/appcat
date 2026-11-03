@@ -13,7 +13,7 @@ import (
 
 // MariaDB holds all the necessary objects to do a MariaDB maintenance
 type MariaDB struct {
-	backupHelper *backup.Helper
+	backupWaiter *backup.Waiter
 	k8sClient    client.WithWatch
 	httpClient   *http.Client
 	log          logr.Logger
@@ -22,9 +22,8 @@ type MariaDB struct {
 
 // NewMariaDB returns a new MariaDB maintenance job runner
 func NewMariaDB(c client.WithWatch, hc *http.Client, vh release.VersionHandler, logger logr.Logger) *MariaDB {
-	runner := backup.NewK8upBackupRunner(c, logger)
 	return &MariaDB{
-		backupHelper:   backup.NewHelper(runner, logger),
+		backupWaiter:   backup.NewK8upWaiter(c, logger),
 		k8sClient:      c,
 		httpClient:     hc,
 		log:            logger,
@@ -32,9 +31,9 @@ func NewMariaDB(c client.WithWatch, hc *http.Client, vh release.VersionHandler, 
 	}
 }
 
-// RunBackup executes a pre-maintenance backup
-func (m *MariaDB) RunBackup(ctx context.Context) error {
-	return m.backupHelper.RunBackup(ctx)
+// WaitForRunningBackups waits until no backup is running anymore
+func (m *MariaDB) WaitForRunningBackups(ctx context.Context) error {
+	return m.backupWaiter.WaitForRunningBackups(ctx)
 }
 
 // DoMaintenance will run MariaDB's maintenance script.

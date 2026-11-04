@@ -13,6 +13,7 @@ import (
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -104,7 +105,7 @@ func TestGivenEncrypedPvcThenExpectOutput(t *testing.T) {
 		cnpgcomp := &vshnv1.VSHNPostgreSQL{
 			Spec: vshnv1.VSHNPostgreSQLSpec{
 				Parameters: vshnv1.VSHNPostgreSQLParameters{
-					Instances: 3,
+					Instances: ptr.To(3),
 				},
 			},
 		}

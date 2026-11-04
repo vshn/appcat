@@ -6,13 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	stackgresv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
+	"k8s.io/utils/ptr"
 )
 
 func Test_configureReplication_SingleInstance(t *testing.T) {
 	comp := &vshnv1.VSHNPostgreSQL{
 		Spec: vshnv1.VSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Instances:   1,
+				Instances:   ptr.To(1),
 				Replication: vshnv1.VSHNPostgreSQLReplicationStrategy{},
 			},
 		},
@@ -29,7 +30,7 @@ func Test_configureReplication_SingleInstance_Sync(t *testing.T) {
 	comp := &vshnv1.VSHNPostgreSQL{
 		Spec: vshnv1.VSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Instances: 1,
+				Instances: ptr.To(1),
 				Replication: vshnv1.VSHNPostgreSQLReplicationStrategy{
 					Mode: "sync",
 				},
@@ -48,7 +49,7 @@ func Test_configureReplication_MultiInstance_Async(t *testing.T) {
 	comp := &vshnv1.VSHNPostgreSQL{
 		Spec: vshnv1.VSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Instances: 2,
+				Instances: ptr.To(2),
 				Replication: vshnv1.VSHNPostgreSQLReplicationStrategy{
 					Mode: "async",
 				},
@@ -67,7 +68,7 @@ func Test_configureReplication_MultiInstance_Sync(t *testing.T) {
 	comp := &vshnv1.VSHNPostgreSQL{
 		Spec: vshnv1.VSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Instances: 2,
+				Instances: ptr.To(2),
 				Replication: vshnv1.VSHNPostgreSQLReplicationStrategy{
 					Mode: "sync",
 				},
@@ -87,7 +88,7 @@ func Test_configureReplication_MultiInstance_StrictSync(t *testing.T) {
 	comp := &vshnv1.VSHNPostgreSQL{
 		Spec: vshnv1.VSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Instances: 3,
+				Instances: ptr.To(3),
 				Replication: vshnv1.VSHNPostgreSQLReplicationStrategy{
 					Mode: "strict-sync",
 				},
@@ -107,7 +108,7 @@ func Test_configureReplication_MultiInstance_Default(t *testing.T) {
 	comp := &vshnv1.VSHNPostgreSQL{
 		Spec: vshnv1.VSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Instances: 3,
+				Instances: ptr.To(3),
 			},
 		},
 	}

@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -202,7 +203,7 @@ func TestVSHNPostgreSQL_Suspended_Stop_Running_Probe(t *testing.T) {
 	assert.True(t, manager.probers[getFakeKey(pi)])
 
 	// Scale down to instances=0, probe should stop
-	db.Spec.Parameters.Instances = 0
+	db.Spec.Parameters.Instances = ptr.To(0)
 	require.NoError(t, client.Update(context.TODO(), db))
 	_, err = r.Reconcile(context.TODO(), recReq("bar", "foo"))
 	assert.NoError(t, err)
@@ -356,7 +357,7 @@ func newTestVSHNPostgres(namespace, name, cred string, instances int) (*vshnv1.X
 		},
 		Spec: vshnv1.XVSHNPostgreSQLSpec{
 			Parameters: vshnv1.VSHNPostgreSQLParameters{
-				Instances: instances,
+				Instances: ptr.To(instances),
 			},
 			ResourceSpec: xpv1.ResourceSpec{
 				WriteConnectionSecretToReference: &xpv1.SecretReference{

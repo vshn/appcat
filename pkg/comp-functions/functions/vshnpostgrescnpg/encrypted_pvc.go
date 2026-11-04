@@ -60,12 +60,12 @@ func AddPvcSecret(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime
 	// By comparing the amount of instances vs what is reported in the CD, we can force an earlier reconcilation by setting the release unready.
 	// Why not just use an observer? Because that would take more time and require us to use an evil object.
 	svc.Log.Info("Checking for instances discrepancy",
-		"comp", comp.Spec.Parameters.Instances,
+		"comp", comp.GetInstances(),
 		"reported", len(clusterInstances),
-		"verdict", comp.Spec.Parameters.Instances != len(clusterInstances),
+		"verdict", comp.GetInstances() != len(clusterInstances),
 	)
 
-	if comp.Spec.Parameters.Instances != len(clusterInstances) {
+	if comp.GetInstances() != len(clusterInstances) {
 		svc.SetDesiredResourceReadiness(comp.GetName(), runtime.ResourceUnReady)
 		svc.Log.Info("discrepancy in comp instances vs reported instances in connection details found, encouraging early reconcilation...")
 	}

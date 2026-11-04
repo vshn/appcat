@@ -39,7 +39,7 @@ func Test_instances(t *testing.T) {
 
 	for i := range 3 {
 		i++
-		comp.Spec.Parameters.Instances = i
+		comp.Spec.Parameters.Instances = ptr.To(i)
 
 		values, err := createCnpgHelmValues(ctx, svc, comp)
 		assert.NoError(t, err)
@@ -56,7 +56,7 @@ func Test_hibernation(t *testing.T) {
 	ctx := context.TODO()
 
 	t.Run("instances=0 enables hibernation", func(t *testing.T) {
-		comp.Spec.Parameters.Instances = 0
+		comp.Spec.Parameters.Instances = ptr.To(0)
 
 		values, err := createCnpgHelmValues(ctx, svc, comp)
 		assert.NoError(t, err)
@@ -69,7 +69,7 @@ func Test_hibernation(t *testing.T) {
 	})
 
 	t.Run("instances>0 disables hibernation", func(t *testing.T) {
-		comp.Spec.Parameters.Instances = 2
+		comp.Spec.Parameters.Instances = ptr.To(2)
 
 		values, err := createCnpgHelmValues(ctx, svc, comp)
 		assert.NoError(t, err)
@@ -87,7 +87,7 @@ func Test_enablePDB(t *testing.T) {
 	ctx := context.TODO()
 
 	t.Run("PDB disabled for single instance", func(t *testing.T) {
-		comp.Spec.Parameters.Instances = 1
+		comp.Spec.Parameters.Instances = ptr.To(1)
 
 		values, err := createCnpgHelmValues(ctx, svc, comp)
 		assert.NoError(t, err)
@@ -95,7 +95,7 @@ func Test_enablePDB(t *testing.T) {
 	})
 
 	t.Run("PDB enabled for multiple instances", func(t *testing.T) {
-		comp.Spec.Parameters.Instances = 2
+		comp.Spec.Parameters.Instances = ptr.To(2)
 
 		values, err := createCnpgHelmValues(ctx, svc, comp)
 		assert.NoError(t, err)
@@ -103,7 +103,7 @@ func Test_enablePDB(t *testing.T) {
 	})
 
 	t.Run("PDB disabled for paused instance", func(t *testing.T) {
-		comp.Spec.Parameters.Instances = 0
+		comp.Spec.Parameters.Instances = ptr.To(0)
 
 		values, err := createCnpgHelmValues(ctx, svc, comp)
 		assert.NoError(t, err)

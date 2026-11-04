@@ -2254,6 +2254,11 @@ func (in *VSHNPostgreSQLParameters) DeepCopyInto(out *VSHNPostgreSQLParameters) 
 	in.Monitoring.DeepCopyInto(&out.Monitoring)
 	out.Encryption = in.Encryption
 	out.UpdateStrategy = in.UpdateStrategy
+	if in.Instances != nil {
+		in, out := &in.Instances, &out.Instances
+		*out = new(int)
+		**out = **in
+	}
 	out.Replication = in.Replication
 	in.Security.DeepCopyInto(&out.Security)
 	out.AdditionalResources = in.AdditionalResources

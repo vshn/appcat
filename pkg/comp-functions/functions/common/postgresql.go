@@ -166,9 +166,12 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 	if a.dayOfWeekOverride != "" {
 		params.Maintenance.DayOfWeek = a.dayOfWeekOverride
 	}
-	// We need to set this after the merge, as the default instance count for PostgreSQL is always 1
-	// and would therefore override any value we set before the merge.
-	params.Instances = a.comp.GetInstances()
+
+	// If the postgresql instances are not set, we will take the same value as the parent.
+	// Otherwise we keep the value defined.
+	if params.Instances == nil {
+		params.Instances = ptr.To(a.comp.GetInstances())
+	}
 
 	// Preserve the compositionRef of an already-existing nested PostgreSQL composite.
 	compositionName := a.svc.Config.Data["defaultPGComposition"]

@@ -226,7 +226,7 @@ func createCnpgHelmValues(ctx context.Context, svc *runtime.ServiceRuntime, comp
 
 	// Handle hibernation for instances=0
 	// CNPG doesn't support instances=0, use hibernation annotation instead
-	instances := comp.Spec.Parameters.Instances
+	instances := comp.GetInstances()
 	hibernation := "off"
 	if instances == 0 {
 		instances = 1 // CNPG requires at least 1 instance

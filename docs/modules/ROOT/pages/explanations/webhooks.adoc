@@ -1,7 +1,7 @@
 = Webhooks
 
-== APPUiO Cloud quota webhooks
-APPUiO Cloud provides a quota system, which AppCat has to comply and integrate into.
+== APPUiO quota webhooks
+APPUiO provides a quota system, which AppCat has to comply and integrate into.
 It accomplishes that, by providing nice error messages, if any of the given quotas are breached.
 
 There are multiple quotas that need to be complied by this system:
@@ -15,7 +15,7 @@ If the key `namespaceQuota` is set, it will check against that amount of namespa
 If the requested AppCat instance would tip the amount of namespaces over this threshold, it will block the creation.
 
 Additionally, each namespace has quotas that need to comply.
-Via AppCat comp-functions, we set the quotas to a slightly higher value than the APPUiO Cloud default:
+Via AppCat comp-functions, we set the quotas to a slightly higher value than the APPUiO default:
 
 * 4.5 CPU limits/requests + limits/requests of all sidecars
 * 16.5Gb Memory limits/requests + limits/requests of all sidecars

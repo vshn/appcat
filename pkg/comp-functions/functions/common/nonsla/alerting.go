@@ -105,7 +105,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( topk(1, (increase(container_oom_events_total{container=\"" + name + "\", namespace=\"" + namespace + "\"}[15m]) > 0) without (name, id)) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( topk(1, max(increase(container_oom_events_total{container=\"" + name + "\", namespace=\"" + namespace + "\"}[15m])) without (name, id) > 0) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: FiveMinuteInterval,
 				Labels: map[string]string{

@@ -24,7 +24,7 @@ var (
 
 	keycloakMemoryCritical = `label_replace( topk(1, (max(container_memory_rss{container="keycloak", namespace="vshn-keycloak-myinstance"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource="memory"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-keycloak-myinstance)")`
 
-	oomEventsCritical = `label_replace( topk(1, (increase(container_oom_events_total{container="patroni", namespace="vshn-postgresql-test"}[15m]) > 0) without (name, id)) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
+	oomEventsCritical = `label_replace( topk(1, max(increase(container_oom_events_total{container="patroni", namespace="vshn-postgresql-test"}[15m])) without (name, id) > 0) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, "name", "$1", "namespace","(vshn-postgresql-test)")`
 )
 
 func TestNewAlertSetBuilder(t *testing.T) {

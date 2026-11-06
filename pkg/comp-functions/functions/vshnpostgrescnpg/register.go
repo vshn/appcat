@@ -8,7 +8,7 @@ import (
 )
 
 var pgAlerts = nonsla.NewAlertSetBuilder("postgres").
-	AddAllDB().
+	AddAll().
 	AddCustomServiceRule("maxconnections", maxConnectionsAlert).
 	AddCustomServiceRule("cnpgclusteroffline", clusterOfflineAlert).
 	AddCustomServiceRule("longrunningtx", longRunningTransactionAlert).

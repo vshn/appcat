@@ -3,6 +3,7 @@ package vshnkeycloak
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -377,7 +378,11 @@ func Test_dbcheckerInitContainer(t *testing.T) {
 
 		// A check against a different host/db than Keycloak proves nothing.
 		assert.Equal(t, db["hostname"], env["PGHOST"])
-		assert.Equal(t, db["port"], env["PGPORT"])
+		expectedPort := ""
+		if port, ok := db["port"].(int); ok {
+			expectedPort = strconv.Itoa(port)
+		}
+		assert.Equal(t, expectedPort, env["PGPORT"])
 		assert.Equal(t, db["username"], env["PGUSER"])
 		assert.Equal(t, db["database"], env["PGDATABASE"])
 	})

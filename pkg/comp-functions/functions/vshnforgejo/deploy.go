@@ -98,6 +98,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				"email":          "forgejo@local.domain",
 				"username":       "forgejo_admin",
 				"existingSecret": secretName,
+				"passwordMode":   "initialOnlyRequireReset",
 			},
 			"config": map[string]any{
 				"admin": map[string]any{

@@ -63,11 +63,8 @@ func (r *RedisWebhookHandler) ValidateCreate(ctx context.Context, obj runtime.Ob
 		tmpErr := parentErr.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
 	}
-	if parentWarnings != nil && parentErr == nil {
-		return parentWarnings, nil
-	}
 
-	return nil, allErrs.Get()
+	return parentWarnings, allErrs.Get()
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
@@ -89,9 +86,6 @@ func (r *RedisWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newObj
 		tmpErr := parentErr.(*fieldErrors)
 		allErrs.Add(tmpErr.List()...)
 	}
-	if parentWarnings != nil && parentErr == nil {
-		return parentWarnings, nil
-	}
 
-	return nil, allErrs.Get()
+	return parentWarnings, allErrs.Get()
 }

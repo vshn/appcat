@@ -70,9 +70,6 @@ func (p *MariaDBWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		tmpErr := err.(*fieldErrors)
 		allErs.Add(tmpErr.List()...)
 	}
-	if warnings != nil && err == nil {
-		return warnings, nil
-	}
 
 	if newDb.Spec.Parameters.Instances > 1 {
 		if oldDb.Spec.Parameters.TLS.TLSEnabled != newDb.Spec.Parameters.TLS.TLSEnabled {
@@ -84,5 +81,5 @@ func (p *MariaDBWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 		}
 	}
 
-	return nil, allErs.Get()
+	return warnings, allErs.Get()
 }

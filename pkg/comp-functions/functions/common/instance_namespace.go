@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 const (
@@ -20,6 +21,8 @@ const (
 	claimNsObserverSuffix = "-claim-ns-observer"
 	claimNameLabel        = "crossplane.io/claim-name"
 	disableBillingCMKey   = "billingDisabled"
+	// BillingDisabledLabel is set by a parent service on a nested composite to disable billing for it.
+	BillingDisabledLabel = "appcat.vshn.io/billing-disabled"
 )
 
 func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, namespaceResName string, svc *runtime.ServiceRuntime, labels ...map[string]string) error {
@@ -259,7 +262,8 @@ func DisableBilling(instanceNamespace string, svc *runtime.ServiceRuntime) error
 	return nil
 }
 
-// isBillingDisabled checks the given namespace for the configMap and key that disable billing.
+// isBillingDisabled checks the composite for the billing disabled label.
+// If it's not set, it checks the given namespace for the configMap and key that disable billing.
 func isBillingDisabled(controlNS, instanceNamespace, compName string, svc *runtime.ServiceRuntime) (bool, error) {
 
 	objSuffix := "-ns-conf-observer"
@@ -274,6 +278,21 @@ func isBillingDisabled(controlNS, instanceNamespace, compName string, svc *runti
 	err := svc.SetDesiredKubeObject(cm, compName+objSuffix)
 	if err != nil {
 		return false, err
+	}
+
+	// Claim labels get copied to the composite, so the label is only trusted on
+	// composites without a claim. Else customers could disable billing themselves.
+	comp := &unstructured.Unstructured{}
+	err = svc.GetObservedComposite(comp)
+	if err != nil {
+		return false, err
+	}
+	_, hasClaim, err := unstructured.NestedMap(comp.Object, "spec", "claimRef")
+	if err != nil {
+		return false, err
+	}
+	if !hasClaim && comp.GetLabels()[BillingDisabledLabel] == "true" {
+		return true, nil
 	}
 
 	err = svc.GetObservedKubeObject(cm, compName+objSuffix)

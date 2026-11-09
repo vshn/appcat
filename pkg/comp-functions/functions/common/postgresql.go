@@ -193,6 +193,7 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 			Name: a.comp.GetName() + PgInstanceNameSuffix,
 			Labels: map[string]string{
 				runtime.ProviderConfigIgnoreLabel: "true",
+				BillingDisabledLabel:              "true",
 			},
 		},
 		Spec: vshnv1.XVSHNPostgreSQLSpec{

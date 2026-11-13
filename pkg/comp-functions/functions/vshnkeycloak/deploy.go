@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -596,6 +597,17 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, err
 	}
 
+	// The chart schema requires the port to be an integer or null.
+	// Connection details might not be populated yet, so fall back to null.
+	var dbPort any
+	if rawPort := string(cd[vshnpostgres.PostgresqlPort]); rawPort != "" {
+		port, err := strconv.Atoi(rawPort)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse PostgreSQL port %q from connection details: %w", rawPort, err)
+		}
+		dbPort = port
+	}
+
 	res, err := getResources(ctx, svc, comp)
 	if err != nil {
 		return nil, err
@@ -796,7 +808,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"command": buildKeycloakCommand(comp, svc),
 		"database": map[string]any{
 			"hostname": string(cd[vshnpostgres.PostgresqlHost]),
-			"port":     string(cd[vshnpostgres.PostgresqlPort]),
+			"port":     dbPort,
 			"database": string(cd[vshnpostgres.PostgresqlDb]),
 			"username": string(cd[vshnpostgres.PostgresqlUser]),
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
@@ -1058,7 +1070,7 @@ func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, v
 	}
 
 	values["serviceAccount"] = map[string]any{
-		"automountServiceAccountToken": "false",
+		"automountServiceAccountToken": false,
 		"imagePullSecrets":             pullSecrets,
 	}
 
@@ -1175,6 +1187,11 @@ func buildDBCheckerInitContainer(svc *runtime.ServiceRuntime, values map[string]
 		return nil, fmt.Errorf("postgres_client_image not configured")
 	}
 
+	pgPort := ""
+	if port, ok := db["port"].(int); ok {
+		pgPort = strconv.Itoa(port)
+	}
+
 	return map[string]any{
 		"name":            dbcheckerInitName,
 		"image":           image,
@@ -1182,7 +1199,7 @@ func buildDBCheckerInitContainer(svc *runtime.ServiceRuntime, values map[string]
 		"command":         []string{"sh", "-c", dbcheckerScript},
 		"env": []map[string]any{
 			{"name": "PGHOST", "value": db["hostname"]},
-			{"name": "PGPORT", "value": db["port"]},
+			{"name": "PGPORT", "value": pgPort},
 			{"name": "PGUSER", "value": db["username"]},
 			{"name": "PGDATABASE", "value": db["database"]},
 			// Must match Keycloak's KC_DB_URL_PROPERTIES, otherwise the check

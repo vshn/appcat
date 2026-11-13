@@ -1,6 +1,8 @@
 package nonsla
 
 import (
+	"maps"
+
 	promV1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -134,7 +136,8 @@ func NewAlertSetBuilder(containerName string) *AlertBuilder {
 		customRules:        make([]promV1.Rule, 0),
 		alerts:             make([]alert, 0),
 		alertContainerName: containerName,
-		alertDefinitions:   alertDefinitions,
+		// Clone so AddCustomServiceRule doesn't leak service specific rules into other services' builders.
+		alertDefinitions: maps.Clone(alertDefinitions),
 	}}
 }
 

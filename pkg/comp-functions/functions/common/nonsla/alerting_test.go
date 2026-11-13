@@ -128,3 +128,13 @@ func TestGenerateNonSLAPromRulesStampsNamespace(t *testing.T) {
 		assert.Equal(t, "vshn-postgresql-psql", r.Labels["namespace"], r.Alert)
 	}
 }
+
+func TestAddCustomServiceRuleDoesNotLeakIntoOtherBuilders(t *testing.T) {
+	custom := func(s, n string) promV1.Rule { return promV1.Rule{Alert: "Custom"} }
+	NewAlertSetBuilder("postgres").AddAll().AddCustomServiceRule("leaktest", custom)
+
+	other := NewAlertSetBuilder("redis").AddAll().GetAlerts()
+	assert.NotContains(t, other.alerts, alert("leaktest"))
+	assert.NotContains(t, other.alertDefinitions, alert("leaktest"))
+	assert.NotContains(t, alertDefinitions, alert("leaktest"))
+}

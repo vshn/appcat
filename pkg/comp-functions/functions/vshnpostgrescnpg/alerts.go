@@ -58,7 +58,7 @@ func deadlockConflictsAlert(service, namespace string) promv1.Rule {
 		},
 		Expr: intstr.IntOrString{
 			Type:   intstr.String,
-			StrVal: `cnpg_pg_stat_database_deadlocks{namespace="` + namespace + `"} > 10`,
+			StrVal: `increase(cnpg_pg_stat_database_deadlocks{namespace="` + namespace + `"}[5m]) > 10`,
 		},
 		For: nonsla.FiveMinuteInterval,
 		Labels: map[string]string{
@@ -174,8 +174,9 @@ func maxConnectionsAlert(service, namespace string) promv1.Rule {
 		},
 		Expr: intstr.IntOrString{
 			Type: intstr.String,
-			StrVal: `sum(cnpg_backends_total{namespace="` + namespace + `", application_name="cnpg_metrics_exporter"}) by (pod)
-  > 0.9 * max(cnpg_pg_settings_setting{name="max_connections", namespace="` + namespace + `"}) by (pod)`,
+			StrVal: `sum by (pod) (cnpg_backends_total{namespace="` + namespace + `"})
+  / max by (pod) (cnpg_pg_settings_setting{name="max_connections", namespace="` + namespace + `"})
+  * 100 > 90`,
 		},
 		For: nonsla.TwoHourInterval,
 		Labels: map[string]string{
@@ -190,7 +191,7 @@ func clusterOfflineAlert(service, namespace string) promv1.Rule {
 	return promv1.Rule{
 		Alert: "CNPGClusterOffline",
 		Annotations: map[string]string{
-			"description": "CNPG Cluster in namespace " + namespace + " has no running instances.",
+			"description": "CNPG Cluster in namespace " + namespace + " has no running instances, or none of them reports metrics.",
 			"runbook_url": "https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/docs/runbooks/CNPGClusterOffline.md",
 			"summary":     "CNPG Cluster has no running instances",
 		},

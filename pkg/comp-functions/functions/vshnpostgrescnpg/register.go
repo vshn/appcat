@@ -1,23 +1,50 @@
 package vshnpostgrescnpg
 
 import (
+	"context"
+	"fmt"
+
+	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common/nonsla"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 )
 
-var pgAlerts = nonsla.NewAlertSetBuilder("postgres").
+var pgAlertsBuilder = nonsla.NewAlertSetBuilder("postgres").
 	AddAll().
 	AddCustomServiceRule("maxconnections", maxConnectionsAlert).
-	AddCustomServiceRule("cnpgclusteroffline", clusterOfflineAlert).
 	AddCustomServiceRule("longrunningtx", longRunningTransactionAlert).
 	AddCustomServiceRule("backendwaiting", backendsWaitingAlert).
 	AddCustomServiceRule("deadlocks", deadlockConflictsAlert).
 	AddCustomServiceRule("highconnectionswarning", highConnectionsWarningAlert).
 	AddCustomServiceRule("lowdiskwarning", lowDiskSpaceWarningAlert).
-	AddCustomServiceRule("lowdiskcritical", lowDiskSpaceCriticalAlert).
-	GetAlerts()
+	AddCustomServiceRule("lowdiskcritical", lowDiskSpaceCriticalAlert)
+
+var (
+	// pgAlertsHibernated is used for suspended instances (instances: 0). The cluster is
+	// hibernated, no pods run and cnpg_collector_up is absent, so CNPGClusterOffline
+	// would always fire.
+	// It must be declared before pgAlerts: both use the same builder, and pgAlerts adds
+	// CNPGClusterOffline to it.
+	pgAlertsHibernated = pgAlertsBuilder.GetAlerts()
+	pgAlerts           = pgAlertsBuilder.AddCustomServiceRule("cnpgclusteroffline", clusterOfflineAlert).GetAlerts()
+)
+
+// generateNonSLAPromRules renders the non-SLA rules, without CNPGClusterOffline for
+// hibernated instances. It uses the same check as the hibernation annotation in deploy.go.
+func generateNonSLAPromRules(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runtime.ServiceRuntime) *xfnproto.Result {
+	err := svc.GetObservedComposite(comp)
+	if err != nil {
+		return runtime.NewFatalResult(fmt.Errorf("can't get composite: %w", err))
+	}
+
+	alerts := pgAlerts
+	if comp.GetInstances() == 0 {
+		alerts = pgAlertsHibernated
+	}
+	return nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNPostgreSQL](alerts)(ctx, comp, svc)
+}
 
 func init() {
 	runtime.RegisterService[*vshnv1.VSHNPostgreSQL]("postgresqlcnpg", runtime.Service[*vshnv1.VSHNPostgreSQL]{
@@ -64,7 +91,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNPostgreSQL](pgAlerts),
+				Execute: generateNonSLAPromRules,
 			},
 			{
 				Name:    "billing",

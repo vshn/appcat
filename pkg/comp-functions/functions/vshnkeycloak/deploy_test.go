@@ -3,6 +3,7 @@ package vshnkeycloak
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -720,6 +721,190 @@ func Test_configOrEnvChanged(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := configOrEnvChanged(tt.currentConfigHash, tt.lastConfigHash, tt.currentEnvHash, tt.lastEnvHash)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func newKeycloakCompWithImage(version, pinImageTag, customImage, currentReleaseTag string) *vshnv1.VSHNKeycloak {
+	return &vshnv1.VSHNKeycloak{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycloak",
+			Namespace: "default",
+		},
+		Spec: vshnv1.VSHNKeycloakSpec{
+			Parameters: vshnv1.VSHNKeycloakParameters{
+				Service: vshnv1.VSHNKeycloakServiceSpec{
+					Version:     version,
+					CustomImage: vshnv1.VSHNKeycloakImage{Image: customImage},
+				},
+				Maintenance: vshnv1.VSHNDBaaSMaintenanceScheduleSpec{
+					PinImageTag: pinImageTag,
+				},
+			},
+		},
+		Status: vshnv1.VSHNKeycloakStatus{
+			CurrentReleaseTag: currentReleaseTag,
+		},
+	}
+}
+
+func Test_configApplyJobImageTag(t *testing.T) {
+	tests := []struct {
+		name              string
+		version           string
+		pinImageTag       string
+		customImage       string
+		currentReleaseTag string
+		want              string
+	}{
+		{
+			name:        "GivenPin_ThenPinWinsOverVersion",
+			version:     "26.6",
+			pinImageTag: "26.6.1",
+			want:        "26.6.1",
+		},
+		{
+			name:              "GivenPin_ThenPinWinsOverCurrentReleaseTag",
+			version:           "26.6",
+			pinImageTag:       "26.4.2",
+			currentReleaseTag: "26.6.1",
+			want:              "26.4.2",
+		},
+		{
+			name:              "GivenNoPinAndCurrentReleaseTag_ThenReleaseTagWins",
+			version:           "26.6",
+			currentReleaseTag: "26.6.1",
+			want:              "26.6.1",
+		},
+		{
+			name:    "GivenNoPinAndNoReleaseTag_ThenVersion",
+			version: "26.6",
+			want:    "26.6",
+		},
+		{
+			// pinImageTag has no effect when a custom image is set.
+			name:              "GivenCustomImage_ThenVersion",
+			version:           "26.6",
+			pinImageTag:       "26.6.1",
+			customImage:       "registry.example.com/custom/keycloak:26.4-custom",
+			currentReleaseTag: "26.4-custom",
+			want:              "26.6",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			comp := newKeycloakCompWithImage(tc.version, tc.pinImageTag, tc.customImage, tc.currentReleaseTag)
+			assert.Equal(t, tc.want, configApplyJobImageTag(comp))
+		})
+	}
+}
+
+func Test_buildConfigApplyJob_Image(t *testing.T) {
+	tests := []struct {
+		name        string
+		version     string
+		pinImageTag string
+		want        string
+	}{
+		{
+			name:        "GivenPin_ThenImageUsesPinnedTag",
+			version:     "26.6",
+			pinImageTag: "26.6.1",
+			want:        registryURL + ":26.6.1",
+		},
+		{
+			name:    "GivenNoPin_ThenImageUsesVersion",
+			version: "26.6.1",
+			want:    registryURL + ":26.6.1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			comp := newKeycloakCompWithImage(tc.version, tc.pinImageTag, "", "")
+
+			job := buildConfigApplyJob(comp, "mycloak-admin", "mycloak-apply-cfg-1234abcd")
+
+			require.Len(t, job.Spec.Template.Spec.Containers, 1)
+			assert.Equal(t, tc.want, job.Spec.Template.Spec.Containers[0].Image)
+		})
+	}
+}
+
+func Test_configApplyJobName(t *testing.T) {
+	configHash := "0bee89b07a248e27c83fc3d5951213c1"
+	envHash := "614dd0e977becb4c6f7fa99e64549b12"
+
+	t.Run("GivenSameTag_ThenSameName", func(t *testing.T) {
+		a := newKeycloakCompWithImage("26.6", "", "", "")
+		b := newKeycloakCompWithImage("26.6", "", "", "")
+		assert.Equal(t, configApplyJobName(a, configHash, envHash), configApplyJobName(b, configHash, envHash))
+	})
+
+	t.Run("GivenChangedTag_ThenDifferentName", func(t *testing.T) {
+		a := newKeycloakCompWithImage("26.6", "", "", "")
+		b := newKeycloakCompWithImage("26.6", "26.6.1", "", "")
+		assert.NotEqual(t, configApplyJobName(a, configHash, envHash), configApplyJobName(b, configHash, envHash))
+	})
+
+	t.Run("GivenLongInstanceName_ThenNameFitsKubernetesLimit", func(t *testing.T) {
+		comp := newKeycloakCompWithImage("26.6", "", "", "")
+		comp.SetName(strings.Repeat("a", 60))
+		assert.LessOrEqual(t, len(configApplyJobName(comp, configHash, envHash)), 63)
+	})
+
+	t.Run("GivenLongInstanceName_ThenHashStillDiffersPerTag", func(t *testing.T) {
+		a := newKeycloakCompWithImage("26.6", "", "", "")
+		a.SetName(strings.Repeat("a", 60))
+		b := newKeycloakCompWithImage("26.6", "26.6.1", "", "")
+		b.SetName(strings.Repeat("a", 60))
+		assert.NotEqual(t, configApplyJobName(a, configHash, envHash), configApplyJobName(b, configHash, envHash))
+	})
+}
+
+// The config apply job must run the same image tag as the Keycloak release it talks to.
+func Test_applyJobImageMatchesRelease(t *testing.T) {
+	tests := []struct {
+		name        string
+		version     string
+		pinImageTag string
+	}{
+		{
+			name:        "GivenPin_ThenJobAndReleaseMatch",
+			version:     "26.6",
+			pinImageTag: "26.6.1",
+		},
+		{
+			name:    "GivenNoPin_ThenJobAndReleaseMatch",
+			version: "26.6.1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+
+			comp := newKeycloakCompWithImage(tc.version, tc.pinImageTag, "", "")
+			require.NoError(t, addRelease(context.TODO(), svc, comp, "mysecret", "mysecret"))
+
+			release := &xhelmv1.Release{}
+			require.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()+"-release"))
+
+			values, err := common.GetReleaseValues(release)
+			require.NoError(t, err)
+
+			image, ok := values["image"].(map[string]any)
+			require.True(t, ok, "release values must contain an image map")
+
+			job := buildConfigApplyJob(comp, "mysecret", "mycloak-apply-cfg-1234abcd")
+
+			require.Len(t, job.Spec.Template.Spec.Containers, 1)
+			assert.Equal(
+				t,
+				fmt.Sprintf("%s:%v", registryURL, image["tag"]),
+				job.Spec.Template.Spec.Containers[0].Image,
+			)
 		})
 	}
 }

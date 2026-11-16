@@ -163,3 +163,13 @@ func TestPersistentVolumeExpectedToFillUpUsesBaselineForecast(t *testing.T) {
 	assert.Contains(t, expr, `predict_linear(max_over_time(kubelet_volume_stats_available_bytes{job="kubelet",metrics_path="/metrics", namespace="vshn-forgejo-test"}[12h])[24h:5m], 4 * 24 * 3600) < 0`)
 	assert.NotContains(t, expr, "[6h]")
 }
+
+func TestAddCustomServiceRuleDoesNotLeakIntoOtherBuilders(t *testing.T) {
+	custom := func(s, n string) promV1.Rule { return promV1.Rule{Alert: "Custom"} }
+	NewAlertSetBuilder("postgres").AddAll().AddCustomServiceRule("leaktest", custom)
+
+	other := NewAlertSetBuilder("redis").AddAll().GetAlerts()
+	assert.NotContains(t, other.alerts, alert("leaktest"))
+	assert.NotContains(t, other.alertDefinitions, alert("leaktest"))
+	assert.NotContains(t, alertDefinitions, alert("leaktest"))
+}

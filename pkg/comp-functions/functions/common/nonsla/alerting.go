@@ -45,7 +45,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\", metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}) < 0.03 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( ((kubelet_volume_stats_available_bytes{job=\"kubelet\", metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}) < 0.03 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{namespace=\"" + namespace + "\", access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{namespace=\"" + namespace + "\", label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels{namespace=\"" + namespace + "\"}, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: FifteenMinuteInterval,
 				Labels: map[string]string{
@@ -64,8 +64,11 @@ var (
 					"summary":     "PersistentVolume is expected to fill up.",
 				},
 				Expr: intstr.IntOrString{
-					Type:   intstr.String,
-					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					Type: intstr.String,
+					// The forecast runs on the 12h maximum of the available bytes (the usage baseline) over 24h.
+					// Short-lived usage spikes (temp files, archives removed by cleanup jobs) don't lower the
+					// baseline, so they don't flip the sign of the forecast. A real fill-up lowers it and still fires.
+					StrVal: "label_replace( ((kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} > 0 and predict_linear(max_over_time(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}[12h])[24h:5m], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{namespace=\"" + namespace + "\", access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{namespace=\"" + namespace + "\", label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels{namespace=\"" + namespace + "\"}, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: HourInterval,
 				Labels: map[string]string{
@@ -85,7 +88,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( topk(1, (max(container_memory_rss{container=\"" + name + "\", namespace=\"" + namespace + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( ((max(container_memory_rss{container=\"" + name + "\", namespace=\"" + namespace + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{container=\"" + name + "\", namespace=\"" + namespace + "\", resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels{namespace=\"" + namespace + "\"}, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: TwoHourInterval,
 				Labels: map[string]string{
@@ -105,7 +108,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( topk(1, max(increase(container_oom_events_total{container=\"" + name + "\", namespace=\"" + namespace + "\"}[15m])) without (name, id) > 0) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( (max(increase(container_oom_events_total{container=\"" + name + "\", namespace=\"" + namespace + "\"}[15m])) without (name, id) > 0) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels{namespace=\"" + namespace + "\"}, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: FiveMinuteInterval,
 				Labels: map[string]string{

@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Ignore from Changelog if merge to master
         uses: actions-ecosystem/action-add-labels@v1
-        if: github.base_ref == 'master'
+        if: github.event.action != 'opened' && github.base_ref == 'master'
         with:
           labels: ignoreChangelog
 

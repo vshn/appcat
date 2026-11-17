@@ -98,6 +98,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				"email":          "forgejo@local.domain",
 				"username":       "forgejo_admin",
 				"existingSecret": secretName,
+				"passwordMode":   "initialOnlyRequireReset",
 			},
 			"config": map[string]any{
 				"admin": map[string]any{
@@ -154,7 +155,7 @@ func addForgejo(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.V
 				},
 			},
 			"metrics": map[string]any{
-				"enabled": true,
+				"enabled": false,
 			},
 			"serviceMonitor": map[string]any{
 				"enabled": true,
@@ -371,6 +372,8 @@ func protectForgejoConfig(config map[string]any, fqdn string) {
 			"ENABLE_REVERSE_PROXY_FULL_NAME":          false,
 		},
 		"repository": {"ROOT": "/data/git/repositories"},
+		// Existing app.ini has ENABLED=true; chart flag alone won't flip it.
+		"metrics": {"ENABLED": false},
 	} {
 		sectionConfig, ok := config[section].(map[string]any)
 		if !ok {

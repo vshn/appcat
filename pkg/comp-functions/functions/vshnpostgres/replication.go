@@ -13,10 +13,10 @@ func configureReplication(comp *vshnv1.VSHNPostgreSQL, cluster *stackgresv1.SGCl
 		Mode:          ptr.To(replicationModeAsync),
 		SyncInstances: ptr.To(1),
 	}
-	cluster.Spec.Instances = comp.Spec.Parameters.Instances
-	if comp.Spec.Parameters.Instances > 1 && comp.Spec.Parameters.Replication.Mode != replicationModeAsync && comp.Spec.Parameters.Replication.Mode != "" {
+	cluster.Spec.Instances = comp.GetInstances()
+	if comp.GetInstances() > 1 && comp.Spec.Parameters.Replication.Mode != replicationModeAsync && comp.Spec.Parameters.Replication.Mode != "" {
 		cluster.Spec.Replication.Mode = ptr.To(comp.Spec.Parameters.Replication.Mode)
-		cluster.Spec.Replication.SyncInstances = ptr.To(comp.Spec.Parameters.Instances - 1)
+		cluster.Spec.Replication.SyncInstances = ptr.To(comp.GetInstances() - 1)
 	}
 	return cluster
 }

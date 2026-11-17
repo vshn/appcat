@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -102,7 +103,6 @@ func IsKeycloakRootFolder(folder string) bool {
 
 // DeployKeycloak deploys a keycloak instance via the codecentric Helm Chart.
 func DeployKeycloak(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) *xfnproto.Result {
-
 	err := svc.GetObservedComposite(comp)
 	if err != nil {
 		return runtime.NewFatalResult(fmt.Errorf("cannot get composite: %w", err))
@@ -352,18 +352,10 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 		return nil
 	}
 
-	currentCombinedHash := fmt.Sprintf("%x", md5.Sum([]byte(currentConfigHash+currentEnvHash)))
-	shortHash := currentCombinedHash[:8]
-	jobName := fmt.Sprintf("%s-apply-cfg-%s", comp.GetName(), shortHash)
-
-	if len(jobName) > 63 {
-		maxLen := 63 - len(shortHash) - len("-apply-cfg-") - 1
-		jobName = fmt.Sprintf("%s-apply-cfg-%s", comp.GetName()[:maxLen], shortHash)
-	}
+	jobName := configApplyJobName(comp, currentConfigHash, currentEnvHash)
 
 	observedJob := &batchv1.Job{}
 	err = svc.GetObservedKubeObject(observedJob, jobName)
-
 	if err != nil {
 		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
 		applyJob := buildConfigApplyJob(comp, adminSecret, jobName)
@@ -451,6 +443,40 @@ func addStsObserver(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) erro
 	return svc.SetDesiredKubeObject(sts, comp.GetName()+"-sts-observer", runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion)
 }
 
+// configApplyJobImageTag returns the image tag for the config apply job.
+// It must match the tag the Keycloak release runs, so that the setup script
+// in the job and the running server share the same version.
+func configApplyJobImageTag(comp *vshnv1.VSHNKeycloak) string {
+	if comp.Spec.Parameters.Service.CustomImage.Image != "" {
+		return comp.Spec.Parameters.Service.Version
+	}
+
+	if tag := comp.Spec.Parameters.Maintenance.PinImageTag; tag != "" {
+		return tag
+	}
+
+	if tag := comp.Status.CurrentReleaseTag; tag != "" {
+		return tag
+	}
+
+	return comp.Spec.Parameters.Service.Version
+}
+
+// configApplyJobName returns the name of the config apply job. The image tag is
+// part of the hash, so a version change runs the config against the new image.
+func configApplyJobName(comp *vshnv1.VSHNKeycloak, configHash, envHash string) string {
+	currentCombinedHash := fmt.Sprintf("%x", md5.Sum([]byte(configHash+envHash+configApplyJobImageTag(comp))))
+	shortHash := currentCombinedHash[:8]
+	jobName := fmt.Sprintf("%s-apply-cfg-%s", comp.GetName(), shortHash)
+
+	if len(jobName) > 63 {
+		maxLen := 63 - len(shortHash) - len("-apply-cfg-") - 1
+		jobName = fmt.Sprintf("%s-apply-cfg-%s", comp.GetName()[:maxLen], shortHash)
+	}
+
+	return jobName
+}
+
 func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string) *batchv1.Job {
 	volumes := []corev1.Volume{}
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
@@ -483,6 +509,8 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 
 	keycloakApiUrl := fmt.Sprintf("http://%s-%s.%s.svc.cluster.local", comp.GetName(), serviceSuffix, comp.GetInstanceNamespace())
 
+	imageTag := configApplyJobImageTag(comp)
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -499,7 +527,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 					Containers: []corev1.Container{
 						{
 							Name:            "apply-config",
-							Image:           fmt.Sprintf("%s:%s", registryURL, comp.Spec.Parameters.Service.Version),
+							Image:           fmt.Sprintf("%s:%s", registryURL, imageTag),
 							ImagePullPolicy: corev1.PullAlways,
 							EnvFrom:         envFrom,
 							Env: []corev1.EnvVar{
@@ -596,6 +624,17 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		return nil, err
 	}
 
+	// The chart schema requires the port to be an integer or null.
+	// Connection details might not be populated yet, so fall back to null.
+	var dbPort any
+	if rawPort := string(cd[vshnpostgres.PostgresqlPort]); rawPort != "" {
+		port, err := strconv.Atoi(rawPort)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse PostgreSQL port %q from connection details: %w", rawPort, err)
+		}
+		dbPort = port
+	}
+
 	res, err := getResources(ctx, svc, comp)
 	if err != nil {
 		return nil, err
@@ -655,7 +694,8 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	}
 
 	if adminFQDN := comp.Spec.Parameters.Service.AdminConsole.FQDN; adminFQDN != "" {
-		extraEnvMap = append(extraEnvMap,
+		extraEnvMap = append(
+			extraEnvMap,
 			map[string]any{
 				"name":  "KC_HOSTNAME",
 				"value": "https://" + comp.Spec.Parameters.Service.FQDN,
@@ -677,13 +717,15 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 	// mounting emptyDirs at those paths would shadow the image content.
 	var extraVolumesMap []map[string]any
 	if comp.Spec.Parameters.Service.CustomImage.Image == "" {
-		extraVolumesMap = append(extraVolumesMap,
+		extraVolumesMap = append(
+			extraVolumesMap,
 			map[string]any{"name": "custom-providers", "emptyDir": nil},
 			map[string]any{"name": "custom-themes", "emptyDir": nil},
 			map[string]any{"name": "custom-files", "emtpyDir": nil},
 		)
 	}
-	extraVolumesMap = append(extraVolumesMap,
+	extraVolumesMap = append(
+		extraVolumesMap,
 		map[string]any{"name": "keycloak-dist"},
 		map[string]any{
 			"name": pgCertsVolumeName,
@@ -723,12 +765,14 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 
 	var extraVolumeMountsMap []map[string]any
 	if comp.Spec.Parameters.Service.CustomImage.Image == "" {
-		extraVolumeMountsMap = append(extraVolumeMountsMap,
+		extraVolumeMountsMap = append(
+			extraVolumeMountsMap,
 			map[string]any{"name": "custom-providers", "mountPath": "/opt/keycloak/providers"},
 			map[string]any{"name": "custom-themes", "mountPath": "/opt/keycloak/themes"},
 		)
 	}
-	extraVolumeMountsMap = append(extraVolumeMountsMap,
+	extraVolumeMountsMap = append(
+		extraVolumeMountsMap,
 		map[string]any{"name": pgCertsVolumeName, "mountPath": pgCertsMountPath},
 		map[string]any{"name": "keycloak-certs", "mountPath": "/certs/keycloak"},
 	)
@@ -796,7 +840,7 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		"command": buildKeycloakCommand(comp, svc),
 		"database": map[string]any{
 			"hostname": string(cd[vshnpostgres.PostgresqlHost]),
-			"port":     string(cd[vshnpostgres.PostgresqlPort]),
+			"port":     dbPort,
 			"database": string(cd[vshnpostgres.PostgresqlDb]),
 			"username": string(cd[vshnpostgres.PostgresqlUser]),
 			"password": string(cd[vshnpostgres.PostgresqlPassword]),
@@ -982,7 +1026,8 @@ func copyImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime,
 }
 
 func copyFullImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
-	return copyImagePullSecret(comp, svc,
+	return copyImagePullSecret(
+		comp, svc,
 		fullImagePullsecretName,
 		comp.GetName()+"-full-image-pull-secret",
 		comp.Spec.Parameters.Service.CustomImage.ImagePullSecretRef.Name,
@@ -990,7 +1035,8 @@ func copyFullImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 }
 
 func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
-	return copyImagePullSecret(comp, svc,
+	return copyImagePullSecret(
+		comp, svc,
 		customImagePullsecretName,
 		comp.GetName()+"-custom-image-pull-secret",
 		comp.Spec.Parameters.Service.CustomizationImage.ImagePullSecretRef.Name,
@@ -998,7 +1044,6 @@ func copyCustomImagePullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRu
 }
 
 func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
-
 	username := svc.Config.Data["registry_username"]
 	password := svc.Config.Data["registry_password"]
 	auth := fmt.Sprintf("%s:%s", username, password)
@@ -1035,7 +1080,6 @@ func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error
 }
 
 func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, values map[string]any) error {
-
 	pullSecrets := []map[string]any{
 		{
 			"name": pullsecretName,
@@ -1058,7 +1102,7 @@ func addServiceAccount(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, v
 	}
 
 	values["serviceAccount"] = map[string]any{
-		"automountServiceAccountToken": "false",
+		"automountServiceAccountToken": false,
 		"imagePullSecrets":             pullSecrets,
 	}
 
@@ -1098,7 +1142,8 @@ func buildKeycloakCommand(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime
 			svc.AddResult(runtime.NewWarningResult(
 				"keycloak: --optimized disabled because service.relativePath is not '/'; falling back to a " +
 					"runtime build (slower startup). http-relative-path is a build-time option and is " +
-					"incompatible with optimized prebuilt images."))
+					"incompatible with optimized prebuilt images.",
+			))
 		}
 	}
 	return cmd
@@ -1175,6 +1220,11 @@ func buildDBCheckerInitContainer(svc *runtime.ServiceRuntime, values map[string]
 		return nil, fmt.Errorf("postgres_client_image not configured")
 	}
 
+	pgPort := ""
+	if port, ok := db["port"].(int); ok {
+		pgPort = strconv.Itoa(port)
+	}
+
 	return map[string]any{
 		"name":            dbcheckerInitName,
 		"image":           image,
@@ -1182,7 +1232,7 @@ func buildDBCheckerInitContainer(svc *runtime.ServiceRuntime, values map[string]
 		"command":         []string{"sh", "-c", dbcheckerScript},
 		"env": []map[string]any{
 			{"name": "PGHOST", "value": db["hostname"]},
-			{"name": "PGPORT", "value": db["port"]},
+			{"name": "PGPORT", "value": pgPort},
 			{"name": "PGUSER", "value": db["username"]},
 			{"name": "PGDATABASE", "value": db["database"]},
 			// Must match Keycloak's KC_DB_URL_PROPERTIES, otherwise the check
@@ -1375,7 +1425,6 @@ func copyKeycloakCredentials(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRunt
 }
 
 func addServiceMonitor(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error {
-
 	basePath := strings.TrimSuffix(comp.Spec.Parameters.Service.RelativePath, "/")
 
 	serviceMonitor := prom.ServiceMonitor{

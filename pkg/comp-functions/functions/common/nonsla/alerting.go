@@ -1,6 +1,8 @@
 package nonsla
 
 import (
+	"maps"
+
 	promV1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -45,7 +47,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\", metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}) < 0.03 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( ((kubelet_volume_stats_available_bytes{job=\"kubelet\", metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}) < 0.03 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} > 0 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{namespace=\"" + namespace + "\", access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{namespace=\"" + namespace + "\", label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels{namespace=\"" + namespace + "\"}, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: FifteenMinuteInterval,
 				Labels: map[string]string{
@@ -64,8 +66,11 @@ var (
 					"summary":     "PersistentVolume is expected to fill up.",
 				},
 				Expr: intstr.IntOrString{
-					Type:   intstr.String,
-					StrVal: "label_replace( bottomk(1, (kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} > 0 and predict_linear(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}[6h], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					Type: intstr.String,
+					// The forecast runs on the 12h maximum of the available bytes (the usage baseline) over 24h.
+					// Short-lived usage spikes (temp files, archives removed by cleanup jobs) don't lower the
+					// baseline, so they don't flip the sign of the forecast. A real fill-up lowers it and still fires.
+					StrVal: "label_replace( ((kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} / kubelet_volume_stats_capacity_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}) < 0.15 and kubelet_volume_stats_used_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"} > 0 and predict_linear(max_over_time(kubelet_volume_stats_available_bytes{job=\"kubelet\",metrics_path=\"/metrics\", namespace=\"" + namespace + "\"}[12h])[24h:5m], 4 * 24 * 3600) < 0  unless on(namespace, persistentvolumeclaim) kube_persistentvolumeclaim_access_mode{namespace=\"" + namespace + "\", access_mode=\"ReadOnlyMany\"} == 1 unless on(namespace,persistentvolumeclaim) kube_persistentvolumeclaim_labels{namespace=\"" + namespace + "\", label_excluded_from_alerts=\"true\"}== 1) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels{namespace=\"" + namespace + "\"}, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: HourInterval,
 				Labels: map[string]string{
@@ -85,7 +90,7 @@ var (
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( topk(1, (max(container_memory_working_set_bytes{container=\"" + name + "\", namespace=\"" + namespace + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( ((max(container_memory_rss{container=\"" + name + "\", namespace=\"" + namespace + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{container=\"" + name + "\", namespace=\"" + namespace + "\", resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels{namespace=\"" + namespace + "\"}, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
 				For: TwoHourInterval,
 				Labels: map[string]string{
@@ -95,19 +100,19 @@ var (
 				},
 			}
 		},
-		memCriticalDB: func(name, namespace string) promV1.Rule {
+		oomEvents: func(name, namespace string) promV1.Rule {
 			return promV1.Rule{
-				Alert: "MemoryCritical",
+				Alert: "MemoryOOMKilled",
 				Annotations: map[string]string{
-					"description": "The memory claimed by the instance {{ $labels.name }} in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} has been over 85% for 2 hours.\n  Please reduce the load of this instance, or increase the memory.",
-					"runbook_url": "https://hub.syn.tools/appcat/runbooks/vshn-generic.html#MemoryCritical",
-					"summary":     "Memory usage critical.",
+					"description": "The container of the instance in namespace {{ $labels.label_appcat_vshn_io_claim_namespace }} was killed for memory in the last 15 minutes.\n  Please reduce the load of this instance, or increase the memory.",
+					"runbook_url": "https://hub.syn.tools/appcat/runbooks/vshn-generic.html#MemoryOOMKilled",
+					"summary":     "Container was killed for memory.",
 				},
 				Expr: intstr.IntOrString{
 					Type:   intstr.String,
-					StrVal: "label_replace( topk(1, (max(container_memory_rss{container=\"" + name + "\", namespace=\"" + namespace + "\"})without (name, id)  / on(container,pod,namespace)  kube_pod_container_resource_limits{resource=\"memory\"}* 100) > 85) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
+					StrVal: "label_replace( (max(increase(container_oom_events_total{container=\"" + name + "\", namespace=\"" + namespace + "\"}[15m])) without (name, id) > 0) * on(namespace) group_left(label_appcat_vshn_io_claim_namespace)kube_namespace_labels{namespace=\"" + namespace + "\"}, \"name\", \"$1\", \"namespace\",\"(" + namespace + ")\")",
 				},
-				For: TwoHourInterval,
+				For: FiveMinuteInterval,
 				Labels: map[string]string{
 					"severity": SeverityCritical,
 					"syn_team": SynTeam,
@@ -122,7 +127,7 @@ var (
 	pvFillUp         alert = "PersistentVolumeFillingUp"
 	pvExpectedFillUp alert = "PersistentVolumeExpectedToFillUp"
 	memCritical      alert = "MemoryCritical"
-	memCriticalDB    alert = "MemoryCriticalDB"
+	oomEvents        alert = "MemoryOOMKilled"
 )
 
 type AlertBuilder struct {
@@ -134,7 +139,8 @@ func NewAlertSetBuilder(containerName string) *AlertBuilder {
 		customRules:        make([]promV1.Rule, 0),
 		alerts:             make([]alert, 0),
 		alertContainerName: containerName,
-		alertDefinitions:   alertDefinitions,
+		// Clone so AddCustomServiceRule doesn't leak service specific rules into other services' builders.
+		alertDefinitions: maps.Clone(alertDefinitions),
 	}}
 }
 
@@ -153,8 +159,8 @@ func (a *AlertBuilder) AddMemory() *AlertBuilder {
 	return a
 }
 
-func (a *AlertBuilder) AddMemoryDB() *AlertBuilder {
-	a.as.alerts = append(a.as.alerts, memCriticalDB)
+func (a *AlertBuilder) AddMemoryOOM() *AlertBuilder {
+	a.as.alerts = append(a.as.alerts, oomEvents)
 	return a
 }
 
@@ -172,19 +178,7 @@ func (a *AlertBuilder) AddCustomServiceRule(name string, rule ServiceRule) *Aler
 func (a *AlertBuilder) AddAll() *AlertBuilder {
 	a.as.alerts = make([]alert, 0)
 	for alert := range a.as.alertDefinitions {
-		if alert != memCriticalDB {
-			a.as.alerts = append(a.as.alerts, alert)
-		}
-	}
-	return a
-}
-
-func (a *AlertBuilder) AddAllDB() *AlertBuilder {
-	a.as.alerts = make([]alert, 0)
-	for alert := range a.as.alertDefinitions {
-		if alert != memCritical {
-			a.as.alerts = append(a.as.alerts, alert)
-		}
+		a.as.alerts = append(a.as.alerts, alert)
 	}
 	return a
 }

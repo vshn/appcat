@@ -64,13 +64,13 @@ const (
 	// Message snippets
 	contactSupportMessage = "Please reduce the resources and then contact VSHN support to increase the quota for the instance support@vshn.ch."
 
-	// ActiveDeadlineSecondsOverrideAnnotation overrides APPUiO Cloud's default
+	// ActiveDeadlineSecondsOverrideAnnotation overrides APPUiO's default
 	// activeDeadlineSeconds (30m) applied to run-once pods (Jobs/CronJobs).
 	// Value must be a plain number of seconds, e.g. "3600".
 	ActiveDeadlineSecondsOverrideAnnotation = "appuio.io/active-deadline-seconds-override"
 	// DefaultActiveDeadlineSeconds is the deadline (in seconds) we set for
 	// run-once pods so service jobs (backup/restore/maintenance) aren't killed
-	// after the 30m APPUiO Cloud default. 2h.
+	// after the 30m APPUiO default. 2h.
 	// We set this to 6h, which is the timeout we have for backups
 	DefaultActiveDeadlineSeconds = "21600"
 )

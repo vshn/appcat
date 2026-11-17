@@ -51,6 +51,17 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, appName, values["gitea"].(map[string]any)["config"].(map[string]any)["APP_NAME"])
 	})
 
+	t.Run("Ensure_AdminPasswordModeInitialOnlyRequireReset", func(t *testing.T) {
+		svc, comp, secretName := bootstrapTest(t)
+		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))
+
+		release := &xhelmv1.Release{}
+		assert.NoError(t, svc.GetDesiredComposedResourceByName(release, comp.GetName()))
+
+		admin := getReleaseValues(t, *release)["gitea"].(map[string]any)["admin"].(map[string]any)
+		assert.Equal(t, "initialOnlyRequireReset", admin["passwordMode"])
+	})
+
 	t.Run("GivenOAuth2ClientSettings_ExpectInHelmValues", func(t *testing.T) {
 		svc, comp, secretName := bootstrapTest(t)
 		assert.NoError(t, addForgejo(context.TODO(), svc, comp, secretName))

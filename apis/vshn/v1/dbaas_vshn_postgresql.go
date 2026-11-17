@@ -8,6 +8,7 @@ import (
 	sgv1 "github.com/vshn/appcat/v4/apis/stackgres/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 // Workaround to make nested defaulting work.
@@ -81,7 +82,7 @@ type VSHNPostgreSQLParameters struct {
 	// Instances configures the number of PostgreSQL instances for the cluster.
 	// Each instance contains one Postgres server.
 	// Out of all Postgres servers, one is elected as the primary, the rest remain as read-only replicas.
-	Instances int `json:"instances,omitempty"`
+	Instances *int `json:"instances,omitempty"`
 
 	// This section allows to configure Postgres replication mode and HA roles groups.
 	//
@@ -476,7 +477,7 @@ func (v *XVSHNPostgreSQL) GetCompositionName() string {
 }
 
 func (v *XVSHNPostgreSQL) GetInstances() int {
-	return v.Spec.Parameters.Instances
+	return ptr.Deref(v.Spec.Parameters.Instances, 0)
 }
 
 // GetBackupRetention returns the retention definition for this backup.
@@ -511,7 +512,7 @@ func (v *VSHNPostgreSQL) GetMonitoring() VSHNMonitoring {
 }
 
 func (v *VSHNPostgreSQL) GetInstances() int {
-	return v.Spec.Parameters.Instances
+	return ptr.Deref(v.Spec.Parameters.Instances, 0)
 }
 
 func (v *VSHNPostgreSQL) GetPDBLabels() map[string]string {

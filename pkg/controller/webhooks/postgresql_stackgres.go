@@ -123,7 +123,7 @@ func validateStackGresMajorVersion(newPg, oldPg *vshnv1.VSHNPostgreSQL) (errList
 				))
 			}
 		}
-		if newPg.Spec.Parameters.Instances > 1 {
+		if newPg.GetInstances() > 1 {
 			errList = append(errList, field.Forbidden(
 				field.NewPath("spec.parameters.instances"),
 				"major upgrades are not supported for HA instances",

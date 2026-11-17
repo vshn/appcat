@@ -502,7 +502,7 @@ func createSgCluster(ctx context.Context, comp *vshnv1.VSHNPostgreSQL, svc *runt
 			Namespace: comp.GetInstanceNamespace(),
 		},
 		Spec: sgv1.SGClusterSpec{
-			Instances:         comp.Spec.Parameters.Instances,
+			Instances:         comp.GetInstances(),
 			SgInstanceProfile: ptr.To(comp.GetName()),
 			Configurations:    configurations,
 			InitialData:       initialData,

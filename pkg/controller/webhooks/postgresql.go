@@ -238,7 +238,7 @@ func (p *PostgreSQLWebhookHandler) validatePostgreSQL(ctx context.Context, newOb
 // checkPostgreSQLQuotas will read the plan if it's set and then check if any other size parameters are overwritten
 func (p *PostgreSQLWebhookHandler) checkPostgreSQLQuotas(ctx context.Context, pg *vshnv1.VSHNPostgreSQL, checkNamespaceQuota bool) (quotaErrs *apierrors.StatusError, fieldErrs field.ErrorList) {
 	var fieldErr *field.Error
-	instances := int64(pg.Spec.Parameters.Instances)
+	instances := int64(pg.GetInstances())
 	resources := utils.Resources{}
 
 	// Fetch plans if specified

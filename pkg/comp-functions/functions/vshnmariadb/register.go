@@ -41,7 +41,7 @@ func init() {
 			},
 			{
 				Name:    "non-sla-prometheus-rules",
-				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNMariaDB](nonsla.NewAlertSetBuilder("mariadb-galera").AddAllDB().GetAlerts()),
+				Execute: nonsla.GenerateNonSLAPromRules[*vshnv1.VSHNMariaDB](nonsla.NewAlertSetBuilder("mariadb-galera").AddAll().GetAlerts()),
 			},
 			{
 				Name:    "billing",

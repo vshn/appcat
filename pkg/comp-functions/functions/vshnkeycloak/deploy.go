@@ -45,7 +45,7 @@ const (
 	urlConnectionDetailsField     = "KEYCLOAK_URL"
 	serviceSuffix                 = "keycloakx-http"
 	pullsecretName                = "pullsecret"
-	registryURL                   = "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
+	defaultImageRepository        = "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed"
 	providerInitName              = "copy-original-providers"
 	dbcheckerInitName             = "dbchecker"
 	pgCertsVolumeName             = "postgresql-certs"
@@ -57,6 +57,7 @@ const (
 	customMountTypeSecret         = "secret"
 	customMountTypeConfigMap      = "configMap"
 	fullImagePullsecretName       = "fullimagepullsecret"
+	dockerHubAuthKey              = "https://index.docker.io/v1/"
 )
 
 // splitImageRef splits a Docker image reference into repository and tag.
@@ -358,7 +359,7 @@ func handleCustomConfig(ctx context.Context, comp *vshnv1.VSHNKeycloak, svc *run
 	err = svc.GetObservedKubeObject(observedJob, jobName)
 	if err != nil {
 		l.Info("Job for new configuration not found. Creating it now", "jobName", jobName)
-		applyJob := buildConfigApplyJob(comp, adminSecret, jobName)
+		applyJob := buildConfigApplyJob(comp, svc, adminSecret, jobName)
 		if err := svc.SetDesiredKubeObject(applyJob, jobName, runtime.KubeOptionAllowDeletion); err != nil {
 			l.Error(err, "cannot create config apply Job")
 			svc.AddResult(runtime.NewWarningResult(fmt.Sprintf("cannot create config apply Job: %s", err)))
@@ -477,7 +478,28 @@ func configApplyJobName(comp *vshnv1.VSHNKeycloak, configHash, envHash string) s
 	return jobName
 }
 
-func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string) *batchv1.Job {
+// keycloakImageRepository returns the repository for the Keycloak images.
+// The component passes the repository as imageRegistry.
+func keycloakImageRepository(svc *runtime.ServiceRuntime) string {
+	if repository := svc.Config.Data["imageRegistry"]; repository != "" {
+		return repository
+	}
+
+	return defaultImageRepository
+}
+
+// registryHostFromRepository returns the registry host of an image repository.
+// Docker config auths maps use the host as key.
+func registryHostFromRepository(repository string) string {
+	host, _, _ := strings.Cut(repository, "/")
+	if strings.ContainsAny(host, ".:") || host == "localhost" {
+		return host
+	}
+
+	return dockerHubAuthKey
+}
+
+func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, adminSecret, jobName string) *batchv1.Job {
 	volumes := []corev1.Volume{}
 	if comp.Spec.Parameters.Service.CustomConfigurationRef != nil {
 		volumes = append(volumes, corev1.Volume{
@@ -527,7 +549,7 @@ func buildConfigApplyJob(comp *vshnv1.VSHNKeycloak, adminSecret, jobName string)
 					Containers: []corev1.Container{
 						{
 							Name:            "apply-config",
-							Image:           fmt.Sprintf("%s:%s", registryURL, imageTag),
+							Image:           fmt.Sprintf("%s:%s", keycloakImageRepository(svc), imageTag),
 							ImagePullPolicy: corev1.PullAlways,
 							EnvFrom:         envFrom,
 							Env: []corev1.EnvVar{
@@ -1052,7 +1074,7 @@ func addPullSecret(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime) error
 
 	secretMap := map[string]any{
 		"auths": map[string]any{
-			"docker-registry.inventage.com:10121": map[string]any{
+			registryHostFromRepository(keycloakImageRepository(svc)): map[string]any{
 				"username": username,
 				"password": password,
 				"auth":     authEncoded,
@@ -1170,7 +1192,7 @@ func addInitContainer(comp *vshnv1.VSHNKeycloak, svc *runtime.ServiceRuntime, va
 		dbchecker,
 		{
 			"name":            providerInitName,
-			"image":           fmt.Sprintf("%s:%s", registryURL, version),
+			"image":           fmt.Sprintf("%s:%s", keycloakImageRepository(svc), version),
 			"imagePullPolicy": "IfNotPresent",
 			"command": []string{
 				"sh",

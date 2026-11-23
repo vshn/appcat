@@ -2,8 +2,10 @@ package common
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/vshn/appcat/v4/apis/metadata"
 	v1 "github.com/vshn/appcat/v4/apis/vshn/v1"
@@ -44,7 +46,7 @@ func BootstrapInstanceNs(ctx context.Context, comp Composite, serviceName, names
 	}
 
 	l.Info("Creating namespace for " + serviceName + " instance")
-	err = createInstanceNamespace(serviceName, compositionName, claimNs, instanceNs, namespaceResName, claimName, billingName, svc, labels...)
+	err = createInstanceNamespace(serviceName, compositionName, claimNs, instanceNs, namespaceResName, claimName, billingName, svc, comp, labels...)
 	if err != nil {
 		return fmt.Errorf("cannot create %s namespace: %w", serviceName, err)
 	}
@@ -97,8 +99,7 @@ func createNamespaceObserver(claimNs string, instance string, svc *runtime.Servi
 }
 
 // Create the namespace for the service instance
-func createInstanceNamespace(serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName, billingName string, svc *runtime.ServiceRuntime, labels ...map[string]string) error {
-
+func createInstanceNamespace(serviceName, compName, claimNamespace, instanceNamespace, namespaceResName, claimName, billingName string, svc *runtime.ServiceRuntime, comp Composite, labels ...map[string]string) error {
 	org, err := GetOrg(compName, svc)
 	if err != nil {
 		svc.Log.Info("cannot get claim namespace")
@@ -133,6 +134,8 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 		}
 	}
 
+	addAllowedLabels(nsLabels, comp, svc)
+
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   instanceNamespace,
@@ -157,6 +160,30 @@ func createInstanceNamespace(serviceName, compName, claimNamespace, instanceName
 	}
 
 	return svc.SetDesiredKubeObjectWithName(ns, instanceNamespace, namespaceResName)
+}
+
+func addAllowedLabels(nsLabels map[string]string, comp InfoGetter, svc *runtime.ServiceRuntime) {
+	if strings.TrimSpace(svc.Config.Data["allowedNamespaceLabels"]) == "" {
+		return
+	}
+
+	allowedKeys := []string{}
+
+	err := json.Unmarshal([]byte(svc.Config.Data["allowedNamespaceLabels"]), &allowedKeys)
+	if err != nil {
+		logErr := fmt.Errorf("unmarshalling namespace allowed labels: %w", err)
+		svc.Log.Error(logErr, "unmarshalling namespace allowed labels")
+		svc.AddResult(runtime.NewWarningResult(logErr.Error()))
+		return
+	}
+
+	compLabels := comp.GetLabels()
+
+	for _, k := range allowedKeys {
+		if compLabels[k] != "" {
+			nsLabels[k] = compLabels[k]
+		}
+	}
 }
 
 func createNamespacePermissions(instance string, instanceNs string, namespaceResName string, security v1.Security, svc *runtime.ServiceRuntime) error {
@@ -265,7 +292,6 @@ func DisableBilling(instanceNamespace string, svc *runtime.ServiceRuntime) error
 // isBillingDisabled checks the composite for the billing disabled label.
 // If it's not set, it checks the given namespace for the configMap and key that disable billing.
 func isBillingDisabled(controlNS, instanceNamespace, compName string, svc *runtime.ServiceRuntime) (bool, error) {
-
 	objSuffix := "-ns-conf-observer"
 
 	cm := &corev1.ConfigMap{

@@ -345,13 +345,25 @@ func newValues(ctx context.Context, svc *runtime.ServiceRuntime, comp *vshnv1.VS
 		}); err != nil {
 			return nil, err
 		}
+	}
 
-		if err := common.SetNestedObjectValue(values, []string{"kubectl", "image"}, map[string]any{
-			"repository": fmt.Sprintf("%s/kubectl", imageRepositoryPrefix),
-		}); err != nil {
+	kubectlImage := map[string]any{}
+
+	if image := svc.Config.Data["kubectl_image"]; image != "" {
+		registry, repository, tag := parseImageRef(image)
+		if registry != "" {
+			kubectlImage["registry"] = registry
+		}
+		kubectlImage["repository"] = repository
+		if tag != "" {
+			kubectlImage["tag"] = tag
+		}
+	}
+
+	if len(kubectlImage) > 0 {
+		if err := common.SetNestedObjectValue(values, []string{"kubectl", "image"}, kubectlImage); err != nil {
 			return nil, err
 		}
-
 	}
 
 	return values, nil

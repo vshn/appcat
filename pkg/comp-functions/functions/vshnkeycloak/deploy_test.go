@@ -364,6 +364,23 @@ func Test_dbcheckerInitContainer(t *testing.T) {
 		assert.Equal(t, "dbchecker", containers[0]["name"], "dbchecker must be first init container")
 	})
 
+	t.Run("provider init container uses imageRegistry", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+		svc.Config.Data["imageRegistry"] = "registry.example.com/mirror/keycloak-managed"
+
+		raw := getRawContainers(t, svc)
+
+		var containers []map[string]any
+		assert.NoError(t, yaml.Unmarshal([]byte(raw), &containers))
+		for _, c := range containers {
+			if c["name"] == providerInitName {
+				assert.Contains(t, c["image"], "registry.example.com/mirror/keycloak-managed:")
+				return
+			}
+		}
+		t.Fatalf("provider init container %q not found", providerInitName)
+	})
+
 	t.Run("dbchecker targets the same database as keycloak", func(t *testing.T) {
 		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
 
@@ -805,31 +822,58 @@ func Test_configApplyJobImageTag(t *testing.T) {
 	}
 }
 
+func Test_keycloakImageRepository(t *testing.T) {
+	t.Run("GivenImageRegistry_ThenUseImageRegistry", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+		svc.Config.Data["imageRegistry"] = "registry.example.com/mirror/keycloak-managed"
+
+		assert.Equal(t, "registry.example.com/mirror/keycloak-managed", keycloakImageRepository(svc))
+	})
+
+	t.Run("GivenNoImageRegistry_ThenUseDefault", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+
+		assert.Equal(t, defaultImageRepository, keycloakImageRepository(svc))
+	})
+}
+
 func Test_buildConfigApplyJob_Image(t *testing.T) {
 	tests := []struct {
-		name        string
-		version     string
-		pinImageTag string
-		want        string
+		name          string
+		version       string
+		pinImageTag   string
+		imageRegistry string
+		want          string
 	}{
 		{
 			name:        "GivenPin_ThenImageUsesPinnedTag",
 			version:     "26.6",
 			pinImageTag: "26.6.1",
-			want:        registryURL + ":26.6.1",
+			want:        defaultImageRepository + ":26.6.1",
 		},
 		{
 			name:    "GivenNoPin_ThenImageUsesVersion",
 			version: "26.6.1",
-			want:    registryURL + ":26.6.1",
+			want:    defaultImageRepository + ":26.6.1",
+		},
+		{
+			name:          "GivenImageRegistry_ThenImageUsesImageRegistry",
+			version:       "26.6.1",
+			imageRegistry: "registry.example.com/mirror/keycloak-managed",
+			want:          "registry.example.com/mirror/keycloak-managed:26.6.1",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+			if tc.imageRegistry != "" {
+				svc.Config.Data["imageRegistry"] = tc.imageRegistry
+			}
+
 			comp := newKeycloakCompWithImage(tc.version, tc.pinImageTag, "", "")
 
-			job := buildConfigApplyJob(comp, "mycloak-admin", "mycloak-apply-cfg-1234abcd")
+			job := buildConfigApplyJob(comp, svc, "mycloak-admin", "mycloak-apply-cfg-1234abcd")
 
 			require.Len(t, job.Spec.Template.Spec.Containers, 1)
 			assert.Equal(t, tc.want, job.Spec.Template.Spec.Containers[0].Image)
@@ -902,16 +946,83 @@ func Test_applyJobImageMatchesRelease(t *testing.T) {
 			image, ok := values["image"].(map[string]any)
 			require.True(t, ok, "release values must contain an image map")
 
-			job := buildConfigApplyJob(comp, "mysecret", "mycloak-apply-cfg-1234abcd")
+			job := buildConfigApplyJob(comp, svc, "mysecret", "mycloak-apply-cfg-1234abcd")
 
 			require.Len(t, job.Spec.Template.Spec.Containers, 1)
 			assert.Equal(
 				t,
-				fmt.Sprintf("%s:%v", registryURL, image["tag"]),
+				fmt.Sprintf("%s:%v", keycloakImageRepository(svc), image["tag"]),
 				job.Spec.Template.Spec.Containers[0].Image,
 			)
 		})
 	}
+}
+
+func Test_registryHostFromRepository(t *testing.T) {
+	tests := []struct {
+		name       string
+		repository string
+		want       string
+	}{
+		{
+			name:       "GivenRegistryWithPort_ThenReturnHostAndPort",
+			repository: "docker-registry.inventage.com:10121/keycloak-competence-center/keycloak-managed",
+			want:       "docker-registry.inventage.com:10121",
+		},
+		{
+			name:       "GivenRegistryWithoutPort_ThenReturnHost",
+			repository: "registry.example.com/mirror/keycloak-managed",
+			want:       "registry.example.com",
+		},
+		{
+			name:       "GivenDockerHubRepository_ThenReturnDockerHubAuthKey",
+			repository: "bitnami/keycloak",
+			want:       dockerHubAuthKey,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, registryHostFromRepository(tc.repository))
+		})
+	}
+}
+
+func Test_addPullSecret(t *testing.T) {
+	loadAuths := func(t *testing.T, svc *runtime.ServiceRuntime, comp *vshnv1.VSHNKeycloak) map[string]any {
+		t.Helper()
+
+		secret := &corev1.Secret{}
+		require.NoError(t, svc.GetDesiredKubeObject(secret, comp.GetName()+"-pull-secret"))
+
+		config := struct {
+			Auths map[string]any `json:"auths"`
+		}{}
+		require.NoError(t, json.Unmarshal(secret.Data[".dockerconfigjson"], &config))
+
+		return config.Auths
+	}
+
+	t.Run("GivenImageRegistry_ThenAuthsUseImageRegistryHost", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+		svc.Config.Data["imageRegistry"] = "registry.example.com/mirror/keycloak-managed"
+		svc.Config.Data["registry_username"] = "user"
+		svc.Config.Data["registry_password"] = "pass"
+		comp := newKeycloakCompWithImage("26.6", "", "", "")
+
+		require.NoError(t, addPullSecret(comp, svc))
+
+		assert.Contains(t, loadAuths(t, svc, comp), "registry.example.com")
+	})
+
+	t.Run("GivenNoImageRegistry_ThenAuthsUseDefaultHost", func(t *testing.T) {
+		svc := commontest.LoadRuntimeFromFile(t, "vshnkeycloak/01_default.yaml")
+		comp := newKeycloakCompWithImage("26.6", "", "", "")
+
+		require.NoError(t, addPullSecret(comp, svc))
+
+		assert.Contains(t, loadAuths(t, svc, comp), "docker-registry.inventage.com:10121")
+	})
 }
 
 func newKeycloakCompWithRestore(name, sourceClaim string) *vshnv1.VSHNKeycloak {

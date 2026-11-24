@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	xhelmbeta1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/commontest"
@@ -76,6 +77,115 @@ func TestRedisDeployHA(t *testing.T) {
 	assert.Equal(t, redisPassword, string(cd[redisPasswordConnectionDetailsField]))
 	assert.Equal(t, redisUrl, string(cd[redisURLConnectionDetailsField]))
 	assert.Equal(t, sentinelHosts, string(cd[sentinelHostsConnectionDetailsField]))
+}
+
+func TestNewValuesKubectlImage(t *testing.T) {
+	tests := []struct {
+		name         string
+		kubectlImage string
+		prefix       string
+		want         map[string]any
+	}{
+		{
+			name:         "GivenKubectlImage_ThenChartUsesIt",
+			kubectlImage: "quay.io/appuio/oc:v4.22",
+			want: map[string]any{
+				"registry":   "quay.io",
+				"repository": "appuio/oc",
+				"tag":        "v4.22",
+			},
+		},
+		{
+			name:         "GivenKubectlImageAndPrefix_ThenImageWins",
+			kubectlImage: "quay.io/appuio/oc:v4.22",
+			prefix:       "vshn",
+			want: map[string]any{
+				"registry":   "quay.io",
+				"repository": "appuio/oc",
+				"tag":        "v4.22",
+			},
+		},
+		{
+			name:   "GivenPrefixOnly_ThenNoImageIsSet",
+			prefix: "vshn",
+		},
+		{
+			name: "GivenNothing_ThenNoImageIsSet",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, comp := getRedisTestComp(t)
+			if tc.kubectlImage != "" {
+				svc.Config.Data["kubectl_image"] = tc.kubectlImage
+			}
+			if tc.prefix != "" {
+				svc.Config.Data["imageRepositoryPrefix"] = tc.prefix
+			}
+
+			values, err := newValues(context.TODO(), svc, comp, "mysecret")
+			require.NoError(t, err)
+
+			kubectl, ok := values["kubectl"].(map[string]any)
+			require.True(t, ok, "values must contain kubectl")
+
+			image, ok := kubectl["image"].(map[string]any)
+			if tc.want == nil {
+				assert.False(t, ok, "values must not contain kubectl.image")
+				return
+			}
+
+			require.True(t, ok, "values must contain kubectl.image")
+			assert.Equal(t, tc.want, image)
+		})
+	}
+}
+
+func TestParseImageRef(t *testing.T) {
+	tests := []struct {
+		name           string
+		ref            string
+		wantRegistry   string
+		wantRepository string
+		wantTag        string
+	}{
+		{
+			name:           "GivenRegistryWithTag_ThenSplitAll",
+			ref:            "quay.io/appuio/oc:v4.22",
+			wantRegistry:   "quay.io",
+			wantRepository: "appuio/oc",
+			wantTag:        "v4.22",
+		},
+		{
+			name:           "GivenNoRegistry_ThenEmptyRegistry",
+			ref:            "appuio/oc:v4.22",
+			wantRepository: "appuio/oc",
+			wantTag:        "v4.22",
+		},
+		{
+			name:           "GivenNoTag_ThenEmptyTag",
+			ref:            "quay.io/appuio/oc",
+			wantRegistry:   "quay.io",
+			wantRepository: "appuio/oc",
+		},
+		{
+			name:           "GivenRegistryWithPort_ThenKeepPort",
+			ref:            "registry.example.com:5000/appuio/oc:v4.22",
+			wantRegistry:   "registry.example.com:5000",
+			wantRepository: "appuio/oc",
+			wantTag:        "v4.22",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			registry, repository, tag := parseImageRef(tc.ref)
+			assert.Equal(t, tc.wantRegistry, registry)
+			assert.Equal(t, tc.wantRepository, repository)
+			assert.Equal(t, tc.wantTag, tag)
+		})
+	}
 }
 
 func getRedisTestComp(t *testing.T) (*runtime.ServiceRuntime, *vshnv1.VSHNRedis) {

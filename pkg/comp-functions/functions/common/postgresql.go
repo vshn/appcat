@@ -187,14 +187,18 @@ func (a *PostgreSQLDependencyBuilder) CreateDependency() (string, error) {
 		compositionName = observedPg.Spec.CompositionRef.Name
 	}
 
+	labels := map[string]string{
+		runtime.ProviderConfigIgnoreLabel: "true",
+		BillingDisabledLabel:              "true",
+	}
+
+	addAllowedLabels(labels, a.comp, a.svc)
+
 	// We have to ignore the providerconfig on the composite itself.
 	pg := &vshnv1.XVSHNPostgreSQL{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: a.comp.GetName() + PgInstanceNameSuffix,
-			Labels: map[string]string{
-				runtime.ProviderConfigIgnoreLabel: "true",
-				BillingDisabledLabel:              "true",
-			},
+			Name:   a.comp.GetName() + PgInstanceNameSuffix,
+			Labels: labels,
 		},
 		Spec: vshnv1.XVSHNPostgreSQLSpec{
 			Parameters: *params,

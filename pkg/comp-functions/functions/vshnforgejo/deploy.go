@@ -416,12 +416,19 @@ func dropUnsafeForgejoConfig(config map[string]any) {
 	for key, value := range config {
 		if section, ok := value.(map[string]any); ok {
 			maps.DeleteFunc(section, isUnsafeForgejoEntry)
+			if strings.EqualFold(strings.TrimSpace(key), "mailer") {
+				maps.DeleteFunc(section, isUnsafeForgejoMailerEntry)
+			}
 			continue
 		}
 		if isUnsafeForgejoEntry(key, value) {
 			delete(config, key)
 		}
 	}
+}
+
+func isUnsafeForgejoMailerEntry(key string, value any) bool {
+	return vshnv1.ForgejoMailerSettingError(key, fmt.Sprint(value)) != ""
 }
 
 func isUnsafeForgejoEntry(key string, value any) bool {

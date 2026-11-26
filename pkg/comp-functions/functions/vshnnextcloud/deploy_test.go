@@ -31,7 +31,10 @@ func Test_getPgInstanceNamespace(t *testing.T) {
 		wantErr bool
 	}{
 		{host: "myinstance.vshn-postgresql-myinstance.svc.cluster.local", want: "vshn-postgresql-myinstance"},
-		{host: "pg.customer-db.svc\n", want: "customer-db"},
+		{host: "pg.vshn-postgresql-db.svc\n", want: "vshn-postgresql-db"},
+		{host: "pg.customer-db.svc.cluster.local", wantErr: true},
+		{host: "dns.kube-system.svc.cluster.local", wantErr: true},
+		{host: "pg.vshn-postgresql-db", wantErr: true},
 		{host: "db.example.com", wantErr: true},
 		{host: "10.0.0.5", wantErr: true},
 		{host: "pg.customer-db", wantErr: true},
@@ -66,15 +69,16 @@ func Test_establishConnectionToExistingPG(t *testing.T) {
 	}{
 		{name: "ExternalHost", host: "db.example.com"},
 		{name: "ExternalHostOrgCheck", orgCheck: true, host: "db.example.com"},
-		{name: "AnyNamespace", host: "pg.acme-db.svc.cluster.local", want: "acme-db"},
-		{name: "OrgCheckClaimNamespace", orgCheck: true, host: "pg.unit-test.svc.cluster.local", want: "unit-test"},
-		{name: "OrgCheckNotObservedYet", orgCheck: true, host: "pg.customer-db.svc.cluster.local"},
-		{name: "OrgCheckSameOrg", orgCheck: true, host: "pg.customer-db.svc.cluster.local", pgNs: namespace("customer-db", map[string]string{org: "vshn"}), want: "customer-db"},
+		{name: "PostgresqlNamespace", host: "pg.vshn-postgresql-db.svc.cluster.local", want: "vshn-postgresql-db"},
+		{name: "OtherNamespace", host: "pg.acme-db.svc.cluster.local"},
+		{name: "KubeSystem", host: "dns.kube-system.svc.cluster.local"},
+		{name: "OrgCheckKubeSystem", orgCheck: true, host: "dns.kube-system.svc.cluster.local", pgNs: namespace("kube-system", map[string]string{org: "vshn"})},
+		{name: "OrgCheckNotObservedYet", orgCheck: true, host: "pg.vshn-postgresql-db.svc.cluster.local"},
+		{name: "OrgCheckSameOrg", orgCheck: true, host: "pg.vshn-postgresql-db.svc.cluster.local", pgNs: namespace("vshn-postgresql-db", map[string]string{org: "vshn"}), want: "vshn-postgresql-db"},
 		{name: "OrgCheckSameClaimNamespace", orgCheck: true, host: "pg.vshn-postgresql-own.svc.cluster.local", pgNs: namespace("vshn-postgresql-own", map[string]string{claimNs: "unit-test"}), want: "vshn-postgresql-own"},
-		{name: "OrgCheckOtherOrg", orgCheck: true, host: "pg.acme-db.svc.cluster.local", pgNs: namespace("acme-db", map[string]string{org: "acme"})},
 		{name: "OrgCheckOtherTenantInstance", orgCheck: true, host: "pg.vshn-postgresql-victim.svc.cluster.local", pgNs: namespace("vshn-postgresql-victim", map[string]string{claimNs: "other-tenant", org: "acme"})},
-		{name: "OrgCheckNoLabels", orgCheck: true, host: "dns.kube-system.svc.cluster.local", pgNs: namespace("kube-system", nil)},
-		{name: "OrgCheckStaleObservation", orgCheck: true, host: "pg.acme-db.svc.cluster.local", pgNs: namespace("customer-db", map[string]string{org: "vshn"})},
+		{name: "OrgCheckNoLabels", orgCheck: true, host: "pg.vshn-postgresql-db.svc.cluster.local", pgNs: namespace("vshn-postgresql-db", nil)},
+		{name: "OrgCheckStaleObservation", orgCheck: true, host: "pg.vshn-postgresql-acme.svc.cluster.local", pgNs: namespace("vshn-postgresql-db", map[string]string{org: "vshn"})},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

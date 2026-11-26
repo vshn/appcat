@@ -220,9 +220,6 @@ func establishConnectionToExistingPG(ctx context.Context, comp *vshnv1.VSHNNextc
 }
 
 func isSameOrgNamespace(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime, namespace string) (bool, error) {
-	if namespace == comp.GetClaimNamespace() {
-		return true, nil
-	}
 	observer := comp.GetName() + "-pg-namespace-observer"
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 	if err := svc.SetDesiredKubeObject(ns, observer, runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion); err != nil {
@@ -248,8 +245,8 @@ func isSameOrgNamespace(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime,
 
 func getPgInstanceNamespace(host string) (string, error) {
 	parts := strings.Split(strings.TrimSpace(host), ".")
-	if len(parts) < 3 || parts[1] == "" || parts[2] != "svc" {
-		return "", fmt.Errorf("not an in-cluster service host: %s", host)
+	if len(parts) < 3 || parts[2] != "svc" || !strings.HasPrefix(parts[1], "vshn-postgresql-") {
+		return "", fmt.Errorf("not a postgresql instance service host: %s", host)
 	}
 	return parts[1], nil
 }

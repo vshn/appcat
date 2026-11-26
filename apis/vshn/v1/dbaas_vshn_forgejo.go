@@ -463,8 +463,8 @@ func ForgejoMailerSettingError(key, value string) string {
 		return fmt.Sprintf("bad mailer.PROTOCOL specified: %s. Must be one of: %v", value, allowedForgejoMailerProtocols)
 	case k == "MAILER_TYPE" || strings.HasPrefix(k, "SENDMAIL_"):
 		return fmt.Sprintf("mailer.%s is not supported", k)
-	case k == "SMTP_ADDR" && strings.ContainsAny(v, "/\\"):
-		return "mailer.SMTP_ADDR must be a host name, unix sockets are not supported"
+	case (k == "SMTP_ADDR" || k == "HOST") && strings.ContainsAny(v, "/\\"):
+		return fmt.Sprintf("mailer.%s must be a host name, unix sockets are not supported", k)
 	}
 	return ""
 }

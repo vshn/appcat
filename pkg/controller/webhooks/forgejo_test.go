@@ -85,6 +85,9 @@ func Test_validateForgejoConfig(t *testing.T) {
 		{name: "MailerType", mailer: map[string]string{"MAILER_TYPE": "sendmail"}, wantErr: true},
 		{name: "SendmailPath", mailer: map[string]string{"SENDMAIL_PATH": "/usr/bin/true"}, wantErr: true},
 		{name: "SMTPAddrSocketPath", mailer: map[string]string{"SMTP_ADDR": "/run/mail.sock"}, wantErr: true},
+		{name: "Host", mailer: map[string]string{"HOST": "mail.example.com:587"}},
+		{name: "HostSocketPath", mailer: map[string]string{"HOST": "/run/mail.sock"}, wantErr: true},
+		{name: "HostSocketPathWithPort", mailer: map[string]string{"host": "/run/mail.sock:25"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

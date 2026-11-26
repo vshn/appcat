@@ -323,7 +323,7 @@ func TestForgejoConfigMerge(t *testing.T) {
 		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{
 			Mailer: map[string]string{
 				"PROTOCOL ": "sendmail", "MAILER_TYPE": "sendmail", "SENDMAIL_PATH": "/usr/bin/true",
-				"SMTP_ADDR": "/run/mail.sock", "FROM": "forgejo@example.com",
+				"SMTP_ADDR": "/run/mail.sock", "HOST": "/run/mail.sock:25", "FROM": "forgejo@example.com",
 			},
 		})
 

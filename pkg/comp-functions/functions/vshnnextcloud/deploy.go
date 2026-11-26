@@ -196,31 +196,62 @@ func establishConnectionToExistingPG(ctx context.Context, comp *vshnv1.VSHNNextc
 	if err != nil || len(s.(*corev1.Secret).Data) == 0 {
 		return "", fmt.Errorf("existing postgres connection secret not ready: %s", err)
 	}
+	pgSecret = s.GetName()
 	pgInstanceNamespace, err := getPgInstanceNamespace(string(s.(*corev1.Secret).Data[vshnpostgres.PostgresqlHost]))
 	if err != nil {
-		return "", fmt.Errorf("cannot get pgInstanceNamespace: %s", err)
+		svc.Log.Info("Skipping network policy for existing postgresql", "reason", err.Error())
+		return pgSecret, nil
+	}
+	if svc.GetBoolFromCompositionConfig("existingPGOrgCheckEnabled") {
+		allowed, err := isSameOrgNamespace(comp, svc, pgInstanceNamespace)
+		if err != nil {
+			return pgSecret, err
+		}
+		if !allowed {
+			svc.Log.Info("Skipping network policy for existing postgresql", "namespace", pgInstanceNamespace)
+			return pgSecret, nil
+		}
 	}
 	err = common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pgInstanceNamespace, "allow-from-"+comp.GetInstanceNamespace(), comp.GetName()+"-netpol-allow-to-pg", false, svc)
 	if err != nil {
-		return "", fmt.Errorf("cannot configure network policy resource in Postgres service: %s", err)
+		return pgSecret, fmt.Errorf("cannot configure network policy resource in Postgres service: %s", err)
 	}
-	pgSecret = s.GetName()
 	return pgSecret, nil
 }
 
+func isSameOrgNamespace(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime, namespace string) (bool, error) {
+	if namespace == comp.GetClaimNamespace() {
+		return true, nil
+	}
+	observer := comp.GetName() + "-pg-namespace-observer"
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+	if err := svc.SetDesiredKubeObject(ns, observer, runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion); err != nil {
+		return false, fmt.Errorf("cannot observe postgresql namespace: %w", err)
+	}
+	observed := &corev1.Namespace{}
+	if err := svc.GetObservedKubeObject(observed, observer); err != nil {
+		if errors.Is(err, runtime.ErrNotFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("cannot get postgresql namespace %q: %w", namespace, err)
+	}
+	if observed.GetName() != namespace {
+		return false, nil
+	}
+	labels := observed.GetLabels()
+	if labels["appcat.vshn.io/claim-namespace"] == comp.GetClaimNamespace() {
+		return true, nil
+	}
+	org, err := common.GetOrg(comp.GetName(), svc)
+	return err == nil && org != "" && labels[utils.OrgLabelName] == org, nil
+}
+
 func getPgInstanceNamespace(host string) (string, error) {
-	parts := strings.Split(host, ".")
-	if len(parts) < 2 {
-		return "", fmt.Errorf("invalid host format: %s", host)
+	parts := strings.Split(strings.TrimSpace(host), ".")
+	if len(parts) < 3 || parts[1] == "" || parts[2] != "svc" {
+		return "", fmt.Errorf("not an in-cluster service host: %s", host)
 	}
-	// The host comes from a tenant-controlled connection secret. Only allow it to
-	// point at a PostgreSQL instance namespace, otherwise a crafted host could make
-	// us apply a network policy into an arbitrary namespace.
-	ns := parts[1]
-	if !strings.HasPrefix(ns, "vshn-postgresql-") {
-		return "", fmt.Errorf("derived namespace %q is not a postgresql instance namespace", ns)
-	}
-	return ns, nil
+	return parts[1], nil
 }
 
 func getObservedPostgresSettings(svc *runtime.ServiceRuntime, comp *vshnv1.VSHNNextcloud) (map[string]string, map[string]string, string, error) {

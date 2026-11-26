@@ -3,8 +3,6 @@ package webhooks
 import (
 	"context"
 	"fmt"
-	"slices"
-	"strings"
 
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,11 +21,6 @@ import (
 var (
 	forgejoGK = schema.GroupKind{Group: "vshn.appcat.vshn.io", Kind: "VSHNForgejo"}
 	forgejoGR = schema.GroupResource{Group: forgejoGK.Group, Resource: "vshnforgejo"}
-
-	denied_mailer_protocols = []string{
-		"smtp+unix",
-		"sendmail",
-	}
 )
 
 var _ webhook.CustomValidator = &ForgejoWebhookHandler{}
@@ -118,13 +111,8 @@ func (p *ForgejoWebhookHandler) ValidateUpdate(ctx context.Context, oldObj, newO
 func validateForgejoConfig(settings vshnv1.VSHNForgejoSettings) *field.Error {
 	// Mailer
 	for k, v := range settings.Config.Mailer {
-		if strings.EqualFold(k, "PROTOCOL") {
-			if slices.Contains(denied_mailer_protocols, v) {
-				return field.Invalid(
-					field.NewPath("spec", "paramaters", "service", "config", "mailer"),
-					v,
-					fmt.Sprintf("bad mailer.PROTOCOL specified: %s. May not be any of: %v", v, denied_mailer_protocols))
-			}
+		if msg := vshnv1.ForgejoMailerSettingError(k, v); msg != "" {
+			return field.Invalid(field.NewPath("spec", "paramaters", "service", "config", "mailer"), v, msg)
 		}
 	}
 

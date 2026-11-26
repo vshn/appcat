@@ -319,6 +319,24 @@ func TestForgejoConfigMerge(t *testing.T) {
 		assert.Equal(t, map[string]any{"remote.origin.url": "https://example.com/repo.git"}, config["git.config"])
 	})
 
+	t.Run("MailerSendmailAndUnixSocket_Dropped", func(t *testing.T) {
+		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{
+			Mailer: map[string]string{
+				"PROTOCOL ": "sendmail", "MAILER_TYPE": "sendmail", "SENDMAIL_PATH": "/usr/bin/true",
+				"SMTP_ADDR": "/run/mail.sock", "FROM": "forgejo@example.com",
+			},
+		})
+
+		assert.Equal(t, map[string]any{"FROM": "forgejo@example.com"}, config["mailer"])
+	})
+
+	t.Run("MailerSMTP_Kept", func(t *testing.T) {
+		mailer := map[string]string{"PROTOCOL": "smtps", "SMTP_ADDR": "mail.example.com", "SMTP_PORT": "465"}
+		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{Mailer: mailer})
+
+		assert.Equal(t, map[string]any{"PROTOCOL": "smtps", "SMTP_ADDR": "mail.example.com", "SMTP_PORT": "465"}, config["mailer"])
+	})
+
 	t.Run("DefaultsWithQuotedValues_Kept", func(t *testing.T) {
 		config, _ := configFromRelease(t, vshnv1.VSHNForgejoConfig{})
 		assert.Equal(t, "'{\"size\":100, \"recent_ratio\":0.25, \"ghost_ratio\":0.5}'",

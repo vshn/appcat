@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -450,4 +451,20 @@ func (v *VSHNForgejo) GetWorkloadPodTemplateLabelsManager() PodTemplateLabelsMan
 // IsBackupEnabled returns true if backups are enabled for this instance
 func (v *VSHNForgejo) IsBackupEnabled() bool {
 	return v.Spec.Parameters.Backup.IsEnabled()
+}
+
+var allowedForgejoMailerProtocols = []string{"smtp", "smtps", "smtp+starttls", "dummy"}
+
+func ForgejoMailerSettingError(key, value string) string {
+	k := strings.ToUpper(strings.TrimSpace(key))
+	v := strings.TrimSpace(value)
+	switch {
+	case k == "PROTOCOL" && v != "" && !slices.Contains(allowedForgejoMailerProtocols, v):
+		return fmt.Sprintf("bad mailer.PROTOCOL specified: %s. Must be one of: %v", value, allowedForgejoMailerProtocols)
+	case k == "MAILER_TYPE" || strings.HasPrefix(k, "SENDMAIL_"):
+		return fmt.Sprintf("mailer.%s is not supported", k)
+	case k == "SMTP_ADDR" && strings.ContainsAny(v, "/\\"):
+		return "mailer.SMTP_ADDR must be a host name, unix sockets are not supported"
+	}
+	return ""
 }

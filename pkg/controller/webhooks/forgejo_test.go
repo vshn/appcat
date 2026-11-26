@@ -65,3 +65,35 @@ func TestForgejoWebhookHandler_ValidateCreate_DeniedMailerProtocol(t *testing.T)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "bad mailer.PROTOCOL")
 }
+
+func Test_validateForgejoConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		mailer  map[string]string
+		wantErr bool
+	}{
+		{name: "NoMailer"},
+		{name: "SMTP", mailer: map[string]string{"ENABLED": "true", "PROTOCOL": "smtp", "SMTP_ADDR": "mail.example.com"}},
+		{name: "SMTPS", mailer: map[string]string{"PROTOCOL": "smtps", "SMTP_ADDR": "mail.example.com", "SMTP_PORT": "465"}},
+		{name: "StartTLS", mailer: map[string]string{"protocol": "smtp+starttls"}},
+		{name: "Dummy", mailer: map[string]string{"PROTOCOL": "dummy"}},
+		{name: "NoProtocol", mailer: map[string]string{"SMTP_ADDR": "mail.example.com"}},
+		{name: "Sendmail", mailer: map[string]string{"PROTOCOL": "sendmail"}, wantErr: true},
+		{name: "UnixSocket", mailer: map[string]string{"PROTOCOL": "smtp+unix"}, wantErr: true},
+		{name: "ProtocolKeyWithSpace", mailer: map[string]string{"PROTOCOL ": "sendmail"}, wantErr: true},
+		{name: "ProtocolValueWithSpace", mailer: map[string]string{"PROTOCOL": " sendmail"}, wantErr: true},
+		{name: "MailerType", mailer: map[string]string{"MAILER_TYPE": "sendmail"}, wantErr: true},
+		{name: "SendmailPath", mailer: map[string]string{"SENDMAIL_PATH": "/usr/bin/true"}, wantErr: true},
+		{name: "SMTPAddrSocketPath", mailer: map[string]string{"SMTP_ADDR": "/run/mail.sock"}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateForgejoConfig(vshnv1.VSHNForgejoSettings{Config: vshnv1.VSHNForgejoConfig{Mailer: tt.mailer}})
+			if tt.wantErr {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}

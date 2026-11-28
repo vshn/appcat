@@ -13,6 +13,7 @@ import (
 	"dario.cat/mergo"
 	xfnproto "github.com/crossplane/function-sdk-go/proto/v1"
 	xhelmv1 "github.com/vshn/appcat/v4/apis/helm/release/v1beta1"
+	xkube "github.com/vshn/appcat/v4/apis/kubernetes/v1alpha2"
 	vshnv1 "github.com/vshn/appcat/v4/apis/vshn/v1"
 	"github.com/vshn/appcat/v4/pkg/common/utils"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/common"
@@ -20,6 +21,7 @@ import (
 	"github.com/vshn/appcat/v4/pkg/comp-functions/functions/vshnpostgres"
 	"github.com/vshn/appcat/v4/pkg/comp-functions/runtime"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -197,29 +199,54 @@ func establishConnectionToExistingPG(ctx context.Context, comp *vshnv1.VSHNNextc
 		return "", fmt.Errorf("existing postgres connection secret not ready: %s", err)
 	}
 	pgSecret = s.GetName()
+	netpolName := comp.GetName() + "-netpol-allow-to-pg"
 	pgInstanceNamespace, err := getPgInstanceNamespace(string(s.(*corev1.Secret).Data[vshnpostgres.PostgresqlHost]))
 	if err != nil {
 		svc.Log.Info("Skipping network policy for existing postgresql", "reason", err.Error())
-		return pgSecret, nil
+		return pgSecret, releaseNetworkPolicy(svc, netpolName)
 	}
-	if svc.GetBoolFromCompositionConfig("existingPGOrgCheckEnabled") {
-		allowed, err := isSameOrgNamespace(comp, svc, pgInstanceNamespace)
+	org, err := common.GetOrg(comp.GetName(), svc)
+	if err != nil {
+		return pgSecret, fmt.Errorf("cannot get organization of claim namespace: %w", err)
+	}
+	if org != "" {
+		allowed, err := isSameOrgNamespace(comp, svc, pgInstanceNamespace, org)
 		if err != nil {
 			return pgSecret, err
 		}
 		if !allowed {
 			svc.Log.Info("Skipping network policy for existing postgresql", "namespace", pgInstanceNamespace)
-			return pgSecret, nil
+			return pgSecret, releaseNetworkPolicy(svc, netpolName)
 		}
 	}
-	err = common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pgInstanceNamespace, "allow-from-"+comp.GetInstanceNamespace(), comp.GetName()+"-netpol-allow-to-pg", false, svc)
+	err = common.CustomCreateNetworkPolicy([]string{comp.GetInstanceNamespace()}, pgInstanceNamespace, "allow-from-"+comp.GetInstanceNamespace(), netpolName, false, svc, runtime.KubeOptionAllowDeletion)
 	if err != nil {
 		return pgSecret, fmt.Errorf("cannot configure network policy resource in Postgres service: %s", err)
 	}
 	return pgSecret, nil
 }
 
-func isSameOrgNamespace(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime, namespace string) (bool, error) {
+// The deletion protection only lets objects with the allow deletion label go,
+// so a netpol without it is kept for one more reconcile to get the label.
+func releaseNetworkPolicy(svc *runtime.ServiceRuntime, name string) error {
+	obj := &xkube.Object{}
+	if err := svc.GetObservedComposedResource(obj, name); err != nil {
+		if errors.Is(err, runtime.ErrNotFound) {
+			return nil
+		}
+		return fmt.Errorf("cannot get observed network policy: %w", err)
+	}
+	if obj.GetLabels()[runtime.WebhookAllowDeletionLabel] == "true" || len(obj.Spec.ForProvider.Manifest.Raw) == 0 {
+		return nil
+	}
+	netpol := &netv1.NetworkPolicy{}
+	if err := json.Unmarshal(obj.Spec.ForProvider.Manifest.Raw, netpol); err != nil {
+		return fmt.Errorf("cannot parse observed network policy: %w", err)
+	}
+	return svc.SetDesiredKubeObject(netpol, name, runtime.KubeOptionAllowDeletion)
+}
+
+func isSameOrgNamespace(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime, namespace, org string) (bool, error) {
 	observer := comp.GetName() + "-pg-namespace-observer"
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 	if err := svc.SetDesiredKubeObject(ns, observer, runtime.KubeOptionObserve, runtime.KubeOptionAllowDeletion); err != nil {
@@ -236,11 +263,7 @@ func isSameOrgNamespace(comp *vshnv1.VSHNNextcloud, svc *runtime.ServiceRuntime,
 		return false, nil
 	}
 	labels := observed.GetLabels()
-	if labels["appcat.vshn.io/claim-namespace"] == comp.GetClaimNamespace() {
-		return true, nil
-	}
-	org, err := common.GetOrg(comp.GetName(), svc)
-	return err == nil && org != "" && labels[utils.OrgLabelName] == org, nil
+	return labels["appcat.vshn.io/claim-namespace"] == comp.GetClaimNamespace() || labels[utils.OrgLabelName] == org, nil
 }
 
 func getPgInstanceNamespace(host string) (string, error) {

@@ -20,7 +20,8 @@ func CreateNetworkPolicy(comp Composite, svc *runtime.ServiceRuntime) error {
 // `name` - the name of the network policy
 // `kubeName` -the kube name that this network policy should be encapsulated. If not given "<composite.name>-netpol" is used
 // `allowAll` - will override the `sourceNS` parameter and will allow all namespace to access `instanceNs` service
-func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name, kubeName string, allowAll bool, svc *runtime.ServiceRuntime) error {
+// `opts` - additional options for the kube object, for example runtime.KubeOptionAllowDeletion
+func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name, kubeName string, allowAll bool, svc *runtime.ServiceRuntime, opts ...runtime.KubeObjectOption) error {
 	netPolPeer := []netv1.NetworkPolicyPeer{}
 	if !allowAll {
 		for _, ns := range sourceNS {
@@ -80,7 +81,7 @@ func CustomCreateNetworkPolicy(sourceNS []string, instanceNs, name, kubeName str
 		kubeName = name + "-netpol"
 	}
 
-	err := svc.SetDesiredKubeObject(&netPol, kubeName)
+	err := svc.SetDesiredKubeObject(&netPol, kubeName, opts...)
 	if err != nil {
 		err = fmt.Errorf("cannot create networkPolicy object: %w", err)
 		return err
